@@ -156,18 +156,18 @@
             position: absolute;
             bottom: 150%;
             left: 0;
-            background-color: var(--secondary);
-            color: #ffffff;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1a1a1a;
             padding: 10px 14px;
             border-radius: 6px;
             font-size: 11px;
-            font-weight: 500;
+            font-weight: 600;
             font-family: 'Comfortaa', sans-serif;
             white-space: normal;
             width: 220px;
             line-height: 1.4;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            border: none;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
             transition: opacity 0.2s, visibility 0.2s;
             z-index: 9999;
         }
@@ -252,7 +252,27 @@
 
         #btn-ai-generate {
             animation: bump 2s ease-in-out infinite;
+        }
+
+        #btn-download {
             margin-bottom: 14px;
+        }
+
+        .notif-label {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1a1a1a;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 12px;
+            margin-left: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+            display: inline-block;
+            vertical-align: middle;
+            line-height: 1;
+            pointer-events: none;
         }
 
         #btn-ai-generate:hover {
@@ -756,6 +776,58 @@
             transform: scale(0.98);
         }
 
+        /* AI-available state for Actions button */
+        .actions-dropdown-trigger.ai-available {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1a1a1a;
+            border-color: transparent;
+            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
+            animation: bump 2s ease-in-out infinite;
+        }
+
+        .actions-dropdown-trigger.ai-available:hover {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            animation: none;
+            transform: scale(1.02);
+        }
+
+        /* AI-available state for Polish dropdown option */
+        .actions-option.ai-available {
+            position: relative;
+        }
+
+        .actions-option.ai-available:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        /* Golden ! notification dot on Polish option — rendered via ::after pseudo-element */
+        .actions-option.ai-available::after {
+            content: '!';
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 14px;
+            height: 14px;
+            min-width: 14px;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1a1a1a;
+            border-radius: 50%;
+            font-size: 9px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 4px rgba(245, 158, 11, 0.5);
+            pointer-events: none;
+            line-height: 1;
+        }
+
+        /* Polish button container — needed for ::after positioning */
+        #btn-polish-dropdown {
+            position: relative;
+        }
+
         .actions-dropdown {
             position: absolute;
             top: calc(100% + 6px);
@@ -778,33 +850,19 @@
         }
 
         .actions-option {
-            display: flex;
-            align-items: baseline;
-            gap: 10px;
+            align-items: center;
+            gap: 12px;
             width: 100%;
             padding: 10px 16px;
             background: transparent;
             border: none;
             color: #fff;
             font-family: 'Comfortaa', sans-serif;
-            font-size: 13px;
             font-weight: 500;
             cursor: pointer;
             text-align: left;
             transition: background 0.15s;
             white-space: nowrap;
-        }
-
-        .actions-option-icon {
-            width: 18px;
-            height: 18px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            opacity: 0.85;
-            font-size: 16px;
-            line-height: 1;
         }
 
         .actions-option:hover {
@@ -813,17 +871,21 @@
         }
 
         .actions-option-icon {
-            width: 20px;
+            display: inline-block;
+            width: 26px;
             height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
+            text-align: center;
+            line-height: 20px;
             opacity: 0.85;
+            font-size: 14px;
+            vertical-align: middle;
+            margin-right: 12px;
         }
 
         .actions-option-text {
-            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            vertical-align: middle;
         }
 
         body.left-collapsed #left-open-stub {
@@ -929,7 +991,7 @@
             <div class="panel-ctrl-row">
                 <button class="ctrl-btn" onclick="toggleLeft()" title="Collapse sidebar"
                     aria-label="Collapse sidebar">&#9776;</button>
-                <span class="panel-label-row">resumessi ATS Scanner</span>
+                <span class="panel-label-row">resumessi JD validation</span>
             </div>
 
             <div class="p-group" style="flex: 1; display: flex; flex-direction: column;">
@@ -954,17 +1016,17 @@
                 <span class="dot-anim">Scanning with AI</span>
             </div>
 
-            <button class="p-btn p-btn-primary" id="btn-run-scan" onclick="handleScanButtonClick()" disabled>ATS Score
-                Check</button>
-            <button class="p-btn p-btn-secondary" id="btn-download" onclick="window.print()">Download Resume</button>
+            <button class="p-btn p-btn-primary" id="btn-run-scan" onclick="handleScanButtonClick()" disabled>Validate JD
+                using AI</button>
             <button class="p-btn" id="btn-ai-generate" onclick="openAIModal()"
                 style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a1a; font-weight: 700;">Generate
-                with AI</button>
+                resume using AI</button>
+            <button class="p-btn p-btn-secondary" id="btn-download" onclick="window.print()">Download Resume</button>
 
             <div id="floating-footer" class="no-print">
                 <span>Developed by Juani Ca&ntilde;ete</span>
                 <span class="dev-separator">&bull;</span>
-                <a href="https://github.com/JuaniCanete?tab=projects" target="_blank"
+                <a href="https://github.com/JuaniCanete?tab=repositories" target="_blank"
                     rel="noopener noreferrer">GitHub</a>
                 <span class="dev-separator">&bull;</span>
                 <a href="https://www.linkedin.com/in/juanignaciocanete/" target="_blank"
@@ -981,29 +1043,30 @@
         <div id="actions-bar" class="no-print">
             <div class="actions-btn-wrapper">
                 <button id="actions-trigger" class="actions-dropdown-trigger" onclick="toggleActions()"
-                    aria-expanded="false" aria-haspopup="true" title="Actions">Actions ▾</button>
+                    aria-expanded="false" aria-haspopup="true" title="Actions"><span class="actions-label">Actions
+                        ▾</span></button>
                 <div id="actions-dropdown" class="actions-dropdown hidden" role="menu">
                     <button class="actions-option" role="menuitem" onclick="toggleLeft()">
                         <span class="actions-option-icon">🔍</span>
-                        <span class="actions-option-text">ATS Score</span>
+                        <span class="actions-option-text">JD Validation</span>
+                    </button>
+                    <button class="actions-option" role="menuitem" onclick="openRight()">
+                        <span class="actions-option-icon">📊</span>
+                        <span class="actions-option-text">ATS Results</span>
                     </button>
                     <button class="actions-option" role="menuitem" onclick="window.print()">
                         <span class="actions-option-icon">⬇</span>
                         <span class="actions-option-text">Download Resume</span>
                     </button>
-                    <button class="actions-option" role="menuitem" onclick="openRight()">
-                        <span class="actions-option-icon">📊</span>
-                        <span class="actions-option-text">Results</span>
-                    </button>
-                    <button class="actions-option" role="menuitem"
-                        onclick="window.location.href='../docs/how-it-works.html'">
-                        <span class="actions-option-icon">?</span>
-                        <span class="actions-option-text">How it works</span>
-                    </button>
                     <button class="actions-option" id="btn-polish-dropdown" role="menuitem" onclick="polishResume()"
                         style="display: none;">
                         <span class="actions-option-icon">✨</span>
                         <span class="actions-option-text">Polish with AI</span>
+                    </button>
+                    <button class="actions-option" role="menuitem"
+                        onclick="window.location.href='../pages/how-it-works.html'">
+                        <span class="actions-option-icon">?</span>
+                        <span class="actions-option-text">How it works</span>
                     </button>
                 </div>
             </div>
@@ -1019,7 +1082,7 @@
             <div class="panel-ctrl-row">
                 <button class="ctrl-btn" id="rp-expand-btn" onclick="expandRight()" title="Expand panel"
                     aria-label="Expand panel">&#x26F6;</button>
-                <span class="panel-label-row">resumessi Results</span>
+                <span class="panel-label-row">resumessi ATS results</span>
                 <button class="ctrl-btn" onclick="closeRight()" title="Collapse results"
                     aria-label="Collapse results">&#x2716;</button>
             </div>
@@ -1034,7 +1097,8 @@
 
             <div id="scan-again-msg" class="result-body"
                 style="color: #fca5a5; margin-top: 6px; margin-bottom: 14px; padding: 12px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 6px;">
-                There are no results yet. Please, scan a job description using the ATS Score Check button in order to
+                There are no results yet. Please, scan a job description using the Validate JD using AI button in order
+                to
                 get results.
             </div>
 
@@ -1317,8 +1381,16 @@
             btn.style.borderColor = '#ffffff';  // White border
             btn.style.backgroundColor = 'transparent';
 
-            // Base prompt with ATS instructions. Tokens are replaced below.
-            const basePrompt = '"You are an expert ATS (Applicant Tracking System) analyzer. Your ONLY function is to compare a Candidate Resume against a single Job Description and output a strict JSON evaluation.\r\n\r\n═══════════════════════════════════════════════════════════════\r\nSTEP 1 — READ THE INPUTS CAREFULLY\r\n═══════════════════════════════════════════════════════════════\r\nBefore scoring, identify:\r\n- The INDUSTRY/DOMAIN of the Job Description (e.g., software engineering, healthcare, finance, sports, education).\r\n- The INDUSTRY/DOMAIN of the Candidate Resume.\r\n- The CANDIDATE NAME as it appears in the resume (extract it exactly — NEVER invent a name).\r\n\r\n═══════════════════════════════════════════════════════════════\r\nSTEP 2 — DOMAIN RELEVANCE GATE (MANDATORY)\r\n═══════════════════════════════════════════════════════════════\r\n- If the JD and Resume belong to DIFFERENT industries/domains (e.g., JD is for a football player and resume is for a software engineer), this is an automatic LOW_MATCH.\r\n- Domain mismatch OVERRIDES all other factors. Cap: overall_score ≤ 40, tier = \"LOW_MATCH\".\r\n- Do NOT perform keyword matching across unrelated fields. A football playmaker JD must NOT score high against a Java developer resume.\r\n\r\n═══════════════════════════════════════════════════════════════\r\nSTEP 3 — SCORING RULES (only if domains match)\r\n═══════════════════════════════════════════════════════════════\r\nTIER SELECTION (strict boundaries):\r\n- STRONG_MATCH: overall_score ≥ 80.\r\n- GOOD_MATCH: overall_score 60–79.\r\n- LOW_MATCH: overall_score < 60.\r\n- ANOMALALY_DETECTED: Only if you detect keyword stuffing, hidden text patterns, or impossible chronological gaps.\r\n\r\nREQUIRED SKILLS & EXPERIENCE (hard constraints):\r\n- If the JD lists REQUIRED skills and the candidate lacks them → NEVER rate STRONG_MATCH.\r\n- Missing 1–2 critical skills → Cap at GOOD_MATCH (max 79).\r\n- Missing 3+ critical skills → Cap at LOW_MATCH (max 59).\r\n- Years of experience below JD requirement → Cap score proportionally.\r\n- Similar/related skills alone CANNOT justify STRONG_MATCH if core requirements are missing.\r\n\r\n═══════════════════════════════════════════════════════════════\r\nSTEP 4 — OUTPUT SPECIFICATION\r\n═══════════════════════════════════════════════════════════════\r\nReturn ONLY a valid JSON object. No markdown, no backticks, no explanation text before or after.\r\n\r\nUse EXACTLY this structure:\r\n{\r\n  \"candidate_id\": \"usr_9823\",\r\n  \"parsing_status\": \"SUCCESS\",\r\n  \"ai_screening\": {\r\n    \"overall_score\": 0,\r\n    \"tier\": \"LOW_MATCH\",\r\n    \"breakdown\": {\r\n      \"skills_score\": 0,\r\n      \"experience_years_score\": 0,\r\n      \"education_match\": false\r\n    },\r\n    \"flags\": [],\r\n    \"warnings\": [],\r\n    \"missingKeywords\": [],\r\n    \"feedback\": \"Brief feedback under 200 words. Mention the candidate actual name from the resume, specific gaps, and concrete improvement tips.\"\r\n  }\r\n}\r\n\r\n═══════════════════════════════════════════════════════════════\r\nSTEP 5 — SELF-VALIDATION (before outputting)\r\n═══════════════════════════════════════════════════════════════\r\nVerify ALL of the following before returning:\r\n□ The candidate name in feedback matches the EXACT name from the resume text.\r\n□ No invented or assumed personal details (addresses, phone numbers, dates) appear in feedback.\r\n□ If domains differ, overall_score ≤ 40 and tier = \"LOW_MATCH\".\r\n□ missingKeywords contains ONLY skills/terms explicitly listed as required in the JD but absent from the resume.\r\n□ No placeholder examples like \"keyword1\" or \"Alex Johnson\" appear in output.\r\n□ JSON is valid and all numeric scores are within 0–100.\r\n\r\n--- JOB DESCRIPTION ---\r\n{job_description}\r\n--- CANDIDATE RESUME ---\r\n{resume_text}"';
+            // Load ATS prompt dynamically
+            let basePrompt;
+            try {
+                const promptResp = await fetch('/api/prompts/ats-scan.txt');
+                basePrompt = await promptResp.text();
+            } catch (e) {
+                alert('Failed to load ATS prompt. Please refresh the page.');
+                throw e;
+            }
+
             // Replace tokens with actual JD and resume text
             const prompt = basePrompt
                 .replace('{job_description}', jd)
@@ -1423,9 +1495,6 @@
         // Photo priority: user > demo > default
         function getPhotoPath(resumeData) {
             if (resumeData.basics.photo) {
-                if (resumeData.basics.photo === 'photo.jpg') {
-                    return 'examples/photo.jpg';
-                }
                 if (resumeData.basics.photo.includes('/')) {
                     return resumeData.basics.photo;
                 }
@@ -1505,6 +1574,7 @@
                 html += '<p style="margin-top: 6px;"><a class="cert-link" href="' + escHtml(b.linkedin) + '" target="_blank" rel="noopener noreferrer">LinkedIn profile</a></p>';
             }
             if (b.github && b.github !== '#') {
+                html += '<p style="margin-top: 6px;"><a class="cert-link" href="' + escHtml(b.github) + '" target="_blank" rel="noopener noreferrer">GitHub profile</a></p>';
             }
             html += '</div>';
             html += '</header>';
@@ -1639,9 +1709,9 @@
         // ─── Resume Data Loading ─────────────────────────────────────────
         async function loadResumeData() {
             const priorities = [
-                'resume_generation/resume-data-AI-polished.json',
-                'resume_generation/resume-data.json',
-                'examples/demo-data.json'
+                '/resume_generation/resume-data-AI-polished.json',
+                '/resume_generation/resume-data.json',
+                '/examples/demo-data.json'
             ];
 
             // Check if resume was generated via AI tool (localStorage flag)
@@ -1672,39 +1742,48 @@
         // ─── Polish Button Management ────────────────────────────────────
         async function updatePolishButton() {
             const dropdownBtn = document.getElementById('btn-polish-dropdown');
+            const actionsTrigger = document.getElementById('actions-trigger');
             if (!dropdownBtn) return;
+
+            function setAIAvailable(available) {
+                if (available) {
+                    dropdownBtn.style.display = 'block';
+                    dropdownBtn.classList.add('ai-available');
+                    if (actionsTrigger) actionsTrigger.classList.add('ai-available');
+                } else {
+                    dropdownBtn.style.display = 'none';
+                    dropdownBtn.classList.remove('ai-available');
+                    if (actionsTrigger) actionsTrigger.classList.remove('ai-available');
+                }
+            }
 
             // Only show Polish button if resume was generated (not demo or placeholder)
             if (currentDataSource !== 'generated') {
-                dropdownBtn.style.display = 'none';
+                setAIAvailable(false);
                 return;
             }
 
-            // Check if base resume exists
+            // Resume is generated — check if a polished version already exists
             try {
-                const baseResp = await fetch('resume_generation/resume-data.json');
-                const hasBaseResume = baseResp.ok;
-
-                if (!hasBaseResume) {
-                    dropdownBtn.style.display = 'none';
-                    return;
-                }
-
-                // Check if polished version exists
-                const polishedResp = await fetch('resume_generation/resume-data-AI-polished.json');
+                const polishedResp = await fetch('/resume_generation/resume-data-AI-polished.json');
                 const hasPolished = polishedResp.ok;
 
                 polishedVersion = hasPolished;
-                dropdownBtn.style.display = 'block';
 
                 // Disable polish if already polished
                 if (hasPolished) {
+                    dropdownBtn.style.display = 'block';
                     dropdownBtn.disabled = true;
+                    dropdownBtn.classList.remove('ai-available');
+                    if (actionsTrigger) actionsTrigger.classList.remove('ai-available');
                 } else {
                     dropdownBtn.disabled = polishLocked;
+                    setAIAvailable(!polishLocked);
                 }
             } catch (e) {
-                dropdownBtn.style.display = 'none';
+                // Network error — still show the button, just assume not polished
+                dropdownBtn.disabled = polishLocked;
+                setAIAvailable(!polishLocked);
             }
         }
 
@@ -1726,7 +1805,7 @@
 
             try {
                 // Load current resume
-                const resp = await fetch('resume_generation/resume-data.json');
+                const resp = await fetch('/resume_generation/resume-data.json');
                 if (!resp.ok) throw new Error('No resume data to polish');
 
                 const resumeData = await resp.json();
@@ -1809,7 +1888,10 @@
             const isHidden = dropdown.classList.contains('hidden');
             dropdown.classList.toggle('hidden', !isHidden);
             trigger.setAttribute('aria-expanded', String(isHidden));
-            trigger.textContent = isHidden ? 'Actions ▴' : 'Actions ▾';
+
+            // Update arrow text while preserving all classes
+            const label = trigger.querySelector('.actions-label');
+            if (label) label.textContent = isHidden ? 'Actions ▴' : 'Actions ▾';
         }
 
         document.addEventListener('click', (e) => {
@@ -1858,7 +1940,10 @@
 
         async function handlePDFUpload(input) {
             const file = input.files[0];
-            if (!file) return;
+            if (!file) {
+                showModalError('Please select a PDF file to upload.');
+                return;
+            }
 
             if (file.type !== 'application/pdf') {
                 showModalError('Please upload a PDF file');
@@ -1953,41 +2038,16 @@
             generationController = new AbortController();
             const signal = generationController.signal;
 
-            const extractionPrompt = `You are a precise data extraction engine specializing in parsing CVs. Extract structured data from the provided raw resume text into the required JSON format.
-
-STEP 1 — READ THE RESUME TEXT
-- Identify all professional sections: contact info (basics), work experience, skills, education, etc.
-
-STEP 2 — STRUCTURE EXTRACTION
-- Map the parsed text directly to the provided JSON schema.
-- Clean the text: Extract bullet points as clean, unformatted plain text strings.
-- Evaluate skills objectively based on the text to set expert flags appropriately.
-
-OUTPUT SPECIFICATION:
-Return ONLY the raw, valid JSON object. Do not include markdown code blocks (like \`\`\`json), introduction text, or explanations.
-
-REQUIRED JSON SCHEMA:
-{
-  "basics": { "name": "", "title": "", "email": "", "phone": "", "location": "", "photo": "photo.jpg", "linkedin": "", "github": "" },
-  "summary": "",
-  "experience": [{ "title": "", "company": "", "date": "", "bullets": [] }],
-  "skills": { "Category": [{ "name": "", "expert": false }] },
-  "techStack": "",
-  "languages": [{ "name": "", "level": "" }],
-  "education": [{ "degree": "", "institution": "", "year": "" }],
-  "talks": [],
-  "certifications": [{ "title": "", "issuer": "", "date": "", "duration": null, "url": "" }]
-}
-
-SELF-VALIDATION (before outputting):
-□ JSON is valid and parseable via JSON.parse()
-□ All required fields present
-□ No placeholder text like "TODO" or "example"
-□ No markdown (**), em dashes (--), or formatting artifacts inside text strings
-□ Expert flags set correctly
-
-RESUME TEXT:
-${currentPDFText}`;
+            // Load extraction prompt dynamically
+            let extractionPrompt;
+            try {
+                const promptResp = await fetch('/api/prompts/extraction.txt');
+                extractionPrompt = await promptResp.text();
+            } catch (e) {
+                alert('Failed to load extraction prompt. Please refresh the page.');
+                throw e;
+            }
+            extractionPrompt = extractionPrompt.replace('${currentPDFText}', currentPDFText);
 
             try {
                 const response = await fetch(
@@ -2044,8 +2104,6 @@ ${currentPDFText}`;
             });
         }
 
-        // Initialize polish button on load
-        updatePolishButton();
 
         // Init: load data and render
         (async function () {

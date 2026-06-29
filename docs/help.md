@@ -6,7 +6,7 @@ flowchart TD
     B --> C[Run npm start]
     C --> D[setup.js creates .env from .env.example]
     D --> E[User configures AI_API_KEY in .env]
-    E --> F[Browser opens cv_tool.html]
+    E --> F[Browser opens main.html]
     F --> G[fetch config.json from server]
     G --> H[fetch resume_generation/resume-data.json]
     H --> I[renderResume with resume data]
@@ -55,7 +55,7 @@ flowchart TD
 - Developer adds their AI provider `AI_API_KEY` to `.env`
 
 ### 2. Application Bootstrap
-- `cv_tool.html` loads in browser
+- `main.html` loads in browser
 - App fetches runtime config from `config.json`
 - Resume data loaded from `resume_generation/resume-data.json`
 - `renderResume()` injects content into DOM

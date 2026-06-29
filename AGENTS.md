@@ -15,13 +15,13 @@ This file defines how AI assistants collaborate within the **resumessi** project
 ### When working on resumessi:
 
 1. **`.env` is the source of truth** for runtime config (API key, model, colors). The server serves `/config.json` endpoint which reads `.env`.
-2. **Never hardcode personal data** into `cv_tool.html`. The resume content should be auto-generated from prompt data.
+2. **Never hardcode personal data** into `main.html`. The resume content should be auto-generated from prompt data.
 
 ### File Ownership
 
 | File | Purpose | Can Edit? |
 |------|---------|-----------|
-| `cv_tool.html` | Main app (template) | ✅ Yes — improve UI/UX, fix bugs |
+| `main.html` | Main app (template) | ✅ Yes — improve UI/UX, fix bugs |
 | `.env` | Runtime config (gitignored) | ✅ Yes — add new config keys to `.env.example` |
 | `.env.example` | Config template | ✅ Yes — keep in sync |
 | `ATS_SCAN_PROMPT.md` | ATS evaluation system prompt | ✅ Yes — improve scoring logic |
@@ -34,7 +34,7 @@ This file defines how AI assistants collaborate within the **resumessi** project
 
 ## Config Architecture (Decisions)
 
-**Current state:** `.env` is the single source of truth. `start.js` serves `/config.json` which reads `.env` at runtime. `cv_tool.html` fetches config via `fetch('/config.json')`.
+**Current state:** `.env` is the single source of truth. `start.js` serves `/config.json` which reads `.env` at runtime. `main.html` fetches config via `fetch('/config.json')`.
 
 **Target state:** ✅ Single source of truth → `.env` via server endpoint.
 

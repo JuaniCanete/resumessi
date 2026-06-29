@@ -11,7 +11,7 @@
  *   node build.js --check     # only check if injection is up-to-date
  * 
  * Source of truth:
- *   - ATS_SCAN_PROMPT.md → cv_tool.html {{ATS_SCAN_PROMPT}}
+ *   - ATS_SCAN_PROMPT.md → main.html {{ATS_SCAN_PROMPT}}
  *   - resume_generation/prompt.txt → resume_generation/generate-resume.js {{RESUME_PROMPT}}
  */
 
@@ -21,7 +21,7 @@ const path = require('path');
 const ROOT = path.join(__dirname);
 const ATS_PROMPT_FILE = path.join(ROOT, 'ATS_SCAN_PROMPT.md');
 const RESUME_PROMPT_FILE = path.join(ROOT, 'resume_generation', 'prompt.txt');
-const HTML_FILE = path.join(ROOT, 'cv_tool.html');
+const HTML_FILE = path.join(ROOT, 'pages', 'main.html');
 const GEN_JS_FILE = path.join(ROOT, 'resume_generation', 'generate-resume.js');
 
 function readPromptBlock(filePath) {
@@ -82,7 +82,7 @@ function main() {
 
     console.log('\nBuild completed successfully.');
     console.log('Next steps:');
-    console.log('  1. Open cv_tool.html to verify ATS prompt changes');
+    console.log('  1. Open main.html to verify ATS prompt changes');
     console.log('  2. Run node resume_generation/generate-resume.js to verify generation');
 }
 

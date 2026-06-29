@@ -18,24 +18,35 @@
 
 ```
 resumessi/
-├── cv_tool.html              # Main application (AI ATS Scanner + Resume template)
-├── photo.jpg                 # Your profile photo (400×400 px, square, JPG)
-├── setup.js                  # Setup wizard - creates .env from .env.example
-├── build.js                  # Build script: injects prompts to solve CORS
-├── start.js                  # Dev server with /config.json endpoint
-├── .gitignore                # Ignores .env, node_modules/, .DS_Store
-├── .env.example              # Environment variable template
-├── README.md                 # This file
-├── AGENTS.md                 # AI agent collaboration guide for this project
+├── pages/
+│   ├── main.html              # Main application (AI ATS Scanner + Resume template)
+│   └── how-it-works.html      # How it works page (explanative page)
+├── resume_generation/
+│   ├── resume-data.json      # Resume data (auto-generated or manual)
+│   ├── resume-data-AI-polished.json  # Polished version (created by Polish with AI)
+│   ├── photo*                # Your profile photo (gitignored)
+│   ├── prompt.txt            # Structured prompt template for generating resumes
+│   └── generate-resume.js    # AI-powered resume generator script
 ├── examples/
-│   ├── demo-data.json          # Demo resume data (JSON — consumed by cv_tool.html)
+│   ├── demo-data.json          # Demo resume data (JSON — consumed by main.html)
 │   ├── example_resume.md       # Human-readable mirror of demo-data.json
 │   ├── photo.jpg               # Demo profile photo (Messi)
 │   └── job-description-goat.md # Sample job description for testing
-└── resume_generation/
-    ├── resume-data.json      # Resume data (auto-generated or manual)
-    ├── prompt.txt            # Structured prompt template for generating resumes
-    └── generate-resume.js    # AI-powered resume generator script
+├── docs/
+│   ├── help.md                # Help documentation
+│   └── how-it-works.html      # Static how-it-works page
+├── setup.js                  # Setup wizard - creates .env from .env.example
+├── build.js                  # Build script: injects prompts to solve CORS
+├── start.js                  # Dev server with /config.json endpoint
+├── eval_ats.js               # ATS prompt evaluation harness (3 test cases)
+├── ATS_SCAN_PROMPT.md        # ATS scoring system prompt (source of truth)
+├── extraction_prompt.txt     # Resume extraction prompt (embedded in main.html)
+├── polish_prompt.txt         # Resume polishing prompt (embedded in start.js)
+├── .gitignore                # Ignores .env, node_modules/, resume_generation/photo*
+├── .env.example              # Environment variable template
+├── README.md                 # This file
+├── AGENTS.md                 # AI agent collaboration guide for this project
+└── roocode-review.md         # Codebase review document
 ```
 
 ---
@@ -86,7 +97,9 @@ SUCCESS_COLOR=#0ea5e9
 
 1. Use a **square** photo, **400×400 px** recommended.
 2. Format: **JPG** or **PNG**, neutral background, good lighting.
-3. Save as `photo.jpg` in this folder (overwrite the existing one).
+3. Save as `resume_generation/photo.jpg` in your local copy.
+
+**Note:** `resume_generation/photo*` is gitignored to avoid committing personal photos. The demo photo `examples/photo.jpg` (Messi) is used as fallback when no user photo exists.
 
 ---
 
@@ -116,18 +129,22 @@ Click **Download Resume** to print/save as PDF. The print layout is single-colum
 
 ### Build Step
 
-This project uses **build-time prompt injection** to avoid CORS errors when opening `cv_tool.html` via `file://` protocol.
+This project uses **build-time prompt injection** to avoid CORS errors when opening `main.html` via `file://` protocol.
 
 **Why?** The browser blocks `fetch()` for local files, so prompts are baked into the HTML/JS at build time from their canonical `.md`/`.txt` sources.
 
 ```bash
-npm run build        # inject prompts into cv_tool.html and generate-resume.js
+npm run build        # inject prompts into pages/main.html and generate-resume.js
 npm run build:check  # verify prompts are up-to-date
 ```
 
-**Source of truth:**
-- `ATS_SCAN_PROMPT.md` → injected into `cv_tool.html` as `{{ATS_SCAN_PROMPT}}`
-- `resume_generation/prompt.txt` → injected into `resume_generation/generate-resume.js` as `{{RESUME_PROMPT}}`
+**Source of truth (dynamic loading at runtime):**
+- `prompts/ats-scan.txt` → loaded via `/api/prompts/ats-scan.txt`
+- `prompts/extraction.txt` → loaded via `/api/prompts/extraction.txt`
+- `prompts/polish.txt` → loaded via `fs.readFileSync` in `/api/polish-resume`
+- `prompts/resume-generation.txt` → loaded via `fs.readFileSync` in `generate-resume.js`
+
+All prompts are plain `.txt` files in the `prompts/` folder, served dynamically at runtime. No build step required.
 
 After editing any prompt file, **always run `npm run build`** before committing.
 

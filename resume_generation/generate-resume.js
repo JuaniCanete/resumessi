@@ -17,8 +17,8 @@
 
 const fs = require('fs');
 const path = require('path');
-// Placeholder for injected resume generation prompt
-const RESUME_PROMPT = "# resumessi — Resume Generation Prompt\n# \n# This prompt can be used in two ways:\n# 1. Manually: Fill in your info and give this file to an AI assistant to generate resume-data.json\n# 2. Automatically: Run `node generate-resume.js` to use AI to parse raw input\n#\n# IMPORTANT: This generates the resume_generation/resume-data.json file that cv_tool.html reads at startup.\n# The HTML is not going to show any data until resume_generation/resume-data.json is generated — everything comes from the JSON.\n#\n# ================================================================================\n# SECTION 1 — SYSTEM INSTRUCTION (for AI consumption)\n# ================================================================================\n#\n# You are a resume data extraction and formatting assistant. Your task is to parse\n# the raw user input below and output a valid JSON object matching the schema at:\n# Use the schema in resume_generation/resume-data.json as the source of truth\n#\n# RULES:\n# - Output ONLY valid JSON, no markdown, no explanation\n# - Use the exact same structure as resume_generation/resume-data.json\n# - For experience bullets, preserve HTML formatting like <strong> for emphasis\n# - Expert skills get \"expert\": true, others get false\n# - If any section is missing data, use empty arrays or null values\n#\n# ================================================================================\n# SECTION 2 — USER INPUT (fill in your information below)\n# ================================================================================\n#\n# --- Personal Info ---\n# Full Name:\n#\n# Professional Title / Headline:\n#\n# Email:\n#\n# Phone:\n#\n# Location (City, Province/State, Country):\n#\n# LinkedIn URL:\n#\n# GitHub URL:\n#\n# Profile Photo (filename in resumessi/ folder):\n#   photo.jpg\n#\n# --- Professional Summary (2-4 sentences) ---\n#\n#\n# --- Work Experience (most recent first. For each role:) ---\n# Job Title:\n# Company:\n# Start – End Date:\n# Bullet points (each on a new line starting with -):\n#   - \n#\n# --- Skills (grouped by category. Mark experts with *EXERT*) ---\n# Category Name:\n#   *EXPERT* Skill Name, Skill Name, Skill Name\n#\n# --- Tech Stack ---\n#\n# --- Languages ---\n# Language — Level\n#\n# --- Education ---\n# Degree:\n# Institution:\n# Year:\n#\n# --- Certifications ---\n# Title:\n# Issuer:\n# Date:\n# Duration (optional):\n# Verification URL:\n#\n# --- Tech Talks ---\n# Title:\n# Event:\n# URL:\n#\n# ================================================================================\n# SECTION 3 — OUTPUT SCHEMA REFERENCE\n# ================================================================================\n#\n# The expected output is a JSON object with these top-level keys:\n#   basics       - { name, title, email, phone, location, photo, linkedin, github }\n#   summary      - string\n#   experience   - [{ title, company, date, bullets[] }]\n#   skills       - { \"Category\": [{ name, expert }] }\n#   techStack - string (HTML allowed)\n#   languages    - [{ name, level }]\n#   education    - [{ degree, institution, year }]\n#   talks        - [{ title, event, url }]\n#   certifications - [{ title, issuer, date, duration, url }]\n#\n# ================================================================================\n# END OF PROMPT\n# ================================================================================";
+// Resume generation prompt is loaded dynamically from prompts/resume-generation.txt
+let RESUME_PROMPT = null;
 
 const ROOT = path.join(__dirname, '..');
 const CONFIG_FILE = path.join(ROOT, 'config.js');
@@ -63,6 +63,11 @@ function loadConfig() {
 
 // ── AI API Call ────────────────────────────────────────────────
 async function callAI(apiKey, model, userInput) {
+    // Load prompt dynamically on first call
+    if (!RESUME_PROMPT) {
+        const promptPath = path.join(__dirname, '..', 'prompts', 'resume-generation.txt');
+        RESUME_PROMPT = fs.readFileSync(promptPath, 'utf-8');
+    }
     const systemPrompt = RESUME_PROMPT;
     const prompt = systemPrompt + '\n\n=== RAW RESUME INPUT ===\n' + userInput;
 

@@ -183,7 +183,7 @@
 
 <body>
     <div id="back-btn" style="position: fixed; top: 0; left: 0; z-index: 1000;">
-        <a href="../main.html" class="back-link">
+        <a href="../pages/main.html" class="back-link">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
                 <path d="M19 12H5m0 0l7 7m-7-7l7-7" />
@@ -297,7 +297,7 @@
     </div>
     <script>
         const ref = document.referrer;
-        if (ref && (ref.endsWith('/') ? ref.replace(/\/$/, '') : ref).endsWith('cv_tool.html')) {
+        if (ref && (ref.endsWith('/') ? ref.replace(/\/$/, '') : ref).endsWith('main.html')) {
             const backBtn = document.getElementById('back-btn');
             if (backBtn) backBtn.style.display = 'block';
         }

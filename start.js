@@ -100,6 +100,37 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Serve prompt files dynamically
+  if (req.url.startsWith('/api/prompts/')) {
+    const promptName = req.url.replace('/api/prompts/', '');
+    const promptPath = path.join(ROOT, 'prompts', promptName);
+
+    // Security: prevent directory traversal
+    if (!promptPath.startsWith(path.join(ROOT, 'prompts'))) {
+      res.writeHead(403);
+      res.end('Forbidden');
+      return;
+    }
+
+    if (!fs.existsSync(promptPath)) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Prompt not found' }));
+      return;
+    }
+
+    try {
+      const content = fs.readFileSync(promptPath, 'utf-8');
+      const ext = path.extname(promptPath);
+      const mimeType = ext === '.md' ? 'text/markdown; charset=utf-8' : 'text/plain; charset=utf-8';
+      res.writeHead(200, { 'Content-Type': mimeType });
+      res.end(content);
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to load prompt: ' + err.message }));
+    }
+    return;
+  }
+
   // API Routes
   if (req.url === '/api/parse-resume-pdf' && req.method === 'POST') {
     if (!pdfParse || !Busboy) {
@@ -168,7 +199,17 @@ const server = http.createServer(async (req, res) => {
     const apiKey = getConfigFromEnv().AI_API_KEY;
     const model = getConfigFromEnv().AI_MODEL || 'gemini-2.5-flash';
 
-    const prompt = `You are an expert executive resume writer and strict data parser. Your job is to polish resume text while keeping the exact JSON structure provided. \n\nRULES: \n1. TONE & STYLE: Upgrade the writing to a confident, human, professional corporate tone. Completely rewrite passive or weak phrasing into high-impact sentences. \n2. ACTION VERBS: Start every bullet point with a strong, distinct action verb. \n3. FORMATTING CONSTRAINTS: Never use em dashes (--), hyphens for emphasis, asterisks (**), or bold markdown inside the JSON string values. Use clean, unformatted text. \n4. AI WORD BAN: Absolutely do not inject these AI-favored buzzwords: delve, leverage, dynamic, showcase, foster, passion, testament, realm, landscape, intricate, or furthermore. \n5. LENGTH & FLOW: Keep every sentence and bullet point short, punchy, and under 25 words. Cut the fluff. \n6. DATA INTEGRITY: Maintain the identical JSON schema, keys, and structure. Fix grammar and spelling inside the values. \n7. OUTPUT: Return ONLY the raw, valid JSON object. Do not include markdown code blocks (like \`\`\`json), intro text, or outro explanations. \n\nRESUME DATA TO POLISH: \n${JSON.stringify(resumeData, null, 2)}`;
+    // Load polish prompt dynamically
+    let prompt;
+    try {
+      const promptPath = path.join(ROOT, 'prompts', 'polish.txt');
+      const promptTemplate = fs.readFileSync(promptPath, 'utf-8');
+      prompt = `${promptTemplate}\n\nRESUME DATA TO POLISH: \n${JSON.stringify(resumeData, null, 2)}`;
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to load polish prompt: ' + err.message }));
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -201,13 +242,18 @@ const server = http.createServer(async (req, res) => {
     const body = await getRequestBody(req);
     const polishedData = JSON.parse(body);
 
-    fs.writeFileSync(
-      'resume_generation/resume-data-AI-polished.json',
-      JSON.stringify(polishedData, null, 2)
-    );
+    try {
+      fs.writeFileSync(
+        'resume_generation/resume-data-AI-polished.json',
+        JSON.stringify(polishedData, null, 2)
+      );
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ success: true }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to save polished resume: ' + err.message }));
+    }
     return;
   }
 
@@ -215,17 +261,22 @@ const server = http.createServer(async (req, res) => {
     const fs = require('fs');
     const filePath = 'resume_generation/resume-data-AI-polished.json';
 
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ success: true }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to rollback polished resume: ' + err.message }));
+    }
     return;
   }
 
-  // Default to cv_tool.html for root
-  let filePath = req.url === '/' ? '/cv_tool.html' : req.url;
+  // Default to main.html for root
+  let filePath = req.url === '/' ? '/pages/main.html' : req.url;
   filePath = path.join(ROOT, filePath);
 
   // Security: prevent directory traversal
@@ -255,7 +306,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  const url = `http://localhost:${PORT}/cv_tool.html`;
+  const url = `http://localhost:${PORT}/pages/main.html`;
   console.log('');
   console.log(`  Serving:  ${url}`);
   console.log('  Press Ctrl+C to stop.');
