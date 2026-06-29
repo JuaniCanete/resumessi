@@ -1,0 +1,27 @@
+{
+  "name": "resumessi",
+  "version": "1.0.0",
+  "description": "AI-powered resume scoring and generation tool using AI models",
+  "main": "cv_tool.html",
+  "scripts": {
+    "start": "node start.js",
+    "setup": "node setup.js",
+    "build": "node build.js",
+    "build:check": "node build.js --check",
+    "generate": "node resume_generation/generate-resume.js"
+  },
+  "keywords": [
+    "resume",
+    "ats",
+    "ai",
+    "cv",
+    "scoring",
+    "generation"
+  ],
+  "author": "Juani Cañete",
+  "license": "MIT",
+  "dependencies": {
+    "busboy": "^1.6.0",
+    "pdf-parse": "^1.1.4"
+  }
+}

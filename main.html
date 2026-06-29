@@ -1,0 +1,2080 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>resumessi AI - Home</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐐%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0a0a0a;
+            --secondary: #0a0a0a;
+            --accent: #2563eb;
+            --static: rgba(255, 255, 255, 0.08);
+            --text: #171717;
+            --text-light: #736868;
+            --bg-badge: #f1f5f9;
+            --success: #0ea5e9;
+            --left-w: 480px;
+            --right-w-normal: 360px;
+            --right-w-expanded: 50vw;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Comfortaa', sans-serif;
+            background-color: #f8fafc;
+            color: var(--text);
+            font-weight: 500;
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        .panel {
+            background-color: var(--secondary);
+            color: #fff;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 200;
+        }
+
+        .panel-inner {
+            padding: 20px 22px 28px;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-ctrl-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+
+        .ctrl-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: #ffffff;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .ctrl-btn:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .ctrl-btn.active {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .panel-label-row {
+            font-size: 11px;
+            color: #ffffff;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            flex: 1;
+            text-align: center;
+        }
+
+        .p-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .p-label-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .p-label-wrapper .p-label {
+            margin-bottom: 0;
+        }
+
+        .info-hover {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .info-hover:hover {
+            background: var(--accent);
+        }
+
+        .info-hover:hover .info-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .info-icon {
+            width: 14px;
+            height: 14px;
+            color: #ffffff;
+        }
+
+        .info-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 150%;
+            left: 0;
+            background-color: var(--secondary);
+            color: #ffffff;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            font-family: 'Comfortaa', sans-serif;
+            white-space: normal;
+            width: 220px;
+            line-height: 1.4;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.2s, visibility 0.2s;
+            z-index: 9999;
+        }
+
+        .p-input,
+        .p-textarea {
+            width: 100%;
+            padding: 9px 11px;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: 'Comfortaa', sans-serif;
+            color: #e2e8f0;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .p-input::placeholder,
+        .p-textarea::placeholder {
+            color: var(--text-light);
+        }
+
+        .p-input:focus,
+        .p-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(37, 99, 235, 0.08);
+        }
+
+        .p-textarea {
+            resize: vertical;
+            min-height: 180px;
+        }
+
+        .p-group {
+            margin-bottom: 14px;
+        }
+
+        .p-btn {
+            width: 100%;
+            padding: 11px 14px;
+            border: none;
+            border-radius: 7px;
+            font-weight: 700;
+            font-size: 13px;
+            font-family: 'Comfortaa', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, opacity 0.2s;
+            margin-top: 10px;
+        }
+
+        .p-btn:active {
+            transform: scale(0.98);
+        }
+
+        .p-btn-primary {
+            background: var(--static);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .p-btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .p-btn-primary:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        @keyframes bump {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        #btn-ai-generate {
+            animation: bump 2s ease-in-out infinite;
+            margin-bottom: 14px;
+        }
+
+        #btn-ai-generate:hover {
+            animation: none;
+            transform: scale(1.02);
+        }
+
+        .p-btn-secondary {
+            background: var(--static);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .p-btn-secondary:hover {
+            background: #1d4ed8;
+            color: #fff;
+        }
+
+
+        #left-sidebar {
+            width: var(--left-w);
+            left: 0;
+            box-shadow: 4px 0 16px rgba(0, 0, 0, 0.25);
+            transition: transform 0.3s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        body.left-collapsed #left-sidebar {
+            transform: translateX(calc(-1 * var(--left-w)));
+        }
+
+        #left-open-stub {
+            position: fixed;
+            top: 14px;
+            left: 0;
+            z-index: 300;
+            width: 26px;
+            height: 44px;
+            background: var(--accent);
+            border: none;
+            border-radius: 0 8px 8px 0;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 3px 0 8px rgba(0, 0, 0, 0.3);
+            transition: color 0.2s, background 0.2s;
+        }
+
+        #left-open-stub:hover {
+            color: var(--accent);
+            background: #1e293b;
+        }
+
+        body.left-collapsed #left-open-stub {
+            display: flex !important;
+        }
+
+        #right-open-stub {
+            position: fixed;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            z-index: 300;
+            width: 26px;
+            padding: 18px 0;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px 0 0 8px;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+            display: none !important;
+            align-items: center;
+            justify-content: center;
+            box-shadow: -3px 0 8px rgba(0, 0, 0, 0.3);
+            transition: color 0.2s, background 0.2s;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+
+        #right-open-stub:hover {
+            color: var(--accent);
+            background: #1e293b;
+        }
+
+        #left-loading {
+            display: none;
+            text-align: center;
+            font-size: 12px;
+            color: var(--accent);
+            padding: 10px 0;
+        }
+
+        .dot-anim::after {
+            content: '';
+            animation: dotdot 1.4s infinite;
+        }
+
+        @keyframes dotdot {
+            0% {
+                content: '';
+            }
+
+            33% {
+                content: '.';
+            }
+
+            66% {
+                content: '..';
+            }
+
+            100% {
+                content: '...';
+            }
+        }
+
+        .p-divider {
+            border: none;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            margin: 16px 0;
+        }
+
+        #floating-footer {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 7px;
+            font-weight: 700;
+            font-size: 13px;
+            font-family: 'Comfortaa', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, opacity 0.2s;
+            margin-top: 10px;
+        }
+
+        #floating-footer a {
+            color: var(--bg-badge);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        #floating-footer a:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
+        #right-panel {
+            width: var(--right-w-normal);
+            right: 0;
+            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.25);
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(.4, 0, .2, 1),
+                width 0.3s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        #right-panel.open {
+            transform: translateX(0);
+        }
+
+        #right-panel.expanded {
+            width: var(--right-w-expanded);
+        }
+
+        .result-score-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 0;
+        }
+
+        .result-score-circle {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 4px solid var(--success);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--success);
+            background: rgba(14, 165, 233, 0.1);
+            flex-shrink: 0;
+        }
+
+        .result-score-circle.good {
+            border-color: #10b981;
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .result-score-circle.mid {
+            border-color: #f59e0b;
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .result-score-circle.low {
+            border-color: #ef4444;
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .result-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .result-match-text {
+            font-size: 16px;
+            font-weight: 700;
+            color: #38bdf8;
+            margin-top: 2px;
+        }
+
+        .result-section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .result-body {
+            font-size: 12.5px;
+            color: #cbd5e1;
+            line-height: 1.65;
+        }
+
+        .result-keyword {
+            display: inline-block;
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 4px;
+            padding: 2px 7px;
+            font-size: 11px;
+            margin: 3px 3px 0 0;
+        }
+
+        #resume-wrap {
+            position: relative;
+            margin-left: var(--left-w);
+            transition: margin-left 0.3s cubic-bezier(.4, 0, .2, 1),
+                margin-right 0.3s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        body.left-collapsed #resume-wrap {
+            margin-left: 0;
+        }
+
+        body.right-open #resume-wrap {
+            margin-right: var(--right-w-normal);
+        }
+
+        body.right-expanded #resume-wrap {
+            margin-right: var(--right-w-expanded);
+        }
+
+        .resume-container {
+            max-width: 860px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 40px 50px;
+            min-height: 100vh;
+            box-shadow: 0 0 24px rgba(0, 0, 0, 0.06);
+            position: relative;
+            z-index: 20;
+        }
+
+        .resume-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--bg-badge);
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .header-main {
+            flex: 0 0 auto;
+            min-width: 120px;
+            max-width: 200px;
+            text-align: center;
+        }
+
+        .header-main h1 {
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: -0.05em;
+        }
+
+        .header-main .subtitle {
+            font-size: 17px;
+            color: var(--accent);
+            font-weight: 500;
+            margin-top: 4px;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            max-width: 160px;
+            display: inline-block;
+            line-height: 1.3;
+        }
+
+        .profile-photo-container {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            flex-shrink: 0;
+        }
+
+        .profile-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--accent);
+            background-color: #e2e8f0;
+            display: block;
+        }
+
+        .contact-info {
+            flex: 0 1 auto;
+            min-width: 200px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .contact-info p {
+            margin-bottom: 3px;
+        }
+
+        .section-title {
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--primary);
+            border-bottom: 1px solid var(--primary);
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .summary-text {
+            font-size: 13.5px;
+            color: var(--text);
+            margin-bottom: 25px;
+            text-align: justify;
+        }
+
+        .columns-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 35px;
+        }
+
+        .experience-item {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+
+        .exp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .exp-title {
+            font-size: 14.5px;
+            font-weight: 700;
+            color: var(--secondary);
+        }
+
+        .exp-company {
+            font-size: 13.5px;
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .exp-date {
+            font-size: 12.5px;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .exp-bullets {
+            list-style-type: square;
+            padding-left: 16px;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .exp-bullets li {
+            margin-bottom: 5px;
+            text-align: justify;
+        }
+
+        .skills-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+
+        .skill-badge {
+            background-color: var(--bg-badge);
+            color: var(--primary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11.5px;
+            font-weight: 500;
+        }
+
+        .skill-badge.expert {
+            border-left: 3px solid var(--accent);
+            background-color: #eff6ff;
+            color: #1e3a8a;
+            font-weight: 600;
+        }
+
+        .cert-link {
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .cert-link:hover {
+            text-decoration: underline;
+        }
+
+        .meta-item {
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .dev-separator {
+            color: #cbd5e1;
+            font-size: 10px;
+        }
+
+        #actions-bar {
+            position: sticky;
+            top: 0;
+            z-index: 600;
+            max-width: 860px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            pointer-events: none;
+            height: 0;
+        }
+
+        #actions-bar .actions-btn-wrapper {
+            position: relative;
+            display: inline-block;
+            pointer-events: auto;
+        }
+
+        .actions-dropdown-trigger {
+            padding: 6px 14px;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 6px;
+            background: #0a0a0a;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 0;
+        }
+
+        .actions-dropdown-trigger:hover {
+            background: var(--accent);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .actions-dropdown-trigger:active {
+            transform: scale(0.98);
+        }
+
+        .actions-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 599;
+            background: var(--secondary);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+            min-width: 220px;
+            padding: 8px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .actions-dropdown.hidden {
+            display: none;
+        }
+
+        .actions-option {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+
+        .actions-option-icon {
+            width: 18px;
+            height: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            opacity: 0.85;
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .actions-option:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .actions-option-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            opacity: 0.85;
+        }
+
+        .actions-option-text {
+            flex: 1;
+        }
+
+        body.left-collapsed #left-open-stub {
+            display: flex !important;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            #left-sidebar,
+            #right-panel,
+            #left-open-stub,
+            #right-open-stub,
+            body.left-collapsed #left-open-stub {
+                display: none !important;
+            }
+
+            #resume-wrap {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+
+            .resume-container {
+                margin: 0 !important;
+                max-width: 100% !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                min-height: auto !important;
+            }
+
+            .columns-container {
+                display: block !important;
+            }
+
+            .right-column {
+                margin-top: 25px;
+            }
+
+            body {
+                background: #fff;
+                color: #000;
+            }
+
+            .experience-item {
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+
+            .skill-badge {
+                border: 1px solid #cbd5e1 !important;
+                background-color: #fff !important;
+                color: #000 !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+
+            .skill-badge.expert {
+                border: 1px solid var(--accent) !important;
+                background-color: #eff6ff !important;
+                color: #1e40af !important;
+            }
+
+            .section-title {
+                border-bottom: 1px solid #000 !important;
+                color: #000 !important;
+            }
+
+            .summary-text,
+            .exp-bullets,
+            .exp-title,
+            .contact-info,
+            .meta-item {
+                color: #000 !important;
+            }
+
+            .exp-date {
+                color: #333 !important;
+            }
+
+            .exp-bullets li {
+                margin-bottom: 7px !important;
+            }
+
+            .header-main .subtitle {
+                word-break: break-word;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="refresh-message" style="display: none; position: fixed; top: 20px; left: 50%; 
+         transform: translateX(-50%); background: var(--accent); color: #fff; padding: 12px 24px; 
+         border-radius: 8px; font-weight: 600; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+    </div>
+
+    <aside id="left-sidebar" class="panel no-print">
+        <div class="panel-inner">
+
+            <div class="panel-ctrl-row">
+                <button class="ctrl-btn" onclick="toggleLeft()" title="Collapse sidebar"
+                    aria-label="Collapse sidebar">&#9776;</button>
+                <span class="panel-label-row">resumessi ATS Scanner</span>
+            </div>
+
+            <div class="p-group" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="p-label-wrapper">
+                    <label class="p-label" for="job-description">Job Description</label>
+                    <div class="info-hover">
+                        <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        <div class="info-tooltip">Paste full job description here to score your Resume using AI base ATS
+                            system</div>
+                    </div>
+                </div>
+                <textarea id="job-description" class="p-textarea" style="flex:1; min-height: 200px;"
+                    oninput="validateJDInput()"></textarea>
+            </div>
+
+            <div id="left-loading">
+                <span class="dot-anim">Scanning with AI</span>
+            </div>
+
+            <button class="p-btn p-btn-primary" id="btn-run-scan" onclick="handleScanButtonClick()" disabled>ATS Score
+                Check</button>
+            <button class="p-btn p-btn-secondary" id="btn-download" onclick="window.print()">Download Resume</button>
+            <button class="p-btn" id="btn-ai-generate" onclick="openAIModal()"
+                style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a1a; font-weight: 700;">Generate
+                with AI</button>
+
+            <div id="floating-footer" class="no-print">
+                <span>Developed by Juani Ca&ntilde;ete</span>
+                <span class="dev-separator">&bull;</span>
+                <a href="https://github.com/JuaniCanete?tab=projects" target="_blank"
+                    rel="noopener noreferrer">GitHub</a>
+                <span class="dev-separator">&bull;</span>
+                <a href="https://www.linkedin.com/in/juanignaciocanete/" target="_blank"
+                    rel="noopener noreferrer">LinkedIn</a>
+            </div>
+        </div>
+    </aside>
+
+    <button id="left-open-stub" class="no-print" onclick="toggleLeft()" title="Open sidebar"
+        aria-label="Open sidebar">&#9776;</button>
+
+    <div id="resume-wrap">
+        <!-- Actions bar: sticky, centered over the resume container -->
+        <div id="actions-bar" class="no-print">
+            <div class="actions-btn-wrapper">
+                <button id="actions-trigger" class="actions-dropdown-trigger" onclick="toggleActions()"
+                    aria-expanded="false" aria-haspopup="true" title="Actions">Actions ▾</button>
+                <div id="actions-dropdown" class="actions-dropdown hidden" role="menu">
+                    <button class="actions-option" role="menuitem" onclick="toggleLeft()">
+                        <span class="actions-option-icon">🔍</span>
+                        <span class="actions-option-text">ATS Score</span>
+                    </button>
+                    <button class="actions-option" role="menuitem" onclick="window.print()">
+                        <span class="actions-option-icon">⬇</span>
+                        <span class="actions-option-text">Download Resume</span>
+                    </button>
+                    <button class="actions-option" role="menuitem" onclick="openRight()">
+                        <span class="actions-option-icon">📊</span>
+                        <span class="actions-option-text">Results</span>
+                    </button>
+                    <button class="actions-option" role="menuitem"
+                        onclick="window.location.href='../docs/how-it-works.html'">
+                        <span class="actions-option-icon">?</span>
+                        <span class="actions-option-text">How it works</span>
+                    </button>
+                    <button class="actions-option" id="btn-polish-dropdown" role="menuitem" onclick="polishResume()"
+                        style="display: none;">
+                        <span class="actions-option-icon">✨</span>
+                        <span class="actions-option-text">Polish with AI</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="resume-container" id="resume-content">
+            <!-- Resume rendered dynamically by renderResume() -->
+        </div>
+    </div>
+
+    <div id="right-panel" class="panel no-print">
+        <div class="panel-inner">
+            <div class="panel-ctrl-row">
+                <button class="ctrl-btn" id="rp-expand-btn" onclick="expandRight()" title="Expand panel"
+                    aria-label="Expand panel">&#x26F6;</button>
+                <span class="panel-label-row">resumessi Results</span>
+                <button class="ctrl-btn" onclick="closeRight()" title="Collapse results"
+                    aria-label="Collapse results">&#x2716;</button>
+            </div>
+
+            <div class="result-score-row">
+                <div class="result-score-circle" id="rp-score-circle">--</div>
+                <div>
+                    <div class="result-label">ATS Match</div>
+                    <div class="result-match-text" id="rp-score-text">Pending</div>
+                </div>
+            </div>
+
+            <div id="scan-again-msg" class="result-body"
+                style="color: #fca5a5; margin-top: 6px; margin-bottom: 14px; padding: 12px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 6px;">
+                There are no results yet. Please, scan a job description using the ATS Score Check button in order to
+                get results.
+            </div>
+
+            <div id="rp-breakdown-section" style="display: none; margin-bottom: 14px;">
+                <hr class="p-divider" style="margin: 12px 0;">
+                <div class="result-section-title">The Match Breakdown</div>
+                <div class="result-body"
+                    style="display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">
+                    <div style="display: flex; justify-content: space-between;"><span>Keyword Match:</span><span
+                            id="br-skills" style="font-weight: 700;">--</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span>Experience Alignment:</span><span
+                            id="br-experience" style="font-weight: 700;">--</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span>Education/Cert Fit:</span><span
+                            id="br-education" style="font-weight: 700;">--</span></div>
+                </div>
+            </div>
+
+            <hr class="p-divider">
+
+            <div style="margin-bottom: 16px;">
+                <div class="result-section-title">Feedback</div>
+                <div class="result-body" id="rp-feedback">&mdash;</div>
+            </div>
+
+            <hr class="p-divider">
+
+            <div>
+                <div class="result-section-title">Missing Keywords</div>
+                <div id="rp-keywords" class="result-body">&mdash;</div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- AI Generation Modal -->
+    <div id="ai-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+         background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: var(--secondary); padding: 30px; border-radius: 12px; max-width: 500px; 
+             width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); position: relative;">
+            <button onclick="closeAIModal()" style="position: absolute; top: 15px; right: 15px; background: none; 
+                    border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; 
+                    display: flex; align-items: center; justify-content: center; border-radius: 50%; 
+                    background: rgba(255,255,255,0.08); line-height: 1;">×</button>
+            <h2 style="color: #fff; margin-bottom: 20px; text-align: center;">✨ AI Resume Generation</h2>
+
+            <!-- Upload Section -->
+            <div id="modal-upload-section">
+                <div style="border: 2px dashed rgba(255,255,255,0.2); padding: 40px; text-align: center; 
+                     border-radius: 8px; margin-bottom: 20px; cursor: pointer;"
+                    onclick="document.getElementById('pdf-input').click()">
+                    <p style="color: #fff; font-size: 14px;">📄 Drag & drop your resume PDF here</p>
+                    <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 10px;">or click to browse (1-2
+                        pages recommended)</p>
+                    <input type="file" id="pdf-input" accept=".pdf" style="display: none;"
+                        onchange="handlePDFUpload(this)">
+                </div>
+            </div>
+
+            <!-- Preview Section -->
+            <div id="modal-preview-section" style="display: none;">
+                <div
+                    style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <p style="color: #fff; font-size: 12px; margin-bottom: 10px;"><strong>Extracted Content
+                            Preview:</strong></p>
+                    <textarea id="preview-text" style="width: 100%; height: 200px; background: rgba(255,255,255,0.08); 
+                         border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; color: #e2e8f0; 
+                         padding: 8px; font-size: 11px; font-family: monospace;"></textarea>
+                </div>
+                <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin-bottom: 15px;">
+                    ✏️ Edit the extracted text if needed before AI processes it
+                </p>
+            </div>
+
+            <!-- Error Section -->
+            <div id="modal-error-section" style="display: none; background: rgba(239,68,68,0.1); 
+                 border: 1px solid rgba(239,68,68,0.3); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                <p id="modal-error-text" style="color: #fca5a5; font-size: 13px;"></p>
+                <button class="p-btn p-btn-secondary" style="margin-top: 10px;" onclick="closeAIModal()">Cancel</button>
+            </div>
+
+            <!-- Action Buttons -->
+            <div id="modal-actions" style="display: none; gap: 10px; flex-direction: column;">
+                <button id="btn-continue-anyway" class="p-btn p-btn-primary" style="display: none; 
+                     background: #f59e0b; color: #1a1a1a;" onclick="continueWithLargePDF()">
+                    Continue Anyway (⚠️ Uses More Tokens)
+                </button>
+                <button class="p-btn p-btn-primary" onclick="confirmGeneration()">✨ Generate Resume</button>
+                <button class="p-btn p-btn-secondary" onclick="closeAIModal()">Cancel</button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="modal-loading" style="display: none; text-align: center; padding: 20px;">
+                <p style="color: var(--accent);" class="dot-anim">Processing with AI</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        let hasScanResults = false;
+        let scanController = null;
+
+        // Config cache - populated once on first call
+        let cachedConfig = null;
+
+        async function loadEnv() {
+            if (cachedConfig) return cachedConfig;
+            try {
+                const resp = await fetch('/config.json');
+                if (resp.ok) {
+                    cachedConfig = await resp.json();
+                    return cachedConfig;
+                }
+            } catch (e) {
+                // Fallback for file:// protocol or when server not available
+                console.warn('Could not load config.json, using defaults');
+            }
+            cachedConfig = {};
+            return cachedConfig;
+        }
+
+        function applyColors(env) {
+            const root = document.documentElement;
+            const presets = { blue: '#2563eb', green: '#16a34a', purple: '#7c3aed', rose: '#e11d48', teal: '#0d9488', orange: '#ea580c' };
+            if (env.ACCENT_COLOR && presets[env.ACCENT_COLOR]) env.ACCENT_COLOR = presets[env.ACCENT_COLOR];
+            const map = { PRIMARY_COLOR: '--primary', SECONDARY_COLOR: '--secondary', ACCENT_COLOR: '--accent', TEXT_COLOR: '--text', TEXT_LIGHT_COLOR: '--text-light', BG_BADGE_COLOR: '--bg-badge', SUCCESS_COLOR: '--success' };
+            Object.entries(map).forEach(([k, v]) => { if (env[k]) root.style.setProperty(v, env[k]); });
+        }
+
+        function toggleLeft() {
+            document.body.classList.toggle('left-collapsed');
+        }
+
+        function openRight() {
+            document.getElementById('right-panel').classList.add('open');
+            document.body.classList.add('right-open');
+        }
+        function closeRight() {
+            const panel = document.getElementById('right-panel');
+            panel.classList.remove('open', 'expanded');
+            document.getElementById('rp-expand-btn').classList.remove('active');
+            document.body.classList.remove('right-open', 'right-expanded');
+        }
+
+        function saveScanResults(screening) {
+            try {
+                sessionStorage.setItem('ats-scan-results', JSON.stringify(screening));
+            } catch (e) {
+                console.warn('Could not save scan results:', e);
+            }
+        }
+
+        function loadScanResults() {
+            try {
+                const raw = sessionStorage.getItem('ats-scan-results');
+                if (!raw) return null;
+                return JSON.parse(raw);
+            } catch (e) {
+                console.warn('Could not load scan results:', e);
+                return null;
+            }
+        }
+
+        function clearScanResults() {
+            try {
+                sessionStorage.removeItem('ats-scan-results');
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        function applyScanResultsToUI(screening) {
+            const circle = document.getElementById('rp-score-circle');
+            circle.textContent = screening.overall_score;
+
+            let tierClass = 'low';
+            if (screening.tier === 'STRONG_MATCH') tierClass = 'good';
+            else if (screening.tier === 'GOOD_MATCH') tierClass = 'mid';
+            circle.className = 'result-score-circle ' + tierClass;
+
+            document.getElementById('rp-score-text').textContent = screening.tier;
+            document.getElementById('rp-feedback').textContent = screening.feedback || '&mdash;';
+
+            const elSkills = document.getElementById('br-skills');
+            const elExp = document.getElementById('br-experience');
+            const elEdu = document.getElementById('br-education');
+
+            elSkills.textContent = `${screening.breakdown.skills_score}%`;
+            elExp.textContent = `${screening.breakdown.experience_years_score}%`;
+            elEdu.textContent = screening.breakdown.education_match ? 'PASS' : 'FAIL';
+
+            elSkills.style.color = screening.breakdown.skills_score >= 80 ? '#10b981' : screening.breakdown.skills_score >= 60 ? '#f59e0b' : '#ef4444';
+            elExp.style.color = screening.breakdown.experience_years_score >= 80 ? '#10b981' : screening.breakdown.experience_years_score >= 60 ? '#f59e0b' : '#ef4444';
+            elEdu.style.color = screening.breakdown.education_match ? '#10b981' : '#ef4444';
+
+            const kwEl = document.getElementById('rp-keywords');
+            if (screening.missingKeywords && screening.missingKeywords.length > 0) {
+                kwEl.innerHTML = screening.missingKeywords
+                    .map(k => `<span class="result-keyword">${k}</span>`)
+                    .join('');
+            } else {
+                kwEl.textContent = 'None detected — great match!';
+                kwEl.style.color = '#86efac';
+            }
+
+            document.getElementById('scan-again-msg').style.display = 'none';
+            document.getElementById('rp-breakdown-section').style.display = 'block';
+
+            openRight();
+        }
+        function expandRight() {
+            const panel = document.getElementById('right-panel');
+            const btn = document.getElementById('rp-expand-btn');
+            if (panel.classList.contains('expanded')) {
+                panel.classList.remove('expanded');
+                btn.classList.remove('active');
+                document.body.classList.remove('right-expanded');
+                document.body.classList.add('right-open');
+            } else {
+                panel.classList.add('expanded');
+                btn.classList.add('active');
+                document.body.classList.remove('right-open');
+                document.body.classList.add('right-expanded');
+                document.body.classList.add('left-collapsed');
+            }
+        }
+
+        function validateJDInput() {
+            const btn = document.getElementById('btn-run-scan');
+            const jd = document.getElementById('job-description').value.trim();
+            btn.disabled = !jd;
+        }
+
+        function handleScanButtonClick() {
+            const btn = document.getElementById('btn-run-scan');
+
+            if (scanController) {
+                scanController.abort();
+                return;
+            }
+            runAtsScan();
+        }
+
+        async function runAtsScan() {
+            const env = await loadEnv();
+            let apiKey = env['AI_API_KEY'];
+            const primaryModel = env['AI_MODEL'] || 'gemini-2.5-flash';
+            const fallbackModel = env['AI_FALLBACK_MODEL'] || 'gemini-2.5-flash-lite';
+            const jd = document.getElementById('job-description').value.trim();
+
+            if (!apiKey) {
+                return alert('Missing AI_API_KEY.\n\nRun: npm start (creates .env from .env.example)\nThen edit .env and add your API key.');
+            }
+            if (!jd) return alert('Please paste a Job Description.');
+
+            // Extract resume text from the rendered resume content
+            const resumeEl = document.getElementById('resume-content');
+            let resumeText = resumeEl ? resumeEl.innerText || resumeEl.textContent : '';
+            resumeText = resumeText.replace(/\s+/g, ' ').trim();
+            if (!resumeText) {
+                return alert('No resume content found. Please load a resume first.');
+            }
+
+            scanController = new AbortController();
+            const signal = scanController.signal;
+
+            const btn = document.getElementById('btn-run-scan');
+            const textarea = document.getElementById('job-description');
+            const loadingDiv = document.getElementById('left-loading');
+
+            // Clear previous persisted results before starting a new scan
+            clearScanResults();
+
+            // Show loading state and restrict textarea
+            textarea.disabled = true;
+            loadingDiv.style.display = 'block';
+
+            btn.textContent = 'Cancel Scan';
+            btn.style.color = '#ef4444';  // Red text
+            btn.style.borderColor = '#ffffff';  // White border
+            btn.style.backgroundColor = 'transparent';
+
+            // Base prompt with ATS instructions. Tokens are replaced below.
+            const basePrompt = '"You are an expert ATS (Applicant Tracking System) analyzer. Your ONLY function is to compare a Candidate Resume against a single Job Description and output a strict JSON evaluation.\r\n\r\n═══════════════════════════════════════════════════════════════\r\nSTEP 1 — READ THE INPUTS CAREFULLY\r\n═══════════════════════════════════════════════════════════════\r\nBefore scoring, identify:\r\n- The INDUSTRY/DOMAIN of the Job Description (e.g., software engineering, healthcare, finance, sports, education).\r\n- The INDUSTRY/DOMAIN of the Candidate Resume.\r\n- The CANDIDATE NAME as it appears in the resume (extract it exactly — NEVER invent a name).\r\n\r\n═══════════════════════════════════════════════════════════════\r\nSTEP 2 — DOMAIN RELEVANCE GATE (MANDATORY)\r\n═══════════════════════════════════════════════════════════════\r\n- If the JD and Resume belong to DIFFERENT industries/domains (e.g., JD is for a football player and resume is for a software engineer), this is an automatic LOW_MATCH.\r\n- Domain mismatch OVERRIDES all other factors. Cap: overall_score ≤ 40, tier = \"LOW_MATCH\".\r\n- Do NOT perform keyword matching across unrelated fields. A football playmaker JD must NOT score high against a Java developer resume.\r\n\r\n═══════════════════════════════════════════════════════════════\r\nSTEP 3 — SCORING RULES (only if domains match)\r\n═══════════════════════════════════════════════════════════════\r\nTIER SELECTION (strict boundaries):\r\n- STRONG_MATCH: overall_score ≥ 80.\r\n- GOOD_MATCH: overall_score 60–79.\r\n- LOW_MATCH: overall_score < 60.\r\n- ANOMALALY_DETECTED: Only if you detect keyword stuffing, hidden text patterns, or impossible chronological gaps.\r\n\r\nREQUIRED SKILLS & EXPERIENCE (hard constraints):\r\n- If the JD lists REQUIRED skills and the candidate lacks them → NEVER rate STRONG_MATCH.\r\n- Missing 1–2 critical skills → Cap at GOOD_MATCH (max 79).\r\n- Missing 3+ critical skills → Cap at LOW_MATCH (max 59).\r\n- Years of experience below JD requirement → Cap score proportionally.\r\n- Similar/related skills alone CANNOT justify STRONG_MATCH if core requirements are missing.\r\n\r\n═══════════════════════════════════════════════════════════════\r\nSTEP 4 — OUTPUT SPECIFICATION\r\n═══════════════════════════════════════════════════════════════\r\nReturn ONLY a valid JSON object. No markdown, no backticks, no explanation text before or after.\r\n\r\nUse EXACTLY this structure:\r\n{\r\n  \"candidate_id\": \"usr_9823\",\r\n  \"parsing_status\": \"SUCCESS\",\r\n  \"ai_screening\": {\r\n    \"overall_score\": 0,\r\n    \"tier\": \"LOW_MATCH\",\r\n    \"breakdown\": {\r\n      \"skills_score\": 0,\r\n      \"experience_years_score\": 0,\r\n      \"education_match\": false\r\n    },\r\n    \"flags\": [],\r\n    \"warnings\": [],\r\n    \"missingKeywords\": [],\r\n    \"feedback\": \"Brief feedback under 200 words. Mention the candidate actual name from the resume, specific gaps, and concrete improvement tips.\"\r\n  }\r\n}\r\n\r\n═══════════════════════════════════════════════════════════════\r\nSTEP 5 — SELF-VALIDATION (before outputting)\r\n═══════════════════════════════════════════════════════════════\r\nVerify ALL of the following before returning:\r\n□ The candidate name in feedback matches the EXACT name from the resume text.\r\n□ No invented or assumed personal details (addresses, phone numbers, dates) appear in feedback.\r\n□ If domains differ, overall_score ≤ 40 and tier = \"LOW_MATCH\".\r\n□ missingKeywords contains ONLY skills/terms explicitly listed as required in the JD but absent from the resume.\r\n□ No placeholder examples like \"keyword1\" or \"Alex Johnson\" appear in output.\r\n□ JSON is valid and all numeric scores are within 0–100.\r\n\r\n--- JOB DESCRIPTION ---\r\n{job_description}\r\n--- CANDIDATE RESUME ---\r\n{resume_text}"';
+            // Replace tokens with actual JD and resume text
+            const prompt = basePrompt
+                .replace('{job_description}', jd)
+                .replace('{resume_text}', resumeText);
+
+            let model = primaryModel;
+            let usedFallback = false;
+
+            try {
+                const response = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+                        signal: signal
+                    }
+                );
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+
+                let raw = data.candidates[0].content.parts[0].text;
+                raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+
+                const result = JSON.parse(raw);
+                const screening = result.ai_screening;
+
+                applyScanResultsToUI(screening);
+                saveScanResults(screening);
+
+                hasScanResults = true;
+
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    console.log('Scan cancelled by user.');
+                } else if (!usedFallback && fallbackModel) {
+                    // Try fallback model
+                    const modelErrorMsg = document.getElementById('rp-feedback');
+                    modelErrorMsg.textContent = `⚠️ Primary model error. Fallback model (${fallbackModel}) found. Retrying...`;
+                    modelErrorMsg.style.color = '#f59e0b';
+                    console.log('Primary model failed, trying fallback:', fallbackModel);
+                    usedFallback = true;
+                    try {
+                        const fallbackResponse = await fetch(
+                            `https://generativelanguage.googleapis.com/v1beta/models/${fallbackModel}:generateContent?key=${apiKey}`,
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+                                signal: signal
+                            }
+                        );
+                        const fallbackData = await fallbackResponse.json();
+                        if (fallbackData.error) throw new Error(fallbackData.error.message);
+
+                        // Process fallback response (same as primary)
+                        let fallbackRaw = fallbackData.candidates[0].content.parts[0].text;
+                        fallbackRaw = fallbackRaw.replace(/```json/g, '').replace(/```/g, '').trim();
+                        const fallbackResult = JSON.parse(fallbackRaw);
+                        const fallbackScreening = fallbackResult.ai_screening;
+
+                        applyScanResultsToUI(fallbackScreening);
+                        document.getElementById('rp-score-text').textContent = fallbackScreening.tier + ' (fallback)';
+                        saveScanResults(fallbackScreening);
+
+                        hasScanResults = true;
+                        openRight();
+                    } catch (fallbackErr) {
+                        alert('Error with both models:\nPrimary: ' + err.message + '\nFallback: ' + fallbackErr.message);
+                        console.error('Primary error:', err);
+                        console.error('Fallback error:', fallbackErr);
+                    }
+                } else if (!usedFallback && !fallbackModel) {
+                    // No fallback configured
+                    const modelErrorMsg = document.getElementById('rp-feedback');
+                    modelErrorMsg.textContent = '⚠️ Model error: ' + err.message + '. Consider adding a fallback model in config.js';
+                    modelErrorMsg.style.color = '#ef4444';
+                    alert('Error: ' + err.message + '\n\nTip: Add a AI_FALLBACK_MODEL to your config.js for automatic retry.');
+                    console.error(err);
+                } else {
+                    alert('Error: ' + err.message);
+                    console.error(err);
+                }
+            } finally {
+                // Re-enable textarea and hide loading
+                textarea.disabled = false;
+                loadingDiv.style.display = 'none';
+
+                btn.disabled = false;
+                btn.textContent = 'ATS Score Check';
+                btn.style.color = '#ffffff';
+                btn.style.borderColor = 'rgba(255,255,255,0.12)';
+                btn.style.backgroundColor = 'var(--static)';
+                scanController = null;
+            }
+        }
+
+        // ─── Dynamic Resume Renderer ─────────────────────────────────────────
+        // Renders resume from resume-data.json. Falls back to embedded example data
+        // when fetch() fails (e.g. file:// protocol, CORS issues).
+
+        // Photo priority: user > demo > default
+        function getPhotoPath(resumeData) {
+            if (resumeData.basics.photo) {
+                if (resumeData.basics.photo === 'photo.jpg') {
+                    return 'examples/photo.jpg';
+                }
+                if (resumeData.basics.photo.includes('/')) {
+                    return resumeData.basics.photo;
+                }
+                return `resume_generation/${resumeData.basics.photo}`;
+            }
+            return 'examples/photo.jpg';
+        }
+
+        const PLACEHOLDER_DATA = {
+            "basics": {
+                "name": "Your Name",
+                "title": "Professional Title",
+                "email": "email@example.com",
+                "phone": "+1 234 567 890",
+                "location": "City, Country",
+                "photo": "photo.jpg",
+                "linkedin": "#",
+                "github": "#"
+            },
+            "summary": "Write a brief professional summary here. Highlight your years of experience, key skills, and most impressive achievements.",
+            "experience": [
+                {
+                    "title": "Job Title",
+                    "company": "Company Name",
+                    "date": "Start \u2013 End",
+                    "bullets": [
+                        "Describe your key achievement with measurable impact.",
+                        "Use action verbs and quantify results where possible.",
+                        "Focus on what you accomplished, not just what you did."
+                    ]
+                }
+            ],
+            "skills": {
+                "Skill Category": [
+                    { "name": "Skill Name", "expert": true },
+                    { "name": "Another Skill", "expert": false }
+                ]
+            },
+            "techStack": "Describe your experience with the technologies you've tested.",
+            "languages": [
+                { "name": "Language", "level": "Proficiency" }
+            ],
+            "education": [
+                { "degree": "Degree Name", "institution": "Institution", "year": "Year" }
+            ],
+            "talks": [],
+            "certifications": []
+        };
+
+        function escHtml(str) {
+            if (!str) return '';
+            var m = { "&": 38, "<": 60, ">": 62, "\"": 34, "'": 39 };
+            return String(str).replace(/[&<>"']/g, function (c) { return '&#' + m[c] + ';'; });
+        }
+
+        function renderResume(data) {
+            var container = document.getElementById('resume-content');
+            var d = data || PLACEHOLDER_DATA;
+            var b = d.basics;
+
+            var html = '';
+
+            // Header
+            html += '<header class="resume-header">';
+            html += '<div class="header-main">';
+            html += '<h1>' + escHtml(b.name) + '</h1>';
+            html += '<div class="subtitle">' + escHtml(b.title) + '</div>';
+            html += '</div>';
+            html += '<div class="profile-photo-container">';
+            html += '<img src="' + escHtml(getPhotoPath(d)) + '" alt="' + escHtml(b.name) + '" class="profile-photo" onerror="this.style.display=\'none\';">';
+            html += '</div>';
+            html += '<div class="contact-info">';
+            html += '<p><strong>Email:</strong> ' + escHtml(b.email) + '</p>';
+            html += '<p><strong>Phone:</strong> ' + escHtml(b.phone) + '</p>';
+            html += '<p><strong>Location:</strong> ' + escHtml(b.location) + '</p>';
+            if (b.linkedin && b.linkedin !== '#') {
+                html += '<p style="margin-top: 6px;"><a class="cert-link" href="' + escHtml(b.linkedin) + '" target="_blank" rel="noopener noreferrer">LinkedIn profile</a></p>';
+            }
+            if (b.github && b.github !== '#') {
+            }
+            html += '</div>';
+            html += '</header>';
+
+            // Summary
+            if (d.summary) {
+                html += '<section>';
+                html += '<h2 class="section-title">Professional Summary</h2>';
+                html += '<p class="summary-text">' + escHtml(d.summary) + '</p>';
+                html += '</section>';
+            }
+
+            // Columns
+            html += '<div class="columns-container">';
+
+            // Left Column: Experience
+            html += '<main class="left-column">';
+            if (d.experience && d.experience.length > 0) {
+                html += '<h2 class="section-title">Work Experience</h2>';
+                for (var ei = 0; ei < d.experience.length; ei++) {
+                    var exp = d.experience[ei];
+                    html += '<div class="experience-item">';
+                    html += '<div class="exp-header">';
+                    html += '<div>';
+                    html += '<div class="exp-title">' + escHtml(exp.title) + '</div>';
+                    html += '<div class="exp-company">' + escHtml(exp.company) + '</div>';
+                    html += '</div>';
+                    html += '<div class="exp-date">' + escHtml(exp.date) + '</div>';
+                    html += '</div>';
+                    html += '<ul class="exp-bullets">';
+                    for (var bi = 0; bi < exp.bullets.length; bi++) {
+                        html += '<li>' + escHtml(exp.bullets[bi]) + '</li>';
+                    }
+                    html += '</ul>';
+                    html += '</div>';
+                }
+            }
+            html += '</main>';
+
+            // Right Column: Skills, etc.
+            html += '<aside class="right-column">';
+
+            if (d.skills) {
+                var cats = Object.keys(d.skills);
+                for (var ci = 0; ci < cats.length; ci++) {
+                    var category = cats[ci];
+                    var skills = d.skills[category];
+                    html += '<h2 class="section-title">' + category + '</h2>';
+                    html += '<div class="skills-grid">';
+                    for (var si = 0; si < skills.length; si++) {
+                        var skill = skills[si];
+                        var cls = skill.expert ? 'skill-badge expert' : 'skill-badge';
+                        html += '<span class="' + cls + '">' + escHtml(skill.name) + '</span>';
+                    }
+                    html += '</div>';
+                }
+            }
+
+            if (d.techStack) {
+                html += '<h2 class="section-title">Tech Stack</h2>';
+                html += '<p style="font-size: 12.5px; color: var(--text); margin-bottom: 25px; text-align: justify;">' + d.techStack + '</p>';
+            }
+
+            if (d.languages && d.languages.length > 0) {
+                html += '<h2 class="section-title">Languages</h2>';
+                html += '<div class="meta-item">';
+                for (var li = 0; li < d.languages.length; li++) {
+                    var lang = d.languages[li];
+                    html += '<p><span class="meta-label">' + escHtml(lang.name) + ':</span> ' + escHtml(lang.level) + '</p>';
+                }
+                html += '</div>';
+            }
+
+            if (d.education && d.education.length > 0) {
+                html += '<h2 class="section-title">Education</h2>';
+                for (var edi = 0; edi < d.education.length; edi++) {
+                    var edu = d.education[edi];
+                    html += '<div class="meta-item">';
+                    html += '<p style="font-weight: 700; color: var(--secondary);">' + escHtml(edu.degree) + '</p>';
+                    html += '<p style="font-size: 12.5px; color: var(--text-light);">' + escHtml(edu.institution) + ' (' + escHtml(edu.year) + ')</p>';
+                    html += '</div>';
+                }
+            }
+
+            if (d.talks && d.talks.length > 0) {
+                html += '<h2 class="section-title">Tech Talks</h2>';
+                for (var ti = 0; ti < d.talks.length; ti++) {
+                    var talk = d.talks[ti];
+                    html += '<div class="meta-item">';
+                    html += '<p style="font-weight: 700; color: var(--secondary); font-size: 13px;">' + escHtml(talk.title) + '</p>';
+                    html += '<p style="font-size: 12.5px; color: var(--text-light); margin-top: 4px;">' + escHtml(talk.event) + '</p>';
+                    if (talk.url) {
+                        html += '<p style="margin-top: 6px;"><a class="cert-link" href="' + escHtml(talk.url) + '" target="_blank" rel="noopener noreferrer">Watch recording</a></p>';
+                    }
+                    html += '</div>';
+                }
+            }
+
+            if (d.certifications && d.certifications.length > 0) {
+                html += '<h2 class="section-title">Certifications</h2>';
+                for (var ci2 = 0; ci2 < d.certifications.length; ci2++) {
+                    var cert = d.certifications[ci2];
+                    html += '<div class="meta-item">';
+                    html += '<p style="font-weight: 700; color: var(--secondary);">' + escHtml(cert.title) + '</p>';
+                    var certMeta = escHtml(cert.issuer) + ' \u00b7 ' + escHtml(cert.date);
+                    if (cert.duration) certMeta += ' \u00b7 ' + escHtml(cert.duration);
+                    html += '<p style="font-size: 12.5px; color: var(--text-light);">' + certMeta + '</p>';
+                    if (cert.url) {
+                        html += '<p style="margin-top: 4px;"><a class="cert-link" href="' + escHtml(cert.url) + '" target="_blank" rel="noopener noreferrer">Verify certificate</a></p>';
+                    }
+                    html += '</div>';
+                }
+            }
+
+            html += '</aside>';
+            html += '</div>';
+
+            container.innerHTML = html;
+        }
+
+        // Initialize ATS button state on load
+        validateJDInput();
+
+        // ─── AI Generation State ─────────────────────────────────────────
+        let polishedVersion = false;
+        let polishLocked = false;
+        let currentPDFText = '';
+        let isLargePDF = false;
+        let generationController = null;
+        let currentDataSource = 'none'; // 'generated', 'demo', 'placeholder'
+
+        // ─── Resume Data Loading ─────────────────────────────────────────
+        async function loadResumeData() {
+            const priorities = [
+                'resume_generation/resume-data-AI-polished.json',
+                'resume_generation/resume-data.json',
+                'examples/demo-data.json'
+            ];
+
+            // Check if resume was generated via AI tool (localStorage flag)
+            const hasGeneratedResume = localStorage.getItem('resume-data') !== null;
+
+            for (const filePath of priorities) {
+                try {
+                    const resp = await fetch(filePath);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        renderResume(data);
+                        // Only mark as 'generated' if localStorage flag exists
+                        currentDataSource = (hasGeneratedResume && !filePath.includes('demo-data')) ? 'generated' : 'demo';
+                        updatePolishButton();
+                        return;
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+
+            // Ultimate fallback
+            currentDataSource = 'placeholder';
+            renderResume(PLACEHOLDER_DATA);
+            updatePolishButton();
+        }
+
+        // ─── Polish Button Management ────────────────────────────────────
+        async function updatePolishButton() {
+            const dropdownBtn = document.getElementById('btn-polish-dropdown');
+            if (!dropdownBtn) return;
+
+            // Only show Polish button if resume was generated (not demo or placeholder)
+            if (currentDataSource !== 'generated') {
+                dropdownBtn.style.display = 'none';
+                return;
+            }
+
+            // Check if base resume exists
+            try {
+                const baseResp = await fetch('resume_generation/resume-data.json');
+                const hasBaseResume = baseResp.ok;
+
+                if (!hasBaseResume) {
+                    dropdownBtn.style.display = 'none';
+                    return;
+                }
+
+                // Check if polished version exists
+                const polishedResp = await fetch('resume_generation/resume-data-AI-polished.json');
+                const hasPolished = polishedResp.ok;
+
+                polishedVersion = hasPolished;
+                dropdownBtn.style.display = 'block';
+
+                // Disable polish if already polished
+                if (hasPolished) {
+                    dropdownBtn.disabled = true;
+                } else {
+                    dropdownBtn.disabled = polishLocked;
+                }
+            } catch (e) {
+                dropdownBtn.style.display = 'none';
+            }
+        }
+
+        function showRefreshMessage(text) {
+            const msg = document.getElementById('refresh-message');
+            msg.textContent = text;
+            msg.style.display = 'block';
+
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, 2000);
+        }
+
+        async function polishResume() {
+            const dropdownBtn = document.getElementById('btn-polish-dropdown');
+            if (dropdownBtn.disabled || polishLocked) return;
+
+            dropdownBtn.disabled = true;
+
+            try {
+                // Load current resume
+                const resp = await fetch('resume_generation/resume-data.json');
+                if (!resp.ok) throw new Error('No resume data to polish');
+
+                const resumeData = await resp.json();
+
+                // Call polish API
+                const polishResp = await fetch('/api/polish-resume', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(resumeData)
+                });
+
+                if (!polishResp.ok) throw new Error('Polish API failed');
+
+                const polishedData = await polishResp.json();
+
+                // Save polished version
+                await fetch('/api/save-polished', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(polishedData)
+                });
+
+                polishedVersion = true;
+
+                // Show refresh message and reload
+                showRefreshMessage('Refreshing to show changes . . .');
+                setTimeout(async () => {
+                    await loadResumeData();
+                    updatePolishButton();
+                }, 1000);
+
+            } catch (err) {
+                alert('Polish failed: ' + err.message);
+                dropdownBtn.disabled = false;
+            }
+        }
+
+        async function rollbackPolish() {
+            try {
+                // Delete polished version
+                await fetch('/api/rollback', { method: 'POST' });
+
+                polishedVersion = false;
+                polishLocked = true;
+
+                // Show rollback message
+                showRefreshMessage('Refreshing to rollback changes . . .');
+
+                // Reload base version
+                setTimeout(async () => {
+                    await loadResumeData();
+                    updatePolishButton();
+
+                    // Unlock after 2 seconds
+                    setTimeout(() => {
+                        polishLocked = false;
+                        updatePolishButton();
+                    }, 2000);
+                }, 1000);
+
+            } catch (err) {
+                alert('Rollback failed: ' + err.message);
+            }
+        }
+
+        // Re-enable polish button when resume changes manually
+        window.resumeManuallyUpdated = false;
+        window.addEventListener('resumeManuallyUpdated', () => {
+            if (!polishedVersion && !polishLocked) {
+                const dropdownBtn = document.getElementById('btn-polish-dropdown');
+                if (dropdownBtn) dropdownBtn.disabled = false;
+            }
+        });
+
+        function toggleActions() {
+            const dropdown = document.getElementById('actions-dropdown');
+            const trigger = document.getElementById('actions-trigger');
+            if (!dropdown || !trigger) return;
+
+            const isHidden = dropdown.classList.contains('hidden');
+            dropdown.classList.toggle('hidden', !isHidden);
+            trigger.setAttribute('aria-expanded', String(isHidden));
+            trigger.textContent = isHidden ? 'Actions ▴' : 'Actions ▾';
+        }
+
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('actions-dropdown');
+            const trigger = document.getElementById('actions-trigger');
+            if (!dropdown || !trigger || dropdown.classList.contains('hidden')) return;
+
+            if (!dropdown.contains(e.target) && !trigger.contains(e.target)) {
+                dropdown.classList.add('hidden');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const dropdown = document.getElementById('actions-dropdown');
+                const trigger = document.getElementById('actions-trigger');
+                if (dropdown && !dropdown.classList.contains('hidden')) {
+                    dropdown.classList.add('hidden');
+                    trigger.setAttribute('aria-expanded', 'false');
+                    trigger.focus();
+                }
+            }
+        });
+
+        // ─── AI Modal Functions ───────────────────────────────────────────
+        function openAIModal() {
+            document.getElementById('ai-modal').style.display = 'flex';
+            document.getElementById('modal-upload-section').style.display = 'block';
+            document.getElementById('modal-preview-section').style.display = 'none';
+            document.getElementById('modal-error-section').style.display = 'none';
+            document.getElementById('modal-actions').style.display = 'none';
+            document.getElementById('modal-loading').style.display = 'none';
+            currentPDFText = '';
+            isLargePDF = false;
+        }
+
+        function closeAIModal() {
+            if (generationController) {
+                generationController.abort();
+                generationController = null;
+            }
+            document.getElementById('ai-modal').style.display = 'none';
+            document.getElementById('pdf-input').value = '';
+        }
+
+        async function handlePDFUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (file.type !== 'application/pdf') {
+                showModalError('Please upload a PDF file');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('modal-upload-section').style.display = 'none';
+            document.getElementById('modal-loading').style.display = 'block';
+            document.getElementById('modal-actions').style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('pdf', file);
+
+            try {
+                const response = await fetch('/api/parse-resume-pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.error === 'PDF_TOO_LARGE') {
+                    isLargePDF = true;
+                    currentPDFText = data.textPreview || '';
+
+                    document.getElementById('modal-loading').style.display = 'none';
+                    document.getElementById('modal-error-section').style.display = 'block';
+                    document.getElementById('modal-error-text').textContent = data.message;
+                    document.getElementById('btn-continue-anyway').style.display = 'block';
+                    document.getElementById('modal-actions').style.display = 'flex';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to parse PDF');
+                }
+
+                currentPDFText = data.text;
+
+                // Show preview
+                document.getElementById('modal-loading').style.display = 'none';
+                document.getElementById('modal-preview-section').style.display = 'block';
+                document.getElementById('preview-text').value = currentPDFText;
+                document.getElementById('modal-actions').style.display = 'flex';
+
+            } catch (err) {
+                document.getElementById('modal-loading').style.display = 'none';
+                showModalError('Error: ' + err.message);
+            }
+        }
+
+        function showModalError(message) {
+            document.getElementById('modal-upload-section').style.display = 'none';
+            document.getElementById('modal-preview-section').style.display = 'none';
+            document.getElementById('modal-loading').style.display = 'none';
+            document.getElementById('modal-error-section').style.display = 'block';
+            document.getElementById('modal-error-text').textContent = message;
+            document.getElementById('modal-actions').style.display = 'flex';
+            document.getElementById('btn-continue-anyway').style.display = 'none';
+        }
+
+        function continueWithLargePDF() {
+            isLargePDF = false;
+            document.getElementById('modal-error-section').style.display = 'none';
+            document.getElementById('modal-preview-section').style.display = 'block';
+            document.getElementById('preview-text').value = currentPDFText;
+            document.getElementById('modal-actions').style.display = 'flex';
+            document.getElementById('btn-continue-anyway').style.display = 'none';
+        }
+
+        async function confirmGeneration() {
+            const env = await loadEnv();
+            const apiKey = env['AI_API_KEY'];
+
+            if (!apiKey) {
+                alert('Missing AI_API_KEY.\n\nRun: npm start\nThen edit .env and add your API key.');
+                return;
+            }
+
+            // Get edited text if preview exists
+            if (document.getElementById('modal-preview-section').style.display !== 'none') {
+                currentPDFText = document.getElementById('preview-text').value;
+            }
+
+            // Show loading
+            document.getElementById('modal-preview-section').style.display = 'none';
+            document.getElementById('modal-error-section').style.display = 'none';
+            document.getElementById('modal-actions').style.display = 'none';
+            document.getElementById('modal-loading').style.display = 'block';
+
+            generationController = new AbortController();
+            const signal = generationController.signal;
+
+            const extractionPrompt = `You are a precise data extraction engine specializing in parsing CVs. Extract structured data from the provided raw resume text into the required JSON format.
+
+STEP 1 — READ THE RESUME TEXT
+- Identify all professional sections: contact info (basics), work experience, skills, education, etc.
+
+STEP 2 — STRUCTURE EXTRACTION
+- Map the parsed text directly to the provided JSON schema.
+- Clean the text: Extract bullet points as clean, unformatted plain text strings.
+- Evaluate skills objectively based on the text to set expert flags appropriately.
+
+OUTPUT SPECIFICATION:
+Return ONLY the raw, valid JSON object. Do not include markdown code blocks (like \`\`\`json), introduction text, or explanations.
+
+REQUIRED JSON SCHEMA:
+{
+  "basics": { "name": "", "title": "", "email": "", "phone": "", "location": "", "photo": "photo.jpg", "linkedin": "", "github": "" },
+  "summary": "",
+  "experience": [{ "title": "", "company": "", "date": "", "bullets": [] }],
+  "skills": { "Category": [{ "name": "", "expert": false }] },
+  "techStack": "",
+  "languages": [{ "name": "", "level": "" }],
+  "education": [{ "degree": "", "institution": "", "year": "" }],
+  "talks": [],
+  "certifications": [{ "title": "", "issuer": "", "date": "", "duration": null, "url": "" }]
+}
+
+SELF-VALIDATION (before outputting):
+□ JSON is valid and parseable via JSON.parse()
+□ All required fields present
+□ No placeholder text like "TODO" or "example"
+□ No markdown (**), em dashes (--), or formatting artifacts inside text strings
+□ Expert flags set correctly
+
+RESUME TEXT:
+${currentPDFText}`;
+
+            try {
+                const response = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${env['AI_MODEL']}:generateContent?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: extractionPrompt }] }] }),
+                        signal: signal
+                    }
+                );
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+
+                let raw = data.candidates[0].content.parts[0].text;
+                raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+
+                const resumeData = JSON.parse(raw);
+
+                // Note: In production, this would save to resume-data.json via backend
+                // For now, update DOM and store in localStorage
+                renderResume(resumeData);
+                closeAIModal();
+                localStorage.setItem('resume-data', JSON.stringify(resumeData));
+
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    console.log('Generation cancelled by user.');
+                } else {
+                    alert('Error generating resume: ' + err.message);
+                    console.error(err);
+                }
+                closeAIModal();
+            }
+        }
+
+        // Drag & drop support
+        const modal = document.getElementById('ai-modal');
+        if (modal) {
+            modal.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            modal.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const file = e.dataTransfer.files[0];
+                if (file && file.type === 'application/pdf') {
+                    document.getElementById('pdf-input').files = e.dataTransfer.files;
+                    handlePDFUpload(document.getElementById('pdf-input'));
+                }
+            });
+        }
+
+        // Initialize polish button on load
+        updatePolishButton();
+
+        // Init: load data and render
+        (async function () {
+            var env = await loadEnv();
+            applyColors(env);
+
+            // Check if resume data exists in localStorage (from AI generation)
+            const storedData = localStorage.getItem('resume-data');
+            if (storedData) {
+                try {
+                    const data = JSON.parse(storedData);
+                    renderResume(data);
+                    currentDataSource = 'generated';
+                    updatePolishButton();
+                } catch (e) {
+                    await loadResumeData();
+                }
+            } else {
+                await loadResumeData();
+            }
+
+            // Restore previously persisted ATS scan results if available
+            const savedScan = loadScanResults();
+            if (savedScan) {
+                applyScanResultsToUI(savedScan);
+            }
+        })();
+    </script>
+
+</body>
+
+</html>

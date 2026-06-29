@@ -1,0 +1,105 @@
+{
+  "basics": {
+    "name": "Lionel Messi",
+    "title": "Professional Football Player · Forward",
+    "email": "leo.messi@example.com",
+    "phone": "+1 305 555-0100",
+    "location": "Miami, Florida, USA",
+    "photo": "examples/photo.jpg",
+    "linkedin": "https://www.linkedin.com",
+    "github": "https://github.com"
+  },
+  "summary": "World-class professional football player with 20+ years of elite-level experience in forward position. Holds multiple records including most Ballon d'Or awards (8), most goals in European top-flight leagues, and led Argentina to FIFA World Cup victory. Expert in dribbling, playmaking, and goal scoring with proven ability to perform under pressure in high-stakes matches. Known for exceptional vision, technical skills, and consistent top-tier performance across multiple leagues and international competitions.",
+  "experience": [
+    {
+      "title": "Professional Football Player",
+      "company": "Inter Miami CF",
+      "date": "2023 – Present",
+      "bullets": [
+        "Led team as primary forward and captain, achieving highest season goal tally in club history.",
+        "Transformed team performance, leading to first-ever playoff qualification in debut season.",
+        "Maintained elite performance metrics: 20+ goals and 15+ assists per season.",
+        "Served as global brand ambassador, increasing franchise visibility and merchandise sales by 40%."
+      ]
+    },
+    {
+      "title": "Professional Football Player",
+      "company": "Paris Saint-Germain (PSG)",
+      "date": "2021 – 2023",
+      "bullets": [
+        "Contributed to two consecutive Ligue 1 titles (2021-22, 2022-23).",
+        "Scored 30+ goals per season across all competitions.",
+        "Provided critical assists in UEFA Champions League knockout stages.",
+        "Mentored younger players and elevated team attacking strategy."
+      ]
+    },
+    {
+      "title": "Professional Football Player",
+      "company": "FC Barcelona",
+      "date": "2004 – 2021",
+      "bullets": [
+        "All-time top scorer and appearance leader for club (778 games, 672 goals).",
+        "Won 10 La Liga titles, 7 Copa del Rey, and 4 UEFA Champions League titles.",
+        "Awarded 6 Ballon d'Or trophies during tenure (2009, 2010, 2011, 2012, 2015, 2019).",
+        "Achieved historic sextuple in 2009 (6 major trophies in one year).",
+        "Consistently ranked among top 3 players globally for 12+ consecutive seasons."
+      ]
+    }
+  ],
+  "skills": {
+    "Core Football Skills": [
+      {"name": "Dribbling", "expert": true},
+      {"name": "Playmaking", "expert": true},
+      {"name": "Goal Scoring", "expert": true},
+      {"name": "Free Kicks", "expert": false},
+      {"name": "Penalty Taking", "expert": false},
+      {"name": "Vision", "expert": true},
+      {"name": "Ball Control", "expert": true}
+    ],
+    "Physical & Mental": [
+      {"name": "Acceleration", "expert": false},
+      {"name": "Agility", "expert": false},
+      {"name": "Stamina", "expert": false},
+      {"name": "Composure Under Pressure", "expert": true},
+      {"name": "Leadership", "expert": true},
+      {"name": "Team Coordination", "expert": false}
+    ],
+    "Languages": [
+      {"name": "Spanish (Native)", "expert": false},
+      {"name": "Catalan (Fluent)", "expert": false},
+      {"name": "English (Professional)", "expert": false},
+      {"name": "Italian (Basic)", "expert": false}
+    ]
+  },
+  "techStack": "Experienced in high-performance team environments with extensive international competition experience. Adapts quickly to different playing styles, coaching methodologies, and team dynamics across multiple leagues and cultures.",
+  "languages": [
+    {"name": "Spanish", "level": "Native Speaker"},
+    {"name": "English", "level": "Professional Working"},
+    {"name": "Catalan", "level": "Fluent"},
+    {"name": "Italian", "level": "Basic"}
+  ],
+  "education": [
+    {
+      "degree": "Primary & Secondary Education",
+      "institution": "Newell's Old Boys Youth Academy",
+      "year": "1994-2000"
+    }
+  ],
+  "talks": [],
+  "certifications": [
+    {
+      "title": "FIFA Pro Coaching License (In Progress)",
+      "issuer": "FIFA",
+      "date": "Expected 2025",
+      "duration": null,
+      "url": "https://www.fifa.com"
+    },
+    {
+      "title": "Sports Leadership & Management",
+      "issuer": "Harvard Business School",
+      "date": "2022",
+      "duration": null,
+      "url": "https://www.hbs.edu"
+    }
+  ]
+}
