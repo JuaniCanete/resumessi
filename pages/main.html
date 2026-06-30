@@ -156,8 +156,8 @@
             position: absolute;
             bottom: 150%;
             left: 0;
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            color: #1a1a1a;
+            background: #0a0a0a;
+            color: #fff;
             padding: 10px 14px;
             border-radius: 6px;
             font-size: 11px;
@@ -166,8 +166,8 @@
             white-space: normal;
             width: 220px;
             line-height: 1.4;
-            border: none;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
             transition: opacity 0.2s, visibility 0.2s;
             z-index: 9999;
         }
@@ -985,6 +985,13 @@
          border-radius: 8px; font-weight: 600; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
     </div>
 
+    <div id="polish-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+         background: rgba(0,0,0,0.65); backdrop-filter: blur(10px); z-index: 9998; align-items: center; justify-content: center; flex-direction: column; gap: 16px;">
+        <p style="color: #fff; font-size: 18px; font-weight: 700; font-family: 'Comfortaa', sans-serif; text-align: center;">
+            Polishing resume with AI<span class="dot-anim"></span> ✨
+        </p>
+    </div>
+
     <aside id="left-sidebar" class="panel no-print">
         <div class="panel-inner">
 
@@ -1185,6 +1192,36 @@
             <!-- Loading State -->
             <div id="modal-loading" style="display: none; text-align: center; padding: 20px;">
                 <p style="color: var(--accent);" class="dot-anim">Processing with AI</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Photo Upload Modal -->
+    <div id="photo-upload-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;" class="photo-upload-modal">
+        <div style="background: var(--secondary); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); position: relative;">
+            <button onclick="closePhotoUploadModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; line-height: 1; transition: background 0.2s;"
+                onmouseenter="this.style.background='var(--accent)'"
+                onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
+            <h2 style="color: #fff; margin-bottom: 20px; text-align: center;">📸 Upload Profile Photo</h2>
+            <div id="photo-upload-section" style="border: 2px dashed rgba(255,255,255,0.2); padding: 40px; text-align: center; border-radius: 8px; margin-bottom: 20px; cursor: pointer;" onclick="document.getElementById('photo-input').click()">
+                <p style="color: #fff; font-size: 14px;">📸 Drag & drop your profile picture here (JPEG/JPG/PNG)</p>
+                <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 10px;">or click to browse</p>
+                <input type="file" id="photo-input" accept="image/jpeg,image/jpg,image/png" style="display: none;" onchange="handlePhotoUpload(this)">
+            </div>
+            <div id="photo-upload-error" style="display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                <p id="photo-upload-error-text" style="color: #fca5a5; font-size: 13px;"></p>
+            </div>
+            <div id="photo-upload-file-name" style="display: none; color: #fff; font-size: 12px; margin-bottom: 10px; text-align: center; word-break: break-all;"></div>
+            <div id="photo-upload-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch;">
+                <button id="photo-upload-confirm" class="p-btn p-btn-primary" style="display: none; background: #f59e0b; color: #1a1a1a; flex: 1;" onclick="confirmPhotoUpload()">
+                    Confirm
+                </button>
+                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="closePhotoUploadModal()">
+                    Cancel
+                </button>
+            </div>
+            <div id="photo-upload-loading" style="display: none; text-align: center; padding: 20px;">
+                <p style="color: var(--accent);" class="dot-anim">Processing photo...</p>
             </div>
         </div>
     </div>
@@ -1485,8 +1522,12 @@
         // Renders resume from resume-data.json. Falls back to embedded example data
         // when fetch() fails (e.g. file:// protocol, CORS issues).
 
-        // Photo priority: user > demo > default
+        // Photo priority: user upload > resume data > demo fallback
         function getPhotoPath(resumeData) {
+            const uploadedPhoto = localStorage.getItem('uploaded-photo');
+            if (uploadedPhoto) {
+                return uploadedPhoto;
+            }
             if (resumeData.basics.photo) {
                 if (resumeData.basics.photo.includes('/')) {
                     return resumeData.basics.photo;
@@ -1696,12 +1737,9 @@
 
         // ─── AI Generation State ─────────────────────────────────────────
         let polishedVersion = false;
-        let polishLocked = false;
-        let currentPDFText = '';
-        let currentPDFFileName = '';
-        let isLargePDF = false;
         let generationController = null;
         let currentDataSource = 'none'; // 'generated', 'demo', 'placeholder'
+        let currentPhotoDataURL = null;
 
         // ─── Resume Data Loading ─────────────────────────────────────────
         async function loadResumeData() {
@@ -1742,21 +1780,11 @@
             const actionsTrigger = document.getElementById('actions-trigger');
             if (!dropdownBtn) return;
 
-            function setAIAvailable(available) {
-                if (available) {
-                    dropdownBtn.style.display = 'block';
-                    dropdownBtn.classList.add('ai-available');
-                    if (actionsTrigger) actionsTrigger.classList.add('ai-available');
-                } else {
-                    dropdownBtn.style.display = 'none';
-                    dropdownBtn.classList.remove('ai-available');
-                    if (actionsTrigger) actionsTrigger.classList.remove('ai-available');
-                }
-            }
-
             // Only show Polish button if resume was generated (not demo or placeholder)
             if (currentDataSource !== 'generated') {
-                setAIAvailable(false);
+                dropdownBtn.style.display = 'none';
+                dropdownBtn.classList.remove('ai-available');
+                if (actionsTrigger) actionsTrigger.classList.remove('ai-available');
                 return;
             }
 
@@ -1767,20 +1795,20 @@
 
                 polishedVersion = hasPolished;
 
-                // Disable polish if already polished
                 if (hasPolished) {
-                    dropdownBtn.style.display = 'block';
-                    dropdownBtn.disabled = true;
+                    dropdownBtn.style.display = 'none';
                     dropdownBtn.classList.remove('ai-available');
                     if (actionsTrigger) actionsTrigger.classList.remove('ai-available');
                 } else {
-                    dropdownBtn.disabled = polishLocked;
-                    setAIAvailable(!polishLocked);
+                    dropdownBtn.style.display = 'block';
+                    dropdownBtn.classList.add('ai-available');
+                    if (actionsTrigger) actionsTrigger.classList.add('ai-available');
                 }
             } catch (e) {
-                // Network error — still show the button, just assume not polished
-                dropdownBtn.disabled = polishLocked;
-                setAIAvailable(!polishLocked);
+                // Network error — assume polish is available
+                dropdownBtn.style.display = 'block';
+                dropdownBtn.classList.add('ai-available');
+                if (actionsTrigger) actionsTrigger.classList.add('ai-available');
             }
         }
 
@@ -1796,9 +1824,10 @@
 
         async function polishResume() {
             const dropdownBtn = document.getElementById('btn-polish-dropdown');
-            if (dropdownBtn.disabled || polishLocked) return;
+            if (dropdownBtn.disabled) return;
 
             dropdownBtn.disabled = true;
+            document.getElementById('polish-overlay').style.display = 'flex';
 
             try {
                 // Load current resume
@@ -1807,16 +1836,31 @@
 
                 const resumeData = await resp.json();
 
+                // Strip photo before sending to AI (base64 in prompt wastes tokens)
+                const resumeDataForPolish = JSON.parse(JSON.stringify(resumeData));
+                if (resumeDataForPolish.basics) {
+                    resumeDataForPolish.basics.photo = '';
+                }
+
                 // Call polish API
                 const polishResp = await fetch('/api/polish-resume', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(resumeData)
+                    body: JSON.stringify(resumeDataForPolish)
                 });
 
-                if (!polishResp.ok) throw new Error('Polish API failed');
+                if (!polishResp.ok) {
+                    const errorData = await polishResp.json().catch(() => ({ error: 'Polish API failed' }));
+                    throw new Error(errorData.error || 'Polish API failed');
+                }
 
                 const polishedData = await polishResp.json();
+
+                // Restore photo if user had one
+                if (resumeData.basics && resumeData.basics.photo) {
+                    polishedData.basics = polishedData.basics || {};
+                    polishedData.basics.photo = resumeData.basics.photo;
+                }
 
                 // Save polished version
                 await fetch('/api/save-polished', {
@@ -1829,14 +1873,16 @@
 
                 // Show refresh message and reload
                 showRefreshMessage('Refreshing to show changes . . .');
+                document.getElementById('polish-overlay').style.display = 'none';
                 setTimeout(async () => {
                     await loadResumeData();
                     updatePolishButton();
                 }, 1000);
 
             } catch (err) {
+                document.getElementById('polish-overlay').style.display = 'none';
                 alert('Polish failed: ' + err.message);
-                dropdownBtn.disabled = false;
+                updatePolishButton();
             }
         }
 
@@ -1846,7 +1892,6 @@
                 await fetch('/api/rollback', { method: 'POST' });
 
                 polishedVersion = false;
-                polishLocked = true;
 
                 // Show rollback message
                 showRefreshMessage('Refreshing to rollback changes . . .');
@@ -1855,12 +1900,6 @@
                 setTimeout(async () => {
                     await loadResumeData();
                     updatePolishButton();
-
-                    // Unlock after 2 seconds
-                    setTimeout(() => {
-                        polishLocked = false;
-                        updatePolishButton();
-                    }, 2000);
                 }, 1000);
 
             } catch (err) {
@@ -1871,9 +1910,8 @@
         // Re-enable polish button when resume changes manually
         window.resumeManuallyUpdated = false;
         window.addEventListener('resumeManuallyUpdated', () => {
-            if (!polishedVersion && !polishLocked) {
-                const dropdownBtn = document.getElementById('btn-polish-dropdown');
-                if (dropdownBtn) dropdownBtn.disabled = false;
+            if (!polishedVersion) {
+                updatePolishButton();
             }
         });
 
@@ -1911,6 +1949,12 @@
                     dropdown.classList.add('hidden');
                     trigger.setAttribute('aria-expanded', 'false');
                     trigger.focus();
+                    return;
+                }
+                // Close photo modal if open
+                const photoModal = document.getElementById('photo-upload-modal');
+                if (photoModal && photoModal.style.display === 'flex') {
+                    closePhotoUploadModal();
                     return;
                 }
                 // Close AI modal if open
@@ -2150,6 +2194,7 @@
                 // Update DOM and store in localStorage
                 renderResume(resumeData);
                 closeAIModal();
+                openPhotoUploadModal();
                 localStorage.setItem('resume-data', JSON.stringify(resumeData));
 
             } catch (err) {
@@ -2163,7 +2208,100 @@
             }
         }
 
-        // Drag & drop support
+        // ─── Photo Upload Modal Functions ─────────────────────────────────
+        function openPhotoUploadModal() {
+            document.getElementById('photo-upload-modal').style.display = 'flex';
+            document.getElementById('photo-upload-section').style.display = 'block';
+            document.getElementById('photo-upload-error').style.display = 'none';
+            document.getElementById('photo-upload-file-name').style.display = 'none';
+            document.getElementById('photo-upload-actions').style.display = 'none';
+            document.getElementById('photo-upload-loading').style.display = 'none';
+            document.getElementById('photo-upload-confirm').style.display = 'none';
+            currentPhotoDataURL = null;
+        }
+
+        function closePhotoUploadModal() {
+            document.getElementById('photo-upload-modal').style.display = 'none';
+            document.getElementById('photo-input').value = '';
+        }
+
+        function showPhotoModalError(message) {
+            document.getElementById('photo-upload-section').style.display = 'block';
+            document.getElementById('photo-upload-error').style.display = 'block';
+            document.getElementById('photo-upload-error-text').textContent = message;
+            document.getElementById('photo-upload-confirm').style.display = 'none';
+            document.getElementById('photo-upload-file-name').style.display = 'none';
+            document.getElementById('photo-upload-actions').style.display = 'none';
+            document.getElementById('photo-upload-loading').style.display = 'none';
+        }
+
+        function handlePhotoUpload(input) {
+            const file = input.files[0];
+            if (!file) {
+                showPhotoModalError('Please select an image file to upload. Please try again with a different photo.');
+                return;
+            }
+
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+            if (!validTypes.includes(file.type)) {
+                showPhotoModalError('Invalid file type. Please upload a JPEG, JPG or PNG image. Please try again with a different photo.');
+                return;
+            }
+
+            currentPhotoFileName = file.name;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    currentPhotoDataURL = e.target.result;
+
+                    document.getElementById('photo-upload-section').style.display = 'none';
+                    document.getElementById('photo-upload-file-name').textContent = 'File: ' + file.name;
+                    document.getElementById('photo-upload-file-name').style.display = 'block';
+                    document.getElementById('photo-upload-actions').style.display = 'flex';
+                    document.getElementById('photo-upload-confirm').style.display = 'block';
+                    document.getElementById('photo-upload-error').style.display = 'none';
+                };
+                img.onerror = function() {
+                    showPhotoModalError('Failed to load image. The file may be corrupted. Please try again with a different photo.');
+                };
+                img.src = e.target.result;
+            };
+            reader.onerror = function() {
+                showPhotoModalError('Error reading file. Please try again with a different photo.');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function confirmPhotoUpload() {
+            if (!currentPhotoDataURL) return;
+
+            const resumeDataStr = localStorage.getItem('resume-data');
+            if (resumeDataStr) {
+                try {
+                    const resumeData = JSON.parse(resumeDataStr);
+                    if (!resumeData.basics) resumeData.basics = {};
+                    resumeData.basics.photo = currentPhotoDataURL;
+                    localStorage.setItem('resume-data', JSON.stringify(resumeData));
+                    localStorage.setItem('uploaded-photo', currentPhotoDataURL);
+                    renderResume(resumeData);
+
+                    // Save to server
+                    fetch('/api/save-resume-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(resumeData)
+                    }).catch(saveErr => {
+                        console.warn('Could not save resume to server:', saveErr);
+                    });
+                } catch (e) {
+                    console.error('Error updating resume with photo:', e);
+                }
+            }
+
+            closePhotoUploadModal();
+        }
         const modal = document.getElementById('ai-modal');
         if (modal) {
             modal.addEventListener('dragover', (e) => {
@@ -2178,6 +2316,27 @@
                 if (file && file.type === 'application/pdf') {
                     document.getElementById('pdf-input').files = e.dataTransfer.files;
                     handlePDFUpload(document.getElementById('pdf-input'));
+                }
+            });
+        }
+
+        // Photo modal drag & drop
+        const photoModal = document.getElementById('photo-upload-modal');
+        if (photoModal) {
+            photoModal.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            photoModal.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const file = e.dataTransfer.files[0];
+                if (file && (file.type === 'image/jpeg' || file.type === 'image/jpg' || file.type === 'image/png')) {
+                    document.getElementById('photo-input').files = e.dataTransfer.files;
+                    handlePhotoUpload(document.getElementById('photo-input'));
+                } else {
+                    showPhotoModalError('Please upload a JPEG, JPG or PNG image file.');
                 }
             });
         }
