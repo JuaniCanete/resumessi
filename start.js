@@ -46,7 +46,8 @@ function getConfigFromEnv() {
   const env = {
     AI_API_KEY: 'your_api_key_here',
     AI_MODEL: 'gemini-2.5-flash',
-    AI_FALLBACK_MODEL: 'gemini-2.5-flash-lite',
+    AI_FALLBACK_API_KEY: 'your_fallback_api_key_here',
+    AI_FALLBACK_MODEL: 'llama-3.3-70b-versatile',
     PRIMARY_COLOR: '#0a0a0a',
     SECONDARY_COLOR: '#0a0a0a',
     ACCENT_COLOR: '#2563eb',

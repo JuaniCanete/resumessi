@@ -1376,7 +1376,8 @@
             const env = await loadEnv();
             let apiKey = env['AI_API_KEY'];
             const primaryModel = env['AI_MODEL'] || 'gemini-2.5-flash';
-            const fallbackModel = env['AI_FALLBACK_MODEL'] || 'gemini-2.5-flash-lite';
+            const fallbackApiKey = env['AI_FALLBACK_API_KEY'];
+            const fallbackModel = env['AI_FALLBACK_MODEL'] || 'llama-3.3-70b-versatile';
             const jd = document.getElementById('job-description').value.trim();
 
             if (!apiKey) {
@@ -1456,28 +1457,33 @@
             } catch (err) {
                 if (err.name === 'AbortError') {
                     console.log('Scan cancelled by user.');
-                } else if (!usedFallback && fallbackModel) {
+                } else if (!usedFallback && fallbackModel && fallbackApiKey) {
                     // Try fallback model
                     const modelErrorMsg = document.getElementById('rp-feedback');
                     modelErrorMsg.textContent = `⚠️ Primary model error. Fallback model (${fallbackModel}) found. Retrying...`;
                     modelErrorMsg.style.color = '#f59e0b';
-                    console.log('Primary model failed, trying fallback:', fallbackModel);
+                    console.log('Primary provider failed, trying fallback provider:', fallbackModel);
                     usedFallback = true;
                     try {
                         const fallbackResponse = await fetch(
-                            `https://generativelanguage.googleapis.com/v1beta/models/${fallbackModel}:generateContent?key=${apiKey}`,
+                            'https://api.groq.com/openai/v1/chat/completions',
                             {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${fallbackApiKey}`
+                                },
+                                body: JSON.stringify({
+                                    model: fallbackModel,
+                                    messages: [{ role: 'user', content: prompt }]
+                                }),
                                 signal: signal
                             }
                         );
                         const fallbackData = await fallbackResponse.json();
                         if (fallbackData.error) throw new Error(fallbackData.error.message);
 
-                        // Process fallback response (same as primary)
-                        let fallbackRaw = fallbackData.candidates[0].content.parts[0].text;
+                        let fallbackRaw = fallbackData.choices[0].message.content;
                         fallbackRaw = fallbackRaw.replace(/```json/g, '').replace(/```/g, '').trim();
                         const fallbackResult = JSON.parse(fallbackRaw);
                         const fallbackScreening = fallbackResult.ai_screening;
@@ -1493,12 +1499,11 @@
                         console.error('Primary error:', err);
                         console.error('Fallback error:', fallbackErr);
                     }
-                } else if (!usedFallback && !fallbackModel) {
-                    // No fallback configured
+                } else if (!usedFallback && !fallbackApiKey) {
                     const modelErrorMsg = document.getElementById('rp-feedback');
-                    modelErrorMsg.textContent = '⚠️ Model error: ' + err.message + '. Consider adding a fallback model in config.js';
+                    modelErrorMsg.textContent = '⚠️ Model error: ' + err.message + '. Consider adding a fallback API key in .env';
                     modelErrorMsg.style.color = '#ef4444';
-                    alert('Error: ' + err.message + '\n\nTip: Add a AI_FALLBACK_MODEL to your config.js for automatic retry.');
+                    alert('Error: ' + err.message + '\n\nTip: Add a AI_FALLBACK_API_KEY and AI_FALLBACK_MODEL to your .env for automatic provider fallback.');
                     console.error(err);
                 } else {
                     alert('Error: ' + err.message);

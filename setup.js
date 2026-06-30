@@ -58,7 +58,8 @@ function writeEnvFile(filePath, env) {
 # --- API Configuration ---
 AI_API_KEY=${env.AI_API_KEY || 'your_api_key_here'}
 AI_MODEL=${env.AI_MODEL || 'gemini-2.5-flash'}
-AI_FALLBACK_MODEL=${env.AI_FALLBACK_MODEL || 'gemini-2.5-flash-lite'}
+AI_FALLBACK_MODEL=${env.AI_FALLBACK_MODEL || 'llama-3.3-70b-versatile'}
+AI_FALLBACK_API_KEY=${env.AI_FALLBACK_API_KEY || 'your_fallback_api_key_here'}
 
 # --- Theme Colors (override as needed) ---
 PRIMARY_COLOR=${env.PRIMARY_COLOR || '#0a0a0a'}

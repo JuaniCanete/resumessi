@@ -75,7 +75,7 @@ flowchart TD
   4. Emit strict JSON
   5. Self-validate output
 - Primary model called first (`AI_MODEL`)
-- Fallback model retry on 429/5xx errors (`AI_FALLBACK_MODEL`)
+- Fallback provider retry on 429/5xx errors (`AI_FALLBACK_API_KEY` + `AI_FALLBACK_MODEL`)
 
 ### 5. Results Display
 - Right panel slides open
