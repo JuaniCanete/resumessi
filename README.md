@@ -1,16 +1,16 @@
 # resumessi AI
 
-> **resumessi** is a self-contained, AI-powered resume scoring and generation tool. It uses any AI model (Gemini, OpenAI, etc. — whatever the user configures) to evaluate your resume against any job description, providing an ATS (Applicant Tracking System) score, breakdown, feedback, and missing keywords.
+> **resumessi** is a self-contained, AI-powered resume scoring and generation tool. It uses configurable AI models (Gemini, OpenAI, etc.) to evaluate your resume against any job description, providing an ATS score, breakdown, feedback, and missing keywords. It can also generate and polish resumes from PDF uploads.
 
 ---
 
 ## 🚀 Quick Start
 
 1. **Clone or download** this folder.
-2. **Run setup** — execute `node setup.js` to configure your API key.
-3. **Build prompts** — execute `npm run build` to prepare the app.
-4. **Start the app** — execute `npm start` to run the local server and open the app in your browser automatically.
-5. **Paste a Job Description** in the left panel and click **ATS Score Check**.
+2. **Run setup** — `npm run setup` creates `.env` from `.env.example`.
+3. **Edit `.env`** and add your AI API key.
+4. **Start the app** — `npm start` runs the local server and opens the app in your browser.
+5. **Paste a Job Description** in the left panel and click **Validate JD using AI**.
 
 ---
 
@@ -19,109 +19,103 @@
 ```
 resumessi/
 ├── pages/
-│   ├── main.html              # Main application (AI ATS Scanner + Resume template)
-│   └── how-it-works.html      # How it works page (explanative page)
+│   ├── main.html              # Main application (ATS Scanner + Resume Generator)
+│   └── how-it-works.html      # How it works explainer page
 ├── resume_generation/
-│   ├── resume-data.json      # Resume data (auto-generated or manual)
-│   ├── resume-data-AI-polished.json  # Polished version (created by Polish with AI)
-│   ├── photo*                # Your profile photo (gitignored)
-│   ├── prompt.txt            # Structured prompt template for generating resumes
-│   └── generate-resume.js    # AI-powered resume generator script
+│   ├── resume-data.json        # Current resume data (auto-generated or manual)
+│   ├── resume-data-AI-polished.json  # Polished version (created by "Polish with AI")
+│   ├── prompt.txt              # Resume generation prompt template
+│   └── generate-resume.js      # AI-powered resume generator
 ├── examples/
-│   ├── demo-data.json          # Demo resume data (JSON — consumed by main.html)
+│   ├── demo-data.json          # Demo resume data
 │   ├── example_resume.md       # Human-readable mirror of demo-data.json
-│   ├── photo.jpg               # Demo profile photo (Messi)
+│   ├── photo.jpg               # Default profile photo (used when no user photo)
 │   └── job-description-goat.md # Sample job description for testing
+├── prompts/
+│   ├── ats-scan.txt            # ATS scoring prompt
+│   ├── extraction.txt          # Resume extraction prompt (PDF → JSON)
+│   ├── polish.txt              # Resume polishing prompt
+│   └── resume-generation.txt   # Resume generation prompt
 ├── docs/
-│   ├── help.md                # Help documentation
-│   └── how-it-works.html      # Static how-it-works page
-├── setup.js                  # Setup wizard - creates .env from .env.example
-├── build.js                  # Build script: injects prompts to solve CORS
-├── start.js                  # Dev server with /config.json endpoint
-├── eval_ats.js               # ATS prompt evaluation harness (3 test cases)
-├── ATS_SCAN_PROMPT.md        # ATS scoring system prompt (source of truth)
-├── extraction_prompt.txt     # Resume extraction prompt (embedded in main.html)
-├── polish_prompt.txt         # Resume polishing prompt (embedded in start.js)
-├── .gitignore                # Ignores .env, node_modules/, resume_generation/photo*
-├── .env.example              # Environment variable template
-├── README.md                 # This file
-├── AGENTS.md                 # AI agent collaboration guide for this project
-└── roocode-review.md         # Codebase review document
+│   └── help.md                 # Help documentation
+├── start.js                    # Dev server with /config.json endpoint
+├── setup.js                    # Setup wizard
+├── build.js                    # Build script (prompt injection for CORS)
+├── eval_ats.js                 # ATS prompt evaluation harness
+├── package.json
+├── .env.example
+└── AGENTS.md                   # AI agent collaboration guide
 ```
 
 ---
 
 ## ⚙️ Configuration
 
-### API Key & Model
+### API Key & Models
 
-**Recommended:** Run `node setup.js` to configure your API key interactively.
-
-**Manual:** Create `.env` from `.env.example` and edit:
+Edit `.env` (created by `npm run setup`):
 
 ```env
 AI_API_KEY=your_api_key_here
 AI_MODEL=gemini-2.5-flash
 AI_FALLBACK_MODEL=gemini-2.5-flash-lite
+ACCENT_COLOR=#2563eb
 ```
 
-**Note:** `.env` is gitignored and read by the server at `/config.json`. Any edits to `.env` take effect immediately when you refresh the browser (no rebuild needed).
-
-### Fallback Model
-
-resumessi supports automatic fallback to a secondary AI model if the primary model fails. This improves reliability:
-
-- **Primary model:** `gemini-2.5-flash` (fast, capable)
-- **Fallback model:** `gemini-2.5-flash-lite` (lighter, more available)
-
-If the primary model returns an error, the system automatically retries with the fallback model and displays results with a "(fallback)" indicator.
+- `.env` is gitignored and served via `/config.json` at runtime.
+- **Fallback model:** if the primary model fails, the system retries automatically with the fallback model and shows a "(fallback)" indicator in the results.
 
 ### Color Theme
 
-Set any of these in `.env`:
+Optional overrides in `.env`:
 
 ```env
-ACCENT_COLOR=#2563eb       # Corporate blue (default)
-# Or use a preset name: blue, green, purple, rose, teal, orange
+ACCENT_COLOR=#2563eb       # Or preset: blue, green, purple, rose, teal, orange
 PRIMARY_COLOR=#0a0a0a
 SECONDARY_COLOR=#0a0a0a
 TEXT_COLOR=#171717
-TEXT_LIGHT_COLOR=#404040
+TEXT_LIGHT_COLOR=#736868
 BG_BADGE_COLOR=#f1f5f9
 SUCCESS_COLOR=#0ea5e9
 ```
 
 ---
 
-## 🖼️ Photo Instructions
-
-1. Use a **square** photo, **400×400 px** recommended.
-2. Format: **JPG** or **PNG**, neutral background, good lighting.
-3. Save as `resume_generation/photo.jpg` in your local copy.
-
-**Note:** `resume_generation/photo*` is gitignored to avoid committing personal photos. The demo photo `examples/photo.jpg` (Messi) is used as fallback when no user photo exists.
-
----
-
 ## 🧠 How It Works
 
-1. The left sidebar contains a **Job Description** text area and an **ATS Score Check** button.
-2. When you click the button, the app sends your resume + the job description to the configured **AI model**.
-3. The AI returns:
-   - **Overall ATS Match Score** (0–100)
-   - **Tier** (STRONG_MATCH, GOOD_MATCH, LOW_MATCH, ANOMALY_DETECTED)
-   - **Breakdown** (Skills, Experience, Education)
-   - **Feedback** with improvement tips
-   - **Missing Keywords** to add to your resume
-4. Results appear in the **right panel** (collapsible/expandable).
+### ATS Resume Scoring
 
-For a visual workflow diagram, see the in-app **Help** page (Actions → Help).
+1. Open the app — the left sidebar contains a **Job Description** textarea and action buttons.
+2. Paste a full job description and click **Validate JD using AI**.
+3. The app sends your resume + the job description to the configured AI model.
+4. Results appear in the **right panel**:
+   - **Overall ATS Match Score** (0–100) with color-coded tier
+   - **Breakdown:** Keyword Match, Experience Alignment, Education/Cert Fit
+   - **Feedback** with improvement tips
+   - **Missing Keywords** highlighted as tags
+
+### AI Resume Generation
+
+1. Click **Generate resume using AI** in the left sidebar.
+2. Upload a PDF of your existing resume (drag & drop or click to browse).
+3. If the PDF is large, you'll see a warning with a **Continue Anyway** option.
+4. Click **Generate Resume** — AI extracts and structures your data into JSON.
+5. After generation completes, a **Profile Photo** upload modal appears:
+   - Drag & drop or browse for a JPEG/JPG/PNG photo
+   - Minimum recommended size: 200×200px
+   - Click **Confirm** to apply the photo to your resume
+
+### Polish with AI
+
+- Once a resume is generated, a **✨ Polish with AI** button appears (golden styling).
+- Clicking it sends your resume to AI for improvement. A full-screen overlay shows progress.
+- After polishing, the button hides. Generate a new resume to re-enable it.
 
 ---
 
 ## 🖨️ PDF Export
 
-Click **Download Resume** to print/save as PDF. The print layout is single-column and optimized for ATS parsing.
+Click **Download Resume** to print/save as PDF. The print layout is optimized for ATS parsing.
 
 ---
 
@@ -129,30 +123,30 @@ Click **Download Resume** to print/save as PDF. The print layout is single-colum
 
 ### Build Step
 
-This project uses **build-time prompt injection** to avoid CORS errors when opening `main.html` via `file://` protocol.
-
-**Why?** The browser blocks `fetch()` for local files, so prompts are baked into the HTML/JS at build time from their canonical `.md`/`.txt` sources.
+Prompts are injected at build time to avoid CORS errors with `file://` protocol.
 
 ```bash
-npm run build        # inject prompts into pages/main.html and generate-resume.js
+npm run build        # inject prompts into HTML/JS
 npm run build:check  # verify prompts are up-to-date
 ```
 
-**Source of truth (dynamic loading at runtime):**
-- `prompts/ats-scan.txt` → loaded via `/api/prompts/ats-scan.txt`
-- `prompts/extraction.txt` → loaded via `/api/prompts/extraction.txt`
-- `prompts/polish.txt` → loaded via `fs.readFileSync` in `/api/polish-resume`
-- `prompts/resume-generation.txt` → loaded via `fs.readFileSync` in `generate-resume.js`
+**Source of truth (runtime):**
+- `prompts/ats-scan.txt`
+- `prompts/extraction.txt`
+- `prompts/polish.txt`
+- `prompts/resume-generation.txt`
 
-All prompts are plain `.txt` files in the `prompts/` folder, served dynamically at runtime. No build step required.
+After editing any prompt, run `npm run build` before committing.
 
-After editing any prompt file, **always run `npm run build`** before committing.
+### Scripts
 
-### Local Usage
-
-You can use this project as-is. Replace the example data in `resume_generation/resume-data.json` with your own resume information. The app works entirely in the browser with no backend required.
-
-**Use `npm start` to launch the server** - this enables the `/config.json` endpoint which reads your `.env` at runtime, avoiding CORS issues.
+| Command | Description |
+|---|---|
+| `npm start` | Start dev server |
+| `npm run setup` | Run setup wizard |
+| `npm run build` | Build prompts into HTML/JS |
+| `npm run build:check` | Verify build is up-to-date |
+| `npm run generate` | Generate resume from prompt |
 
 ---
 
