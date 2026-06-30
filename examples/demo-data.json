@@ -5,7 +5,7 @@
     "email": "leo.messi@example.com",
     "phone": "+1 305 555-0100",
     "location": "Miami, Florida, USA",
-    "photo": "examples/photo.jpg",
+    "photo": "/examples/photo.jpg",
     "linkedin": "https://www.linkedin.com",
     "github": "https://github.com"
   },

@@ -108,6 +108,36 @@ async function callAI(apiKey, model, userInput) {
     }
 }
 
+// ── Identity Extraction from Input ────────────────────────────────
+function extractActualName(inputText) {
+    // Try to find "Full Name:" line in structured input (prompt.txt)
+    const nameMatch = inputText.match(/Full Name:\s*(.+)/);
+    if (nameMatch && nameMatch[1]) {
+        const name = nameMatch[1].replace(/^[#\s]+/, '').trim();
+        if (name && name.length > 1) return name;
+    }
+    // Fallback: use the first 1-3 words of the first non-empty, non-comment line
+    const lines = inputText.split('\n').filter(l => l.trim());
+    for (const line of lines) {
+        const clean = line.replace(/^[#\s-]+/, '').trim();
+        if (clean && clean.length > 2 && clean.length < 60) {
+            const words = clean.split(/\s+/).slice(0, 3).join(' ');
+            if (words.length > 3) return words;
+        }
+    }
+    return null;
+}
+
+function isPlaceholderName(name) {
+    if (!name) return true;
+    const placeholders = ['john doe', 'jane doe', 'alex johnson', 'your name', 'candidate', 'todo'];
+    const lower = name.toLowerCase().trim();
+    for (const p of placeholders) {
+        if (lower === p || lower.includes(p)) return true;
+    }
+    return false;
+}
+
 // ── Main ───────────────────────────────────────────────────────────
 async function main() {
     const config = loadConfig();
@@ -156,13 +186,50 @@ async function main() {
     try {
         const result = await callAI(config.apiKey, config.model, userInput);
         
+        // ── Identity Validation (Post-processing Guard) ───────────────
+        // Mirrors ATS eval approach: extract expected name from input, compare with
+        // AI output, and FAIL the request if there's a mismatch.
+        const actualName = extractActualName(userInput);
+        const outputName = result.basics && result.basics.name;
+        
+        if (outputName) {
+            // Check 1: Is the output a known hallucinated/placeholder name?
+            if (isPlaceholderName(outputName)) {
+                console.error('❌ AI returned hallucinated name "' + outputName + '". Aborting.');
+                process.exit(1);
+            }
+            
+            // Check 2: If we know the expected name from input, does the AI output match it?
+            if (actualName) {
+                const outputLower = outputName.toLowerCase().trim();
+                const actualLower = actualName.toLowerCase().trim();
+                // Check if expected name appears within the AI output (handles variations)
+                if (!outputLower.includes(actualLower) && !actualLower.includes(outputLower)) {
+                    // Word-overlap check: do any significant words overlap?
+                    const actualWords = actualLower.split(/\s+/).filter(function(w) { return w.length > 2; });
+                    const outputWords = outputLower.split(/\s+/);
+                    const hasOverlap = actualWords.some(function(w) {
+                        return outputWords.indexOf(w) > -1;
+                    });
+                    if (!hasOverlap) {
+                        console.error('❌ AI generated resume for wrong person: "' + outputName + '" instead of "' + actualName + '". Aborting.');
+                        process.exit(1);
+                    }
+                }
+            }
+        } else if (actualName) {
+            // AI returned empty name but we found one in the input
+            console.warn('⚠️  AI returned empty name. Using expected name "' + actualName + '".');
+            result.basics.name = actualName;
+        }
+        
         // Write output
         fs.writeFileSync(OUTPUT_FILE, JSON.stringify(result, null, 2), 'utf-8');
         console.log('Generated resume_generation/resume-data.json');
         console.log('   Name: ' + result.basics.name);
-        console.log('   Roles: ' + result.experience.length);
+        console.log('   Roles: ' + (result.experience ? result.experience.length : 0));
         console.log('   Skills categories: ' + Object.keys(result.skills || {}).length);
-        console.log('   Certs: ' + result.certifications.length);
+        console.log('   Certs: ' + (result.certifications ? result.certifications.length : 0));
     } catch (err) {
         console.error('Error:', err.message);
         process.exit(1);

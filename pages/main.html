@@ -1141,7 +1141,9 @@
             <button onclick="closeAIModal()" style="position: absolute; top: 15px; right: 15px; background: none; 
                     border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; 
                     display: flex; align-items: center; justify-content: center; border-radius: 50%; 
-                    background: rgba(255,255,255,0.08); line-height: 1;">×</button>
+                    background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
+                onmouseenter="this.style.background='var(--accent)'" 
+                onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
             <h2 style="color: #fff; margin-bottom: 20px; text-align: center;">✨ AI Resume Generation</h2>
 
             <!-- Upload Section -->
@@ -1157,36 +1159,27 @@
                 </div>
             </div>
 
-            <!-- Preview Section -->
-            <div id="modal-preview-section" style="display: none;">
-                <div
-                    style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-                    <p style="color: #fff; font-size: 12px; margin-bottom: 10px;"><strong>Extracted Content
-                            Preview:</strong></p>
-                    <textarea id="preview-text" style="width: 100%; height: 200px; background: rgba(255,255,255,0.08); 
-                         border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; color: #e2e8f0; 
-                         padding: 8px; font-size: 11px; font-family: monospace;"></textarea>
-                </div>
-                <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin-bottom: 15px;">
-                    ✏️ Edit the extracted text if needed before AI processes it
-                </p>
-            </div>
 
             <!-- Error Section -->
             <div id="modal-error-section" style="display: none; background: rgba(239,68,68,0.1); 
                  border: 1px solid rgba(239,68,68,0.3); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
                 <p id="modal-error-text" style="color: #fca5a5; font-size: 13px;"></p>
-                <button class="p-btn p-btn-secondary" style="margin-top: 10px;" onclick="closeAIModal()">Cancel</button>
             </div>
 
+            <!-- File Name Display -->
+            <div id="modal-file-name" style="display: none; color: #fff; font-size: 12px; margin-bottom: 10px; text-align: center; word-break: break-all;"></div>
+
             <!-- Action Buttons -->
-            <div id="modal-actions" style="display: none; gap: 10px; flex-direction: column;">
+            <div id="modal-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch;">
                 <button id="btn-continue-anyway" class="p-btn p-btn-primary" style="display: none; 
-                     background: #f59e0b; color: #1a1a1a;" onclick="continueWithLargePDF()">
-                    Continue Anyway (⚠️ Uses More Tokens)
+                     background: #f59e0b; color: #1a1a1a; flex: 1;" onclick="confirmGeneration()">
+                    Continue Anyway
                 </button>
-                <button class="p-btn p-btn-primary" onclick="confirmGeneration()">✨ Generate Resume</button>
-                <button class="p-btn p-btn-secondary" onclick="closeAIModal()">Cancel</button>
+                <button id="btn-generate" class="p-btn p-btn-primary" style="display: none; 
+                     background: var(--static); color: #fff; flex: 1;" onclick="confirmGeneration()">
+                    ✨ Generate Resume
+                </button>
+                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="closeAIModal()">Cancel</button>
             </div>
 
             <!-- Loading State -->
@@ -1533,9 +1526,12 @@
                     { "name": "Another Skill", "expert": false }
                 ]
             },
-            "techStack": "Describe your experience with the technologies you've tested.",
+            "techStack": "Describe your experience with the technologies you've work with.",
             "languages": [
                 { "name": "Language", "level": "Proficiency" }
+            ],
+            "frameworks/tools": [
+                { "name": "Name", "level": "Proficiency" }
             ],
             "education": [
                 { "degree": "Degree Name", "institution": "Institution", "year": "Year" }
@@ -1702,6 +1698,7 @@
         let polishedVersion = false;
         let polishLocked = false;
         let currentPDFText = '';
+        let currentPDFFileName = '';
         let isLargePDF = false;
         let generationController = null;
         let currentDataSource = 'none'; // 'generated', 'demo', 'placeholder'
@@ -1907,12 +1904,19 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                // Close actions dropdown if open
                 const dropdown = document.getElementById('actions-dropdown');
                 const trigger = document.getElementById('actions-trigger');
                 if (dropdown && !dropdown.classList.contains('hidden')) {
                     dropdown.classList.add('hidden');
                     trigger.setAttribute('aria-expanded', 'false');
                     trigger.focus();
+                    return;
+                }
+                // Close AI modal if open
+                const modal = document.getElementById('ai-modal');
+                if (modal && modal.style.display === 'flex') {
+                    closeAIModal();
                 }
             }
         });
@@ -1921,11 +1925,13 @@
         function openAIModal() {
             document.getElementById('ai-modal').style.display = 'flex';
             document.getElementById('modal-upload-section').style.display = 'block';
-            document.getElementById('modal-preview-section').style.display = 'none';
             document.getElementById('modal-error-section').style.display = 'none';
+            document.getElementById('modal-file-name').style.display = 'none';
             document.getElementById('modal-actions').style.display = 'none';
             document.getElementById('modal-loading').style.display = 'none';
+            document.getElementById('btn-generate').style.display = 'none';
             currentPDFText = '';
+            currentPDFFileName = '';
             isLargePDF = false;
         }
 
@@ -1944,6 +1950,7 @@
                 showModalError('Please select a PDF file to upload.');
                 return;
             }
+            currentPDFFileName = file.name;
 
             if (file.type !== 'application/pdf') {
                 showModalError('Please upload a PDF file');
@@ -1974,6 +1981,9 @@
                     document.getElementById('modal-error-section').style.display = 'block';
                     document.getElementById('modal-error-text').textContent = data.message;
                     document.getElementById('btn-continue-anyway').style.display = 'block';
+                    document.getElementById('btn-generate').style.display = 'none';
+                    document.getElementById('modal-file-name').textContent = 'File: ' + currentPDFFileName;
+                    document.getElementById('modal-file-name').style.display = 'block';
                     document.getElementById('modal-actions').style.display = 'flex';
                     return;
                 }
@@ -1986,8 +1996,9 @@
 
                 // Show preview
                 document.getElementById('modal-loading').style.display = 'none';
-                document.getElementById('modal-preview-section').style.display = 'block';
-                document.getElementById('preview-text').value = currentPDFText;
+                document.getElementById('btn-generate').style.display = 'block';
+                document.getElementById('modal-file-name').textContent = 'File: ' + currentPDFFileName;
+                document.getElementById('modal-file-name').style.display = 'block';
                 document.getElementById('modal-actions').style.display = 'flex';
 
             } catch (err) {
@@ -1998,21 +2009,13 @@
 
         function showModalError(message) {
             document.getElementById('modal-upload-section').style.display = 'none';
-            document.getElementById('modal-preview-section').style.display = 'none';
             document.getElementById('modal-loading').style.display = 'none';
             document.getElementById('modal-error-section').style.display = 'block';
             document.getElementById('modal-error-text').textContent = message;
-            document.getElementById('modal-actions').style.display = 'flex';
             document.getElementById('btn-continue-anyway').style.display = 'none';
-        }
-
-        function continueWithLargePDF() {
-            isLargePDF = false;
-            document.getElementById('modal-error-section').style.display = 'none';
-            document.getElementById('modal-preview-section').style.display = 'block';
-            document.getElementById('preview-text').value = currentPDFText;
+            document.getElementById('btn-generate').style.display = 'none';
+            document.getElementById('modal-file-name').style.display = 'none';
             document.getElementById('modal-actions').style.display = 'flex';
-            document.getElementById('btn-continue-anyway').style.display = 'none';
         }
 
         async function confirmGeneration() {
@@ -2024,13 +2027,8 @@
                 return;
             }
 
-            // Get edited text if preview exists
-            if (document.getElementById('modal-preview-section').style.display !== 'none') {
-                currentPDFText = document.getElementById('preview-text').value;
-            }
 
             // Show loading
-            document.getElementById('modal-preview-section').style.display = 'none';
             document.getElementById('modal-error-section').style.display = 'none';
             document.getElementById('modal-actions').style.display = 'none';
             document.getElementById('modal-loading').style.display = 'block';
@@ -2047,7 +2045,7 @@
                 alert('Failed to load extraction prompt. Please refresh the page.');
                 throw e;
             }
-            extractionPrompt = extractionPrompt.replace('${currentPDFText}', currentPDFText);
+            extractionPrompt = extractionPrompt.replace('{extracted_text}', currentPDFText);
 
             try {
                 const response = await fetch(
@@ -2068,8 +2066,88 @@
 
                 const resumeData = JSON.parse(raw);
 
-                // Note: In production, this would save to resume-data.json via backend
-                // For now, update DOM and store in localStorage
+                // ── Identity Validation ───────────────────────────────────────
+                // (Mirrors ATS eval approach: extract expected name from input, compare with
+                //  AI output, fail the request if mismatch is detected.)
+                
+                // Extract the actual name from the raw PDF text (before AI processed it)
+                function extractNameFromPDFText(text) {
+                    if (!text) return null;
+                    var lines = text.split('\n');
+                    for (var i = 0; i < lines.length; i++) {
+                        var line = lines[i].trim();
+                        if (!line || line.length < 3 || line.length > 60) continue;
+                        if (/^(email|phone|location|linkedin|github|http|www|@)/i.test(line)) continue;
+                        var words = line.split(/\s+/);
+                        if (words.length >= 2 && words.length <= 4) {
+                            if (/^[a-zA-ZÀ-ÿñÑ'. -]+$/.test(line) && !/\d/.test(line)) {
+                                return line;
+                            }
+                        }
+                    }
+                    return null;
+                }
+                
+                // Known placeholder/hallucinated names (same as ATS eval)
+                const halluncinatedNames = ['john doe', 'jane doe', 'alex johnson', 'your name', 'candidate', 'todo'];
+                
+                // Extract expected name from the PDF text
+                const expectedName = extractNameFromPDFText(currentPDFText);
+                const outputNameRaw = resumeData.basics && resumeData.basics.name || '';
+                
+                if (outputNameRaw) {
+                    var outputLower = outputNameRaw.toLowerCase().trim();
+                    
+                    // Check 1: Is the output a known hallucinated/placeholder name?
+                    var isHallucinated = halluncinatedNames.some(function(p) {
+                        return outputLower === p || outputLower.includes(p);
+                    });
+                    if (isHallucinated) {
+                        var errMsg = 'AI returned hallucinated name "' + outputNameRaw + '". Generation aborted.';
+                        console.error(errMsg);
+                        alert(errMsg);
+                        closeAIModal();
+                        return;
+                    }
+                    
+                    // Check 2: If we know the expected name from the PDF, does the AI output match it?
+                    if (expectedName) {
+                        var expectedLower = expectedName.toLowerCase().trim();
+                        // Check if expected name appears within the AI output name (handles variations)
+                        if (!outputLower.includes(expectedLower) && !expectedLower.includes(outputLower)) {
+                            // Word-overlap check: do any significant words overlap?
+                            var expectedWords = expectedLower.split(/\s+/).filter(function(w) { return w.length > 2; });
+                            var outputWords = outputLower.split(/\s+/);
+                            var hasOverlap = expectedWords.some(function(w) {
+                                return outputWords.indexOf(w) > -1;
+                            });
+                            if (!hasOverlap) {
+                                var errMsg = 'AI generated resume for wrong person: "' + outputNameRaw + '" instead of "' + expectedName + '". Generation aborted.';
+                                console.error(errMsg);
+                                alert(errMsg);
+                                closeAIModal();
+                                return;
+                            }
+                        }
+                    }
+                } else if (expectedName) {
+                    // AI returned empty name but we found one in the PDF
+                    console.warn('AI returned empty name. Using expected name "' + expectedName + '".');
+                    resumeData.basics.name = expectedName;
+                }
+
+                // Save to server so resume-data.json is persisted on disk
+                try {
+                    await fetch('/api/save-resume-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(resumeData)
+                    });
+                } catch (saveErr) {
+                    console.warn('Could not save resume to server:', saveErr);
+                }
+
+                // Update DOM and store in localStorage
                 renderResume(resumeData);
                 closeAIModal();
                 localStorage.setItem('resume-data', JSON.stringify(resumeData));

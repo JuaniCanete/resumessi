@@ -164,9 +164,9 @@ const server = http.createServer(async (req, res) => {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
             error: 'PDF_TOO_LARGE',
-            message: `Resume is ~${estimatedPages} pages. Please reduce to 1-2 pages.`,
+            message: `Resume is ~${estimatedPages} pages. Recommended is 1-2 pages, take into account that processing this PDF would consume extra tokens.`,
             pages: estimatedPages,
-            textPreview: text.substring(0, 500)
+            textPreview: text.substring(0, 10000)
           }));
           return;
         }
@@ -253,6 +253,29 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Failed to save polished resume: ' + err.message }));
+    }
+    return;
+  }
+
+  if (req.url === '/api/save-resume-data' && req.method === 'POST') {
+    const body = await getRequestBody(req);
+    try {
+      const resumeData = JSON.parse(body);
+      // Validate required structure
+      if (!resumeData.basics) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid resume data: missing basics' }));
+        return;
+      }
+      fs.writeFileSync(
+        path.join(ROOT, 'resume_generation', 'resume-data.json'),
+        JSON.stringify(resumeData, null, 2)
+      );
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to save resume data: ' + err.message }));
     }
     return;
   }
