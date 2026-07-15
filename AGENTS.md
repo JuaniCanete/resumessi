@@ -21,12 +21,11 @@ This file defines how AI assistants collaborate within the **resumessi** project
 
 | File | Purpose | Can Edit? |
 |------|---------|-----------|
-| `main.html` | Main app (template) | ✅ Yes — improve UI/UX, fix bugs |
+| `public/main.html` | Main app (template) | ✅ Yes — improve UI/UX, fix bugs |
 | `.env` | Runtime config (gitignored) | ✅ Yes — add new config keys to `.env.example` |
 | `.env.example` | Config template | ✅ Yes — keep in sync |
-| `ATS_SCAN_PROMPT.md` | ATS evaluation system prompt | ✅ Yes — improve scoring logic |
-| `resume_generation/prompt.txt` | Resume generation prompt template | ✅ Yes — improve structure |
-| `examples/example_resume.md` | Human-readable mirror of `demo-data.json` | ✅ Yes — keep in sync |
+| `src/prompts/ats-scan.txt` | ATS evaluation system prompt | ✅ Yes — improve scoring logic |
+| `src/prompts/resume-generation.txt` | Resume generation prompt template | ✅ Yes — improve structure |
 | `README.md` | Project docs | ✅ Yes — keep updated |
 | `AGENTS.md` | This file | ✅ Yes — keep updated |
 

@@ -1,0 +1,135 @@
+class MainPage {
+  constructor(page) {
+    this.page = page;
+    this.jobDescriptionTextarea = page.getByTestId('job-description');
+    this.btnRunScan = page.getByTestId('btn-run-scan');
+    this.btnAiGenerate = page.getByTestId('btn-ai-generate');
+    this.btnDownload = page.getByTestId('btn-download');
+    this.rightPanel = page.getByTestId('right-panel');
+    this.rpScoreCircle = page.getByTestId('rp-score-circle');
+    this.rpScoreText = page.getByTestId('rp-score-text');
+    this.rpFeedback = page.getByTestId('rp-feedback');
+
+    // Modern testid-based locators
+    this.polishButton = page.getByTestId('polish-button');
+    this.rollbackButton = page.getByTestId('rollback-button');
+    this.photoUploadTrigger = page.getByTestId('photo-upload-trigger');
+    this.actionsTrigger = page.getByTestId('actions-trigger');
+    this.actionsDropdown = page.getByTestId('actions-dropdown');
+    this.polishOverlay = page.getByTestId('polish-overlay');
+    this.refreshMessage = page.getByTestId('refresh-message');
+    this.photoUploadModal = page.getByTestId('photo-upload-modal');
+    this.photoInput = page.getByTestId('photo-input');
+    this.photoUploadConfirm = page.getByTestId('photo-upload-confirm');
+    this.resumeContent = page.getByTestId('resume-content');
+    this.aiModal = page.getByTestId('ai-modal');
+  }
+
+  async goto() {
+    await this.page.goto('/public/main.html', { waitUntil: 'domcontentloaded' });
+  }
+
+  async waitForResumeLoaded() {
+    await this.resumeContent.waitFor({ state: 'visible' });
+  }
+
+  async enterJobDescription(text) {
+    await this.jobDescriptionTextarea.fill(text);
+  }
+
+  async clickScan() {
+    await this.btnRunScan.click();
+  }
+
+  async openAiModal() {
+    await this.btnAiGenerate.click({ force: true });
+  }
+
+  async downloadResume() {
+    await this.btnDownload.click();
+  }
+
+  async openResultsPanel() {
+    await this.page.getByText('ATS Results').click();
+  }
+
+  async getScore() {
+    return await this.rpScoreCircle.textContent();
+  }
+
+  async getScoreText() {
+    return await this.rpScoreText.textContent();
+  }
+
+  async getFeedback() {
+    return await this.rpFeedback.textContent();
+  }
+
+  // ─── Actions Dropdown ───────────────────────────────────────────
+
+  async openActions() {
+    // Toggle to open if not already open
+    const isHidden = await this.actionsDropdown.getAttribute('class');
+    if (isHidden && isHidden.includes('hidden')) {
+      // Use force:true because the actions trigger may have an infinite CSS animation
+      // (bump) that causes Playwright to consider it "not stable" for click
+      await this.actionsTrigger.click({ force: true });
+    }
+    await this.actionsDropdown.waitFor({ state: 'visible' });
+  }
+
+  async closeActions() {
+    const isHidden = await this.actionsDropdown.getAttribute('class');
+    if (!isHidden || !isHidden.includes('hidden')) {
+      await this.actionsTrigger.click();
+    }
+  }
+
+  // ─── Polish Flow ─────────────────────────────────────────────────
+
+  async clickPolish() {
+    await this.openActions();
+    await this.polishButton.waitFor({ state: 'visible' });
+    await this.polishButton.click();
+  }
+
+  async waitForPolishOverlay() {
+    await this.polishOverlay.waitFor({ state: 'visible' });
+  }
+
+  // ─── Rollback Flow ───────────────────────────────────────────────
+
+  async clickRollback() {
+    await this.openActions();
+    await this.rollbackButton.waitFor({ state: 'visible' });
+    await this.rollbackButton.click();
+  }
+
+  // ─── Photo Upload Flow ──────────────────────────────────────────
+
+  async openPhotoModal() {
+    await this.openActions();
+    await this.photoUploadTrigger.waitFor({ state: 'visible' });
+    await this.photoUploadTrigger.click();
+    await this.photoUploadModal.waitFor({ state: 'visible' });
+  }
+
+  async uploadPhoto(filePath) {
+    await this.photoUploadModal.waitFor({ state: 'visible' });
+    await this.photoInput.setInputFiles(filePath);
+  }
+
+  async confirmPhotoUpload() {
+    await this.photoUploadConfirm.waitFor({ state: 'visible' });
+    await this.photoUploadConfirm.click();
+  }
+
+  // ─── Refresh Message ────────────────────────────────────────────
+
+  async getRefreshMessageText() {
+    await this.refreshMessage.waitFor({ state: 'visible' });
+    return await this.refreshMessage.textContent();
+  }
+}
+
+module.exports = { MainPage };

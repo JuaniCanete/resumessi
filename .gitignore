@@ -3,9 +3,10 @@
 # ============================================
 
 # User-generated resumes (PII)
-resume_generation/resume-data.json
-resume_generation/resume-data-AI-polished.json
-resume_generation/photo*
+src/resume/output/resume-data.json
+src/resume/output/resume-data-AI-polished.json
+src/resume/output/photo*
+src/resume/prompt.txt
 
 # ============================================
 # ALWAYS KEEP - Demo/Defaults
@@ -35,4 +36,13 @@ npm-debug.log*
 dist/
 build/
 
+# Test outputs (Playwright screenshots, videos, reports)
+test-results/
+playwright-report/
 
+# Husky git hook files (auto-generated)
+.husky/_/
+
+
+# Kilo AI agent files
+.kilo/

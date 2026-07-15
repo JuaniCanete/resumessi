@@ -4,8 +4,8 @@
 # 1. Manually: Fill in your info and give this file to an AI assistant to generate resume-data.json
 # 2. Automatically: Run `node generate-resume.js` to use AI to parse raw input
 #
-# IMPORTANT: This generates the resume_generation/resume-data.json file that cv_tool.html reads at startup.
-# The HTML is not going to show any data until resume_generation/resume-data.json is generated — everything comes from the JSON.
+# IMPORTANT: This generates the src/resume/output/resume-data.json file that public/main.html reads at startup.
+# The HTML is not going to show any data until src/resume/output/resume-data.json is generated — everything comes from the JSON.
 #
 # ================================================================================
 # SECTION 1 — SYSTEM INSTRUCTION (for AI consumption)
@@ -13,11 +13,11 @@
 #
 # You are a resume data extraction and formatting assistant. Your task is to parse
 # the raw user input below and output a valid JSON object matching the schema at:
-# Use the schema in resume_generation/resume-data.json as the source of truth
+# Use the schema in src/resume/output/resume-data.json as the source of truth
 #
 # RULES:
 # - Output ONLY valid JSON, no markdown, no explanation
-# - Use the exact same structure as resume_generation/resume-data.json
+# - Use the exact same structure as src/resume/output/resume-data.json
 # - For experience bullets, preserve HTML formatting like <strong> for emphasis
 # - Expert skills get "expert": true, others get false
 # - If any section is missing data, use empty arrays or null values

@@ -3,7 +3,7 @@
 /**
  * resumessi — AI Resume Generator
  * 
- * Uses an AI model to parse raw resume input and generate resume_generation/resume-data.json.
+ * Uses an AI model to parse raw resume input and generate src/resume/output/resume-data.json.
  * 
  * Usage:
  *   node generate-resume.js                          # interactive prompt
@@ -20,28 +20,12 @@ const path = require('path');
 // Resume generation prompt is loaded dynamically from prompts/resume-generation.txt
 let RESUME_PROMPT = null;
 
-const ROOT = path.join(__dirname, '..');
-const CONFIG_FILE = path.join(ROOT, 'config.js');
+const ROOT = path.join(__dirname, '..', '..');
 const ENV_FILE = path.join(ROOT, '.env');
-const OUTPUT_FILE = path.join(ROOT, 'resume_generation', 'resume-data.json');
+const OUTPUT_FILE = path.join(ROOT, 'src', 'resume', 'output', 'resume-data.json');
 
 // ── Config Loading ─────────────────────────────────────────────────
 function loadConfig() {
-    // Try config.js first
-    try {
-        const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
-        const match = content.match(/AI_API_KEY:\s*'([^']+)'/);
-        const modelMatch = content.match(/AI_MODEL:\s*'([^']+)'/);
-        if (match && match[1] && match[1] !== 'your_api_key_here') {
-            return {
-                apiKey: match[1],
-                model: modelMatch ? modelMatch[1] : 'gemini-2.5-flash'
-            };
-        }
-    } catch (e) {
-        // Fall through to .env
-    }
-
     // Fallback to .env
     try {
         const content = fs.readFileSync(ENV_FILE, 'utf-8');
@@ -169,6 +153,11 @@ async function main() {
     } else {
         // Interactive — read from prompt.txt
         const promptFile = path.join(__dirname, 'prompt.txt');
+        const exampleFile = path.join(__dirname, 'prompt.txt.example');
+        if (!fs.existsSync(promptFile) && fs.existsSync(exampleFile)) {
+            fs.copyFileSync(exampleFile, promptFile);
+            console.log('Created src/resume/prompt.txt from prompt.txt.example');
+        }
         if (fs.existsSync(promptFile)) {
             userInput = fs.readFileSync(promptFile, 'utf-8');
             console.log('Using prompt.txt (' + userInput.length + ' chars)');
@@ -225,7 +214,7 @@ async function main() {
         
         // Write output
         fs.writeFileSync(OUTPUT_FILE, JSON.stringify(result, null, 2), 'utf-8');
-        console.log('Generated resume_generation/resume-data.json');
+        console.log('Generated src/resume/output/resume-data.json');
         console.log('   Name: ' + result.basics.name);
         console.log('   Roles: ' + (result.experience ? result.experience.length : 0));
         console.log('   Skills categories: ' + Object.keys(result.skills || {}).length);

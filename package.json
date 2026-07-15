@@ -2,13 +2,31 @@
   "name": "resumessi",
   "version": "1.0.0",
   "description": "AI-powered resume scoring and generation tool using AI models",
-  "main": "pages/main.html",
+  "main": "public/main.html",
   "scripts": {
     "start": "node start.js",
     "setup": "node setup.js",
+    "validate": "node scripts/validate.js",
+    "prebuild": "node scripts/validate.js",
     "build": "node build.js",
     "build:check": "node build.js --check",
-    "generate": "node resume_generation/generate-resume.js"
+    "generate": "node src/resume/generate-resume.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "html:validate": "html-validate public/**/*.html",
+    "css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html",
+    "test:unit": "node --test \"tests/unit/**/*.test.js\"",
+    "test:e2e": "playwright test --config=tests/playwright.config.js",
+    "evals": "node scripts/run-evals.js"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix"
+    ],
+    "*.html": [
+      "html-validate",
+      "stylelint --custom-syntax postcss-html"
+    ]
   },
   "keywords": [
     "resume",
@@ -23,5 +41,16 @@
   "dependencies": {
     "busboy": "^1.6.0",
     "pdf-parse": "^1.1.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-html": "^8.1.4",
+    "html-validate": "^9.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "postcss-html": "^1.8.1",
+    "stylelint": "^16.0.0",
+    "stylelint-config-standard": "^36.0.0"
   }
 }

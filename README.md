@@ -21,30 +21,38 @@
 
 ```
 resumessi/
-├── pages/
+├── public/
 │   ├── main.html              # Main application (ATS Scanner + Resume Generator)
-│   └── how-it-works.html      # How it works explainer page
-├── resume_generation/
-│   ├── resume-data.json        # Current resume data (auto-generated or manual)
-│   ├── resume-data-AI-polished.json  # Polished version (created by "Polish with AI")
-│   ├── prompt.txt              # Resume generation prompt template
-│   └── generate-resume.js      # AI-powered resume generator
+│   └── assets/
+│       └── photos/
+│           └── photo.jpg       # Default profile photo
+├── src/
+│   ├── resume/
+│   │   ├── generate-resume.js   # AI-powered resume generator
+│   │   ├── prompt.txt            # Resume generation input template
+│   │   └── output/
+│   │       ├── resume-data.json           # Current resume data (auto-generated)
+│   │       └── resume-data-AI-polished.json # Polished version
+│   └── prompts/
+│       ├── ats-scan.txt            # ATS scoring prompt
+│       ├── extraction.txt          # Resume extraction prompt (PDF → JSON)
+│       ├── polish.txt              # Resume polishing prompt
+│       └── resume-generation.txt   # Resume generation prompt
 ├── examples/
 │   ├── demo-data.json          # Demo resume data
-│   ├── example_resume.md       # Human-readable mirror of demo-data.json
-│   ├── photo.jpg               # Default profile photo (used when no user photo)
 │   └── job-description-goat.md # Sample job description for testing
-├── prompts/
-│   ├── ats-scan.txt            # ATS scoring prompt
-│   ├── extraction.txt          # Resume extraction prompt (PDF → JSON)
-│   ├── polish.txt              # Resume polishing prompt
-│   └── resume-generation.txt   # Resume generation prompt
-├── docs/
-│   └── help.md                 # Help documentation
+├── tests/
+│   ├── e2e/                    # End-to-end tests (Playwright)
+│   ├── unit/                   # Unit tests (Node.js test runner)
+│   ├── fixtures/
+│   │   └── resume-fixtures.js
+│   ├── README.md               # Test documentation
+│   └── playwright.config.js
+├── scripts/
+│   └── run-evals.js            # LLM evaluation harness
 ├── start.js                    # Dev server with /config.json endpoint
-├── setup.js                    # Setup wizard
 ├── build.js                    # Build script (prompt injection for CORS)
-├── eval_ats.js                 # ATS prompt evaluation harness
+├── setup.js                    # Setup wizard
 ├── package.json
 ├── .env.example
 └── AGENTS.md                   # AI agent collaboration guide
@@ -82,39 +90,6 @@ TEXT_LIGHT_COLOR=#736868
 BG_BADGE_COLOR=#f1f5f9
 SUCCESS_COLOR=#0ea5e9
 ```
-
----
-
-## 🧠 How It Works
-
-### ATS Resume Scoring
-
-1. Open the app — the left sidebar contains a **Job Description** textarea and action buttons.
-2. Paste a full job description and click **Validate JD using AI**.
-3. The app sends your resume + the job description to the configured AI model.
-4. Results appear in the **right panel**:
-   - **Overall ATS Match Score** (0–100) with color-coded tier
-   - **Breakdown:** Keyword Match, Experience Alignment, Education/Cert Fit
-   - **Feedback** with improvement tips
-   - **Missing Keywords** highlighted as tags
-
-### AI Resume Generation
-
-1. Click **Generate resume using AI** in the left sidebar.
-2. Upload a PDF of your existing resume (drag & drop or click to browse).
-3. If the PDF is large, you'll see a warning with a **Continue Anyway** option.
-4. Click **Generate Resume** — AI extracts and structures your data into JSON.
-5. After generation completes, a **Profile Photo** upload modal appears:
-   - Drag & drop or browse for a JPEG/JPG/PNG photo
-   - Minimum recommended size: 200×200px
-   - Click **Confirm** to apply the photo to your resume
-
-### Polish with AI
-
-- Once a resume is generated, a **✨ Polish with AI** button appears (golden styling).
-- Clicking it sends your resume to AI for improvement. A full-screen overlay shows progress.
-- After polishing, the button hides. Generate a new resume to re-enable it.
-
 ---
 
 ## 🖨️ PDF Export
@@ -135,10 +110,10 @@ npm run build:check  # verify prompts are up-to-date
 ```
 
 **Source of truth (runtime):**
-- `prompts/ats-scan.txt`
-- `prompts/extraction.txt`
-- `prompts/polish.txt`
-- `prompts/resume-generation.txt`
+- `src/prompts/ats-scan.txt`
+- `src/prompts/extraction.txt`
+- `src/prompts/polish.txt`
+- `src/prompts/resume-generation.txt`
 
 After editing any prompt, run `npm run build` before committing.
 

@@ -40,13 +40,13 @@ const MIME = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
-// Parse .env file and return as JSON object
-function getConfigFromEnv() {
+// Parse .env file into an object — shared by both config functions below.
+function parseEnvFile() {
   const envPath = path.join(ROOT, '.env');
   const env = {
-    AI_API_KEY: 'your_api_key_here',
+    AI_API_KEY: '',
     AI_MODEL: 'gemini-2.5-flash',
-    AI_FALLBACK_API_KEY: 'your_fallback_api_key_here',
+    AI_FALLBACK_API_KEY: '',
     AI_FALLBACK_MODEL: 'llama-3.3-70b-versatile',
     PRIMARY_COLOR: '#0a0a0a',
     SECONDARY_COLOR: '#0a0a0a',
@@ -69,12 +69,35 @@ function getConfigFromEnv() {
           (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
-      if (env.hasOwnProperty(key) || key.startsWith('AI_') || key.includes('COLOR')) {
+      if (Object.prototype.hasOwnProperty.call(env, key) || key.startsWith('AI_') || key.includes('COLOR')) {
         env[key] = value;
       }
     });
   }
   return env;
+}
+
+/**
+ * Client-safe config — strips API keys before sending to the browser.
+ * Used by the /config.json endpoint.
+ */
+function getConfigFromEnv() {
+  const env = parseEnvFile();
+  const clientSafe = {};
+  for (const [key, value] of Object.entries(env)) {
+    // Exclude any key that contains 'KEY' or 'SECRET' (case-insensitive)
+    if (/KEY|SECRET/i.test(key)) continue;
+    clientSafe[key] = value;
+  }
+  return clientSafe;
+}
+
+/**
+ * Full server-only config — includes API keys.
+ * NEVER send this to the client. Used only in /api/proxy.
+ */
+function getFullConfigFromEnv() {
+  return parseEnvFile();
 }
 
 // Helper function for reading request body
@@ -89,11 +112,11 @@ function getRequestBody(req) {
 
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
-  // Serve /config.json endpoint - reads .env server-side
+  // Serve /config.json endpoint — client-safe, NO API keys
   if (req.url === '/config.json') {
     const config = getConfigFromEnv();
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -101,13 +124,66 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // API Proxy — routes AI calls server-side so API keys never reach the browser
+  if (req.url === '/api/proxy' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const { endpoint, provider, ...requestBody } = JSON.parse(body);
+
+      if (!endpoint) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing endpoint in proxy request' }));
+        return;
+      }
+
+      const config = getFullConfigFromEnv();
+
+      let fetchUrl = endpoint;
+      const fetchOptions = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      };
+
+      // Route by provider: 'groq' uses Bearer token, default (Gemini) uses key param
+      if (provider === 'groq') {
+        const fallbackKey = config.AI_FALLBACK_API_KEY;
+        if (!fallbackKey) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'AI_FALLBACK_API_KEY not configured' }));
+          return;
+        }
+        fetchOptions.headers['Authorization'] = `Bearer ${fallbackKey}`;
+      } else {
+        // Gemini: append key as query param
+        const apiKey = config.AI_API_KEY;
+        if (!apiKey) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'AI_API_KEY not configured' }));
+          return;
+        }
+        fetchUrl = `${endpoint}?key=${apiKey}`;
+      }
+
+      const aiResponse = await fetch(fetchUrl, fetchOptions);
+      const data = await aiResponse.json();
+
+      res.writeHead(aiResponse.status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(data));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Proxy error: ' + err.message }));
+    }
+    return;
+  }
+
   // Serve prompt files dynamically
   if (req.url.startsWith('/api/prompts/')) {
     const promptName = req.url.replace('/api/prompts/', '');
-    const promptPath = path.join(ROOT, 'prompts', promptName);
+    const promptPath = path.join(ROOT, 'src', 'prompts', promptName);
 
     // Security: prevent directory traversal
-    if (!promptPath.startsWith(path.join(ROOT, 'prompts'))) {
+    if (!promptPath.startsWith(path.join(ROOT, 'src', 'prompts'))) {
       res.writeHead(403);
       res.end('Forbidden');
       return;
@@ -197,13 +273,13 @@ const server = http.createServer(async (req, res) => {
     const body = await getRequestBody(req);
     const resumeData = JSON.parse(body);
 
-    const apiKey = getConfigFromEnv().AI_API_KEY;
-    const model = getConfigFromEnv().AI_MODEL || 'gemini-2.5-flash';
+const apiKey = getFullConfigFromEnv().AI_API_KEY;
+       const model = getFullConfigFromEnv().AI_MODEL || 'gemini-2.5-flash';
 
     // Load polish prompt dynamically
     let prompt;
     try {
-      const promptPath = path.join(ROOT, 'prompts', 'polish.txt');
+      const promptPath = path.join(ROOT, 'src', 'prompts', 'polish.txt');
       const promptTemplate = fs.readFileSync(promptPath, 'utf-8');
       prompt = `${promptTemplate}\n\nRESUME DATA TO POLISH: \n${JSON.stringify(resumeData, null, 2)}`;
     } catch (err) {
@@ -245,7 +321,7 @@ const server = http.createServer(async (req, res) => {
 
     try {
       fs.writeFileSync(
-        'resume_generation/resume-data-AI-polished.json',
+        path.join(ROOT, 'src', 'resume', 'output', 'resume-data-AI-polished.json'),
         JSON.stringify(polishedData, null, 2)
       );
 
@@ -269,7 +345,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       fs.writeFileSync(
-        path.join(ROOT, 'resume_generation', 'resume-data.json'),
+        path.join(ROOT, 'src', 'resume', 'output', 'resume-data.json'),
         JSON.stringify(resumeData, null, 2)
       );
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -282,8 +358,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url === '/api/rollback' && req.method === 'POST') {
-    const fs = require('fs');
-    const filePath = 'resume_generation/resume-data-AI-polished.json';
+    const filePath = path.join(ROOT, 'src', 'resume', 'output', 'resume-data-AI-polished.json');
 
     try {
       if (fs.existsSync(filePath)) {
@@ -300,7 +375,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Default to main.html for root
-  let filePath = req.url === '/' ? '/pages/main.html' : req.url;
+  let filePath = req.url === '/' ? '/public/main.html' : req.url;
   filePath = path.join(ROOT, filePath);
 
   // Security: prevent directory traversal
@@ -330,7 +405,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  const url = `http://localhost:${PORT}/pages/main.html`;
+  const url = `http://localhost:${PORT}/public/main.html`;
   console.log('');
   console.log(`  Serving:  ${url}`);
   console.log('  Press Ctrl+C to stop.');
