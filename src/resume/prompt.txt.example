@@ -1,0 +1,38 @@
+# Resume Data Template
+# Fill in your information below and run: node generate-resume.js
+
+Full Name: Your Name Here
+Email: your.email@example.com
+Phone: +1-555-000-0000
+Location: City, Country
+Title: Professional Title
+
+## Experience
+
+### Job Title — Company Name
+Start Date: 2020-01
+End Date: Present
+Location: City, Country
+- Achievement or responsibility bullet point
+- Another bullet point
+
+### Previous Job Title — Previous Company
+Start Date: 2017-06
+End Date: 2019-12
+Location: City, Country
+- Responsibility or achievement
+- Another bullet point
+
+## Education
+
+### Degree Name
+Institution: University Name
+Year: 2016
+
+## Skills
+
+Skill 1, Skill 2, Skill 3, Skill 4, Skill 5
+
+## Summary
+
+Brief professional summary highlighting your key qualifications and career objectives.
