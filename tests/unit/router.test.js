@@ -160,7 +160,7 @@ test('runInference passes params to callProvider', async () => {
 // ── runPolish ─────────────────────────────────────────────────────────────────
 
 test('runPolish builds prompt with resume data and calls inference', async () => {
-  const mockCall = async (provider, _system, _prompt, _model, _key, _params) => {
+  const mockCall = async (provider, _system, _prompt) => {
     assert.ok(_prompt.includes('RESUME DATA TO POLISH'));
     assert.ok(_prompt.includes('"name": "Test"'));
     assert.equal(_system, 'You are a resume polishing assistant.');
