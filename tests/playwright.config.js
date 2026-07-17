@@ -1,8 +1,8 @@
 module.exports = {
-  timeout: 30000,
+  timeout: 15000,
   testDir: './e2e',
   outputDir: './test-results',
-  workers: 1,
+  workers: 8,
   reporter: [['html', { open: 'on-failure' }]],
   use: {
     baseURL: 'http://localhost:3000',
