@@ -7,65 +7,54 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const test = playwrightTest.extend({
   mainPage: async ({ page }, use) => {
     // Prevent external API calls and ensure hermetic tests
-    await page.route('**/api/proxy', async (route) => {
+    await page.route('**/api/infer', async (route) => {
       await delay(150); // Allow UI to render loading state before response
       const request = route.request();
       const postData = JSON.parse(request.postData() || '{}');
+      const system = postData.system || '';
 
-      // Generation request
-      if (postData.contents?.length && postData.contents[0]?.parts?.[0]?.text?.includes('basics')) {
+      // Resume generation request
+      if (system.includes('resume generation assistant')) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            candidates: [{
-              content: {
-                parts: [{
-                  text: JSON.stringify({
-                    basics: {
-                      name: 'Test User',
-                      email: 'test@example.com',
-                      phone: '+1-555-000-0000',
-                      location: 'Remote',
-                      title: 'Software Engineer',
-                      photo: null
-                    },
-                    experience: [],
-                    education: [],
-                    skills: { 'Core Skills': [{ name: 'JavaScript', expert: true }] }
-                  })
-                }]
-              }
-            }]
+            text: JSON.stringify({
+              basics: {
+                name: 'Test User',
+                email: 'test@example.com',
+                phone: '+1-555-000-0000',
+                location: 'Remote',
+                title: 'Software Engineer',
+                photo: null
+              },
+              experience: [],
+              education: [],
+              skills: { 'Core Skills': [{ name: 'JavaScript', expert: true }] }
+            })
           })
         });
         return;
       }
 
-      // ATS scan request
+      // ATS scan request (default)
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          candidates: [{
-            content: {
-              parts: [{
-                text: JSON.stringify({
-                  ai_screening: {
-                    overall_score: 85,
-                    tier: 'GOOD_MATCH',
-                    breakdown: {
-                      skills_score: 90,
-                      experience_years_score: 80,
-                      education_match: true
-                    },
-                    feedback: 'Mocked E2E test feedback: The resume matches the requirements.',
-                    missingKeywords: ['Playwright', 'E2E Testing']
-                  }
-                })
-              }]
+          text: JSON.stringify({
+            ai_screening: {
+              overall_score: 85,
+              tier: 'GOOD_MATCH',
+              breakdown: {
+                skills_score: 90,
+                experience_years_score: 80,
+                education_match: true
+              },
+              feedback: 'Mocked E2E test feedback: The resume matches the requirements.',
+              missingKeywords: ['Playwright', 'E2E Testing']
             }
-          }]
+          })
         })
       });
     });

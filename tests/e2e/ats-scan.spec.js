@@ -5,8 +5,8 @@
  * Verifies the scan UI flow: entering a JD, triggering scan,
  * and receiving results in the right panel.
  *
- * Note: These tests are fully hermetic — all API calls are mocked via
- * page.route() in test-setup.js. No real AI_API_KEY is required.
+  * Note: These tests are fully hermetic — all API calls are mocked via
+  * page.route() in test-setup.js. No real API key is required.
  */
 'use strict';
 
@@ -15,14 +15,13 @@ const { jobDescriptionFixtures } = require('../fixtures/resume-fixtures.js');
 
 test.describe('ATS Scan — UI Flow', () => {
   test('scan button is visible on load', async ({ mainPage }) => {
-    const btn = mainPage.page.locator('#btn-run-scan');
-    await expect(btn).toBeVisible();
-    await expect(btn).toBeDisabled();
+    await expect(mainPage.btnRunScan).toBeVisible();
+    await expect(mainPage.btnRunScan).toBeDisabled();
   });
 
   test('job description textarea accepts input', async ({ mainPage }) => {
     await mainPage.enterJobDescription(jobDescriptionFixtures.minimal);
-    const value = await mainPage.page.locator('#job-description').inputValue();
+    const value = await mainPage.jobDescriptionTextarea.inputValue();
     expect(value).toBe(jobDescriptionFixtures.minimal);
   });
 
@@ -30,19 +29,17 @@ test.describe('ATS Scan — UI Flow', () => {
     await mainPage.enterJobDescription(jobDescriptionFixtures.minimal);
 
     // Click and immediately check the button state changes (loading)
-    const btn = mainPage.page.locator('#btn-run-scan');
-    await btn.click();
+    await mainPage.btnRunScan.click();
 
     // Button text should change to cancel state within 500ms
-    await expect(btn).toHaveText('Cancel Scan', { timeout: 2000 });
+    await expect(mainPage.btnRunScan).toHaveText('Cancel Scan', { timeout: 2000 });
 
     // Cancel to avoid waiting for full API response
-    await btn.click();
+    await mainPage.btnRunScan.click();
   });
 
   test('results panel score shows placeholder before scan', async ({ mainPage }) => {
-    const scoreEl = mainPage.page.locator('#rp-score-circle');
-    const scoreText = await scoreEl.textContent();
+    const scoreText = await mainPage.rpScoreCircle.textContent();
     // Initial state is '--' or empty
     expect(scoreText === '--' || scoreText === '' || scoreText === null).toBeTruthy();
   });

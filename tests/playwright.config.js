@@ -3,6 +3,7 @@ module.exports = {
   testDir: './e2e',
   outputDir: './test-results',
   workers: 1,
+  reporter: [['html', { open: 'on-failure' }]],
   use: {
     baseURL: 'http://localhost:3000',
     screenshot: 'only-on-failure',

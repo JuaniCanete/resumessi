@@ -11,31 +11,29 @@ const { test, expect } = require('./test-setup.js');
 
 test.describe('AI Generation Modal', () => {
   test('generate button is visible on load', async ({ mainPage }) => {
-    const btn = mainPage.page.locator('#btn-ai-generate');
-    await expect(btn).toBeVisible();
+    await expect(mainPage.btnAiGenerate).toBeVisible();
   });
 
   test('modal opens on button click', async ({ mainPage }) => {
     await mainPage.openAiModal();
-    await expect(mainPage.page.locator('#ai-modal')).toBeVisible();
+    await expect(mainPage.aiModal).toBeVisible();
   });
 
   test('modal has file upload area', async ({ mainPage }) => {
     await mainPage.openAiModal();
     // The PDF drop zone should be visible
-    const dropZone = mainPage.page.locator('#modal-upload-section');
-    await expect(dropZone).toBeVisible();
+    await expect(mainPage.modalUploadSection).toBeVisible();
   });
 
   test('modal can be closed', async ({ mainPage }) => {
     await mainPage.openAiModal();
-    await expect(mainPage.page.locator('#ai-modal')).toBeVisible();
+    await expect(mainPage.aiModal).toBeVisible();
 
     // Click the close button (X or cancel)
-    const closeBtn = mainPage.page.locator('#ai-modal [id*="close"], #ai-modal .modal-close, #btn-modal-cancel').first();
+    const closeBtn = mainPage.aiModal.locator('[id*="close"], .modal-close, #btn-modal-cancel').first();
     if (await closeBtn.count() > 0) {
       await closeBtn.click();
-      await expect(mainPage.page.locator('#ai-modal')).toBeHidden({ timeout: 2000 });
+      await expect(mainPage.aiModal).toBeHidden({ timeout: 2000 });
     }
   });
 });

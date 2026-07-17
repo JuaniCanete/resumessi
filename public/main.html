@@ -980,15 +980,15 @@
 
 <body>
 
-    <div id="refresh-message" style="display: none; position: fixed; top: 20px; left: 50%; 
+    <div id="refresh-message" data-testid="refresh-message" style="display: none; position: fixed; top: 20px; left: 50%; 
          transform: translateX(-50%); background: var(--accent); color: #fff; padding: 12px 24px; 
          border-radius: 8px; font-weight: 600; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
     </div>
 
-    <div id="polish-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    <div id="polish-overlay" data-testid="polish-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
          background: rgba(0,0,0,0.65); backdrop-filter: blur(10px); z-index: 9998; align-items: center; justify-content: center; flex-direction: column; gap: 16px;">
         <p style="color: #fff; font-size: 18px; font-weight: 700; font-family: 'Comfortaa', sans-serif; text-align: center;">
-            Polishing resume with AI<span class="dot-anim"></span> ✨
+            ✨ Polishing resume with AI <span class="dot-anim"></span> ✨
         </p>
     </div>
 
@@ -1015,7 +1015,7 @@
                             system</div>
                     </div>
                 </div>
-                <textarea id="job-description" class="p-textarea" style="flex:1; min-height: 200px;"
+                <textarea id="job-description" data-testid="job-description" class="p-textarea" style="flex:1; min-height: 200px;"
                     oninput="validateJDInput()"></textarea>
             </div>
 
@@ -1023,12 +1023,12 @@
                 <span class="dot-anim">Scanning with AI</span>
             </div>
 
-            <button class="p-btn p-btn-primary" id="btn-run-scan" onclick="handleScanButtonClick()" disabled>Validate JD
+            <button class="p-btn p-btn-primary" id="btn-run-scan" data-testid="btn-run-scan" onclick="handleScanButtonClick()" disabled>Validate JD
                 using AI</button>
-            <button class="p-btn" id="btn-ai-generate" onclick="openAIModal()"
+            <button class="p-btn" id="btn-ai-generate" data-testid="btn-ai-generate" onclick="openAIModal()"
                 style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a1a; font-weight: 700;">Generate
                 resume using AI</button>
-            <button class="p-btn p-btn-secondary" id="btn-download" onclick="window.print()">Download Resume</button>
+            <button class="p-btn p-btn-secondary" id="btn-download" data-testid="btn-download" onclick="window.print()">Download Resume</button>
 
             <div id="floating-footer" class="no-print">
                 <span>Developed by Juani Ca&ntilde;ete</span>
@@ -1049,10 +1049,10 @@
         <!-- Actions bar: sticky, centered over the resume container -->
         <div id="actions-bar" class="no-print">
             <div class="actions-btn-wrapper">
-                <button id="actions-trigger" class="actions-dropdown-trigger" onclick="toggleActions()"
+                <button id="actions-trigger" data-testid="actions-trigger" class="actions-dropdown-trigger" onclick="toggleActions()"
                     aria-expanded="false" aria-haspopup="true" title="Actions"><span class="actions-label">Actions
                         ▾</span></button>
-                <div id="actions-dropdown" class="actions-dropdown hidden" role="menu">
+                <div id="actions-dropdown" data-testid="actions-dropdown" class="actions-dropdown hidden" role="menu">
                     <button class="actions-option" role="menuitem" onclick="toggleLeft()">
                         <span class="actions-option-icon">🔍</span>
                         <span class="actions-option-text">JD Validation</span>
@@ -1065,21 +1065,31 @@
                         <span class="actions-option-icon">⬇</span>
                         <span class="actions-option-text">Download Resume</span>
                     </button>
-                    <button class="actions-option" id="btn-polish-dropdown" role="menuitem" onclick="polishResume()"
+                    <button class="actions-option" id="btn-polish-dropdown" data-testid="polish-button" role="menuitem" onclick="polishResume()"
                         style="display: none;">
                         <span class="actions-option-icon">✨</span>
                         <span class="actions-option-text">Polish with AI</span>
+                    </button>
+                    <button class="actions-option" id="btn-photo-upload-dropdown" data-testid="photo-upload-trigger" role="menuitem" onclick="openPhotoUploadModal()"
+                        style="display: none;">
+                        <span class="actions-option-icon">📸</span>
+                        <span class="actions-option-text">Upload Profile Photo</span>
+                    </button>
+                    <button class="actions-option" id="btn-rollback-dropdown" data-testid="rollback-button" role="menuitem" onclick="rollbackPolish()"
+                        style="display: none;">
+                        <span class="actions-option-icon">↩</span>
+                        <span class="actions-option-text">Rollback Polish</span>
                     </button>
                 </div>
             </div>
         </div>
 
-        <div class="resume-container" id="resume-content">
+        <div class="resume-container" id="resume-content" data-testid="resume-content">
             <!-- Resume rendered dynamically by renderResume() -->
         </div>
     </div>
 
-    <div id="right-panel" class="panel no-print">
+    <div id="right-panel" data-testid="right-panel" class="panel no-print">
         <div class="panel-inner">
             <div class="panel-ctrl-row">
                 <button class="ctrl-btn" id="rp-expand-btn" onclick="expandRight()" title="Expand panel"
@@ -1090,10 +1100,10 @@
             </div>
 
             <div class="result-score-row">
-                <div class="result-score-circle" id="rp-score-circle">--</div>
+                <div class="result-score-circle" id="rp-score-circle" data-testid="rp-score-circle">--</div>
                 <div>
                     <div class="result-label">ATS Match</div>
-                    <div class="result-match-text" id="rp-score-text">Pending</div>
+                    <div class="result-match-text" id="rp-score-text" data-testid="rp-score-text">Pending</div>
                 </div>
             </div>
 
@@ -1122,7 +1132,7 @@
 
             <div style="margin-bottom: 16px;">
                 <div class="result-section-title">Feedback</div>
-                <div class="result-body" id="rp-feedback">&mdash;</div>
+                <div class="result-body" id="rp-feedback" data-testid="rp-feedback">&mdash;</div>
             </div>
 
             <hr class="p-divider">
@@ -1136,7 +1146,7 @@
     </div>
 
     <!-- AI Generation Modal -->
-    <div id="ai-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    <div id="ai-modal" data-testid="ai-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
          background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;">
         <div style="background: var(--secondary); padding: 30px; border-radius: 12px; max-width: 500px; 
              width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); position: relative;">
@@ -1192,7 +1202,7 @@
     </div>
     
     <!-- Photo Upload Modal -->
-    <div id="photo-upload-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;" class="photo-upload-modal">
+    <div id="photo-upload-modal" data-testid="photo-upload-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;" class="photo-upload-modal">
         <div style="background: var(--secondary); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); position: relative;">
             <button onclick="closePhotoUploadModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; line-height: 1; transition: background 0.2s;"
                 onmouseenter="this.style.background='var(--accent)'"
@@ -1201,14 +1211,14 @@
             <div id="photo-upload-section" style="border: 2px dashed rgba(255,255,255,0.2); padding: 40px; text-align: center; border-radius: 8px; margin-bottom: 20px; cursor: pointer;" onclick="document.getElementById('photo-input').click()">
                 <p style="color: #fff; font-size: 14px;">📸 Drag & drop your profile picture here (JPEG/JPG/PNG)</p>
                 <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 10px;">or click to browse</p>
-                <input type="file" id="photo-input" accept="image/jpeg,image/jpg,image/png" style="display: none;" onchange="handlePhotoUpload(this)">
+                <input type="file" id="photo-input" data-testid="photo-input" accept="image/jpeg,image/jpg,image/png" style="display: none;" onchange="handlePhotoUpload(this)">
             </div>
             <div id="photo-upload-error" style="display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
                 <p id="photo-upload-error-text" style="color: #fca5a5; font-size: 13px;"></p>
             </div>
             <div id="photo-upload-file-name" style="display: none; color: #fff; font-size: 12px; margin-bottom: 10px; text-align: center; word-break: break-all;"></div>
             <div id="photo-upload-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch;">
-                <button id="photo-upload-confirm" class="p-btn p-btn-primary" style="display: none; background: #f59e0b; color: #1a1a1a; flex: 1;" onclick="confirmPhotoUpload()">
+                <button id="photo-upload-confirm" data-testid="photo-upload-confirm" class="p-btn p-btn-primary" style="display: none; background: #f59e0b; color: #1a1a1a; flex: 1;" onclick="confirmPhotoUpload()">
                     Confirm
                 </button>
                 <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="closePhotoUploadModal()">
@@ -1369,11 +1379,6 @@
 
         async function runAtsScan() {
             const env = await loadEnv();
-            const primaryModel = env['AI_MODEL'] || 'gemini-2.5-flash';
-            const fallbackModel = env['AI_FALLBACK_MODEL'] || 'llama-3.3-70b-versatile';
-            // Note: API keys are NOT fetched from /config.json anymore.
-            // All AI calls go through /api/proxy which reads keys server-side.
-            const hasFallback = !!env['AI_FALLBACK_MODEL'];
             const jd = document.getElementById('job-description').value.trim();
 
             if (!jd) return alert('Please paste a Job Description.');
@@ -1420,23 +1425,28 @@
                 .replace('{job_description}', jd)
                 .replace('{resume_text}', resumeText);
 
-            let usedFallback = false;
+            const modelErrorMsg = document.getElementById('rp-feedback');
 
             try {
-                // Primary: Gemini via server-side proxy (key never sent to browser)
-                const response = await fetch('/api/proxy', {
+                const response = await fetch('/api/infer', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${primaryModel}:generateContent`,
-                        contents: [{ parts: [{ text: prompt }] }]
+                        system: 'You are an ATS resume scorer. Return only valid JSON matching the requested schema.',
+                        prompt: prompt
                     }),
                     signal: signal
                 });
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
 
-                let raw = data.candidates[0].content.parts[0].text;
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || errData.suggestion || `HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+
+                let raw = data.text;
                 raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
 
                 const result = JSON.parse(raw);
@@ -1450,51 +1460,9 @@
             } catch (err) {
                 if (err.name === 'AbortError') {
                     console.log('Scan cancelled by user.');
-                } else if (!usedFallback && hasFallback) {
-                    // Try fallback model via proxy (key handled server-side)
-                    const modelErrorMsg = document.getElementById('rp-feedback');
-                    modelErrorMsg.textContent = `⚠️ Primary model error. Fallback model (${fallbackModel}) found. Retrying...`;
-                    modelErrorMsg.style.color = '#f59e0b';
-                    console.log('Primary provider failed, trying fallback provider:', fallbackModel);
-                    usedFallback = true;
-                    try {
-                        const fallbackResponse = await fetch('/api/proxy', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                endpoint: 'https://api.groq.com/openai/v1/chat/completions',
-                                provider: 'groq',
-                                model: fallbackModel,
-                                messages: [{ role: 'user', content: prompt }]
-                            }),
-                            signal: signal
-                        });
-                        const fallbackData = await fallbackResponse.json();
-                        if (fallbackData.error) throw new Error(fallbackData.error.message);
-
-                        let fallbackRaw = fallbackData.choices[0].message.content;
-                        fallbackRaw = fallbackRaw.replace(/```json/g, '').replace(/```/g, '').trim();
-                        const fallbackResult = JSON.parse(fallbackRaw);
-                        const fallbackScreening = fallbackResult.ai_screening;
-
-                        applyScanResultsToUI(fallbackScreening);
-                        document.getElementById('rp-score-text').textContent = fallbackScreening.tier + ' (fallback)';
-                        saveScanResults(fallbackScreening);
-
-                        hasScanResults = true;
-                        openRight();
-                    } catch (fallbackErr) {
-                        alert('Error with both models:\nPrimary: ' + err.message + '\nFallback: ' + fallbackErr.message);
-                        console.error('Primary error:', err);
-                        console.error('Fallback error:', fallbackErr);
-                    }
-                } else if (!usedFallback && !hasFallback) {
-                    const modelErrorMsg = document.getElementById('rp-feedback');
-                    modelErrorMsg.textContent = '⚠️ Model error: ' + err.message + '. Consider adding a fallback API key in .env';
-                    modelErrorMsg.style.color = '#ef4444';
-                    alert('Error: ' + err.message + '\n\nTip: Add AI_FALLBACK_API_KEY and AI_FALLBACK_MODEL to your .env for automatic provider fallback.');
-                    console.error(err);
                 } else {
+                    modelErrorMsg.textContent = '⚠️ ATS scan failed: ' + err.message;
+                    modelErrorMsg.style.color = '#ef4444';
                     alert('Error: ' + err.message);
                     console.error(err);
                 }
@@ -1771,12 +1739,20 @@
         // ─── Polish Button Management ────────────────────────────────────
         async function updatePolishButton() {
             const dropdownBtn = document.getElementById('btn-polish-dropdown');
+            const rollbackBtn = document.getElementById('btn-rollback-dropdown');
+            const photoBtn = document.getElementById('btn-photo-upload-dropdown');
             const actionsTrigger = document.getElementById('actions-trigger');
             if (!dropdownBtn) return;
 
-            // Only show Polish button if resume was generated (not demo or placeholder)
+            // Show photo upload button whenever we have resume content (not placeholder)
+            if (photoBtn) {
+                photoBtn.style.display = currentDataSource === 'placeholder' ? 'none' : 'block';
+            }
+
+            // Only show Polish/Rollback buttons if resume was generated (not demo or placeholder)
             if (currentDataSource !== 'generated') {
                 dropdownBtn.style.display = 'none';
+                if (rollbackBtn) rollbackBtn.style.display = 'none';
                 dropdownBtn.classList.remove('ai-available');
                 if (actionsTrigger) actionsTrigger.classList.remove('ai-available');
                 return;
@@ -1791,16 +1767,19 @@
 
                 if (hasPolished) {
                     dropdownBtn.style.display = 'none';
+                    if (rollbackBtn) rollbackBtn.style.display = 'block';
                     dropdownBtn.classList.remove('ai-available');
                     if (actionsTrigger) actionsTrigger.classList.remove('ai-available');
                 } else {
                     dropdownBtn.style.display = 'block';
+                    if (rollbackBtn) rollbackBtn.style.display = 'none';
                     dropdownBtn.classList.add('ai-available');
                     if (actionsTrigger) actionsTrigger.classList.add('ai-available');
                 }
             } catch (e) {
                 // Network error — assume polish is available
                 dropdownBtn.style.display = 'block';
+                if (rollbackBtn) rollbackBtn.style.display = 'none';
                 dropdownBtn.classList.add('ai-available');
                 if (actionsTrigger) actionsTrigger.classList.add('ai-available');
             }
@@ -2058,8 +2037,7 @@
 
         async function confirmGeneration() {
             const env = await loadEnv();
-            const primaryModel = env['AI_MODEL'] || 'gemini-2.5-flash';
-            // Note: API key is NOT used client-side. All AI calls go through /api/proxy.
+            // Note: API key is NOT used client-side. All AI calls go through /api/infer.
 
             // Show loading
             document.getElementById('modal-error-section').style.display = 'none';
@@ -2081,21 +2059,25 @@
             extractionPrompt = extractionPrompt.replace('{extracted_text}', currentPDFText);
 
             try {
-                // Route through server-side proxy so API key stays on server
-                const response = await fetch('/api/proxy', {
+                const response = await fetch('/api/infer', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${primaryModel}:generateContent`,
-                        contents: [{ parts: [{ text: extractionPrompt }] }]
+                        system: 'You are a resume generation assistant. Return only valid JSON matching the resume schema.',
+                        prompt: extractionPrompt
                     }),
                     signal: signal
                 });
 
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || errData.suggestion || `HTTP ${response.status}`);
+                }
 
-                let raw = data.candidates[0].content.parts[0].text;
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+
+                let raw = data.text;
                 raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
 
                 const resumeData = JSON.parse(raw);

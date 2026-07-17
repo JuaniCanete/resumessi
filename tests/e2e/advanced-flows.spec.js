@@ -50,9 +50,8 @@ test.describe('Advanced Flows', () => {
     expect.soft(uploaded.startsWith('data:image/')).toBe(true);
 
     // Verify the resume display updates to show the uploaded photo
-    const profilePhoto = page.locator('.profile-photo');
-    await expect.soft(profilePhoto).toBeVisible({ timeout: 5000 });
-    const photoSrc = await profilePhoto.getAttribute('src');
+    await expect.soft(mainPage.profilePhoto).toBeVisible({ timeout: 5000 });
+    const photoSrc = await mainPage.profilePhoto.getAttribute('src');
     expect.soft(photoSrc).toBe(uploaded);
   });
 
@@ -94,12 +93,12 @@ test.describe('Advanced Flows', () => {
       });
     });
 
-    // Override the proxy mock to return a 500 with an error payload
-    await page.route('**/api/proxy', async (route) => {
+    // Override the infer mock to return a 500 with an error payload
+    await page.route('**/api/infer', async (route) => {
       await route.fulfill({
         status: 500,
         contentType: 'application/json',
-        body: JSON.stringify({ error: { message: 'Internal Server Error' } }),
+        body: JSON.stringify({ error: 'Internal Server Error' }),
       });
     });
 

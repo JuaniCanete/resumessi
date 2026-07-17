@@ -2,7 +2,7 @@
 
 > **resumessi** is a self-contained, AI-powered resume scoring and generation tool. It uses configurable AI models to evaluate your resume against any job description, providing an ATS score, breakdown, feedback, and missing keywords. It can also generate and polish resumes from PDF uploads.
 
-> **Supported AI providers:** Google Gemini (primary) and Groq (fallback). Other providers (OpenAI, Anthropic, etc.) are not currently supported.
+> **Supported AI providers:** Configurable via `AI_INFERENCE_ORDER`. Supported providers: Cohere, Mistral, Gemini, Groq.
 
 ---
 
@@ -12,8 +12,8 @@
 2. **Run setup** — `npm run setup` creates `.env` from `.env.example`.
 3. **Edit `.env`** and add your AI API key.
 4. **Start the app** — `npm start` runs the local server and opens the app in your browser.
-5. **Build your resume** — Drop your existing resume in PDF formant and a photo and AI would generated a brand new one.
-6. **Paste a Job Description** in the left panel and click **Validate JD using AI**.'
+5. **Build your resume** — Drop your existing resume in PDF format and a photo, and AI will generate a brand new one for you.
+6. **Paste a Job Description** in the left panel and click **Validate JD using AI**.
 
 ---
 
@@ -62,20 +62,28 @@ resumessi/
 
 ## ⚙️ Configuration
 
-### API Key & Models
+### API Keys & Inference Order
 
 Edit `.env` (created by `npm run setup`):
 
 ```env
-AI_API_KEY=your_api_key_here
-AI_MODEL=gemini-2.5-flash
-AI_FALLBACK_MODEL=llama-3.3-70b-versatile
-AI_FALLBACK_API_KEY=your_fallback_api_key_here
-ACCENT_COLOR=#2563eb
+AI_INFERENCE_ORDER=cohere,mistral,gemini,groq
+
+COHERE_API_KEY=your_cohere_key_here
+COHERE_MODEL=command-r-plus
+
+MISTRAL_API_KEY=your_mistral_key_here
+MISTRAL_MODEL=mistral-large-latest
+
+GEMINI_API_KEY=your_gemini_key_here
+GEMINI_MODEL=gemini-2.5-flash
+
+GROQ_API_KEY=your_groq_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
 - `.env` is gitignored and served via `/config.json` at runtime.
-- **Fallback provider:** if the primary provider fails, the system retries automatically with the fallback provider (e.g. Groq) and shows a "(fallback)" indicator in the results.
+- **Inference order:** providers are tried in the order listed in `AI_INFERENCE_ORDER`. If a provider fails, the next one is tried automatically.
 
 ### Color Theme
 
@@ -122,10 +130,13 @@ After editing any prompt, run `npm run build` before committing.
 | Command | Description |
 |---|---|
 | `npm start` | Start dev server |
-| `npm run setup` | Run setup wizard |
+| `npm run setup` | Run setup wizard (⚠️ overwrites existing .env) |
 | `npm run build` | Build prompts into HTML/JS |
 | `npm run build:check` | Verify build is up-to-date |
-| `npm run generate` | Generate resume from prompt |
+| `npm run generate` | Generate resume from prompt data |
+| `npm run evals` | Run LLM evaluation harness |
+| `npm run test:unit` | Run unit tests |
+| `npm run test:e2e` | Run Playwright E2E tests |
 
 ---
 

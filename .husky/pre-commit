@@ -3,10 +3,19 @@ set -e
 
 echo "Running pre-commit validations..."
 
+# Validations are happening in proper order: 
+# 1. Static checks
+# 2. Unit tests
+# 3. HTML/CSS validation
+# Yet missing API checks
+# 4. E2E tests
+# 5. AI evals
+
 npm run lint
 npm run test:unit
 npm run html:validate
 npm run css:validate
+npm run test:e2e
 npm run evals
 
-echo "✅ All validations passed."
+echo "All validations passed ✅"

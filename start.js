@@ -44,10 +44,15 @@ const MIME = {
 function parseEnvFile() {
   const envPath = path.join(ROOT, '.env');
   const env = {
-    AI_API_KEY: '',
-    AI_MODEL: 'gemini-2.5-flash',
-    AI_FALLBACK_API_KEY: '',
-    AI_FALLBACK_MODEL: 'llama-3.3-70b-versatile',
+    AI_INFERENCE_ORDER: 'cohere,mistral,gemini,groq',
+    COHERE_API_KEY: '',
+    COHERE_MODEL: 'command-r-plus',
+    MISTRAL_API_KEY: '',
+    MISTRAL_MODEL: 'mistral-large-latest',
+    GEMINI_API_KEY: '',
+    GEMINI_MODEL: 'gemini-2.5-flash',
+    GROQ_API_KEY: '',
+    GROQ_MODEL: 'llama-3.3-70b-versatile',
     PRIMARY_COLOR: '#0a0a0a',
     SECONDARY_COLOR: '#0a0a0a',
     ACCENT_COLOR: '#2563eb',
@@ -69,7 +74,7 @@ function parseEnvFile() {
           (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
-      if (Object.prototype.hasOwnProperty.call(env, key) || key.startsWith('AI_') || key.includes('COLOR')) {
+      if (Object.prototype.hasOwnProperty.call(env, key) || key.includes('COLOR')) {
         env[key] = value;
       }
     });
@@ -89,12 +94,20 @@ function getConfigFromEnv() {
     if (/KEY|SECRET/i.test(key)) continue;
     clientSafe[key] = value;
   }
+
+  const providerLib = require('./src/providers.js');
+  const { configured } = providerLib.getProviderConfig(env);
+
+  clientSafe.AI_INFERENCE_ORDER = env.AI_INFERENCE_ORDER || 'cohere,mistral,gemini,groq';
+  clientSafe.availableProviders = configured;
+  clientSafe.primaryProvider = configured[0] || null;
+
   return clientSafe;
 }
 
 /**
  * Full server-only config — includes API keys.
- * NEVER send this to the client. Used only in /api/proxy.
+ * NEVER send this to the client. Used only in /api/infer and /api/polish-resume.
  */
 function getFullConfigFromEnv() {
   return parseEnvFile();
@@ -124,60 +137,60 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // API Proxy — routes AI calls server-side so API keys never reach the browser
-  if (req.url === '/api/proxy' && req.method === 'POST') {
+  // API Infer — new unified provider router endpoint
+  if (req.url === '/api/infer' && req.method === 'POST') {
     try {
       const body = await getRequestBody(req);
-      const { endpoint, provider, ...requestBody } = JSON.parse(body);
+      const requestData = JSON.parse(body);
 
-      if (!endpoint) {
+      const providerLib = require('./src/providers.js');
+      const validationErrors = providerLib.validateInferenceRequest(requestData);
+      if (validationErrors.length > 0) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Missing endpoint in proxy request' }));
+        res.end(JSON.stringify({ error: 'Invalid request', details: validationErrors }));
         return;
       }
 
-      const config = getFullConfigFromEnv();
+      const env = getFullConfigFromEnv();
+      const { system, prompt, temperature, max_tokens, top_p } = requestData;
+      const params = {};
+      if (temperature !== undefined) params.temperature = temperature;
+      if (max_tokens !== undefined) params.max_tokens = max_tokens;
+      if (top_p !== undefined) params.top_p = top_p;
 
-      let fetchUrl = endpoint;
-      const fetchOptions = {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      };
-
-      // Route by provider: 'groq' uses Bearer token, default (Gemini) uses key param
-      if (provider === 'groq') {
-        const fallbackKey = config.AI_FALLBACK_API_KEY;
-        if (!fallbackKey) {
-          res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'AI_FALLBACK_API_KEY not configured' }));
+      try {
+        const router = require('./src/router.js');
+        const result = await router.runInference(system, prompt, params, env);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          text: result.text,
+          provider: result.provider,
+          usage: result.usage,
+        }));
+      } catch (err) {
+        if (err.message === 'No providers configured. Set at least one *_API_KEY in .env.') {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
           return;
         }
-        fetchOptions.headers['Authorization'] = `Bearer ${fallbackKey}`;
-      } else {
-        // Gemini: append key as query param
-        const apiKey = config.AI_API_KEY;
-        if (!apiKey) {
-          res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'AI_API_KEY not configured' }));
-          return;
-        }
-        fetchUrl = `${endpoint}?key=${apiKey}`;
+
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          error: 'All providers exhausted',
+          attempts: err.attempts || [],
+          suggestion: 'Check your API keys and network connection.',
+        }));
       }
-
-      const aiResponse = await fetch(fetchUrl, fetchOptions);
-      const data = await aiResponse.json();
-
-      res.writeHead(aiResponse.status, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(data));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Proxy error: ' + err.message }));
+      res.end(JSON.stringify({ error: 'Inference error: ' + err.message }));
     }
     return;
   }
 
-  // Serve prompt files dynamically
+  // API Infer -- new unified provider router endpoint
+
+    // Serve prompt files dynamically
   if (req.url.startsWith('/api/prompts/')) {
     const promptName = req.url.replace('/api/prompts/', '');
     const promptPath = path.join(ROOT, 'src', 'prompts', promptName);
@@ -273,44 +286,40 @@ const server = http.createServer(async (req, res) => {
     const body = await getRequestBody(req);
     const resumeData = JSON.parse(body);
 
-const apiKey = getFullConfigFromEnv().AI_API_KEY;
-       const model = getFullConfigFromEnv().AI_MODEL || 'gemini-2.5-flash';
-
-    // Load polish prompt dynamically
-    let prompt;
+    let promptTemplate;
     try {
       const promptPath = path.join(ROOT, 'src', 'prompts', 'polish.txt');
-      const promptTemplate = fs.readFileSync(promptPath, 'utf-8');
-      prompt = `${promptTemplate}\n\nRESUME DATA TO POLISH: \n${JSON.stringify(resumeData, null, 2)}`;
+      promptTemplate = fs.readFileSync(promptPath, 'utf-8');
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Failed to load polish prompt: ' + err.message }));
       return;
     }
 
+    const env = getFullConfigFromEnv();
+
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        }
-      );
-
-      const data = await response.json();
-      if (data.error) throw new Error(data.error.message);
-
-      let raw = data.candidates[0].content.parts[0].text;
+      const router = require('./src/router.js');
+      const result = await router.runPolish(resumeData, promptTemplate, env);
+      let raw = result.text;
       raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-
       const polished = JSON.parse(raw);
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(polished));
     } catch (err) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Polish failed: ' + err.message }));
+      if (err.message === 'No providers configured. Set at least one *_API_KEY in .env.') {
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+        return;
+      }
+
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'Polish failed: all providers exhausted',
+        attempts: err.attempts || [],
+        suggestion: 'Check your API keys and network connection.',
+      }));
     }
     return;
   }

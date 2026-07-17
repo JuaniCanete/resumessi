@@ -22,7 +22,14 @@ class MainPage {
     this.photoInput = page.getByTestId('photo-input');
     this.photoUploadConfirm = page.getByTestId('photo-upload-confirm');
     this.resumeContent = page.getByTestId('resume-content');
+    this.profilePhoto = page.locator('.profile-photo');
     this.aiModal = page.getByTestId('ai-modal');
+    this.modalUploadSection = page.getByTestId('ai-modal').locator('#modal-upload-section');
+    this.resumeName = page.locator('#resume-content h1');
+    this.body = page.locator('body');
+    this.leftSidebar = page.locator('#left-sidebar');
+    this.leftOpenStub = page.locator('#left-open-stub');
+    this.collapseSidebarBtn = page.locator('[aria-label="Collapse sidebar"]');
   }
 
   async goto() {
@@ -51,6 +58,18 @@ class MainPage {
 
   async openResultsPanel() {
     await this.page.getByText('ATS Results').click();
+  }
+
+  async collapseSidebar() {
+    await this.collapseSidebarBtn.click();
+  }
+
+  async openSidebar() {
+    await this.leftOpenStub.click();
+  }
+
+  async isSidebarCollapsed() {
+    return this.body.evaluate((el) => el.classList.contains('left-collapsed'));
   }
 
   async getScore() {
