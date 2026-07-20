@@ -14,6 +14,11 @@ class MainPage {
     this.polishButton = page.getByTestId('polish-button');
     this.rollbackButton = page.getByTestId('rollback-button');
     this.photoUploadTrigger = page.getByTestId('photo-upload-trigger');
+    this.providersButton = page.getByTestId('providers-button');
+    this.providersModal = page.getByTestId('providers-modal');
+    this.providersList = page.locator('#providers-list');
+    this.providersConfirmBtn = page.locator('#providers-modal-actions button.p-btn-primary');
+    this.providersCancelBtn = page.locator('#providers-modal-actions button.p-btn-secondary');
     this.actionsTrigger = page.getByTestId('actions-trigger');
     this.actionsDropdown = page.getByTestId('actions-dropdown');
     this.polishOverlay = page.getByTestId('polish-overlay');
@@ -148,6 +153,54 @@ class MainPage {
   async getRefreshMessageText() {
     await this.refreshMessage.waitFor({ state: 'visible' });
     return await this.refreshMessage.textContent();
+  }
+
+  // ─── AI Providers Modal ─────────────────────────────────────────
+
+  async openProvidersModal() {
+    await this.openActions();
+    await this.providersButton.waitFor({ state: 'visible' });
+    await this.providersButton.click();
+    await this.providersModal.waitFor({ state: 'visible' });
+  }
+
+  async closeProvidersModal() {
+    await this.providersModal.evaluate((el) => {
+      el.style.display = 'none';
+    });
+  }
+
+  async selectProvider(name) {
+    const items = await this.providersList.locator('.provider-item.configured').all();
+    for (const item of items) {
+      const text = await item.textContent();
+      if (text && text.includes(name)) {
+        await item.click();
+        return;
+      }
+    }
+    throw new Error(`Configured provider "${name}" not found in modal`);
+  }
+
+  async confirmProvidersSelection() {
+    await this.providersConfirmBtn.click();
+  }
+
+  async cancelProvidersSelection() {
+    await this.providersCancelBtn.click();
+  }
+
+  async getProviderItems() {
+    return await this.providersList.locator('.provider-item').all();
+  }
+
+  async getSelectedProviderFromLocalStorage() {
+    return await this.page.evaluate(() => localStorage.getItem('selected-ai-provider') || '');
+  }
+
+  async expectProvidersModalVisible() {
+    const isVisible = await this.providersModal.isVisible();
+    if (!isVisible) throw new Error('Providers modal is not visible');
   }
 }
 

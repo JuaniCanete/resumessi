@@ -8,6 +8,11 @@
     "ecmaVersion": 2022,
     "sourceType": "commonjs"
   },
+  "ignorePatterns": [
+    "tests/test-results/",
+    "playwright-report/",
+    "node_modules/"
+  ],
   "rules": {
     "no-unused-vars": "warn",
     "no-undef": "error",
