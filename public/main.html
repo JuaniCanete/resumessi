@@ -1123,16 +1123,21 @@
                         <span class="actions-option-icon">⬇</span>
                         <span class="actions-option-text">Download Resume</span>
                     </button>
-                    <button class="actions-option" id="btn-polish-dropdown" data-testid="polish-button" role="menuitem" onclick="polishResume()"
-                        style="display: none;">
-                        <span class="actions-option-icon">✨</span>
-                        <span class="actions-option-text">Polish with AI</span>
-                    </button>
-                    <button class="actions-option" id="btn-photo-upload-dropdown" data-testid="photo-upload-trigger" role="menuitem" onclick="openPhotoUploadModal()"
-                        style="display: none;">
-                        <span class="actions-option-icon">📸</span>
-                        <span class="actions-option-text">Upload Profile Photo</span>
+                     <button class="actions-option" id="btn-polish-dropdown" data-testid="polish-button" role="menuitem" onclick="polishResume()"
+                         style="display: none;">
+                         <span class="actions-option-icon">✨</span>
+                         <span class="actions-option-text">Polish with AI</span>
                      </button>
+                     <button class="actions-option" id="btn-rollback-dropdown" data-testid="rollback-button" role="menuitem" onclick="rollbackPolish()"
+                         style="display: none;">
+                         <span class="actions-option-icon">↩</span>
+                         <span class="actions-option-text">Rollback AI Polish</span>
+                     </button>
+                     <button class="actions-option" id="btn-photo-upload-dropdown" data-testid="photo-upload-trigger" role="menuitem" onclick="openPhotoUploadModal()"
+                         style="display: none;">
+                         <span class="actions-option-icon">📸</span>
+                         <span class="actions-option-text">Upload Profile Photo</span>
+                      </button>
                     <button class="actions-option" id="btn-providers-dropdown" data-testid="providers-button" role="menuitem" onclick="openProvidersModal()">
                         <span class="actions-option-icon">🧠</span>
                         <span class="actions-option-text">AI Providers</span>
