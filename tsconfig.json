@@ -1,8 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "module": "commonjs",
-    "lib": ["ES2020"],
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
+    "types": ["node"],
+    "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
     "rootDir": ".",
     "strict": true,
@@ -10,19 +13,23 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "allowJs": true,
+    "allowJs": false,
     "checkJs": false,
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false
   },
   "include": [
-    "./src/**/*.js",
-    "./setup.js"
+    "./src/**/*.ts",
+    "./public/**/*.ts",
+    "./scripts/**/*.ts",
+    "./start.ts",
+    "./build.ts",
+    "./setup.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "public/dist"
   ]
 }

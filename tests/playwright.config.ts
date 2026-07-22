@@ -1,4 +1,6 @@
-module.exports = {
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
   timeout: 15000,
   testDir: './e2e',
   outputDir: './test-results',
@@ -14,9 +16,9 @@ module.exports = {
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
   webServer: {
-    command: 'cmd.exe /c "node ..\\start.js"',
+    command: 'cmd.exe /c "tsx ..\\start.ts"',
     url: 'http://localhost:3000/public/main.html',
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     timeout: 60000,
   },
-};
+});

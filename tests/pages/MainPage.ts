@@ -1,5 +1,41 @@
-class MainPage {
-  constructor(page) {
+import type { Page, Locator } from '@playwright/test';
+
+export class MainPage {
+  readonly page: Page;
+  readonly jobDescriptionTextarea: Locator;
+  readonly btnRunScan: Locator;
+  readonly btnAiGenerate: Locator;
+  readonly btnDownload: Locator;
+  readonly rightPanel: Locator;
+  readonly rpScoreCircle: Locator;
+  readonly rpScoreText: Locator;
+  readonly rpFeedback: Locator;
+  readonly polishButton: Locator;
+  readonly rollbackButton: Locator;
+  readonly photoUploadTrigger: Locator;
+  readonly providersButton: Locator;
+  readonly providersModal: Locator;
+  readonly providersList: Locator;
+  readonly providersConfirmBtn: Locator;
+  readonly providersCancelBtn: Locator;
+  readonly actionsTrigger: Locator;
+  readonly actionsDropdown: Locator;
+  readonly polishOverlay: Locator;
+  readonly refreshMessage: Locator;
+  readonly photoUploadModal: Locator;
+  readonly photoInput: Locator;
+  readonly photoUploadConfirm: Locator;
+  readonly resumeContent: Locator;
+  readonly profilePhoto: Locator;
+  readonly aiModal: Locator;
+  readonly modalUploadSection: Locator;
+  readonly resumeName: Locator;
+  readonly body: Locator;
+  readonly leftSidebar: Locator;
+  readonly leftOpenStub: Locator;
+  readonly collapseSidebarBtn: Locator;
+
+  constructor(page: Page) {
     this.page = page;
     this.jobDescriptionTextarea = page.getByTestId('job-description');
     this.btnRunScan = page.getByTestId('btn-run-scan');
@@ -9,8 +45,6 @@ class MainPage {
     this.rpScoreCircle = page.getByTestId('rp-score-circle');
     this.rpScoreText = page.getByTestId('rp-score-text');
     this.rpFeedback = page.getByTestId('rp-feedback');
-
-    // Modern testid-based locators
     this.polishButton = page.getByTestId('polish-button');
     this.rollbackButton = page.getByTestId('rollback-button');
     this.photoUploadTrigger = page.getByTestId('photo-upload-trigger');
@@ -37,93 +71,92 @@ class MainPage {
     this.collapseSidebarBtn = page.locator('[aria-label="Collapse sidebar"]');
   }
 
-  async goto() {
+  async goto(): Promise<void> {
     await this.page.goto('/public/main.html', { waitUntil: 'domcontentloaded' });
   }
 
-  async waitForResumeLoaded() {
+  async waitForResumeLoaded(): Promise<void> {
     await this.resumeContent.waitFor({ state: 'visible' });
   }
 
-  async enterJobDescription(text) {
+  async enterJobDescription(text: string): Promise<void> {
     await this.jobDescriptionTextarea.fill(text);
   }
 
-  async clickScan() {
+  async clickScan(): Promise<void> {
     await this.btnRunScan.click();
   }
 
-  async openAiModal() {
+  async openAiModal(): Promise<void> {
     await this.btnAiGenerate.click({ force: true });
   }
 
-  async downloadResume() {
+  async downloadResume(): Promise<void> {
     await this.btnDownload.click();
   }
 
-  async openResultsPanel() {
+  async openResultsPanel(): Promise<void> {
     await this.page.getByText('ATS Results').click();
   }
 
-  async collapseSidebar() {
+  async collapseSidebar(): Promise<void> {
     await this.collapseSidebarBtn.click();
   }
 
-  async openSidebar() {
+  async openSidebar(): Promise<void> {
     await this.leftOpenStub.click();
   }
 
-  async isSidebarCollapsed() {
-    return this.body.evaluate((el) => el.classList.contains('left-collapsed'));
+  async isSidebarCollapsed(): Promise<boolean> {
+    return this.body.evaluate((el: HTMLElement) => el.classList.contains('left-collapsed'));
   }
 
-  async getScore() {
+  async getScore(): Promise<string | null> {
     return await this.rpScoreCircle.textContent();
   }
 
-  async getScoreText() {
+  async getScoreText(): Promise<string | null> {
     return await this.rpScoreText.textContent();
   }
 
-  async getFeedback() {
+  async getFeedback(): Promise<string | null> {
     return await this.rpFeedback.textContent();
   }
 
   // ─── Actions Dropdown ───────────────────────────────────────────
 
-  async openActions() {
-    // Toggle to open if not already open
-    const isHidden = await this.actionsDropdown.getAttribute('class');
-    if (isHidden && isHidden.includes('hidden')) {
-      // Use force:true because the actions trigger may have an infinite CSS animation
-      // (bump) that causes Playwright to consider it "not stable" for click
+  async openActions(): Promise<void> {
+    const classAttr = await this.actionsDropdown.getAttribute('class');
+    const isHidden = classAttr && classAttr.includes('hidden');
+    if (isHidden) {
       await this.actionsTrigger.click({ force: true });
     }
     await this.actionsDropdown.waitFor({ state: 'visible' });
   }
 
-  async closeActions() {
-    const isHidden = await this.actionsDropdown.getAttribute('class');
-    if (!isHidden || !isHidden.includes('hidden')) {
+  async closeActions(): Promise<void> {
+    const classAttr = await this.actionsDropdown.getAttribute('class');
+    const isHidden = classAttr && classAttr.includes('hidden');
+    if (!isHidden) {
       await this.actionsTrigger.click();
     }
   }
 
   // ─── Polish Flow ─────────────────────────────────────────────────
 
-  async clickPolish() {
+  async clickPolish(): Promise<void> {
     await this.openActions();
     await this.polishButton.waitFor({ state: 'visible' });
     await this.polishButton.click();
   }
 
-  async waitForPolishOverlay() {
+  async waitForPolishOverlay(): Promise<void> {
     await this.polishOverlay.waitFor({ state: 'visible' });
   }
 
   // ─── Rollback Flow ───────────────────────────────────────────────
 
-  async clickRollback() {
+  async clickRollback(): Promise<void> {
     await this.openActions();
     await this.rollbackButton.waitFor({ state: 'visible' });
     await this.rollbackButton.click();
@@ -131,46 +164,46 @@ class MainPage {
 
   // ─── Photo Upload Flow ──────────────────────────────────────────
 
-  async openPhotoModal() {
+  async openPhotoModal(): Promise<void> {
     await this.openActions();
     await this.photoUploadTrigger.waitFor({ state: 'visible' });
     await this.photoUploadTrigger.click();
     await this.photoUploadModal.waitFor({ state: 'visible' });
   }
 
-  async uploadPhoto(filePath) {
+  async uploadPhoto(filePath: string): Promise<void> {
     await this.photoUploadModal.waitFor({ state: 'visible' });
     await this.photoInput.setInputFiles(filePath);
   }
 
-  async confirmPhotoUpload() {
+  async confirmPhotoUpload(): Promise<void> {
     await this.photoUploadConfirm.waitFor({ state: 'visible' });
     await this.photoUploadConfirm.click();
   }
 
   // ─── Refresh Message ────────────────────────────────────────────
 
-  async getRefreshMessageText() {
+  async getRefreshMessageText(): Promise<string | null> {
     await this.refreshMessage.waitFor({ state: 'visible' });
     return await this.refreshMessage.textContent();
   }
 
   // ─── AI Providers Modal ─────────────────────────────────────────
 
-  async openProvidersModal() {
+  async openProvidersModal(): Promise<void> {
     await this.openActions();
     await this.providersButton.waitFor({ state: 'visible' });
     await this.providersButton.click();
     await this.providersModal.waitFor({ state: 'visible' });
   }
 
-  async closeProvidersModal() {
-    await this.providersModal.evaluate((el) => {
+  async closeProvidersModal(): Promise<void> {
+    await this.providersModal.evaluate((el: HTMLElement) => {
       el.style.display = 'none';
     });
   }
 
-  async selectProvider(name) {
+  async selectProvider(name: string): Promise<void> {
     const items = await this.providersList.locator('.provider-item').all();
     for (const item of items) {
       const text = await item.textContent();
@@ -182,26 +215,24 @@ class MainPage {
     throw new Error(`Configured provider "${name}" not found in modal`);
   }
 
-  async confirmProvidersSelection() {
+  async confirmProvidersSelection(): Promise<void> {
     await this.providersConfirmBtn.click();
   }
 
-  async cancelProvidersSelection() {
+  async cancelProvidersSelection(): Promise<void> {
     await this.providersCancelBtn.click();
   }
 
-  async getProviderItems() {
+  async getProviderItems(): Promise<Locator[]> {
     return await this.providersList.locator('.provider-item').all();
   }
 
-  async getSelectedProviderFromLocalStorage() {
+  async getSelectedProviderFromLocalStorage(): Promise<string> {
     return await this.page.evaluate(() => localStorage.getItem('selected-ai-provider') || '');
   }
 
-  async expectProvidersModalVisible() {
+  async expectProvidersModalVisible(): Promise<void> {
     const isVisible = await this.providersModal.isVisible();
     if (!isVisible) throw new Error('Providers modal is not visible');
   }
 }
-
-module.exports = { MainPage };

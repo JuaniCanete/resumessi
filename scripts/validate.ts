@@ -5,14 +5,12 @@
  * Asserts that all required prompt source files exist and are non-empty
  * before running the build. Fails fast with a clear error message.
  *
- * Usage:  node scripts/validate.js
+ * Usage:  tsx scripts/validate.ts
  * Hook:   automatically run via "prebuild" in package.json
  */
 
-'use strict';
-
-const fs = require('fs');
-const path = require('path');
+import * as fs from 'fs';
+import * as path from 'path';
 
 const ROOT = path.join(__dirname, '..');
 
@@ -25,7 +23,7 @@ const REQUIRED_PROMPTS = [
 
 let hasErrors = false;
 
-function check(relPath) {
+function check(relPath: string): void {
   const abs = path.join(ROOT, relPath);
   if (!fs.existsSync(abs)) {
     console.error(`❌ Missing required file: ${relPath}`);

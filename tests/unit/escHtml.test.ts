@@ -1,4 +1,4 @@
-/**
+﻿/**
  * tests/unit/escHtml.test.js
  *
  * Unit tests for the escHtml utility function.
@@ -12,10 +12,10 @@
  */
 'use strict';
 
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
 
-const { escHtml } = require('../../public/utils.js');
+import { escHtml } from '../../public/utils';
 
 test('escHtml escapes < and > to numeric refs', () => {
   assert.equal(escHtml('<b>'), '&#60;b&#62;');

@@ -1,7 +1,7 @@
-const { test, expect } = require('./test-setup.js');
-const { jobDescriptionFixtures } = require('../fixtures/resume-fixtures.js');
+﻿import { test, expect } from './test-setup';
+import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
 
-test.describe('ATS Scan — UI Flow', () => {
+test.describe('ATS Scan â€” UI Flow', () => {
 	test('scan button is visible on load', async ({ mainPage }) => {
 		await expect(mainPage.btnRunScan).toBeVisible();
 		await expect(mainPage.btnRunScan).toBeDisabled();
@@ -26,3 +26,5 @@ test.describe('ATS Scan — UI Flow', () => {
 		expect(scoreText === '--' || scoreText === '' || scoreText === null).toBeTruthy();
 	});
 });
+
+

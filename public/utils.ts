@@ -2,14 +2,14 @@
  * Shared utility functions for resumessi
  */
 
-function escHtml(value) {
+export function escHtml(value: string | null | undefined): string {
   if (value === null) return 'null';
   if (value === undefined) return 'undefined';
-  const m = { '&': 38, '<': 60, '>': 62, '"': 34, "'": 39 };
+  const m: Record<string, number> = { '&': 38, '<': 60, '>': 62, '"': 34, "'": 39 };
   return String(value).replace(/[&<>"']/g, (c) => '&#' + m[c] + ';');
 }
 
-function validateJDInput(jd) {
+export function validateJDInput(jd: string): { valid: boolean; reason?: string } {
   if (!jd || typeof jd !== 'string') {
     return { valid: false, reason: 'Job description is required' };
   }
@@ -23,7 +23,7 @@ function validateJDInput(jd) {
   return { valid: true };
 }
 
-function formatDate(dateStr) {
+export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return 'Present';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
@@ -34,12 +34,12 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
 }
 
-function renderSkills(skills) {
+export function renderSkills(skills: string[] | null | undefined): string {
   if (!Array.isArray(skills) || skills.length === 0) return '';
   return skills.map(s => `<span>${s}</span>`).join('');
 }
 
-function getDuration(startDate, endDate) {
+export function getDuration(startDate: string, endDate?: string): string {
   const start = new Date(startDate);
   const end = endDate ? new Date(endDate) : new Date();
   if (isNaN(start.getTime())) return '';
@@ -52,7 +52,7 @@ function getDuration(startDate, endDate) {
   return `${years}yr ${rem}mo`;
 }
 
-function getPhotoPath(uploadedPhoto, resumeData) {
+export function getPhotoPath(uploadedPhoto: string | null, resumeData?: { basics?: { photo?: string } } | null): string {
   if (uploadedPhoto) return uploadedPhoto;
   if (resumeData && resumeData.basics && resumeData.basics.photo) {
     if (resumeData.basics.photo.includes('/')) {
@@ -61,15 +61,4 @@ function getPhotoPath(uploadedPhoto, resumeData) {
     return `public/assets/photos/${resumeData.basics.photo}`;
   }
   return '/examples/photo.jpg';
-}
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    escHtml,
-    validateJDInput,
-    formatDate,
-    renderSkills,
-    getDuration,
-    getPhotoPath
-  };
 }

@@ -1,25 +1,25 @@
-/**
+﻿/**
  * tests/unit/polishResume.test.js
  *
  * Unit tests for polish-resume related helpers.
  * - ⚠️ ATS scan validation tests removed — already comprehensively covered
  *   in validateJDInput.test.js (lines 19-44). Skipping per project guidance.
- * - Photo path resolution — SKIPPED: already covered in getPhotoPath.test.js
+ * - Photo path resolution â€” SKIPPED: already covered in getPhotoPath.test.js
  * - Skill rendering for an object-shaped skills map
  *
- * All helpers are imported from ../../public/utils.js — no inline copies.
+ * All helpers are imported from ../../public/utils.js â€” no inline copies.
  */
 'use strict';
 
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
-const { renderSkills } = require('../../public/utils.js');
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { renderSkills } from '../../public/utils';
 
-// ── 1. ATS scan validation — SKIPPED (duplicate of validateJDInput.test.js) ─
+// â”€â”€ 1. ATS scan validation â€” SKIPPED (duplicate of validateJDInput.test.js) â”€
 
-// ── 2. Photo path resolution — SKIPPED (duplicate of getPhotoPath.test.js) ─
+// â”€â”€ 2. Photo path resolution â€” SKIPPED (duplicate of getPhotoPath.test.js) â”€
 
-// ── 3. Skill rendering for an object-shaped skills map ──────────────────
+// â”€â”€ 3. Skill rendering for an object-shaped skills map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // The resume model stores skills as an object: { "Category": [{name, expert}] }.
 // Normalize to a flat list of names, then verify renderSkills output.
 // Note: renderSkills() expects a flat string array; the category iteration
@@ -45,7 +45,7 @@ test('renderSkills returns empty string for an empty skills map', () => {
   assert.equal(renderSkills(flat), '');
 });
 
-// ── 4. Skills rendering — edge case: nested categories ────────────────
+// â”€â”€ 4. Skills rendering â€” edge case: nested categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // This exercises how the application actually iterates over category-shaped
 // skills objects and feeds individual category arrays to renderSkills.
 // While renderSkills() itself only wraps strings in spans, this test verifies

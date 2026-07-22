@@ -1,5 +1,5 @@
-const { test, expect } = require('./test-setup.js');
-const { jobDescriptionFixtures } = require('../fixtures/resume-fixtures.js');
+﻿import { test, expect } from './test-setup';
+import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
 
 test.describe('Resume Display', () => {
 	test('should display resume content on load', async ({ mainPage }) => {
@@ -35,3 +35,4 @@ test.describe('AI Generation', () => {
 		await expect(mainPage.aiModal).toBeVisible();
 	});
 });
+

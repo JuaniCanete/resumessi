@@ -1,4 +1,4 @@
-/**
+﻿/**
  * tests/unit/getPhotoPath.test.js
  *
  * Unit tests for the getPhotoPath logic from public/main.html.
@@ -11,8 +11,8 @@
  */
 'use strict';
 
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
 
 /**
  * Mirror of the photo resolution logic from public/main.html.
@@ -20,7 +20,7 @@ const assert = require('node:assert/strict');
  * @param {object} resumeData - parsed resume JSON
  * @returns {string} resolved photo path or data URL
  */
-const { getPhotoPath } = require('../../public/utils.js');
+import { getPhotoPath } from '../../public/utils';
 
 test('getPhotoPath returns uploaded photo when present', () => {
   const uploadedPhoto = 'data:image/png;base64,abc';

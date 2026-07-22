@@ -1,26 +1,27 @@
 {
   "name": "resumessi",
-  "version": "1.1.0",
-  "description": "AI-powered resume scoring and generation tool using AI models",
+  "version": "1.2.0",
+  "description": "AI-powered resume scoring and generation tool using AI providers and models",
   "main": "public/main.html",
   "scripts": {
-    "start": "node start.js",
-    "setup": "node setup.js",
-    "validate": "node scripts/validate.js",
-    "prebuild": "node scripts/validate.js",
-    "build": "node build.js",
-    "build:check": "node build.js --check",
-    "generate": "node src/resume/generate-resume.js",
+    "start": "tsx start.ts",
+    "setup": "tsx setup.ts",
+    "validate": "tsx scripts/validate.ts",
+    "prebuild": "tsx scripts/validate.ts",
+    "build": "tsx build.ts",
+    "build:check": "tsx build.ts --check",
+    "generate": "tsx src/resume/generate-resume.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "html:validate": "html-validate public/**/*.html",
     "css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html",
-    "test:unit": "node --test \"tests/unit/**/*.test.js\"",
-    "test:e2e": "playwright test --config=tests/playwright.config.js",
-    "evals": "node scripts/run-evals.js"
+    "test:unit": "tsx --test \"tests/unit/**/*.test.ts\"",
+    "test:e2e": "playwright test --config=tests/playwright.config.ts",
+    "evals": "tsx scripts/run-evals.ts",
+    "typecheck": "tsc --noEmit"
   },
   "lint-staged": {
-    "*.js": [
+    "*.{js,ts}": [
       "eslint --fix"
     ],
     "*.html": [
@@ -44,6 +45,12 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
+    "@types/busboy": "^1.5.4",
+    "@types/node": "^26.1.1",
+    "@types/pdf-parse": "^1.1.5",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "esbuild": "^0.28.1",
     "eslint": "^8.57.0",
     "eslint-plugin-html": "^8.1.4",
     "html-validate": "^9.0.0",
@@ -51,6 +58,8 @@
     "lint-staged": "^15.0.0",
     "postcss-html": "^1.8.1",
     "stylelint": "^16.0.0",
-    "stylelint-config-standard": "^36.0.0"
+    "stylelint-config-standard": "^36.0.0",
+    "tsx": "^4.23.1",
+    "typescript": "^6.0.3"
   }
 }

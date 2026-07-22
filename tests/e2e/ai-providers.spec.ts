@@ -1,4 +1,4 @@
-const { test, expect } = require('./test-setup.js');
+﻿import { test, expect } from './test-setup';
 
 test.describe('AI Providers Modal', () => {
 	test.beforeEach(async ({ page }) => {
@@ -210,3 +210,5 @@ test.describe('AI Providers Modal', () => {
 		await mainPage.closeProvidersModal();
 	});
 });
+
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * tests/unit/renderResume.test.js
  *
  * Unit tests for resume rendering utility logic.
@@ -11,10 +11,10 @@
  */
 'use strict';
 
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
 
-const { formatDate, renderSkills, getDuration } = require('../../public/utils.js');
+import { formatDate, renderSkills, getDuration } from '../../public/utils';
 
 test('formatDate returns "Present" for null/undefined/empty', () => {
   assert.equal(formatDate(null), 'Present');
@@ -23,7 +23,7 @@ test('formatDate returns "Present" for null/undefined/empty', () => {
 });
 
 test('formatDate formats ISO date string to readable format', () => {
-  // Jan 2023 → should contain "2023" and "Jan"
+  // Jan 2023 â†’ should contain "2023" and "Jan"
   const result = formatDate('2023-01-01');
   assert.ok(result.includes('2023'), `Expected "2023" in "${result}"`);
   assert.ok(result.includes('Jan'), `Expected "Jan" in "${result}"`);
@@ -61,3 +61,4 @@ test('getDuration calculates years correctly', () => {
 test('getDuration returns empty string for invalid start date', () => {
   assert.equal(getDuration('invalid', '2023-01-01'), '');
 });
+

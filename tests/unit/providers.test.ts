@@ -1,4 +1,4 @@
-/**
+﻿/**
  * tests/unit/providers.test.js
  *
  * Unit tests for src/providers.js.
@@ -11,17 +11,17 @@
 
 'use strict';
 
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
-const {
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
   buildRequest,
   parseResponse,
   getProviderTimeout,
   getProviderConfig,
   validateInferenceRequest,
-} = require('../../src/providers.js');
+} from '../../src/providers';
 
-// ── buildRequest ──────────────────────────────────────────────────────────────
+// â”€â”€ buildRequest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('buildRequest creates valid Cohere request', () => {
   const result = buildRequest('cohere', 'You are helpful.', 'Hello', 'command-r-plus', 'key-123', { temperature: 0.5 });
@@ -86,7 +86,7 @@ test('buildRequest throws for unknown provider', () => {
   assert.throws(() => buildRequest('unknown', 'sys', 'prompt', 'model', 'key'), /Unknown provider/);
 });
 
-// ── parseResponse ─────────────────────────────────────────────────────────────
+// â”€â”€ parseResponse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('parseResponse extracts Cohere text', () => {
   const data = { message: { message: 'Hello world' } };
@@ -141,7 +141,7 @@ test('parseResponse handles missing fields gracefully', () => {
   assert.deepEqual(result.usage, {});
 });
 
-// ── getProviderTimeout ────────────────────────────────────────────────────────
+// â”€â”€ getProviderTimeout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('getProviderTimeout returns default for known providers', () => {
   assert.equal(getProviderTimeout('cohere'), 20000);
@@ -154,7 +154,7 @@ test('getProviderTimeout returns default for unknown provider', () => {
   assert.equal(getProviderTimeout('unknown'), 20000);
 });
 
-// ── getProviderConfig ─────────────────────────────────────────────────────────
+// â”€â”€ getProviderConfig â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('getProviderConfig returns configured providers in order', () => {
   const env = {
@@ -183,7 +183,7 @@ test('getProviderConfig uses default order when AI_INFERENCE_ORDER is unset', ()
   assert.deepEqual(result.configured, ['cohere', 'mistral', 'gemini', 'groq']);
 });
 
-// ── validateInferenceRequest ──────────────────────────────────────────────────
+// â”€â”€ validateInferenceRequest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('validateInferenceRequest accepts valid request', () => {
   const errors = validateInferenceRequest({
@@ -225,3 +225,9 @@ test('validateInferenceRequest rejects extra fields', () => {
   const errors = validateInferenceRequest({ system: 'sys', prompt: 'Hello', extra: 'bad' });
   assert.ok(errors.some(e => e.includes('extra')));
 });
+
+
+
+
+
+

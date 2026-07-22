@@ -1,4 +1,4 @@
-/**
+﻿/**
  * tests/unit/validateJDInput.test.js
  *
  * Unit tests for the Job Description input validation logic.
@@ -11,10 +11,10 @@
  */
 'use strict';
 
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
 
-const { validateJDInput } = require('../../public/utils.js');
+import { validateJDInput } from '../../public/utils';
 
 test('validateJDInput rejects null', () => {
   const result = validateJDInput(null);
@@ -61,3 +61,4 @@ test('validateJDInput trims whitespace before length check', () => {
   const result = validateJDInput(jd);
   assert.equal(result.valid, false);
 });
+

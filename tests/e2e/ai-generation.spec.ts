@@ -1,4 +1,4 @@
-const { test, expect } = require('./test-setup.js');
+﻿import { test, expect } from './test-setup';
 
 test.describe('AI Generation Modal', () => {
 	test('generate button is visible on load', async ({ mainPage }) => {
@@ -26,3 +26,5 @@ test.describe('AI Generation Modal', () => {
 		}
 	});
 });
+
+

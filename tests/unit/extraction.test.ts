@@ -1,4 +1,4 @@
-/**
+﻿/**
  * tests/unit/extraction.test.js
  *
  * Unit tests for the extractNameFromPDFText function.
@@ -12,8 +12,8 @@
  */
 'use strict';
 
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
 
 /**
  * Mirror of the extraction logic from public/main.html (lines 2069-2084).
@@ -22,12 +22,12 @@ const assert = require('node:assert/strict');
  */
 function extractNameFromPDFText(text) {
   if (!text) return null;
-  var lines = text.split('\n');
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].trim();
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
     if (!line || line.length < 3 || line.length > 60) continue;
     if (/^(email|phone|location|linkedin|github|http|www|@)/i.test(line)) continue;
-    var words = line.split(/\s+/);
+    const words = line.split(/\s+/);
     if (words.length >= 2 && words.length <= 4) {
       if (/^[a-zA-ZÀ-ÿñÑ'. -]+$/.test(line) && !/\d/.test(line)) {
         return line;
@@ -37,7 +37,7 @@ function extractNameFromPDFText(text) {
   return null;
 }
 
-// ── Basic Name Extraction ──────────────────────────────────────────────
+// â”€â”€ Basic Name Extraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('extractNameFromPDFText returns null for empty text', () => {
   assert.equal(extractNameFromPDFText(''), null);
@@ -71,7 +71,7 @@ Developer`;
   assert.equal(extractNameFromPDFText(text), "Mary-Jane O'Connor");
 });
 
-// ── Filtering Rules ────────────────────────────────────────────────────
+// â”€â”€ Filtering Rules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('extractNameFromPDFText ignores email lines', () => {
   const text = `john@example.com
@@ -109,7 +109,7 @@ John Smith`;
   assert.equal(extractNameFromPDFText(text), 'John Smith');
 });
 
-// ── Edge Cases ───────────────────────────────────────────────────────────
+// â”€â”€ Edge Cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test('extractNameFromPDFText ignores lines longer than 60 characters', () => {
   const longLine = 'A'.repeat(61);
