@@ -1,7 +1,7 @@
 {
   "name": "resumessi",
-  "version": "1.1.0",
-  "description": "AI-powered resume scoring and generation tool using AI models",
+  "version": "1.2.0",
+  "description": "AI-powered resume scoring and generation tool using AI providers and models",
   "main": "public/main.html",
   "scripts": {
     "start": "node start.js",
