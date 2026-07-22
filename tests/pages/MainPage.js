@@ -171,7 +171,7 @@ class MainPage {
   }
 
   async selectProvider(name) {
-    const items = await this.providersList.locator('.provider-item.configured').all();
+    const items = await this.providersList.locator('.provider-item').all();
     for (const item of items) {
       const text = await item.textContent();
       if (text && text.includes(name)) {

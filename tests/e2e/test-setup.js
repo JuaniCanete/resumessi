@@ -6,11 +6,34 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const test = playwrightTest.extend({
   mainPage: async ({ page }, use) => {
+    
+    // Track provider sent to /api/infer for verification
+    let lastProviderSent = null;
+    
     // Prevent external API calls and ensure hermetic tests
+    // Mock config endpoint before navigation to ensure first load uses mock
+    await page.route('**/config.json', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          availableProviders: ['cohere', 'mistral', 'gemini'],
+          primaryProvider: 'cohere',
+          AI_INFERENCE_ORDER: 'cohere,mistral,gemini'
+        })
+      });
+    });
+
+    // Reset cached config after route registration
+    await page.evaluate(() => {
+      if (window.__resetConfigCache) window.__resetConfigCache();
+    });
+
     await page.route('**/api/infer', async (route) => {
       await delay(150); // Allow UI to render loading state before response
       const request = route.request();
       const postData = JSON.parse(request.postData() || '{}');
+      lastProviderSent = postData.provider || null;
       const system = postData.system || '';
 
       // Resume generation request
@@ -129,10 +152,22 @@ const test = playwrightTest.extend({
     });
 
     const mainPage = new MainPage(page);
+    
+    // Expose provider tracking for tests
+    await page.exposeBinding('getLastProviderSent', () => lastProviderSent);
+    
     await mainPage.goto();
     await mainPage.waitForResumeLoaded();
     await use(mainPage);
   }
+});
+
+// Clear localStorage and sessionStorage after each test to avoid state bleed
+test.afterEach(async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
 });
 
 module.exports = { test, expect: playwrightTest.expect };

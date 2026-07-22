@@ -137,30 +137,30 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // API Infer — new unified provider router endpoint
-  if (req.url === '/api/infer' && req.method === 'POST') {
-    try {
-      const body = await getRequestBody(req);
-      const requestData = JSON.parse(body);
+// API Infer — new unified provider router endpoint
+   if (req.url === '/api/infer' && req.method === 'POST') {
+     try {
+       const body = await getRequestBody(req);
+       const requestData = JSON.parse(body);
 
-      const providerLib = require('./src/providers.js');
-      const validationErrors = providerLib.validateInferenceRequest(requestData);
-      if (validationErrors.length > 0) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid request', details: validationErrors }));
-        return;
-      }
+       const providerLib = require('./src/providers.js');
+       const validationErrors = providerLib.validateInferenceRequest(requestData);
+       if (validationErrors.length > 0) {
+         res.writeHead(400, { 'Content-Type': 'application/json' });
+         res.end(JSON.stringify({ error: 'Invalid request', details: validationErrors }));
+         return;
+       }
 
-      const env = getFullConfigFromEnv();
-      const { system, prompt, temperature, max_tokens, top_p } = requestData;
-      const params = {};
-      if (temperature !== undefined) params.temperature = temperature;
-      if (max_tokens !== undefined) params.max_tokens = max_tokens;
-      if (top_p !== undefined) params.top_p = top_p;
+       const env = getFullConfigFromEnv();
+       const { system, prompt, provider, temperature, max_tokens, top_p } = requestData;
+       const params = {};
+       if (temperature !== undefined) params.temperature = temperature;
+       if (max_tokens !== undefined) params.max_tokens = max_tokens;
+       if (top_p !== undefined) params.top_p = top_p;
 
-      try {
-        const router = require('./src/router.js');
-        const result = await router.runInference(system, prompt, params, env);
+       try {
+         const router = require('./src/router.js');
+         const result = await router.runInference(system, prompt, params, env, provider);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           text: result.text,
@@ -284,7 +284,18 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === '/api/polish-resume' && req.method === 'POST') {
     const body = await getRequestBody(req);
-    const resumeData = JSON.parse(body);
+    let resumeData;
+    try {
+      resumeData = JSON.parse(body);
+    } catch (e) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid JSON in request body' }));
+      return;
+    }
+
+    // Extract optional provider from request body
+    const selectedProvider = resumeData.provider || null;
+    const dataToPolish = resumeData?.resumeData ? resumeData.resumeData : resumeData;
 
     let promptTemplate;
     try {
@@ -300,7 +311,7 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const router = require('./src/router.js');
-      const result = await router.runPolish(resumeData, promptTemplate, env);
+      const result = await router.runPolish(dataToPolish, promptTemplate, env, selectedProvider);
       let raw = result.text;
       raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
       const polished = JSON.parse(raw);
@@ -420,10 +431,13 @@ server.listen(PORT, () => {
   console.log('  Press Ctrl+C to stop.');
   console.log('');
 
-  if (process.platform === 'win32') {
-    spawn('cmd.exe', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' }).unref();
-  } else {
-    const cmd = process.platform === 'darwin' ? 'open' : 'xdg-open';
-    spawn(cmd, [url], { detached: true, stdio: 'ignore' }).unref();
+  const shouldOpen = !process.argv.includes('--no-open') && process.env.NODE_ENV !== 'test' && !process.env.CI;
+  if (shouldOpen) {
+    if (process.platform === 'win32') {
+      spawn('cmd.exe', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' }).unref();
+    } else {
+      const cmd = process.platform === 'darwin' ? 'open' : 'xdg-open';
+      spawn(cmd, [url], { detached: true, stdio: 'ignore' }).unref();
+    }
   }
 });

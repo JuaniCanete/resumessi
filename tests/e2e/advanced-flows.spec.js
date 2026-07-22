@@ -1,157 +1,122 @@
-/**
- * tests/e2e/advanced-flows.spec.js
- *
- * Advanced E2E flows for resumessi, built on top of the shared mock setup.
- * All AI / save / rollback endpoints are mocked in tests/e2e/test-setup.js
- * (and selectively overridden per-test below). No real API key required.
- *
- * All interactions use Playwright locator-based actions (POM methods) rather
- * than page.evaluate() to simulate real user behavior.
- */
-'use strict';
-
 const path = require('path');
 const { test, expect } = require('./test-setup.js');
 const { jobDescriptionFixtures } = require('../fixtures/resume-fixtures.js');
 
 // Valid generated resume flag so polish/photo flows behave as "generated" data
 const GENERATED_FLAG = JSON.stringify({
-  basics: { name: 'Test User', email: 'test@example.com', photo: null },
-  experience: [],
-  education: [],
-  skills: {},
+	basics: { name: 'Test User', email: 'test@example.com', photo: null },
+	experience: [],
+	education: [],
+	skills: {},
 });
 
 // A small valid JPEG shipped with the project, used to drive the file input.
 const SAMPLE_PHOTO = path.resolve(__dirname, '../../examples/photo.jpg');
 
 test.describe('Advanced Flows', () => {
-  test('photo upload — stores base64 in localStorage and updates resume display', async ({ mainPage }) => {
-    const page = mainPage.page;
+	test('photo upload — stores base64 in localStorage and updates resume display', async ({ mainPage }) => {
+		await mainPage.page.evaluate((flag) => localStorage.setItem('resume-data', flag), GENERATED_FLAG);
+		await mainPage.page.reload();
+		await mainPage.waitForResumeLoaded();
 
-    // confirmPhotoUpload() only persists when a resume exists in localStorage
-    await page.evaluate((flag) => localStorage.setItem('resume-data', flag), GENERATED_FLAG);
-    await page.reload();
-    await mainPage.waitForResumeLoaded();
+		await mainPage.openPhotoModal();
 
-    // Open the photo modal via UI (actions dropdown -> Upload Profile Photo)
-    await mainPage.openPhotoModal();
+		await mainPage.uploadPhoto(SAMPLE_PHOTO);
 
-    // Feed the file input via the POM method
-    await mainPage.uploadPhoto(SAMPLE_PHOTO);
+		await expect(mainPage.photoUploadConfirm).toBeVisible({ timeout: 5000 });
+		await mainPage.confirmPhotoUpload();
 
-    // Wait for the reader + image load to surface the Confirm button
-    await expect(mainPage.photoUploadConfirm).toBeVisible({ timeout: 5000 });
-    await mainPage.confirmPhotoUpload();
+		const uploaded = await  mainPage.page.evaluate(() => localStorage.getItem('uploaded-photo'));
+		expect.soft(uploaded).toBeTruthy();
+		expect.soft(uploaded.startsWith('data:image/')).toBe(true);
 
-    // Verify the base64 data URL was persisted
-    const uploaded = await page.evaluate(() => localStorage.getItem('uploaded-photo'));
-    expect.soft(uploaded).toBeTruthy();
-    expect.soft(uploaded.startsWith('data:image/')).toBe(true);
+		await expect.soft(mainPage.profilePhoto).toBeVisible({ timeout: 5000 });
+		const photoSrc = await mainPage.profilePhoto.getAttribute('src');
+		expect.soft(photoSrc).toBe(uploaded);
+	});
 
-    // Verify the resume display updates to show the uploaded photo
-    await expect.soft(mainPage.profilePhoto).toBeVisible({ timeout: 5000 });
-    const photoSrc = await mainPage.profilePhoto.getAttribute('src');
-    expect.soft(photoSrc).toBe(uploaded);
-  });
+	test('polish resume flow — mocked response updates UI', async ({ mainPage }) => {
+		await mainPage.page.evaluate((flag) => localStorage.setItem('resume-data', flag), GENERATED_FLAG);
 
-  test('polish resume flow — mocked response updates UI', async ({ mainPage }) => {
-    const page = mainPage.page;
+		await mainPage.page.reload();
+		await mainPage.waitForResumeLoaded();
 
-    // Make the Polish button available (only shown for generated resumes)
-    await page.evaluate((flag) => localStorage.setItem('resume-data', flag), GENERATED_FLAG);
+		await mainPage.clickPolish();
+		await expect(mainPage.polishOverlay).toBeVisible();
+		const refreshText = await mainPage.getRefreshMessageText();
+		expect.soft(refreshText.toLowerCase()).toContain('refresh');
+	});
 
-    await page.reload();
-    await mainPage.waitForResumeLoaded();
+	test('ATS scan error handling — 500 from proxy shows error in UI', async ({ mainPage }) => {
+		mainPage.page.on('dialog', (dialog) => dialog.dismiss());
 
-    // Use the POM method to click Polish through the actions dropdown
-    await mainPage.clickPolish();
+		// Ensure no fallback retry — force the error into #rp-feedback
+		await mainPage.page.unroute('**/config.json');
+		await mainPage.page.route('**/config.json', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					AI_MODEL: 'gemini-2.5-flash',
+					ACCENT_COLOR: '#2563eb',
+				}),
+			});
+		});
 
-    // The overlay appears immediately (mocked response is being processed)
-    await expect(mainPage.polishOverlay).toBeVisible();
+		// Override the infer mock to return a 500 with an error payload
+		await mainPage.page.unroute('**/api/infer');
+		await mainPage.page.route('**/api/infer', async (route) => {
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ error: 'Internal Server Error' }),
+			});
+		});
 
-    // After the mocked response, the refresh message is shown to the user
-    const refreshText = await mainPage.getRefreshMessageText();
-    expect.soft(refreshText.toLowerCase()).toContain('refresh');
-  });
+		await mainPage.enterJobDescription(jobDescriptionFixtures.full);
+		await mainPage.clickScan();
 
-  test('ATS scan error handling — 500 from proxy shows error in UI', async ({ mainPage }) => {
-    const page = mainPage.page;
+		await expect(mainPage.rpFeedback).toContainText(/error/i, { timeout: 10000 });
+	});
 
-    // Dismiss the alert() that the error path triggers
-    page.on('dialog', (dialog) => dialog.dismiss());
+	test('rollback — calls /api/rollback via network interception and updates UI', async ({ mainPage }) => {
+		// Set up network interception: wait for the rollback API call
+		const rollbackResponsePromise =  mainPage.page.waitForResponse(
+			(r) => r.url().includes('/api/rollback') && r.status() === 200
+		);
 
-    // Ensure no fallback retry — force the error into #rp-feedback
-    await page.route('**/config.json', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          AI_MODEL: 'gemini-2.5-flash',
-          ACCENT_COLOR: '#2563eb',
-        }),
-      });
-    });
+		// Set up generated state so rollback button appears
+		const polishedFlag = JSON.stringify({
+			basics: { name: 'Test User', email: 'test@example.com', photo: null },
+			experience: [],
+			education: [],
+			skills: {},
+		});
+		await  mainPage.page.evaluate((flag) => localStorage.setItem('resume-data', flag), polishedFlag);
 
-    // Override the infer mock to return a 500 with an error payload
-    await page.route('**/api/infer', async (route) => {
-      await route.fulfill({
-        status: 500,
-        contentType: 'application/json',
-        body: JSON.stringify({ error: 'Internal Server Error' }),
-      });
-    });
+		// Mock polished JSON to return 200 so rollback button is shown
+		await  mainPage.page.route('**/src/resume/output/resume-data-AI-polished.json', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					basics: { name: 'Test User', email: 'test@example.com', photo: null },
+					experience: [],
+					education: [],
+					skills: {},
+				}),
+			});
+		});
 
-    await mainPage.enterJobDescription(jobDescriptionFixtures.full);
-    await mainPage.clickScan();
+		await mainPage.page.reload();
+		await mainPage.waitForResumeLoaded();
 
-    // No fallback model is configured in this test, so the error is surfaced in #rp-feedback
-    await expect(mainPage.rpFeedback).toContainText(/error/i, { timeout: 10000 });
-  });
+		await mainPage.clickRollback();
 
-  test('rollback — calls /api/rollback via network interception and updates UI', async ({ mainPage }) => {
-    const page = mainPage.page;
+		const response = await rollbackResponsePromise;
+		expect(response.status()).toBe(200);
 
-    // Set up network interception: wait for the rollback API call
-    const rollbackResponsePromise = page.waitForResponse(
-      (r) => r.url().includes('/api/rollback') && r.status() === 200
-    );
-
-    // Set up generated state so rollback button appears
-    const polishedFlag = JSON.stringify({
-      basics: { name: 'Test User', email: 'test@example.com', photo: null },
-      experience: [],
-      education: [],
-      skills: {},
-    });
-    await page.evaluate((flag) => localStorage.setItem('resume-data', flag), polishedFlag);
-
-    // Mock polished JSON to return 200 so rollback button is shown
-    await page.route('**/src/resume/output/resume-data-AI-polished.json', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          basics: { name: 'Test User', email: 'test@example.com', photo: null },
-          experience: [],
-          education: [],
-          skills: {},
-        }),
-      });
-    });
-
-    await page.reload();
-    await mainPage.waitForResumeLoaded();
-
-    // Use POM method to click Rollback through the actions dropdown
-    await mainPage.clickRollback();
-
-    // Verify the API call was made and returned successfully
-    const response = await rollbackResponsePromise;
-    expect(response.status()).toBe(200);
-
-    // UI updates with the rollback refresh message
-    const refreshText = await mainPage.getRefreshMessageText();
-    expect.soft(refreshText.toLowerCase()).toContain('rollback');
-  });
+		const refreshText = await mainPage.getRefreshMessageText();
+		expect.soft(refreshText.toLowerCase()).toContain('rollback');
+	});
 });

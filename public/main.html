@@ -1315,6 +1315,10 @@
 
         // Config cache - populated once on first call
         let cachedConfig = null;
+        // Public helper to reset config cache between test runs
+        window.__resetConfigCache = () => {
+            cachedConfig = null;
+        };
 
         async function loadEnv() {
             if (cachedConfig) return cachedConfig;
@@ -1504,16 +1508,20 @@
 
             const modelErrorMsg = document.getElementById('rp-feedback');
 
-            try {
-                const response = await fetch('/api/infer', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        system: 'You are an ATS resume scorer. Return only valid JSON matching the requested schema.',
-                        prompt: prompt
-                    }),
-                    signal: signal
-                });
+             // Get selected provider from localStorage
+             const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
+
+             try {
+                 const response = await fetch('/api/infer', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                         system: 'You are an ATS resume scorer. Return only valid JSON matching the requested schema.',
+                         prompt: prompt,
+                         provider: selectedProvider
+                     }),
+                     signal: signal
+                 });
 
                 if (!response.ok) {
                     const errData = await response.json();
@@ -1892,11 +1900,17 @@
                     resumeDataForPolish.basics.photo = '';
                 }
 
+                // Get selected provider from localStorage
+                const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
+
                 // Call polish API
                 const polishResp = await fetch('/api/polish-resume', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(resumeDataForPolish)
+                    body: JSON.stringify({
+                        resumeData: resumeDataForPolish,
+                        provider: selectedProvider
+                    })
                 });
 
                 if (!polishResp.ok) {
@@ -2141,13 +2155,17 @@
             }
             extractionPrompt = extractionPrompt.replace('{extracted_text}', currentPDFText);
 
+            // Get selected provider from localStorage
+            const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
+
             try {
                 const response = await fetch('/api/infer', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         system: 'You are a resume generation assistant. Return only valid JSON matching the resume schema.',
-                        prompt: extractionPrompt
+                        prompt: extractionPrompt,
+                        provider: selectedProvider
                     }),
                     signal: signal
                 });
@@ -2384,6 +2402,9 @@
 
             // Load config and render providers
             const env = await loadEnv();
+            const currentSelected = localStorage.getItem('selected-ai-provider') || env.primaryProvider || null;
+            // Initialize selectedProviderForModal with current selection before rendering
+            selectedProviderForModal = currentSelected;
             renderProvidersList(env.availableProviders || [], env.primaryProvider || null);
 
             modal.style.display = 'flex';
@@ -2394,7 +2415,7 @@
             const modal = document.getElementById('providers-modal');
             if (modal) {
                 modal.style.display = 'none';
-                selectedProviderForModal = null;
+                // Keep selectedProviderForModal so confirm still works if user clicked nothing new
             }
         }
 
@@ -2402,25 +2423,29 @@
             const listEl = document.getElementById('providers-list');
             if (!listEl) return;
 
+            // Provider metadata with defensive fallbacks for unknown providers
             const providerIcons = {
                 cohere: '/public/assets/cohere_icon.png',
                 mistral: '/public/assets/mistral_icon.png',
                 gemini: '/public/assets/gemini_icon.png',
-                groq: '/public/assets/groq_icon.png'
+                groq: '/public/assets/groq_icon.png',
+                default: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ctext y="1em" font-size="20"%3E🤖%3C/text%3E%3C/svg%3E'
             };
 
             const providerModels = {
                 cohere: 'command-r-plus',
                 mistral: 'mistral-large-latest',
                 gemini: 'gemini-2.5-flash',
-                groq: 'llama-3.3-70b-versatile'
+                groq: 'llama-3.3-70b-versatile',
+                default: 'Unknown model'
             };
 
             const providerDescriptions = {
                 cohere: 'Balanced performance, strong for general tasks',
                 mistral: 'Fast, multilingual, great for reasoning',
                 gemini: 'Google\'s latest model, vision capable',
-                groq: 'Ultra-fast inference, Llama architecture'
+                groq: 'Ultra-fast inference, Llama architecture',
+                default: 'AI provider for resume generation'
             };
 
             // Get currently selected provider from localStorage
@@ -2428,14 +2453,19 @@
 
             listEl.innerHTML = providers.map(provider => {
                 const isSelected = provider === currentSelected;
-                return '<div class="provider-item configured" data-provider="' + provider + '" onclick="selectProviderInModal(\'' + provider + '\')">' +
-                    '<input type="checkbox" class="provider-checkbox" ' + (isSelected ? 'checked' : '') + ' onclick="event.stopPropagation();">' +
+                const icon = escHtml(providerIcons[provider] || providerIcons.default);
+                const model = escHtml(providerModels[provider] || providerModels.default);
+                const desc = escHtml(providerDescriptions[provider] || providerDescriptions.default);
+                const displayName = escHtml(provider.charAt(0).toUpperCase() + provider.slice(1));
+                const escapedProvider = escHtml(provider);
+                return '<div class="provider-item" data-provider="' + escapedProvider + '" onclick="selectProviderInModal(\'' + escapedProvider + '\')">' +
+                    '<input type="checkbox" class="provider-checkbox" ' + (isSelected ? 'checked' : '') + ' onclick="handleProviderCheckboxClick(event, \'' + escapedProvider + '\')">' +
                     '<div class="provider-header">' +
-                    '<img src="' + providerIcons[provider] + '" alt="' + provider + '" class="provider-img" onerror="this.style.display=\'none\'">' +
-                    '<span class="provider-name">' + provider.charAt(0).toUpperCase() + provider.slice(1) + '</span>' +
+                    '<img src="' + icon + '" alt="' + escapedProvider + '" class="provider-img" onerror="this.style.display=\'none\'">' +
+                    '<span class="provider-name">' + displayName + '</span>' +
                     '</div>' +
-                    '<div class="provider-model">' + providerModels[provider] + '</div>' +
-                    '<div class="provider-description">' + providerDescriptions[provider] + '</div>' +
+                    '<div class="provider-model">' + model + '</div>' +
+                    '<div class="provider-description">' + desc + '</div>' +
                     '</div>';
             }).join('');
 
@@ -2447,6 +2477,12 @@
                     }
                 });
             }, 0);
+        }
+
+        function handleProviderCheckboxClick(event, provider) {
+            event.stopPropagation();
+            // Delegate to the same selection logic
+            selectProviderInModal(provider);
         }
 
         function selectProviderInModal(provider) {

@@ -17,6 +17,7 @@ This file defines how AI assistants collaborate within the **resumessi** project
 1. **`.env` is the source of truth** for runtime config (API key, model, colors). The server serves `/config.json` endpoint which reads `.env`.
 2. **Never hardcode personal data** into `main.html`. The resume content should be auto-generated from prompt data.
 3. **NEVER RUN `node setup.js` or `npm run setup`** — this overwrites `.env` and will cause API keys to be lost or reset. The setup script is for human users only.
+4. **ALWAYS RESPECT INDENTATION STYLE AND FORMATTING** — maintain existing file formatting (tab size 4, match existing file indentation or spaces on txt files for example), refrain from adding unnecessary comments.
 
 ### File Ownership
 

@@ -2,7 +2,7 @@ module.exports = {
   timeout: 15000,
   testDir: './e2e',
   outputDir: './test-results',
-  workers: 8,
+  workers: 4,
   reporter: [['html', { open: 'on-failure' }]],
   use: {
     baseURL: 'http://localhost:3000',
@@ -14,8 +14,9 @@ module.exports = {
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
   webServer: {
-    command: 'node ../start.js',
+    command: 'cmd.exe /c "node ..\\start.js"',
     url: 'http://localhost:3000/public/main.html',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
+    timeout: 60000,
   },
 };
