@@ -1,4 +1,4 @@
-﻿/**
+/**
  * tests/unit/router.test.ts
  *
  * Unit tests for src/router.ts.

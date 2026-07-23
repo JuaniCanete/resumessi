@@ -1,5 +1,5 @@
-﻿/**
- * tests/unit/providers.test.js
+/**
+ * tests/unit/providers.test.ts
  *
  * Unit tests for src/providers.js.
  * - buildRequest: verify URL, headers, body for each provider
@@ -21,7 +21,7 @@ import {
   validateInferenceRequest,
 } from '../../src/providers';
 
-// â”€â”€ buildRequest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── buildRequest ──────────────────────────────────────────────────────────────
 
 test('buildRequest creates valid Cohere request', () => {
   const result = buildRequest('cohere', 'You are helpful.', 'Hello', 'command-r-plus', 'key-123', { temperature: 0.5 });
@@ -86,7 +86,7 @@ test('buildRequest throws for unknown provider', () => {
   assert.throws(() => buildRequest('unknown', 'sys', 'prompt', 'model', 'key'), /Unknown provider/);
 });
 
-// â”€â”€ parseResponse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── parseResponse ─────────────────────────────────────────────────────────────
 
 test('parseResponse extracts Cohere text', () => {
   const data = { message: { message: 'Hello world' } };
@@ -141,7 +141,7 @@ test('parseResponse handles missing fields gracefully', () => {
   assert.deepEqual(result.usage, {});
 });
 
-// â”€â”€ getProviderTimeout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── getProviderTimeout ────────────────────────────────────────────────────────
 
 test('getProviderTimeout returns default for known providers', () => {
   assert.equal(getProviderTimeout('cohere'), 20000);
@@ -154,7 +154,7 @@ test('getProviderTimeout returns default for unknown provider', () => {
   assert.equal(getProviderTimeout('unknown'), 20000);
 });
 
-// â”€â”€ getProviderConfig â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── getProviderConfig ─────────────────────────────────────────────────────────
 
 test('getProviderConfig returns configured providers in order', () => {
   const env = {
@@ -183,7 +183,7 @@ test('getProviderConfig uses default order when AI_INFERENCE_ORDER is unset', ()
   assert.deepEqual(result.configured, ['cohere', 'mistral', 'gemini', 'groq']);
 });
 
-// â”€â”€ validateInferenceRequest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── validateInferenceRequest ──────────────────────────────────────────────────
 
 test('validateInferenceRequest accepts valid request', () => {
   const errors = validateInferenceRequest({

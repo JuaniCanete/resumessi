@@ -1,5 +1,5 @@
-﻿/**
- * tests/unit/renderResume.test.js
+/**
+ * tests/unit/renderResume.test.ts
  *
  * Unit tests for resume rendering utility logic.
  * Tests the data transformation helpers that convert
@@ -23,7 +23,7 @@ test('formatDate returns "Present" for null/undefined/empty', () => {
 });
 
 test('formatDate formats ISO date string to readable format', () => {
-  // Jan 2023 â†’ should contain "2023" and "Jan"
+  // Jan 2023 → should contain "2023" and "Jan"
   const result = formatDate('2023-01-01');
   assert.ok(result.includes('2023'), `Expected "2023" in "${result}"`);
   assert.ok(result.includes('Jan'), `Expected "Jan" in "${result}"`);

@@ -1,4 +1,4 @@
-﻿import { test, expect } from './test-setup';
+import { test, expect } from './test-setup';
 
 test.describe('AI Generation Modal', () => {
 	test('generate button is visible on load', async ({ mainPage }) => {

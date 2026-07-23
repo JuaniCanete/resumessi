@@ -4,16 +4,13 @@
  */
 
 // ─── State ──────────────────────────────────────────────────────────
-let hasScanResults = false;
 let scanController: AbortController | null = null;
 let cachedConfig: Record<string, unknown> | null = null;
-let polishedVersion = false;
 let generationController: AbortController | null = null;
 let currentDataSource: string = 'none';
 let currentPhotoDataURL: string | null = null;
 let currentPDFText = '';
 let currentPDFFileName = '';
-let isLargePDF = false;
 let selectedProviderForModal: string | null = null;
 
 // Public helper to reset config cache between test runs
@@ -31,7 +28,7 @@ async function loadEnv(): Promise<Record<string, unknown>> {
       return cachedConfig;
     }
   } catch (e) {
-    console.warn('Could not load config.json, using defaults');
+    console.warn('Could not load config.json, using defaults', e);
   }
   cachedConfig = {};
   return cachedConfig;
@@ -102,7 +99,7 @@ function loadScanResults(): Record<string, unknown> | null {
 function clearScanResults(): void {
   try {
     sessionStorage.removeItem('ats-scan-results');
-  } catch (e) {
+  } catch {
     // ignore
   }
 }
@@ -166,7 +163,6 @@ function handleScanButtonClick(): void {
 }
 
 async function runAtsScan(): Promise<void> {
-  const env = await loadEnv();
   const jd = (document.getElementById('job-description') as HTMLTextAreaElement).value.trim();
 
   if (!jd) return alert('Please paste a Job Description.');
@@ -241,7 +237,7 @@ async function runAtsScan(): Promise<void> {
     applyScanResultsToUI(screening);
     saveScanResults(screening);
 
-    hasScanResults = true;
+    
   } catch (err: unknown) {
     if ((err as Error).name === 'AbortError') {
       console.log('Scan cancelled by user.');
@@ -506,7 +502,7 @@ async function loadResumeData(): Promise<void> {
         updatePolishButton();
         return;
       }
-    } catch (e) {
+    } catch {
       continue;
     }
   }
@@ -540,7 +536,7 @@ async function updatePolishButton(): Promise<void> {
     const polishedResp = await fetch('/src/resume/output/resume-data-AI-polished.json');
     const hasPolished = polishedResp.ok;
 
-    polishedVersion = hasPolished;
+    
 
     if (hasPolished) {
       dropdownBtn.style.display = 'none';
@@ -553,7 +549,7 @@ async function updatePolishButton(): Promise<void> {
       dropdownBtn.classList.add('ai-available');
       if (actionsTrigger) actionsTrigger.classList.add('ai-available');
     }
-  } catch (e) {
+  } catch {
     dropdownBtn.style.display = 'block';
     if (rollbackBtn) rollbackBtn.style.display = 'none';
     dropdownBtn.classList.add('ai-available');
@@ -622,7 +618,7 @@ async function polishResume(): Promise<void> {
       body: JSON.stringify(polishedData),
     });
 
-    polishedVersion = true;
+    
 
     showRefreshMessage('Refreshing to show changes . . .');
     document.getElementById('polish-overlay')!.style.display = 'none';
@@ -641,7 +637,7 @@ async function rollbackPolish(): Promise<void> {
   try {
     await fetch('/api/rollback', { method: 'POST' });
 
-    polishedVersion = false;
+    
 
     showRefreshMessage('Refreshing to rollback changes . . .');
 
@@ -717,7 +713,7 @@ function openAIModal(): void {
   (document.getElementById('btn-generate') as HTMLElement).style.display = 'none';
   currentPDFText = '';
   currentPDFFileName = '';
-  isLargePDF = false;
+  
 }
 
 function closeAIModal(): void {
@@ -758,7 +754,7 @@ async function handlePDFUpload(input: HTMLInputElement): Promise<void> {
     const data = await response.json() as { error?: string; textPreview?: string; text?: string; message?: string };
 
     if (data.error === 'PDF_TOO_LARGE') {
-      isLargePDF = true;
+      
       currentPDFText = data.textPreview || '';
 
       document.getElementById('modal-loading')!.style.display = 'none';
@@ -818,8 +814,6 @@ function extractNameFromPDFText(text: string): string | null {
 }
 
 async function confirmGeneration(): Promise<void> {
-  const env = await loadEnv();
-
   document.getElementById('modal-error-section')!.style.display = 'none';
   document.getElementById('modal-actions')!.style.display = 'none';
   document.getElementById('modal-loading')!.style.display = 'block';
@@ -1193,7 +1187,7 @@ if (photoModal) {
       renderResume(data);
       currentDataSource = 'generated';
       updatePolishButton();
-    } catch (e) {
+    } catch {
       await loadResumeData();
     }
   } else {

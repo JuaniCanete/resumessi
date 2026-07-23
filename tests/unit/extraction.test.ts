@@ -1,5 +1,5 @@
-﻿/**
- * tests/unit/extraction.test.js
+/**
+ * tests/unit/extraction.test.ts
  *
  * Unit tests for the extractNameFromPDFText function.
  * This function is inlined in public/main.html and used during AI resume
@@ -29,7 +29,7 @@ function extractNameFromPDFText(text) {
     if (/^(email|phone|location|linkedin|github|http|www|@)/i.test(line)) continue;
     const words = line.split(/\s+/);
     if (words.length >= 2 && words.length <= 4) {
-      if (/^[a-zA-ZÀ-ÿñÑ'. -]+$/.test(line) && !/\d/.test(line)) {
+      if (/^[a-zA-Z�-���'. -]+$/.test(line) && !/\d/.test(line)) {
         return line;
       }
     }
@@ -37,7 +37,7 @@ function extractNameFromPDFText(text) {
   return null;
 }
 
-// â”€â”€ Basic Name Extraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Basic Name Extraction ──────────────────────────────────────────────
 
 test('extractNameFromPDFText returns null for empty text', () => {
   assert.equal(extractNameFromPDFText(''), null);
@@ -59,10 +59,10 @@ Email: john@example.com`;
 });
 
 test('extractNameFromPDFText extracts name with accented characters', () => {
-  const text = `José García
+  const text = `Jos� Garc�a
 Engineer
 Location: Madrid`;
-  assert.equal(extractNameFromPDFText(text), 'José García');
+  assert.equal(extractNameFromPDFText(text), 'Jos� Garc�a');
 });
 
 test('extractNameFromPDFText extracts name with single quotes and hyphens', () => {
@@ -71,7 +71,7 @@ Developer`;
   assert.equal(extractNameFromPDFText(text), "Mary-Jane O'Connor");
 });
 
-// â”€â”€ Filtering Rules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Filtering Rules ────────────────────────────────────────────────────
 
 test('extractNameFromPDFText ignores email lines', () => {
   const text = `john@example.com
@@ -109,7 +109,7 @@ John Smith`;
   assert.equal(extractNameFromPDFText(text), 'John Smith');
 });
 
-// â”€â”€ Edge Cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Edge Cases ───────────────────────────────────────────────────────────
 
 test('extractNameFromPDFText ignores lines longer than 60 characters', () => {
   const longLine = 'A'.repeat(61);

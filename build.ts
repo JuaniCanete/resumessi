@@ -96,7 +96,7 @@ function main(): void {
       console.log('No placeholders found — prompts loaded at runtime. Build check passed.');
       return;
     }
-    console.log('Placeholders present. Use build.js without --check to inject.');
+    console.log('Placeholders present. Use build.ts without --check to inject.');
     return;
   }
 

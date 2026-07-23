@@ -1,4 +1,4 @@
-﻿import { test, expect } from './test-setup';
+import { test, expect } from './test-setup';
 
 test.describe('AI Providers Modal', () => {
 	test.beforeEach(async ({ page }) => {

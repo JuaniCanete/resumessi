@@ -1,5 +1,5 @@
-﻿/**
- * tests/unit/escHtml.test.js
+/**
+ * tests/unit/escHtml.test.ts
  *
  * Unit tests for the escHtml utility function.
  * Uses Node.js native test runner (node:test + node:assert).

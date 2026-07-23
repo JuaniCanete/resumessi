@@ -1,5 +1,5 @@
-﻿/**
- * tests/unit/validateJDInput.test.js
+/**
+ * tests/unit/validateJDInput.test.ts
  *
  * Unit tests for the Job Description input validation logic.
  * Tests the guards that prevent empty/too-short JDs from

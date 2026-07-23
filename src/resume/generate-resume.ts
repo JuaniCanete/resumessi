@@ -77,7 +77,7 @@ async function callAI(system: string, prompt: string, env: Record<string, string
 
   try {
     return JSON.parse(raw) as ResumeData;
-  } catch (e: unknown) {
+  } catch {
     raw = raw.replace(/\\(['"])/g, '$1');
     return JSON.parse(raw) as ResumeData;
   }

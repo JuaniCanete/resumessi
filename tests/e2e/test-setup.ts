@@ -1,4 +1,4 @@
-﻿import { test as playwrightTest, expect } from '@playwright/test';
+import { test as playwrightTest, expect } from '@playwright/test';
 import { MainPage } from '../pages/MainPage';
 
 // Small delay so UI loading states are visible before mocked responses resolve
@@ -146,7 +146,7 @@ const test = playwrightTest.extend({
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) });
     });
 
-    // Mock polished JSON endpoint â€” by default return 404 so Polish button is available
+    // Mock polished JSON endpoint — by default return 404 so Polish button is available
     await page.route('**/src/resume/output/resume-data-AI-polished.json', async (route) => {
       await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
     });

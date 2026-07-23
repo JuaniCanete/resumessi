@@ -2,7 +2,7 @@
 # 
 # This prompt can be used in two ways:
 # 1. Manually: Fill in your info and give this file to an AI assistant to generate resume-data.json
-# 2. Automatically: Run `node generate-resume.js` to use AI to parse raw input
+# 2. Automatically: Run `tsx generate-resume.ts` to use AI to parse raw input
 #
 # IMPORTANT: This generates the src/resume/output/resume-data.json file that public/main.html reads at startup.
 # The HTML is not going to show any data until src/resume/output/resume-data.json is generated — everything comes from the JSON.

@@ -23,16 +23,25 @@
 resumessi/
 ├── public/
 │   ├── main.html              # Main application (ATS Scanner + Resume Generator)
+│   ├── app.ts                 # Frontend application logic
+│   ├── utils.ts               # Shared frontend utilities
+│   ├── dist/
+│   │   └── app.js             # Compiled frontend bundle (esbuild)
 │   └── assets/
 │       └── photos/
 │           └── photo.jpg       # Default profile photo
 ├── src/
 │   ├── resume/
-│   │   ├── generate-resume.js   # AI-powered resume generator
+│   │   ├── generate-resume.ts # AI-powered resume generator
 │   │   ├── prompt.txt            # Resume generation input template
 │   │   └── output/
 │   │       ├── resume-data.json           # Current resume data (auto-generated)
 │   │       └── resume-data-AI-polished.json # Polished version
+│   ├── types/
+│   │   ├── provider.ts         # Provider interfaces and config types
+│   │   ├── router.ts           # Router error/result types
+│   │   ├── config.ts           # Config type definitions
+│   │   └── resume.ts           # Resume data types
 │   └── prompts/
 │       ├── ats-scan.txt            # ATS scoring prompt
 │       ├── extraction.txt          # Resume extraction prompt (PDF → JSON)
@@ -45,14 +54,14 @@ resumessi/
 │   ├── e2e/                    # End-to-end tests (Playwright)
 │   ├── unit/                   # Unit tests (Node.js test runner)
 │   ├── fixtures/
-│   │   └── resume-fixtures.js
+│   │   └── resume-fixtures.ts
 │   ├── README.md               # Test documentation
-│   └── playwright.config.js
+│   └── playwright.config.ts
 ├── scripts/
-│   └── run-evals.js            # LLM evaluation harness
-├── start.js                    # Dev server with /config.json endpoint
-├── build.js                    # Build script (prompt injection for CORS)
-├── setup.js                    # Setup wizard
+│   └── run-evals.ts            # LLM evaluation harness
+├── start.ts                    # Dev server with /config.json endpoint
+├── build.ts                    # Build script (prompt injection + esbuild frontend bundler)
+├── setup.ts                    # Setup wizard
 ├── package.json
 ├── .env.example
 └── AGENTS.md                   # AI agent collaboration guide
@@ -110,10 +119,10 @@ Click **Download Resume** to print/save as PDF. The print layout is optimized fo
 
 ### Build Step
 
-Prompts are injected at build time to avoid CORS errors with `file://` protocol.
+Prompts are injected at build time to avoid CORS errors with `file://` protocol. The frontend bundle (`public/app.ts`) is compiled via **esbuild** into `public/dist/app.js`.
 
 ```bash
-npm run build        # inject prompts into HTML/JS
+npm run build        # inject prompts into HTML/JS + bundle frontend with esbuild
 npm run build:check  # verify prompts are up-to-date
 ```
 
@@ -123,7 +132,7 @@ npm run build:check  # verify prompts are up-to-date
 - `src/prompts/polish.txt`
 - `src/prompts/resume-generation.txt`
 
-After editing any prompt, run `npm run build` before committing.
+After editing any prompt or frontend code, run `npm run build` before committing.
 
 ### Scripts
 
@@ -131,10 +140,12 @@ After editing any prompt, run `npm run build` before committing.
 |---|---|
 | `npm start` | Start dev server |
 | `npm run setup` | Run setup wizard (⚠️ overwrites existing .env) |
-| `npm run build` | Build prompts into HTML/JS |
+| `npm run build` | Build prompts into HTML/JS + bundle frontend with esbuild |
 | `npm run build:check` | Verify build is up-to-date |
 | `npm run generate` | Generate resume from prompt data |
 | `npm run evals` | Run LLM evaluation harness |
+| `npm run typecheck` | Run TypeScript type checks (`tsc --noEmit`) |
+| `npm run lint` | Run ESLint |
 | `npm run test:unit` | Run unit tests |
 | `npm run test:e2e` | Run Playwright E2E tests |
 

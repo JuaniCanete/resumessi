@@ -1,4 +1,4 @@
-﻿import { test, expect } from './test-setup';
+import { test, expect } from './test-setup';
 import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
 
 test.describe('Resume Display', () => {

@@ -11,6 +11,8 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
+import { getProviderConfig, validateInferenceRequest } from './src/providers';
+import { runInference, runPolish } from './src/router';
 
 // Wrap in try-catch for graceful degradation
 let pdfParse: ((buffer: Buffer) => Promise<{ text: string }>) | null = null;
@@ -19,7 +21,7 @@ let Busboy: any = null;
 try {
   pdfParse = require('pdf-parse');
   Busboy = require('busboy');
-} catch (e: unknown) {
+} catch {
   console.warn('PDF dependencies not installed. Run: npm install pdf-parse busboy');
 }
 
@@ -97,13 +99,11 @@ function getConfigFromEnv(): Record<string, string | string[] | null | undefined
     clientSafe[key] = value;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const providerLib = require('./src/providers.ts');
-  const { configured } = providerLib.getProviderConfig(env);
+   const providerConfig = getProviderConfig(env);
 
-  clientSafe.AI_INFERENCE_ORDER = env.AI_INFERENCE_ORDER || 'cohere,mistral,gemini,groq';
-  clientSafe.availableProviders = configured;
-  clientSafe.primaryProvider = configured[0] || null;
+   clientSafe.AI_INFERENCE_ORDER = env.AI_INFERENCE_ORDER || 'cohere,mistral,gemini,groq';
+   clientSafe.availableProviders = providerConfig.configured;
+   clientSafe.primaryProvider = providerConfig.configured[0] || null;
 
   return clientSafe;
 }
@@ -146,8 +146,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       const body = await getRequestBody(req);
       const requestData = JSON.parse(body);
 
-      const providerLib = require('./src/providers.ts');
-      const validationErrors = providerLib.validateInferenceRequest(requestData);
+      const validationErrors = validateInferenceRequest(requestData);
       if (validationErrors.length > 0) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid request', details: validationErrors }));
@@ -162,8 +161,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       if (top_p !== undefined) params.top_p = top_p;
 
       try {
-        const router = require('./src/router.ts');
-        const result = await router.runInference(system, prompt, params, env, provider);
+        const result = await runInference(system, prompt, params, env, provider);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           text: result.text,
@@ -288,7 +286,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     let resumeData: Record<string, unknown>;
     try {
       resumeData = JSON.parse(body);
-    } catch (e: unknown) {
+    } catch {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Invalid JSON in request body' }));
       return;
@@ -311,8 +309,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     const env = getFullConfigFromEnv();
 
     try {
-      const router = require('./src/router.ts');
-      const result = await router.runPolish(dataToPolish, promptTemplate, env, selectedProvider);
+      const result = await runPolish(dataToPolish, promptTemplate, env, selectedProvider);
       let raw = result.text;
       raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
       const polished = JSON.parse(raw);

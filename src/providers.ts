@@ -3,7 +3,6 @@ import type {
   ProviderResponse,
   ProviderMap,
   ProviderConfigResult,
-  InferenceRequest,
   BuildRequestResult,
 } from './types/provider';
 
@@ -177,7 +176,7 @@ function parseResponse(provider: ProviderName, data: Record<string, unknown>): {
         usage.completion_tokens = openaiData.usage.completion_tokens;
       }
     }
-  } catch (e: unknown) {
+  } catch {
     text = '';
   }
 

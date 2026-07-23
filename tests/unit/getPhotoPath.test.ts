@@ -1,5 +1,5 @@
-﻿/**
- * tests/unit/getPhotoPath.test.js
+/**
+ * tests/unit/getPhotoPath.test.ts
  *
  * Unit tests for the getPhotoPath logic from public/main.html.
  *

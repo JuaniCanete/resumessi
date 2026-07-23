@@ -1,4 +1,4 @@
-﻿const path = require('path');
+const path = require('path');
 import { test, expect } from './test-setup';
 import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
 
@@ -14,7 +14,7 @@ const GENERATED_FLAG = JSON.stringify({
 const SAMPLE_PHOTO = path.resolve(__dirname, '../../examples/photo.jpg');
 
 test.describe('Advanced Flows', () => {
-	test('photo upload â€” stores base64 in localStorage and updates resume display', async ({ mainPage }) => {
+	test('photo upload — stores base64 in localStorage and updates resume display', async ({ mainPage }) => {
 		await mainPage.page.evaluate((flag) => localStorage.setItem('resume-data', flag), GENERATED_FLAG);
 		await mainPage.page.reload();
 		await mainPage.waitForResumeLoaded();
@@ -35,7 +35,7 @@ test.describe('Advanced Flows', () => {
 		expect.soft(photoSrc).toBe(uploaded);
 	});
 
-	test('polish resume flow â€” mocked response updates UI', async ({ mainPage }) => {
+	test('polish resume flow — mocked response updates UI', async ({ mainPage }) => {
 		await mainPage.page.evaluate((flag) => localStorage.setItem('resume-data', flag), GENERATED_FLAG);
 
 		await mainPage.page.reload();
@@ -47,10 +47,10 @@ test.describe('Advanced Flows', () => {
 		expect.soft(refreshText.toLowerCase()).toContain('refresh');
 	});
 
-	test('ATS scan error handling â€” 500 from proxy shows error in UI', async ({ mainPage }) => {
+	test('ATS scan error handling — 500 from proxy shows error in UI', async ({ mainPage }) => {
 		mainPage.page.on('dialog', (dialog) => dialog.dismiss());
 
-		// Ensure no fallback retry â€” force the error into #rp-feedback
+		// Ensure no fallback retry — force the error into #rp-feedback
 		await mainPage.page.unroute('**/config.json');
 		await mainPage.page.route('**/config.json', async (route) => {
 			await route.fulfill({
@@ -79,7 +79,7 @@ test.describe('Advanced Flows', () => {
 		await expect(mainPage.rpFeedback).toContainText(/error/i, { timeout: 10000 });
 	});
 
-	test('rollback â€” calls /api/rollback via network interception and updates UI', async ({ mainPage }) => {
+	test('rollback — calls /api/rollback via network interception and updates UI', async ({ mainPage }) => {
 		// Set up network interception: wait for the rollback API call
 		const rollbackResponsePromise =  mainPage.page.waitForResponse(
 			(r) => r.url().includes('/api/rollback') && r.status() === 200
