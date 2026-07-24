@@ -17,12 +17,12 @@ import { runInference, runPolish } from './src/router';
 // Wrap in try-catch for graceful degradation
 let pdfParse: ((buffer: Buffer) => Promise<{ text: string }>) | null = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let Busboy: any = null;
+let formidable: any = null;
 try {
-  pdfParse = require('pdf-parse');
-  Busboy = require('busboy');
+  pdfParse = require('pdf-parse-fork');
+  formidable = require('formidable');
 } catch {
-  console.warn('PDF dependencies not installed. Run: npm install pdf-parse busboy');
+  console.warn('PDF dependencies not installed. Run: npm install pdf-parse-fork formidable');
 }
 
 const PORT = 3000;
@@ -222,28 +222,31 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
   // API Routes
   if (req.url === '/api/parse-resume-pdf' && req.method === 'POST') {
-    if (!pdfParse || !Busboy) {
+    if (!pdfParse || !formidable) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'PDF parsing not available. Install dependencies.' }));
       return;
     }
 
-    const busboy = new Busboy({ headers: req.headers });
-    const fileBuffer: Buffer[] = [];
+    const form = new formidable.IncomingForm();
+    form.parse(req, async (err: Error | undefined, _fields: Record<string, unknown>, files: Record<string, unknown>) => {
+      if (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Upload error: ' + err.message }));
+        return;
+      }
 
-    busboy.on('file', (_fieldname: string, file: import('stream').Readable) => {
-      file.on('data', (data: Buffer) => fileBuffer.push(data));
-    });
-
-    busboy.on('finish', async () => {
-      if (fileBuffer.length === 0) {
+      const file = Object.values(files)[0] as { filepath?: string } | undefined;
+      if (!file || !file.filepath) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'No PDF uploaded' }));
         return;
       }
 
+      const filepath = file.filepath;
+
       try {
-        const buffer = Buffer.concat(fileBuffer);
+        const buffer = fs.readFileSync(filepath);
         const data = await (pdfParse as (buffer: Buffer) => Promise<{ text: string }>)(buffer);
         const text = data.text;
 
@@ -269,15 +272,16 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       } catch (err: unknown) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Failed to parse PDF: ' + (err as Error).message }));
+      } finally {
+        try {
+          if (fs.existsSync(filepath)) {
+            fs.unlinkSync(filepath);
+          }
+        } catch {
+          // Ignore cleanup errors
+        }
       }
     });
-
-    busboy.on('error', (err: Error) => {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Upload error: ' + err.message }));
-    });
-
-    req.pipe(busboy);
     return;
   }
 
