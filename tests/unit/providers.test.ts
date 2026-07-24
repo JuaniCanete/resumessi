@@ -24,66 +24,73 @@ import {
 // ── buildRequest ──────────────────────────────────────────────────────────────
 
 test('buildRequest creates valid Cohere request', () => {
-  const result = buildRequest('cohere', 'You are helpful.', 'Hello', 'command-r-plus', 'key-123', { temperature: 0.5 });
-  assert.equal(result.url, 'https://api.cohere.com/v2/chat');
-  assert.equal(result.headers['Authorization'], 'Bearer key-123');
-  assert.equal(result.headers['Content-Type'], 'application/json');
-  assert.equal(result.body.model, 'command-r-plus');
-  assert.equal(result.body.messages.length, 2);
-  assert.equal(result.body.messages[0].role, 'system');
-  assert.equal(result.body.messages[0].message, 'You are helpful.');
-  assert.equal(result.body.messages[1].role, 'user');
-  assert.equal(result.body.messages[1].message, 'Hello');
-  assert.equal(result.body.preamble_override, 'You are helpful.');
-  assert.equal(result.body.temperature, 0.5);
+   const result = buildRequest('cohere', 'You are helpful.', 'Hello', 'command-r-plus', 'key-123', { temperature: 0.5 });
+   assert.equal(result.url, 'https://api.cohere.com/v2/chat');
+   assert.equal(result.headers['Authorization'], 'Bearer key-123');
+   assert.equal(result.headers['Content-Type'], 'application/json');
+   assert.equal(result.body.model, 'command-r-plus');
+   const msgs = result.body.messages as Array<{ role: string; message: string }>;
+   assert.equal(msgs.length, 2);
+   assert.equal(msgs[0].role, 'system');
+   assert.equal(msgs[0].message, 'You are helpful.');
+   assert.equal(msgs[1].role, 'user');
+   assert.equal(msgs[1].message, 'Hello');
+   assert.equal(result.body.preamble_override, 'You are helpful.');
+   assert.equal(result.body.temperature, 0.5);
 });
 
 test('buildRequest creates valid Cohere request without system', () => {
-  const result = buildRequest('cohere', '', 'Hello', 'command-r-plus', 'key-123');
-  assert.equal(result.body.messages.length, 1);
-  assert.equal(result.body.messages[0].role, 'user');
-  assert.equal(result.body.preamble_override, undefined);
+   const result = buildRequest('cohere', '', 'Hello', 'command-r-plus', 'key-123');
+   const msgs = result.body.messages as Array<{ role: string; message?: string }>;
+   assert.equal(msgs.length, 1);
+   assert.equal(msgs[0].role, 'user');
+   assert.equal(result.body.preamble_override, undefined);
 });
 
 test('buildRequest creates valid Gemini request', () => {
-  const result = buildRequest('gemini', 'You are helpful.', 'Hello', 'gemini-2.5-flash', 'key-456', { max_tokens: 100 });
-  assert.equal(result.url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=key-456');
-  assert.ok(!result.headers['Authorization']);
-  assert.equal(result.body.contents[0].parts[0].text, 'Hello');
-  assert.equal(result.body.systemInstruction.parts[0].text, 'You are helpful.');
-  assert.equal(result.body.max_tokens, 100);
+   const result = buildRequest('gemini', 'You are helpful.', 'Hello', 'gemini-2.5-flash', 'key-456', { max_tokens: 100 });
+   assert.equal(result.url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=key-456');
+   assert.ok(!result.headers['Authorization']);
+   const contents = result.body.contents as Array<{ parts: Array<{ text: string }> }>;
+   assert.equal(contents[0].parts[0].text, 'Hello');
+   const sysInst = result.body.systemInstruction as { parts: Array<{ text: string }> } | undefined;
+   assert.equal(sysInst!.parts[0].text, 'You are helpful.');
+   assert.equal(result.body.max_tokens, 100);
 });
 
 test('buildRequest creates valid Gemini request without system', () => {
-  const result = buildRequest('gemini', '', 'Hello', 'gemini-2.5-flash', 'key-456');
-  assert.equal(result.body.systemInstruction, undefined);
+   const result = buildRequest('gemini', '', 'Hello', 'gemini-2.5-flash', 'key-456');
+   assert.equal(result.body.systemInstruction, undefined);
 });
 
 test('buildRequest creates valid Mistral request', () => {
-  const result = buildRequest('mistral', 'You are helpful.', 'Hello', 'mistral-large-latest', 'key-789', { top_p: 0.9 });
-  assert.equal(result.url, 'https://api.mistral.ai/v1/chat/completions');
-  assert.equal(result.headers['Authorization'], 'Bearer key-789');
-  assert.equal(result.body.model, 'mistral-large-latest');
-  assert.equal(result.body.messages[0].role, 'system');
-  assert.equal(result.body.messages[0].content, 'You are helpful.');
-  assert.equal(result.body.messages[1].role, 'user');
-  assert.equal(result.body.messages[1].content, 'Hello');
-  assert.equal(result.body.top_p, 0.9);
+   const result = buildRequest('mistral', 'You are helpful.', 'Hello', 'mistral-large-latest', 'key-789', { top_p: 0.9 });
+   assert.equal(result.url, 'https://api.mistral.ai/v1/chat/completions');
+   assert.equal(result.headers['Authorization'], 'Bearer key-789');
+   assert.equal(result.body.model, 'mistral-large-latest');
+   const msgs = result.body.messages as Array<{ role: string; content: string }>;
+   assert.equal(msgs[0].role, 'system');
+   assert.equal(msgs[0].content, 'You are helpful.');
+   assert.equal(msgs[1].role, 'user');
+   assert.equal(msgs[1].content, 'Hello');
+   assert.equal(result.body.top_p, 0.9);
 });
 
 test('buildRequest creates valid Groq request', () => {
-  const result = buildRequest('groq', 'You are helpful.', 'Hello', 'llama-3.3-70b-versatile', 'key-abc');
-  assert.equal(result.url, 'https://api.groq.com/openai/v1/chat/completions');
-  assert.equal(result.headers['Authorization'], 'Bearer key-abc');
-  assert.equal(result.body.model, 'llama-3.3-70b-versatile');
-  assert.equal(result.body.messages[0].role, 'system');
-  assert.equal(result.body.messages[0].content, 'You are helpful.');
-  assert.equal(result.body.messages[1].role, 'user');
-  assert.equal(result.body.messages[1].content, 'Hello');
+   const result = buildRequest('groq', 'You are helpful.', 'Hello', 'llama-3.3-70b-versatile', 'key-abc');
+   assert.equal(result.url, 'https://api.groq.com/openai/v1/chat/completions');
+   assert.equal(result.headers['Authorization'], 'Bearer key-abc');
+   assert.equal(result.body.model, 'llama-3.3-70b-versatile');
+   const msgs = result.body.messages as Array<{ role: string; content: string }>;
+   assert.equal(msgs[0].role, 'system');
+   assert.equal(msgs[0].content, 'You are helpful.');
+   assert.equal(msgs[1].role, 'user');
+   assert.equal(msgs[1].content, 'Hello');
 });
 
 test('buildRequest throws for unknown provider', () => {
-  assert.throws(() => buildRequest('unknown', 'sys', 'prompt', 'model', 'key'), /Unknown provider/);
+   // @ts-expect-error testing invalid provider
+   assert.throws(() => buildRequest('unknown', 'sys', 'prompt', 'model', 'key'), /Unknown provider/);
 });
 
 // ── parseResponse ─────────────────────────────────────────────────────────────
@@ -136,9 +143,9 @@ test('parseResponse extracts OpenAI-compatible usage', () => {
 });
 
 test('parseResponse handles missing fields gracefully', () => {
-  const result = parseResponse('unknown', {});
-  assert.equal(result.text, '');
-  assert.deepEqual(result.usage, {});
+   const result = parseResponse('cohere', {});
+   assert.equal(result.text, '');
+   assert.deepEqual(result.usage, {});
 });
 
 // ── getProviderTimeout ────────────────────────────────────────────────────────

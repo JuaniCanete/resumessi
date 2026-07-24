@@ -17,14 +17,14 @@ import assert from 'node:assert/strict';
 import { validateJDInput } from '../../public/utils';
 
 test('validateJDInput rejects null', () => {
-  const result = validateJDInput(null);
-  assert.equal(result.valid, false);
-  assert.ok(result.reason);
+   const result = validateJDInput(null as unknown as string);
+   assert.equal(result.valid, false);
+   assert.ok(result.reason);
 });
 
 test('validateJDInput rejects undefined', () => {
-  const result = validateJDInput(undefined);
-  assert.equal(result.valid, false);
+   const result = validateJDInput(undefined as unknown as string);
+   assert.equal(result.valid, false);
 });
 
 test('validateJDInput rejects empty string', () => {
@@ -38,9 +38,9 @@ test('validateJDInput rejects whitespace-only string', () => {
 });
 
 test('validateJDInput rejects string shorter than 50 chars', () => {
-  const result = validateJDInput('Too short');
-  assert.equal(result.valid, false);
-  assert.ok(result.reason.includes('too short'));
+   const result = validateJDInput('Too short');
+   assert.equal(result.valid, false);
+   assert.ok(result.reason?.includes('too short'));
 });
 
 test('validateJDInput accepts valid job description', () => {

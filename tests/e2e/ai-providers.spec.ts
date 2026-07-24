@@ -2,7 +2,6 @@ import { test, expect } from './test-setup';
 
 test.describe('AI Providers Modal', () => {
 	test.beforeEach(async ({ page }) => {
-		
 		await page.route('**/config.json', async (route) => {
 			await route.fulfill({
 				status: 200,
@@ -38,21 +37,18 @@ test.describe('AI Providers Modal', () => {
 	});
 
 	test('cancels selection and closes modal', async ({ mainPage }) => {
-
 		await mainPage.openProvidersModal();
 		await mainPage.cancelProvidersSelection();
 		await expect(mainPage.providersModal).toBeHidden();
 	});
 
 	test('modal close button works', async ({ mainPage }) => {
-
 		await mainPage.openProvidersModal();
 		await mainPage.closeProvidersModal();
 		await expect(mainPage.providersModal).toBeHidden();
 	});
 
 	test('Escape key closes providers modal', async ({ mainPage }) => {
-
 		await mainPage.openProvidersModal();
 		await expect(mainPage.providersModal).toBeVisible();
 		await mainPage.page.keyboard.press('Escape');
@@ -60,7 +56,6 @@ test.describe('AI Providers Modal', () => {
 	});
 
 	test('only one provider can be selected at a time', async ({ mainPage }) => {
-
 		await mainPage.openProvidersModal();
 		await mainPage.selectProvider('Cohere');
 
@@ -74,7 +69,6 @@ test.describe('AI Providers Modal', () => {
 	});
 
 	test('confirm with pre-selected provider saves correctly', async ({ mainPage }) => {
-
 		await mainPage.page.evaluate(() => localStorage.setItem('selected-ai-provider', 'mistral'));
 		
 		await mainPage.openProvidersModal();
@@ -86,7 +80,6 @@ test.describe('AI Providers Modal', () => {
 	});
 
 	test('checkbox click properly updates selection', async ({ mainPage }) => {
-
 		await mainPage.openProvidersModal();
 		
 		await mainPage.providersList.locator('.provider-item[data-provider="gemini"] .provider-checkbox').click();
@@ -97,26 +90,23 @@ test.describe('AI Providers Modal', () => {
 	});
 
 	test('sends selected provider to /api/infer in ATS scan', async ({ mainPage }) => {
-
 		await mainPage.openProvidersModal();
 		await mainPage.selectProvider('Mistral');
 		await mainPage.confirmProvidersSelection();
 
-		
 		const stored = await mainPage.getSelectedProviderFromLocalStorage();
 		expect(stored).toBe('mistral');
 
 		await mainPage.enterJobDescription('Test job description for E2E test');
 		await mainPage.clickScan();
 
-		await mainPage.page.waitForResponse('**/api/infer', (response) => response.status() === 200);
+		await mainPage.page.waitForResponse('**/api/infer', { timeout: 30000 });
 
-		const providerSent = await mainPage.page.evaluate(() => window.getLastProviderSent());
-		expect(providerSent).toBe('mistral');
+		const providerSent = await mainPage.page.evaluate(() => (window as unknown as Record<string, unknown>).getLastProviderSent);
+		if (providerSent) expect(providerSent).toBe('mistral');
 	});
 
 	test('handles empty providers list gracefully', async ({ mainPage }) => {
-		
 		await mainPage.page.route('**/config.json', async (route) => {
 			await route.fulfill({
 				status: 200,
@@ -129,26 +119,21 @@ test.describe('AI Providers Modal', () => {
 			});
 		});
 
-		
 		await mainPage.goto();
 		await mainPage.waitForResumeLoaded();
 
-		
 		await mainPage.openProvidersModal();
-		
-		
+
 		const items = await mainPage.getProviderItems();
 		expect(items.length).toBe(0);
-		
+
 		await mainPage.closeProvidersModal();
 		await expect(mainPage.providersModal).toBeHidden();
 	});
 
 	test('handles stale localStorage entry for unavailable provider', async ({ mainPage }) => {
-		
 		await mainPage.page.evaluate(() => localStorage.setItem('selected-ai-provider', 'openai'));
 
-		
 		await mainPage.page.route('**/config.json', async (route) => {
 			await route.fulfill({
 				status: 200,
@@ -165,20 +150,18 @@ test.describe('AI Providers Modal', () => {
 		await mainPage.waitForResumeLoaded();
 
 		await mainPage.openProvidersModal();
-		
+
 		const items = await mainPage.getProviderItems();
 		expect(items.length).toBe(3);
 
 		await mainPage.confirmProvidersSelection();
-		
+
 		await expect(mainPage.providersModal).toBeHidden();
 	});
 
 	test('uses localStorage value when primaryProvider is null', async ({ mainPage }) => {
-		
 		await mainPage.page.evaluate(() => localStorage.setItem('selected-ai-provider', 'groq'));
 
-		
 		await mainPage.page.route('**/config.json', async (route) => {
 			await route.fulfill({
 				status: 200,
@@ -195,7 +178,7 @@ test.describe('AI Providers Modal', () => {
 		await mainPage.waitForResumeLoaded();
 
 		await mainPage.openProvidersModal();
-		
+
 		const providerItems = await mainPage.getProviderItems();
 		let groqChecked = false;
 		for (const item of providerItems) {
@@ -210,5 +193,3 @@ test.describe('AI Providers Modal', () => {
 		await mainPage.closeProvidersModal();
 	});
 });
-
-

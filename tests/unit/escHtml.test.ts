@@ -43,12 +43,12 @@ test('escHtml returns empty string unchanged', () => {
   assert.equal(escHtml(''), '');
 });
 
-test('escHtml coerces null to string "null"', () => {
-  assert.equal(escHtml(null), 'null');
+test('escHtml returns empty string for null', () => {
+  assert.equal(escHtml(null), '');
 });
 
-test('escHtml coerces undefined to string "undefined"', () => {
-  assert.equal(escHtml(undefined), 'undefined');
+test('escHtml returns empty string for undefined', () => {
+  assert.equal(escHtml(undefined), '');
 });
 
 test('escHtml leaves safe text unchanged', () => {

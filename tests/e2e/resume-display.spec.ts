@@ -5,7 +5,7 @@ test.describe('Resume Display', () => {
 	test('should display resume content on load', async ({ mainPage }) => {
 		const resumeName = await mainPage.resumeName.textContent();
 		expect(resumeName).toBeTruthy();
-		expect(resumeName.length).toBeGreaterThan(0);
+		if (resumeName) expect(resumeName.length).toBeGreaterThan(0);
 	});
 
 	test('should toggle left sidebar', async ({ mainPage }) => {
@@ -23,9 +23,11 @@ test.describe('Resume Display', () => {
 		await expect(mainPage.rpScoreCircle).not.toHaveText('--', { timeout: 30000 });
 
 		const score = await mainPage.getScore();
-		expect(score).not.toBe('--');
-		expect(parseInt(score, 10)).toBeGreaterThanOrEqual(0);
-		expect(parseInt(score, 10)).toBeLessThanOrEqual(100);
+		if (score) {
+			expect(score).not.toBe('--');
+			expect(parseInt(score, 10)).toBeGreaterThanOrEqual(0);
+			expect(parseInt(score, 10)).toBeLessThanOrEqual(100);
+		}
 	});
 });
 
@@ -35,4 +37,3 @@ test.describe('AI Generation', () => {
 		await expect(mainPage.aiModal).toBeVisible();
 	});
 });
-

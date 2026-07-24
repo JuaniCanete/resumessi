@@ -23,6 +23,7 @@
     "./src/**/*.ts",
     "./public/**/*.ts",
     "./scripts/**/*.ts",
+    "./tests/**/*.ts",
     "./start.ts",
     "./build.ts",
     "./setup.ts"

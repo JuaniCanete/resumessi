@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { runInference, runPolish } from '../../src/router';
 
 const mockCallProvider = async (_provider: string, _system: string, _prompt: string, _model: string, _key: string, _params?: Record<string, unknown>) => {
-  return { text: `Response from ${_provider}`, provider: _provider as 'cohere' | 'mistral' | 'gemini' | 'groq', usage: { prompt_tokens: 10, completion_tokens: 20 } };
+   return { text: `Response from ${_provider}`, provider: _provider as 'cohere' | 'mistral' | 'gemini' | 'groq', status: 200, usage: { prompt_tokens: 10, completion_tokens: 20 } };
 };
 
 const mockGetProviderConfig = (env: Record<string, string | undefined>) => {
@@ -75,7 +75,7 @@ test('runInference falls back to next provider on failure', async () => {
     if (_provider === 'gemini') {
       throw { status: 500, error: 'Server error', provider: 'gemini' };
     }
-    return { text: `Response from ${_provider}`, provider: _provider as 'cohere' | 'mistral' | 'gemini' | 'groq', usage: {} };
+    return { text: `Response from ${_provider}`, provider: _provider as 'cohere' | 'mistral' | 'gemini' | 'groq', status: 200, usage: {} };
   };
 
   const env = {
@@ -123,7 +123,7 @@ test('runInference passes params to callProvider', async () => {
   const mockCall = async (_provider: string, _system: string, _prompt: string, _model: string, _key: string, params?: Record<string, unknown>) => {
     assert.equal(params?.temperature, 0.5);
     assert.equal(params?.max_tokens, 100);
-    return { text: 'ok', provider: 'mock', usage: {} };
+    return { text: 'ok', provider: 'cohere' as const, status: 200, usage: {} };
   };
 
   const env = {
@@ -139,7 +139,7 @@ test('runPolish builds prompt with resume data and calls inference', async () =>
     assert.ok(_prompt.includes('RESUME DATA TO POLISH'));
     assert.ok(_prompt.includes('"name": "Test"'));
     assert.equal(_system, 'You are a resume polishing assistant.');
-    return { text: '{"basics": {}}', provider: 'mock', usage: {} };
+    return { text: '{"basics": {}}', provider: 'cohere' as const, status: 200, usage: {} };
   };
 
   const env = {

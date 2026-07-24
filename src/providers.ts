@@ -51,13 +51,14 @@ async function callProvider(
     body: JSON.stringify(body),
   }, timeout);
 
-  const data = await response.json();
-  const parsed = parseResponse(provider, data);
-
   if (!response.ok) {
-    const errorMsg = data?.error?.message || data?.error || `HTTP ${response.status}`;
+    let errorMsg = `HTTP ${response.status}`;
+    try { const errData = await response.json(); errorMsg = errData?.error?.message || errData?.error || errorMsg; } catch { /* ignore JSON parse error */ }
     throw { status: response.status, error: errorMsg, provider };
   }
+
+  const data = await response.json();
+  const parsed = parseResponse(provider, data);
 
   return { ...parsed, provider, status: response.status };
 }
@@ -176,8 +177,9 @@ function parseResponse(provider: ProviderName, data: Record<string, unknown>): {
         usage.completion_tokens = openaiData.usage.completion_tokens;
       }
     }
-  } catch {
-    text = '';
+  } catch (err) {
+    console.error('parseResponse error for', provider, err);
+    throw err;
   }
 
   return { text, usage };

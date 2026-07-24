@@ -3,8 +3,7 @@
  */
 
 export function escHtml(value: string | null | undefined): string {
-  if (value === null) return 'null';
-  if (value === undefined) return 'undefined';
+  if (!value) return '';
   const m: Record<string, number> = { '&': 38, '<': 60, '>': 62, '"': 34, "'": 39 };
   return String(value).replace(/[&<>"']/g, (c) => '&#' + m[c] + ';');
 }

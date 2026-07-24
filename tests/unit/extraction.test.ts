@@ -20,7 +20,7 @@ import assert from 'node:assert/strict';
  * @param {string} text - The PDF text to extract name from
  * @returns {string|null} - The extracted name or null
  */
-function extractNameFromPDFText(text) {
+function extractNameFromPDFText(text: string | null | undefined): string | null {
   if (!text) return null;
   const lines = text.split('\n');
   for (let i = 0; i < lines.length; i++) {

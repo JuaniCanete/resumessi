@@ -78,9 +78,9 @@ function parseEnvFile(): Record<string, string | undefined> {
         (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
-      if (Object.prototype.hasOwnProperty.call(env, key) || key.includes('COLOR')) {
-        env[key] = value;
-      }
+if (Object.prototype.hasOwnProperty.call(env, key) || key.includes('COLOR') || key === 'AI_INFERENCE_ORDER') {
+         env[key] = value;
+       }
     });
   }
   return env;

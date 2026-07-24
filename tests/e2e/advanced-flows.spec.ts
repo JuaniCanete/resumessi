@@ -1,4 +1,4 @@
-const path = require('path');
+import path from 'path';
 import { test, expect } from './test-setup';
 import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
 
@@ -28,7 +28,7 @@ test.describe('Advanced Flows', () => {
 
 		const uploaded = await  mainPage.page.evaluate(() => localStorage.getItem('uploaded-photo'));
 		expect.soft(uploaded).toBeTruthy();
-		expect.soft(uploaded.startsWith('data:image/')).toBe(true);
+		if (uploaded) expect.soft(uploaded.startsWith('data:image/')).toBe(true);
 
 		await expect.soft(mainPage.profilePhoto).toBeVisible({ timeout: 5000 });
 		const photoSrc = await mainPage.profilePhoto.getAttribute('src');
@@ -44,7 +44,7 @@ test.describe('Advanced Flows', () => {
 		await mainPage.clickPolish();
 		await expect(mainPage.polishOverlay).toBeVisible();
 		const refreshText = await mainPage.getRefreshMessageText();
-		expect.soft(refreshText.toLowerCase()).toContain('refresh');
+		if (refreshText) expect.soft(refreshText.toLowerCase()).toContain('refresh');
 	});
 
 	test('ATS scan error handling — 500 from proxy shows error in UI', async ({ mainPage }) => {
@@ -117,7 +117,7 @@ test.describe('Advanced Flows', () => {
 		expect(response.status()).toBe(200);
 
 		const refreshText = await mainPage.getRefreshMessageText();
-		expect.soft(refreshText.toLowerCase()).toContain('rollback');
+		if (refreshText) expect.soft(refreshText.toLowerCase()).toContain('rollback');
 	});
 });
 

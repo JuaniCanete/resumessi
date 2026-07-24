@@ -4,7 +4,7 @@ export default defineConfig({
   timeout: 15000,
   testDir: './e2e',
   outputDir: './test-results',
-  workers: 4,
+  workers: 1,
   reporter: [['html', { open: 'on-failure' }]],
   use: {
     baseURL: 'http://localhost:3000',
@@ -15,10 +15,10 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
-  webServer: {
-    command: 'cmd.exe /c "tsx ..\\start.ts"',
+webServer: {
+    command: 'cmd.exe /c "npx tsx ..\\start.ts --no-open"',
     url: 'http://localhost:3000/public/main.html',
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 60000,
   },
 });
