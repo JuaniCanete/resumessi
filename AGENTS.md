@@ -57,25 +57,9 @@ This file defines how AI assistants collaborate within the **resumessi** project
 
 ---
 
-## TypeScript Migration Status
+## Code Review
 
-✅ All source files migrated from JS to TS
-✅ Type definitions in `src/types/` (provider, resume, config, router)
-✅ `tsx` as primary executor for server/scripts
-✅ esbuild for frontend bundling (`public/app.ts` → `public/dist/app.js`)
-✅ `npm run typecheck` for type validation (runs `tsc --noEmit`)
-✅ eslint configured for TS
-✅ Playwright config migrated to TS
+**Important:**
+Trigger this only when the user ask to code review.
 
----
-
-## Future Roadmap
-
-1. ✅ Two-panel layout (left sidebar + right results panel)
-2. ✅ Collapsible left sidebar + expandable right panel
-3. ✅ ATS scoring via any AI API
-4. ✅ `.env` as single source of truth with `/config.json` endpoint
-5. ✅ Template-ize resume HTML (no hardcoded personal data)
-6. ✅ AI-powered resume generation from prompt data
-7. ✅ Cross-platform setup script
-8. ✅ Full TypeScript migration
+**Review prompt and guidelines:** `REVIEW.md`

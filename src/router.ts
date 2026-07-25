@@ -76,7 +76,8 @@ export async function runInference(
     }
   }
 
-  const error = new Error('All providers exhausted') as RouterError;
+  const failedProviders = attempts.map(a => `${a.provider} (${a.status}: ${a.error})`).join('; ');
+  const error = new Error(`All providers exhausted — ${failedProviders}`) as RouterError;
   error.attempts = attempts;
   error.lastError = lastError;
   throw error;

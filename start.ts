@@ -160,6 +160,9 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       if (max_tokens !== undefined) params.max_tokens = max_tokens;
       if (top_p !== undefined) params.top_p = top_p;
 
+      // Capture provider name for error fallback (accessible in outer scope)
+      const attemptedProvider = provider || null;
+
       try {
         const result = await runInference(system, prompt, params, env, provider);
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -175,10 +178,21 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
           return;
         }
 
+        const routerErr = err as { attempts?: Array<{ provider: string; status: number; error: string }>; message?: string };
+        const detailedAttempts = routerErr.attempts || [];
+
+        let errorMsg: string;
+        if (detailedAttempts.length > 0) {
+          const a = detailedAttempts[0];
+          errorMsg = `${a.provider} failed with ${a.error}. Retry later or try with another provider.`;
+        } else {
+          errorMsg = `${attemptedProvider || 'Unknown provider'} failed. Retry later or try with another provider.`;
+        }
+
         res.writeHead(502, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
-          error: 'All providers exhausted',
-          attempts: (err as { attempts?: Array<unknown> }).attempts || [],
+          error: errorMsg,
+          attempts: detailedAttempts,
           suggestion: 'Check your API keys and network connection.',
         }));
       }
@@ -327,10 +341,21 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         return;
       }
 
+      const routerErr = err as { attempts?: Array<{ provider: string; status: number; error: string }>; message?: string };
+      const detailedAttempts = routerErr.attempts || [];
+
+      let errorMsg: string;
+      if (detailedAttempts.length > 0) {
+        const a = detailedAttempts[0];
+        errorMsg = `${a.provider} failed with ${a.error}. Retry later or try with another provider.`;
+      } else {
+        errorMsg = `${selectedProvider || 'Unknown provider'} failed. Retry later or try with another provider.`;
+      }
+
       res.writeHead(502, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
-        error: 'Polish failed: all providers exhausted',
-        attempts: (err as { attempts?: Array<unknown> }).attempts || [],
+        error: errorMsg,
+        attempts: detailedAttempts,
         suggestion: 'Check your API keys and network connection.',
       }));
     }

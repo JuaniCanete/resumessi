@@ -7,6 +7,7 @@
 let scanController: AbortController | null = null;
 let cachedConfig: Record<string, unknown> | null = null;
 let generationController: AbortController | null = null;
+let polishController: AbortController | null = null;
 let currentDataSource: string = 'none';
 let currentPhotoDataURL: string | null = null;
 let currentPDFText = '';
@@ -575,8 +576,11 @@ async function polishResume(): Promise<void> {
   dropdownBtn.disabled = true;
   document.getElementById('polish-overlay')!.style.display = 'flex';
 
+  polishController = new AbortController();
+  const signal = polishController.signal;
+
   try {
-    const resp = await fetch('/src/resume/output/resume-data.json');
+    const resp = await fetch('/src/resume/output/resume-data.json', { signal });
     if (!resp.ok) throw new Error('No resume data to polish');
 
     const resumeData = await resp.json() as Record<string, unknown>;
@@ -596,6 +600,7 @@ async function polishResume(): Promise<void> {
         resumeData: resumeDataForPolish,
         provider: selectedProvider,
       }),
+      signal: signal,
     });
 
     if (!polishResp.ok) {
@@ -627,10 +632,29 @@ async function polishResume(): Promise<void> {
       updatePolishButton();
     }, 1000);
   } catch (err: unknown) {
-    document.getElementById('polish-overlay')!.style.display = 'none';
-    alert('Polish failed: ' + (err as Error).message);
+    if ((err as Error).name === 'AbortError') {
+      console.log('Polish cancelled by user.');
+    } else {
+      document.getElementById('polish-overlay')!.style.display = 'none';
+      alert('Polish failed: ' + (err as Error).message);
+    }
     updatePolishButton();
+    const dropdownBtnAfter = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
+    dropdownBtnAfter.disabled = false;
+  } finally {
+    polishController = null;
   }
+}
+
+function cancelPolish(): void {
+  if (polishController) {
+    polishController.abort();
+    polishController = null;
+  }
+  document.getElementById('polish-overlay')!.style.display = 'none';
+  const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
+  dropdownBtn.disabled = false;
+  updatePolishButton();
 }
 
 async function rollbackPolish(): Promise<void> {
@@ -677,17 +701,15 @@ document.addEventListener('click', (e: MouseEvent) => {
 
 document.addEventListener('keydown', (e: KeyboardEvent) => {
   if (e.key === 'Escape') {
+    // Check all modals/overlays first — highest z-index elements should close first
     const providersModal = document.getElementById('providers-modal');
     if (providersModal && providersModal.style.display === 'flex') {
       closeProvidersModal();
       return;
     }
-    const dropdown = document.getElementById('actions-dropdown')!;
-    const trigger = document.getElementById('actions-trigger')!;
-    if (dropdown && !dropdown.classList.contains('hidden')) {
-      dropdown.classList.add('hidden');
-      trigger.setAttribute('aria-expanded', 'false');
-      trigger.focus();
+    const polishOverlay = document.getElementById('polish-overlay');
+    if (polishOverlay && polishOverlay.style.display === 'flex') {
+      cancelPolish();
       return;
     }
     const photoModal = document.getElementById('photo-upload-modal');
@@ -698,6 +720,15 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     const modal = document.getElementById('ai-modal');
     if (modal && modal.style.display === 'flex') {
       closeAIModal();
+      return;
+    }
+    // Only close the actions dropdown if no modal/overlay is open
+    const dropdown = document.getElementById('actions-dropdown')!;
+    const trigger = document.getElementById('actions-trigger')!;
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+      dropdown.classList.add('hidden');
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.focus();
     }
   }
 });
@@ -1212,6 +1243,7 @@ if (photoModal) {
 (window as unknown as Record<string, unknown>).handlePDFUpload = handlePDFUpload;
 (window as unknown as Record<string, unknown>).confirmGeneration = confirmGeneration;
 (window as unknown as Record<string, unknown>).polishResume = polishResume;
+(window as unknown as Record<string, unknown>).cancelPolish = cancelPolish;
 (window as unknown as Record<string, unknown>).rollbackPolish = rollbackPolish;
 (window as unknown as Record<string, unknown>).toggleActions = toggleActions;
 (window as unknown as Record<string, unknown>).openPhotoUploadModal = openPhotoUploadModal;

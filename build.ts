@@ -46,10 +46,7 @@ function replaceLast(content: string, placeholder: string, replacement: string):
 function injectPromptLast(filePath: string, placeholder: string, value: string): void {
   const content = fs.readFileSync(filePath, 'utf-8');
   const updated = replaceLast(content, placeholder, value);
-  if (!updated) {
-    console.log(`Skipping ${path.relative(ROOT, filePath)} — placeholder ${placeholder} not found (prompts loaded at runtime).`);
-    return;
-  }
+  if (!updated) return; // No placeholder — prompts loaded at runtime, which is the default
   fs.writeFileSync(filePath, updated, 'utf-8');
   console.log(`Injected prompt into ${path.relative(ROOT, filePath)}`);
 }
@@ -108,10 +105,7 @@ function main(): void {
 
   // Build frontend bundle
   buildFrontend().then(() => {
-    console.log('\nBuild completed successfully.');
-    console.log('Next steps:');
-    console.log('  1. Open public/main.html to verify ATS prompt changes');
-    console.log('  2. public/dist/app.js is bundled from public/app.ts');
+    console.log('\nBuild completed successfully. Run `npm start` to launch the app.');
   });
 }
 

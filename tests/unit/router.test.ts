@@ -102,7 +102,10 @@ test('runInference throws when all providers fail', async () => {
 
   await assert.rejects(
     () => runInference('sys', 'prompt', {}, env, null, failingCallProvider, mockGetProviderConfig),
-    { message: 'All providers exhausted' }
+    (err: unknown) => {
+      const msg = (err as Error).message;
+      return msg.startsWith('All providers exhausted') && msg.includes('gemini') && msg.includes('cohere');
+    }
   );
 });
 
