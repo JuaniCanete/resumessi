@@ -4,21 +4,22 @@
   "description": "AI-powered resume scoring and generation tool using AI providers and models",
   "main": "public/main.html",
   "scripts": {
-    "start": "tsx start.ts",
     "setup": "tsx setup.ts",
     "validate": "tsx scripts/validate.ts",
-    "prebuild": "tsx scripts/validate.ts",
+    "prebuild": "npm run validate",
     "build": "tsx build.ts",
     "build:check": "tsx build.ts --check",
+    "prestart": "npm run build",
+    "start": "tsx start.ts",
     "generate": "tsx src/resume/generate-resume.ts",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "html:validate": "html-validate public/**/*.html",
     "css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html",
     "test:unit": "tsx --test \"tests/unit/**/*.test.ts\"",
     "test:e2e": "playwright test --config=tests/playwright.config.ts",
-    "evals": "tsx scripts/run-evals.ts",
-    "typecheck": "tsc --noEmit"
+    "evals": "tsx scripts/run-evals.ts"
   },
   "lint-staged": {
     "*.{js,ts}": [

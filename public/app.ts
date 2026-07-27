@@ -662,8 +662,9 @@ async function rollbackPolish(): Promise<void> {
     await fetch('/api/rollback', { method: 'POST' });
     showRefreshMessage();
     setTimeout(async () => {
+      const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
+      dropdownBtn.disabled = false;
       await loadResumeData();
-      updatePolishButton();
     }, 1000);
   } catch (err: unknown) {
     alert('Rollback failed: ' + (err as Error).message);
