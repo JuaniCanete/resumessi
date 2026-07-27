@@ -53,7 +53,7 @@ async function callProvider(
 
   if (!response.ok) {
     let errorMsg = `HTTP ${response.status}`;
-    try { const errData = await response.json(); errorMsg = errData?.error?.message || errData?.error || errorMsg; } catch { /* ignore JSON parse error */ }
+    try { const errData = await response.json(); errorMsg = errData?.error?.message || errData?.error || errorMsg; } catch (jsonErr: unknown) { console.error('Error parsing error response:', jsonErr); }
     throw { status: response.status, error: errorMsg, provider };
   }
 

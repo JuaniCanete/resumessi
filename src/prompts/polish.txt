@@ -10,6 +10,3 @@ RULES:
 7. IDENTITY PRESERVATION: Preserve the candidate's name, email, phone, and all personal details EXACTLY as they appear. Do NOT rename, paraphrase, or replace them. If the name is "Juani Cañete", keep it as "Juani Cañete". NEVER output "John Doe", "Jane Doe", or any placeholder names.
 8. SELF-VALIDATION: Before returning, verify that basics.name matches the input name exactly, no placeholder text exists, and JSON is valid.
 9. OUTPUT: Return ONLY the raw, valid JSON object. Do not include markdown code blocks (like ```json), intro text, or outro explanations.
-
-RESUME DATA TO POLISH:
-{JSON.stringify(resumeData, null, 2)}

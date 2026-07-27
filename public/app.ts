@@ -558,9 +558,9 @@ async function updatePolishButton(): Promise<void> {
   }
 }
 
-function showRefreshMessage(text: string): void {
+function showRefreshMessage(): void {
   const msg = document.getElementById('refresh-message')!;
-  msg.textContent = text;
+  msg.textContent = 'Applying changes . . .';
   msg.style.display = 'block';
 
   setTimeout(() => {
@@ -625,7 +625,7 @@ async function polishResume(): Promise<void> {
 
     
 
-    showRefreshMessage('Refreshing to show changes . . .');
+    showRefreshMessage();
     document.getElementById('polish-overlay')!.style.display = 'none';
     setTimeout(async () => {
       await loadResumeData();
@@ -660,11 +660,7 @@ function cancelPolish(): void {
 async function rollbackPolish(): Promise<void> {
   try {
     await fetch('/api/rollback', { method: 'POST' });
-
-    
-
-    showRefreshMessage('Refreshing to rollback changes . . .');
-
+    showRefreshMessage();
     setTimeout(async () => {
       await loadResumeData();
       updatePolishButton();
