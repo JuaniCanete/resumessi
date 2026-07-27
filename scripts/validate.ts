@@ -51,4 +51,4 @@ if (hasErrors) {
   process.exit(1);
 }
 
-console.log('\nAll prompt files are valid. Proceeding with build.');
+console.log('\nAll prompt files are valid. Project is ready to build.');
