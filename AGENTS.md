@@ -62,4 +62,6 @@ This file defines how AI assistants collaborate within the **resumessi** project
 **Important:**
 Trigger this only when the user ask to code review.
 
-**Review prompt and guidelines:** `REVIEW.md`
+**Review prompt and guidelines:** `REVIEW.md` (project-wide standard)
+
+**Output:** Write code review results to `code-review/<feature-name>.md`.

@@ -33,6 +33,16 @@ Thumbs.db
 npm-debug.log*
 debugging/
 
+# AI agent personal configs
+AGENTS_LOCAL.md
+.agents/rules/workflow.md
+.cursor/rules/agents-workflow.mdc
+.kilo/
+
+# AI artifacts
+code-review/
+plans/
+
 # Build outputs (if any)
 dist/
 build/
@@ -43,7 +53,3 @@ playwright-report/
 
 # Husky git hook files (auto-generated)
 .husky/_/
-
-
-# Kilo AI agent files
-.kilo/
