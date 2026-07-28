@@ -29,22 +29,22 @@ test('buildRequest creates valid Cohere request', () => {
    assert.equal(result.headers['Authorization'], 'Bearer key-123');
    assert.equal(result.headers['Content-Type'], 'application/json');
    assert.equal(result.body.model, 'command-r-plus');
-   const msgs = result.body.messages as Array<{ role: string; message: string }>;
+   const msgs = result.body.messages as Array<{ role: string; content: string }>;
    assert.equal(msgs.length, 2);
    assert.equal(msgs[0].role, 'system');
-   assert.equal(msgs[0].message, 'You are helpful.');
+   assert.equal(msgs[0].content, 'You are helpful.');
    assert.equal(msgs[1].role, 'user');
-   assert.equal(msgs[1].message, 'Hello');
-   assert.equal(result.body.preamble_override, 'You are helpful.');
+   assert.equal(msgs[1].content, 'Hello');
+   assert.equal(result.body.preamble_override, undefined);
    assert.equal(result.body.temperature, 0.5);
 });
 
 test('buildRequest creates valid Cohere request without system', () => {
    const result = buildRequest('cohere', '', 'Hello', 'command-r-plus', 'key-123');
-   const msgs = result.body.messages as Array<{ role: string; message?: string }>;
+   const msgs = result.body.messages as Array<{ role: string; content?: string }>;
    assert.equal(msgs.length, 1);
    assert.equal(msgs[0].role, 'user');
-   assert.equal(result.body.preamble_override, undefined);
+   assert.equal(msgs[0].content, 'Hello');
 });
 
 test('buildRequest creates valid Gemini request', () => {
@@ -55,7 +55,8 @@ test('buildRequest creates valid Gemini request', () => {
    assert.equal(contents[0].parts[0].text, 'Hello');
    const sysInst = result.body.systemInstruction as { parts: Array<{ text: string }> } | undefined;
    assert.equal(sysInst!.parts[0].text, 'You are helpful.');
-   assert.equal(result.body.max_tokens, 100);
+   const gc = result.body.generationConfig as { maxOutputTokens: number };
+   assert.equal(gc.maxOutputTokens, 100);
 });
 
 test('buildRequest creates valid Gemini request without system', () => {
@@ -96,7 +97,7 @@ test('buildRequest throws for unknown provider', () => {
 // ── parseResponse ─────────────────────────────────────────────────────────────
 
 test('parseResponse extracts Cohere text', () => {
-  const data = { message: { message: 'Hello world' } };
+  const data = { message: { content: [{ text: 'Hello world' }] } };
   const result = parseResponse('cohere', data);
   assert.equal(result.text, 'Hello world');
   assert.deepEqual(result.usage, {});
@@ -151,14 +152,14 @@ test('parseResponse handles missing fields gracefully', () => {
 // ── getProviderTimeout ────────────────────────────────────────────────────────
 
 test('getProviderTimeout returns default for known providers', () => {
-  assert.equal(getProviderTimeout('cohere'), 20000);
-  assert.equal(getProviderTimeout('mistral'), 20000);
-  assert.equal(getProviderTimeout('gemini'), 15000);
-  assert.equal(getProviderTimeout('groq'), 15000);
+  assert.equal(getProviderTimeout('cohere'), 30000);
+  assert.equal(getProviderTimeout('mistral'), 30000);
+  assert.equal(getProviderTimeout('gemini'), 30000);
+  assert.equal(getProviderTimeout('groq'), 30000);
 });
 
 test('getProviderTimeout returns default for unknown provider', () => {
-  assert.equal(getProviderTimeout('unknown'), 20000);
+  assert.equal(getProviderTimeout('unknown'), 30000);
 });
 
 // ── getProviderConfig ─────────────────────────────────────────────────────────

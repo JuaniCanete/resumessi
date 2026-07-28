@@ -39,7 +39,7 @@ function applyColors(env: Record<string, unknown>): void {
   const root = document.documentElement;
   const presets: Record<string, string> = { blue: '#2563eb', green: '#16a34a', purple: '#7c3aed', rose: '#e11d48', teal: '#0d9488', orange: '#ea580c' };
   if (env.ACCENT_COLOR && presets[env.ACCENT_COLOR as string]) env.ACCENT_COLOR = presets[env.ACCENT_COLOR as string];
-  const map: Record<string, string> = { PRIMARY_COLOR: '--primary', SECONDARY_COLOR: '--secondary', ACCENT_COLOR: '--accent', TEXT_COLOR: '--text', TEXT_LIGHT_COLOR: '--text-light', BG_BADGE_COLOR: '--bg-badge', SUCCESS_COLOR: '--success' };
+  const map: Record<string, string> = { PRIMARY_COLOR: '--primary', SECONDARY_COLOR: '--secondary', ACCENT_COLOR: '--accent', TEXT_COLOR: '--text', TEXT_LIGHT_COLOR: '--text-light', BG_BADGE_COLOR: '--bg-badge', SUCCESS_COLOR: '--success', ERROR_COLOR: '--error', WHITEXT_COLOR: '--whitetext' };
   Object.entries(map).forEach(([k, v]) => { if (env[k]) root.style.setProperty(v, env[k] as string); });
 }
 
@@ -116,7 +116,9 @@ function applyScanResultsToUI(screening: Record<string, unknown>): void {
   circle.className = 'result-score-circle ' + tierClass;
 
   document.getElementById('rp-score-text')!.textContent = screening.tier as string;
-  document.getElementById('rp-feedback')!.textContent = (screening.feedback as string) || '\u2014';
+  const feedbackEl = document.getElementById('rp-feedback')!;
+  feedbackEl.textContent = (screening.feedback as string) || '\u2014';
+  feedbackEl.style.color = '';
 
   const breakdown = screening.breakdown as Record<string, unknown>;
   const elSkills = document.getElementById('br-skills')!;
@@ -217,6 +219,9 @@ async function runAtsScan(): Promise<void> {
         system: 'You are an ATS resume scorer. Return only valid JSON matching the requested schema.',
         prompt: prompt,
         provider: selectedProvider,
+        temperature: 0,
+        max_tokens: 2048,
+        scope: 'ats',
       }),
       signal: signal,
     });
@@ -238,14 +243,13 @@ async function runAtsScan(): Promise<void> {
     applyScanResultsToUI(screening);
     saveScanResults(screening);
 
-    
   } catch (err: unknown) {
     if ((err as Error).name === 'AbortError') {
       console.log('Scan cancelled by user.');
     } else {
-      modelErrorMsg.textContent = '\u26A0\uFE0F ATS scan failed: ' + (err as Error).message;
-      modelErrorMsg.style.color = '#ef4444';
-      alert('Error: ' + (err as Error).message);
+      modelErrorMsg.textContent = 'API response: ' + (err as Error).message + '.';
+      modelErrorMsg.style.color = 'var(--error)';
+      openRight();
       console.error(err);
     }
   } finally {
@@ -280,7 +284,7 @@ function getPhotoPath(resumeData: { basics?: { photo?: string } }): string {
     }
     return `public/assets/photos/${resumeData.basics.photo}`;
   }
-  return '/examples/photo.jpg';
+  return '/demo/goat.jpg';
 }
 
 // ─── Placeholder Data ───────────────────────────────────────────────
@@ -488,7 +492,7 @@ async function loadResumeData(): Promise<void> {
   const priorities = [
     '/src/resume/output/resume-data-AI-polished.json',
     '/src/resume/output/resume-data.json',
-    '/examples/demo-data.json',
+    '/demo/resume-demo-data.json',
   ];
 
   const hasGeneratedResume = localStorage.getItem('resume-data') !== null;
@@ -599,6 +603,7 @@ async function polishResume(): Promise<void> {
       body: JSON.stringify({
         resumeData: resumeDataForPolish,
         provider: selectedProvider,
+        scope: 'polish',
       }),
       signal: signal,
     });
@@ -869,6 +874,7 @@ async function confirmGeneration(): Promise<void> {
         system: 'You are a resume generation assistant. Return only valid JSON matching the resume schema.',
         prompt: extractionPrompt,
         provider: selectedProvider,
+        scope: 'generate',
       }),
       signal: signal,
     });

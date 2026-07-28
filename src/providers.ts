@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import type {
   ProviderName,
   ProviderResponse,
@@ -6,15 +8,30 @@ import type {
   BuildRequestResult,
 } from './types/provider';
 
+const ROOT = path.join(__dirname, '..');
+const LOG_PATH = path.join(ROOT, 'debugging', 'logs', 'inference.log');
+
+function logInference(record: Record<string, unknown>): void {
+  try {
+    const logDir = path.dirname(LOG_PATH);
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+    fs.appendFileSync(LOG_PATH, JSON.stringify(record) + '\n');
+  } catch {
+    // logging must never break inference
+  }
+}
+
 const PROVIDER_TIMEOUTS: Record<string, number> = {
-  cohere: 20000,
-  mistral: 20000,
-  gemini: 15000,
-  groq: 15000,
+  cohere: 30000,
+  mistral: 30000,
+  gemini: 30000,
+  groq: 30000,
 };
 
 function getProviderTimeout(provider: string): number {
-  return PROVIDER_TIMEOUTS[provider] || 20000;
+  return PROVIDER_TIMEOUTS[provider] || 30000;
 }
 
 async function fetchWithTimeout(url: string, options: globalThis.RequestInit, timeoutMs: number): Promise<Response> {
@@ -41,26 +58,70 @@ async function callProvider(
   model: string,
   key: string,
   params: Record<string, unknown> = {},
+  scope: string = 'generic',
 ): Promise<ProviderResponse> {
   const { url, headers, body } = buildRequest(provider, system, prompt, model, key, params);
   const timeout = getProviderTimeout(provider);
+  const startTime = Date.now();
 
-  const response = await fetchWithTimeout(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  }, timeout);
+  let httpStatus = 0;
+  let ok = false;
+  let errorMsg: string | undefined;
+  let parsedUsage: Record<string, number | undefined> | null = null;
 
-  if (!response.ok) {
-    let errorMsg = `HTTP ${response.status}`;
-    try { const errData = await response.json(); errorMsg = errData?.error?.message || errData?.error || errorMsg; } catch (jsonErr: unknown) { console.error('Error parsing error response:', jsonErr); }
-    throw { status: response.status, error: errorMsg, provider };
+  try {
+    const response = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    }, timeout);
+
+    httpStatus = response.status;
+    ok = response.ok;
+
+    if (!response.ok) {
+      let errMsg = `HTTP ${response.status}`;
+      try {
+        const errData = await response.json() as Record<string, unknown>;
+        const errInner = errData.error as Record<string, unknown> | undefined;
+        errMsg = (typeof errInner?.message === 'string' ? errInner.message : undefined) || (typeof errData.error === 'string' ? errData.error : undefined) || JSON.stringify(errData) || errMsg;
+      } catch { /* ignore */ }
+      httpStatus = response.status;
+      throw { status: response.status, error: errMsg, provider };
+    }
+
+    const data = await response.json();
+    const parsed = parseResponse(provider, data);
+    parsedUsage = parsed.usage;
+
+    return { ...parsed, provider, model, status: response.status };
+  } catch (err: unknown) {
+    ok = false;
+    if (err instanceof Error) {
+      errorMsg = err.message;
+    } else if (typeof err === 'object' && err !== null) {
+      errorMsg = (err as { error?: string }).error || JSON.stringify(err);
+    } else {
+      errorMsg = String(err);
+    }
+    throw { status: httpStatus, provider, error: errorMsg };
+  } finally {
+    const latencyMs = Date.now() - startTime;
+    const record: Record<string, unknown> = {
+      timestamp: new Date().toISOString(),
+      scope,
+      provider,
+      model,
+      httpStatus,
+      latencyMs,
+      usage: parsedUsage || { prompt_tokens: undefined, completion_tokens: undefined },
+      ok,
+    };
+    if (!ok && errorMsg) {
+      record.error = errorMsg;
+    }
+    logInference(record);
   }
-
-  const data = await response.json();
-  const parsed = parseResponse(provider, data);
-
-  return { ...parsed, provider, status: response.status };
 }
 
 function buildRequest(
@@ -78,18 +139,14 @@ function buildRequest(
     headers['Authorization'] = `Bearer ${key}`;
     const messages: Array<Record<string, string>> = [];
     if (system) {
-      messages.push({ role: 'system', message: system });
+      messages.push({ role: 'system', content: system });
     }
-    messages.push({ role: 'user', message: prompt });
+    messages.push({ role: 'user', content: prompt });
 
     const body: Record<string, unknown> = {
       model,
       messages,
     };
-
-    if (system) {
-      body.preamble_override = system;
-    }
 
     if (temperature !== undefined) body.temperature = temperature;
     if (max_tokens !== undefined) body.max_tokens = max_tokens;
@@ -112,9 +169,14 @@ function buildRequest(
       body.systemInstruction = { parts: [{ text: system }] };
     }
 
-    if (temperature !== undefined) body.temperature = temperature;
-    if (max_tokens !== undefined) body.max_tokens = max_tokens;
-    if (top_p !== undefined) body.top_p = top_p;
+    const generationConfig: Record<string, unknown> = {};
+    if (temperature !== undefined) generationConfig.temperature = temperature;
+    if (max_tokens !== undefined) generationConfig.maxOutputTokens = max_tokens;
+    if (top_p !== undefined) generationConfig.topP = top_p;
+    generationConfig.responseMimeType = 'application/json';
+    if (Object.keys(generationConfig).length > 0) {
+      body.generationConfig = generationConfig;
+    }
 
     return { url, headers, body };
   }
@@ -152,8 +214,15 @@ function parseResponse(provider: ProviderName, data: Record<string, unknown>): {
 
   try {
     if (provider === 'cohere') {
-      const msgData = data as { message?: { message?: string }; text?: string; meta?: { tokens?: { input_tokens?: number; output_tokens?: number } }; usage?: { prompt_tokens?: number; completion_tokens?: number } };
-      text = msgData?.message?.message || msgData?.text || '';
+      const msgData = data as { message?: { content?: Array<{ text?: string }> | string }; text?: string; meta?: { tokens?: { input_tokens?: number; output_tokens?: number } }; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+      if (msgData?.message?.content) {
+        if (Array.isArray(msgData.message.content)) {
+          text = msgData.message.content.map(c => c.text || '').join('');
+        } else {
+          text = msgData.message.content as string;
+        }
+      }
+      text = text || msgData?.text || '';
       if (msgData?.meta?.tokens) {
         usage.prompt_tokens = msgData.meta.tokens.input_tokens;
         usage.completion_tokens = msgData.meta.tokens.output_tokens;
@@ -165,6 +234,11 @@ function parseResponse(provider: ProviderName, data: Record<string, unknown>): {
       const geminiData = data as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } };
       const parts = geminiData?.candidates?.[0]?.content?.parts || [];
       text = parts.map(p => p.text || '').join('');
+      // Gemini sometimes wraps JSON in markdown fences — extract clean JSON
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        text = jsonMatch[0];
+      }
       if (geminiData?.usageMetadata) {
         usage.prompt_tokens = geminiData.usageMetadata.promptTokenCount;
         usage.completion_tokens = geminiData.usageMetadata.candidatesTokenCount;
@@ -235,8 +309,11 @@ function validateInferenceRequest(body: Record<string, unknown>): string[] {
   if (typeof body.prompt !== 'string' || body.prompt.trim().length < 1) {
     errors.push('prompt must be a non-empty string');
   }
-  if (body.provider !== undefined && (typeof body.provider !== 'string' || body.provider.trim().length < 1)) {
+  if (body.provider !== undefined && body.provider != null && (typeof body.provider !== 'string' || body.provider.trim().length < 1)) {
     errors.push('provider must be a non-empty string when provided');
+  }
+  if (body.scope !== undefined && (typeof body.scope !== 'string' || !['ats', 'polish', 'generate', 'generic'].includes(body.scope.trim().toLowerCase()))) {
+    errors.push('scope must be one of: ats, polish, generate, generic');
   }
   if (body.temperature !== undefined && (typeof body.temperature !== 'number' || body.temperature < 0 || body.temperature > 2)) {
     errors.push('temperature must be a number between 0.0 and 2.0');
@@ -248,7 +325,7 @@ function validateInferenceRequest(body: Record<string, unknown>): string[] {
     errors.push('top_p must be a number between 0.0 and 1.0');
   }
 
-  const allowedKeys = new Set(['system', 'prompt', 'provider', 'temperature', 'max_tokens', 'top_p']);
+  const allowedKeys = new Set(['system', 'prompt', 'provider', 'scope', 'temperature', 'max_tokens', 'top_p']);
   for (const key of Object.keys(body)) {
     if (!allowedKeys.has(key)) {
       errors.push(`Unexpected field: ${key}`);

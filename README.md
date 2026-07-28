@@ -47,9 +47,9 @@ resumessi/
 │       ├── extraction.txt          # Resume extraction prompt (PDF → JSON)
 │       ├── polish.txt              # Resume polishing prompt
 │       └── resume-generation.txt   # Resume generation prompt
-├── examples/
-│   ├── demo-data.json          # Demo resume data
-│   └── job-description-goat.md # Sample job description for testing
+├── demo/
+│   ├── resume-demo-data.json          # Demo resume data
+│   └── demo-job-description-goat.md # Sample job description for testing
 ├── tests/
 │   ├── e2e/                    # End-to-end tests (Playwright)
 │   ├── unit/                   # Unit tests (Node.js test runner)

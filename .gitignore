@@ -12,8 +12,6 @@ src/resume/prompt.txt
 # ALWAYS KEEP - Demo/Defaults
 # ============================================
 
-# examples/* - Demo data (Messi example) ALL COMMITTED
-
 # Standard ignores
 node_modules/
 .env
@@ -38,6 +36,7 @@ AGENTS_LOCAL.md
 .agents/rules/workflow.md
 .cursor/rules/agents-workflow.mdc
 .kilo/
+.roo/
 
 # AI artifacts
 code-review/

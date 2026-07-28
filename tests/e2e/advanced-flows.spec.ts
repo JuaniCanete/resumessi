@@ -11,7 +11,7 @@ const GENERATED_FLAG = JSON.stringify({
 });
 
 // A small valid JPEG shipped with the project, used to drive the file input.
-const SAMPLE_PHOTO = path.resolve(__dirname, '../../examples/photo.jpg');
+const SAMPLE_PHOTO = path.resolve(__dirname, '../../demo/goat.jpg');
 
 test.describe('Advanced Flows', () => {
 	test('photo upload — stores base64 in localStorage and updates resume display', async ({ mainPage }) => {

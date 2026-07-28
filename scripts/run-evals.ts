@@ -74,7 +74,7 @@ function runEvals(): boolean {
 
   // Eval 1: Resume data structure
   try {
-    const resumePath = join(process.cwd(), 'examples', 'demo-data.json');
+    const resumePath = join(process.cwd(), 'examples', 'resume-demo-data.json');
     if (existsSync(resumePath)) {
       const data = JSON.parse(readFileSync(resumePath, 'utf-8')) as ResumeData;
       const result = validateResumeData(data);

@@ -63,7 +63,7 @@ function loadEnvDirectly(): Record<string, string | undefined> {
 
 // ── AI API Call ──────────────────────────────────────────────────
 async function callAI(system: string, prompt: string, env: Record<string, string | undefined>): Promise<ResumeData> {
-  const result = await runInference(system, prompt, {}, env);
+  const result = await runInference(system, prompt, {}, env, null, null, null, 'generate');
   let raw = result.text;
   raw = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
 

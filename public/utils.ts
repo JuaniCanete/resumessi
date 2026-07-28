@@ -59,5 +59,5 @@ export function getPhotoPath(uploadedPhoto: string | null, resumeData?: { basics
     }
     return `public/assets/photos/${resumeData.basics.photo}`;
   }
-  return '/examples/photo.jpg';
+  return '/demo/goat.jpg';
 }

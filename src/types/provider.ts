@@ -14,6 +14,7 @@ export interface LLMOptions {
 export interface ProviderResponse {
   text: string;
   provider: ProviderName;
+  model: string;
   status: number;
   usage: {
     prompt_tokens?: number;
@@ -56,6 +57,7 @@ export interface InferenceRequest {
   system: string;
   prompt: string;
   provider?: string;
+  scope?: string;
   temperature?: number;
   max_tokens?: number;
   top_p?: number;

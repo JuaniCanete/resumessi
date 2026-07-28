@@ -154,7 +154,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       }
 
       const env = getFullConfigFromEnv();
-      const { system, prompt, provider, temperature, max_tokens, top_p } = requestData;
+      const { system, prompt, provider, scope = 'generic', temperature, max_tokens, top_p } = requestData;
       const params: Record<string, unknown> = {};
       if (temperature !== undefined) params.temperature = temperature;
       if (max_tokens !== undefined) params.max_tokens = max_tokens;
@@ -164,7 +164,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       const attemptedProvider = provider || null;
 
       try {
-        const result = await runInference(system, prompt, params, env, provider);
+        const result = await runInference(system, prompt, params, env, provider, null, null, scope);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           text: result.text,
@@ -310,8 +310,9 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       return;
     }
 
-    // Extract optional provider from request body
+    // Extract optional provider and scope from request body
     const selectedProvider = resumeData.provider ? String(resumeData.provider) : null;
+    const scope = resumeData.scope ? String(resumeData.scope) : 'polish';
     const dataToPolish = resumeData?.resumeData ? resumeData.resumeData as Record<string, unknown> : resumeData;
 
     let promptTemplate: string;
@@ -327,7 +328,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     const env = getFullConfigFromEnv();
 
     try {
-      const result = await runPolish(dataToPolish, promptTemplate, env, selectedProvider);
+      const result = await runPolish(dataToPolish, promptTemplate, env, selectedProvider, null, null, scope);
       let raw = result.text;
       raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
       const polished = JSON.parse(raw);

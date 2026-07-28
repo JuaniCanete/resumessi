@@ -35,12 +35,12 @@ test('getPhotoPath returns resume photo path when no upload', () => {
 
 test('getPhotoPath returns demo fallback when basics.photo is missing', () => {
   const resumeData = { basics: {} };
-  assert.equal(getPhotoPath(null, resumeData), '/examples/photo.jpg');
+  assert.equal(getPhotoPath(null, resumeData), '/demo/goat.jpg');
 });
 
 test('getPhotoPath returns demo fallback when basics is missing entirely', () => {
   const resumeData = {};
-  assert.equal(getPhotoPath(null, resumeData), '/examples/photo.jpg');
+  assert.equal(getPhotoPath(null, resumeData), '/demo/goat.jpg');
 });
 
 test('getPhotoPath uploaded photo takes priority over resume photo', () => {

@@ -9,6 +9,7 @@ type CallProviderFn = (
   model: string,
   key: string,
   params?: Record<string, unknown>,
+  scope?: string,
 ) => Promise<ProviderResponse>;
 
 type GetProviderConfigFn = (
@@ -27,6 +28,7 @@ export async function runInference(
   selectedProvider: string | null = null,
   callProviderFn: CallProviderFn | null = null,
   getProviderConfigFn: GetProviderConfigFn | null = null,
+  scope: string = 'generic',
 ): Promise<RouterResult> {
   const call = callProviderFn || callProvider;
   const config = getProviderConfigFn || getProviderConfig;
@@ -63,6 +65,7 @@ export async function runInference(
         providerConfig.model,
         providerConfig.key,
         params,
+        scope,
       );
       return { text: result.text, provider: result.provider, usage: result.usage };
     } catch (err: unknown) {
@@ -90,7 +93,8 @@ export async function runPolish(
   selectedProvider: string | null = null,
   callProviderFn: CallProviderFn | null = null,
   getProviderConfigFn: GetProviderConfigFn | null = null,
+  scope: string = 'polish',
 ): Promise<RouterResult> {
   const prompt = `${promptTemplate}\n\nRESUME DATA TO POLISH: \n${JSON.stringify(resumeData, null, 2)}`;
-  return runInference('You are a resume polishing assistant.', prompt, {}, env, selectedProvider, callProviderFn, getProviderConfigFn);
+  return runInference('You are a resume polishing assistant.', prompt, {}, env, selectedProvider, callProviderFn, getProviderConfigFn, scope);
 }
