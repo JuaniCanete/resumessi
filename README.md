@@ -79,16 +79,16 @@ Edit `.env` (created by `npm run setup`):
 AI_INFERENCE_ORDER=cohere,mistral,gemini,groq
 
 COHERE_API_KEY=your_cohere_key_here
-COHERE_MODEL=command-r-plus
+COHERE_MODEL=command-a-reasoning-08-2025-08-2024
 
 MISTRAL_API_KEY=your_mistral_key_here
-MISTRAL_MODEL=mistral-large-latest
+MISTRAL_MODEL=codestral-2508
 
 GEMINI_API_KEY=your_gemini_key_here
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.6-flash
 
 GROQ_API_KEY=your_groq_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=openai/gpt-oss-120b
 ```
 
 - `.env` is gitignored and served via `/config.json` at runtime.

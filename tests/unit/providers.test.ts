@@ -24,11 +24,11 @@ import {
 // ── buildRequest ──────────────────────────────────────────────────────────────
 
 test('buildRequest creates valid Cohere request', () => {
-   const result = buildRequest('cohere', 'You are helpful.', 'Hello', 'command-r-plus', 'key-123', { temperature: 0.5 });
+   const result = buildRequest('cohere', 'You are helpful.', 'Hello', 'command-a-reasoning-08-2025-08-2024', 'key-123', { temperature: 0.5 });
    assert.equal(result.url, 'https://api.cohere.com/v2/chat');
    assert.equal(result.headers['Authorization'], 'Bearer key-123');
    assert.equal(result.headers['Content-Type'], 'application/json');
-   assert.equal(result.body.model, 'command-r-plus');
+   assert.equal(result.body.model, 'command-a-reasoning-08-2025-08-2024');
    const msgs = result.body.messages as Array<{ role: string; content: string }>;
    assert.equal(msgs.length, 2);
    assert.equal(msgs[0].role, 'system');
@@ -40,7 +40,7 @@ test('buildRequest creates valid Cohere request', () => {
 });
 
 test('buildRequest creates valid Cohere request without system', () => {
-   const result = buildRequest('cohere', '', 'Hello', 'command-r-plus', 'key-123');
+   const result = buildRequest('cohere', '', 'Hello', 'command-a-reasoning-08-2025-08-2024', 'key-123');
    const msgs = result.body.messages as Array<{ role: string; content?: string }>;
    assert.equal(msgs.length, 1);
    assert.equal(msgs[0].role, 'user');
@@ -48,8 +48,8 @@ test('buildRequest creates valid Cohere request without system', () => {
 });
 
 test('buildRequest creates valid Gemini request', () => {
-   const result = buildRequest('gemini', 'You are helpful.', 'Hello', 'gemini-2.5-flash', 'key-456', { max_tokens: 100 });
-   assert.equal(result.url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=key-456');
+   const result = buildRequest('gemini', 'You are helpful.', 'Hello', 'gemini-3.6-flash', 'key-456', { max_tokens: 100 });
+   assert.equal(result.url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=key-456');
    assert.ok(!result.headers['Authorization']);
    const contents = result.body.contents as Array<{ parts: Array<{ text: string }> }>;
    assert.equal(contents[0].parts[0].text, 'Hello');
@@ -60,15 +60,15 @@ test('buildRequest creates valid Gemini request', () => {
 });
 
 test('buildRequest creates valid Gemini request without system', () => {
-   const result = buildRequest('gemini', '', 'Hello', 'gemini-2.5-flash', 'key-456');
+   const result = buildRequest('gemini', '', 'Hello', 'gemini-3.6-flash', 'key-456');
    assert.equal(result.body.systemInstruction, undefined);
 });
 
 test('buildRequest creates valid Mistral request', () => {
-   const result = buildRequest('mistral', 'You are helpful.', 'Hello', 'mistral-large-latest', 'key-789', { top_p: 0.9 });
+   const result = buildRequest('mistral', 'You are helpful.', 'Hello', 'codestral-2508', 'key-789', { top_p: 0.9 });
    assert.equal(result.url, 'https://api.mistral.ai/v1/chat/completions');
    assert.equal(result.headers['Authorization'], 'Bearer key-789');
-   assert.equal(result.body.model, 'mistral-large-latest');
+   assert.equal(result.body.model, 'codestral-2508');
    const msgs = result.body.messages as Array<{ role: string; content: string }>;
    assert.equal(msgs[0].role, 'system');
    assert.equal(msgs[0].content, 'You are helpful.');
@@ -78,10 +78,10 @@ test('buildRequest creates valid Mistral request', () => {
 });
 
 test('buildRequest creates valid Groq request', () => {
-   const result = buildRequest('groq', 'You are helpful.', 'Hello', 'llama-3.3-70b-versatile', 'key-abc');
+   const result = buildRequest('groq', 'You are helpful.', 'Hello', 'openai/gpt-oss-120b', 'key-abc');
    assert.equal(result.url, 'https://api.groq.com/openai/v1/chat/completions');
    assert.equal(result.headers['Authorization'], 'Bearer key-abc');
-   assert.equal(result.body.model, 'llama-3.3-70b-versatile');
+   assert.equal(result.body.model, 'openai/gpt-oss-120b');
    const msgs = result.body.messages as Array<{ role: string; content: string }>;
    assert.equal(msgs[0].role, 'system');
    assert.equal(msgs[0].content, 'You are helpful.');

@@ -33,10 +33,10 @@ interface ProviderDef {
 }
 
 const PROVIDERS: ProviderDef[] = [
-  { id: 'cohere', name: 'Cohere', keyEnv: 'COHERE_API_KEY', modelEnv: 'COHERE_MODEL', defaultModel: 'command-r-plus' },
-  { id: 'mistral', name: 'Mistral', keyEnv: 'MISTRAL_API_KEY', modelEnv: 'MISTRAL_MODEL', defaultModel: 'mistral-large-latest' },
-  { id: 'gemini', name: 'Gemini', keyEnv: 'GEMINI_API_KEY', modelEnv: 'GEMINI_MODEL', defaultModel: 'gemini-2.5-flash' },
-  { id: 'groq', name: 'Groq', keyEnv: 'GROQ_API_KEY', modelEnv: 'GROQ_MODEL', defaultModel: 'llama-3.3-70b-versatile' },
+  { id: 'cohere', name: 'Cohere', keyEnv: 'COHERE_API_KEY', modelEnv: 'COHERE_MODEL', defaultModel: 'command-a-reasoning-08-2025-08-2024' },
+  { id: 'mistral', name: 'Mistral', keyEnv: 'MISTRAL_API_KEY', modelEnv: 'MISTRAL_MODEL', defaultModel: 'codestral-2508' },
+  { id: 'gemini', name: 'Gemini', keyEnv: 'GEMINI_API_KEY', modelEnv: 'GEMINI_MODEL', defaultModel: 'gemini-3.6-flash' },
+  { id: 'groq', name: 'Groq', keyEnv: 'GROQ_API_KEY', modelEnv: 'GROQ_MODEL', defaultModel: 'openai/gpt-oss-120b' },
 ];
 
 const PROVIDER_URLS: Record<string, string> = {
@@ -91,16 +91,16 @@ AI_INFERENCE_ORDER=${env.AI_INFERENCE_ORDER || DEFAULT_AI_INFERENCE_ORDER}
 
 # --- Provider API Keys ---
 COHERE_API_KEY=${env.COHERE_API_KEY || 'your_cohere_key_here'}
-COHERE_MODEL=${env.COHERE_MODEL || 'command-r-plus'}
+COHERE_MODEL=${env.COHERE_MODEL || 'command-a-reasoning-08-2025-08-2024'}
 
 MISTRAL_API_KEY=${env.MISTRAL_API_KEY || 'your_mistral_key_here'}
-MISTRAL_MODEL=${env.MISTRAL_MODEL || 'mistral-large-latest'}
+MISTRAL_MODEL=${env.MISTRAL_MODEL || 'codestral-2508'}
 
 GEMINI_API_KEY=${env.GEMINI_API_KEY || 'your_gemini_key_here'}
-GEMINI_MODEL=${env.GEMINI_MODEL || 'gemini-2.5-flash'}
+GEMINI_MODEL=${env.GEMINI_MODEL || 'gemini-3.6-flash'}
 
 GROQ_API_KEY=${env.GROQ_API_KEY || 'your_groq_key_here'}
-GROQ_MODEL=${env.GROQ_MODEL || 'llama-3.3-70b-versatile'}
+GROQ_MODEL=${env.GROQ_MODEL || 'openai/gpt-oss-120b'}
 
 # --- Theme Colors (override as needed) ---
 PRIMARY_COLOR=${env.PRIMARY_COLOR || '#0a0a0a'}

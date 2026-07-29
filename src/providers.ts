@@ -173,7 +173,6 @@ function buildRequest(
     if (temperature !== undefined) generationConfig.temperature = temperature;
     if (max_tokens !== undefined) generationConfig.maxOutputTokens = max_tokens;
     if (top_p !== undefined) generationConfig.topP = top_p;
-    generationConfig.responseMimeType = 'application/json';
     if (Object.keys(generationConfig).length > 0) {
       body.generationConfig = generationConfig;
     }
@@ -268,25 +267,25 @@ function getProviderConfig(env: Record<string, string | undefined>): ProviderCon
   const providerMap: ProviderMap = {};
 
   const cohereKey = env.COHERE_API_KEY || '';
-  const cohereModel = env.COHERE_MODEL || 'command-r-plus';
+  const cohereModel = env.COHERE_MODEL || 'command-a-reasoning-08-2025-08-2024';
   if (cohereKey) {
     providerMap.cohere = { key: cohereKey, model: cohereModel };
   }
 
   const mistralKey = env.MISTRAL_API_KEY || '';
-  const mistralModel = env.MISTRAL_MODEL || 'mistral-large-latest';
+  const mistralModel = env.MISTRAL_MODEL || 'codestral-2508';
   if (mistralKey) {
     providerMap.mistral = { key: mistralKey, model: mistralModel };
   }
 
   const geminiKey = env.GEMINI_API_KEY || '';
-  const geminiModel = env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const geminiModel = env.GEMINI_MODEL || 'gemini-3.6-flash';
   if (geminiKey) {
     providerMap.gemini = { key: geminiKey, model: geminiModel };
   }
 
   const groqKey = env.GROQ_API_KEY || '';
-  const groqModel = env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const groqModel = env.GROQ_MODEL || 'openai/gpt-oss-120b';
   if (groqKey) {
     providerMap.groq = { key: groqKey, model: groqModel };
   }

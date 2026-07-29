@@ -57,7 +57,7 @@ test.describe('Advanced Flows', () => {
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify({
-					AI_MODEL: 'gemini-2.5-flash',
+					AI_MODEL: 'gemini-3.6-flash',
 					ACCENT_COLOR: '#2563eb',
 				}),
 			});

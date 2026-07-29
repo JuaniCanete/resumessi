@@ -237,6 +237,12 @@ async function runAtsScan(): Promise<void> {
     let raw = data.text;
     raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
 
+    // Extract first JSON object from response — handles preamble text before JSON (e.g. Groq)
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      raw = jsonMatch[0];
+    }
+
     const result = JSON.parse(raw) as { ai_screening: Record<string, unknown> };
     const screening = result.ai_screening;
 
@@ -1088,10 +1094,10 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
   };
 
   const providerModels: Record<string, string> = {
-    cohere: 'command-r-plus',
-    mistral: 'mistral-large-latest',
-    gemini: 'gemini-2.5-flash',
-    groq: 'llama-3.3-70b-versatile',
+    cohere: 'command-a-reasoning-08-2025-08-2024',
+    mistral: 'codestral-2508',
+    gemini: 'gemini-3.6-flash',
+    groq: 'openai/gpt-oss-120b',
     default: 'Unknown model',
   };
 

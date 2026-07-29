@@ -45,9 +45,9 @@ test('runInference returns first successful provider', async () => {
   const env = {
     AI_INFERENCE_ORDER: 'gemini,cohere',
     GEMINI_API_KEY: 'gem-key',
-    GEMINI_MODEL: 'gemini-2.5-flash',
+    GEMINI_MODEL: 'gemini-3.6-flash',
     COHERE_API_KEY: 'cohere-key',
-    COHERE_MODEL: 'command-r-plus',
+    COHERE_MODEL: 'command-a-reasoning-08-2025-08-2024',
   };
 
   const result = await runInference('sys', 'prompt', {}, env, null, mockCallProvider, mockGetProviderConfig);
