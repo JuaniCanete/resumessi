@@ -44,6 +44,14 @@ This file defines how AI assistants collaborate within the **resumessi** project
 | `setup.ts` | CLI setup wizard (TS) | ⚠️ Yes — but NEVER run automatically |
 | `scripts/validate.ts` | Pre-build validation (TS) | ✅ Yes — keep in sync with prompts |
 | `scripts/run-evals.ts` | LLM evaluation harness (TS) | ✅ Yes — improve validation |
+| `scripts/linkedin-auth.ts` | LinkedIn session auth helper (TS) | ✅ Yes — generate/refresh session state |
+| `src/scraper/` | LinkedIn & Google scraper modules (TS) | ✅ Yes — core scraper logic & types |
+| `src/prompts/scraper-summarize.txt` | Scraper LLM summarization prompt | ✅ Yes — improve summary structure |
+| `public/results.html` | Standalone job scraper results view | ✅ Yes — improve UI/UX |
+| `public/results-app.ts` | Standalone results page logic (TS) | ✅ Yes — improve paginated view |
+| `Dockerfile.scraper` | CI Dockerfile for Playwright Chrome | ✅ Yes — maintain container setup |
+| `data/storage-state/` | Saved LinkedIn session cookies | ❌ No — auto-generated (gitignored) |
+| `data/scraper-results/` | Saved scraper output (linkedin.json, google.json) | ❌ No — auto-generated (gitignored) |
 | `README.md` | Project docs | ✅ Yes — keep updated |
 | `AGENTS.md` | This file | ✅ Yes — keep updated |
 

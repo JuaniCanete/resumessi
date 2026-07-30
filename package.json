@@ -1,7 +1,7 @@
 {
   "name": "resumessi",
-  "version": "1.2.1",
-  "description": "AI-powered resume scoring and generation tool using AI providers and models",
+  "version": "2.0.0",
+  "description": "AI-powered job seeker and validator",
   "main": "public/main.html",
   "scripts": {
     "setup": "tsx setup.ts",
@@ -19,7 +19,8 @@
     "css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html",
     "test:unit": "tsx --test \"tests/unit/**/*.test.ts\"",
     "test:e2e": "playwright test --config=tests/playwright.config.ts",
-    "evals": "tsx scripts/run-evals.ts"
+    "evals": "tsx scripts/run-evals.ts",
+    "scraper:auth": "tsx scripts/linkedin-auth.ts"
   },
   "lint-staged": {
     "*.{js,ts}": [
@@ -41,8 +42,11 @@
   "author": "Juani Cañete",
   "license": "MIT",
   "dependencies": {
+    "authenticator": "^1.1.5",
     "formidable": "^3.5.0",
-    "pdf-parse-fork": "^1.1.0"
+    "pdf-parse-fork": "^1.1.0",
+    "playwright-extra": "^4.3.0",
+    "puppeteer-extra-plugin-stealth": "^2.11.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

@@ -3,6 +3,8 @@
  * Extracted from public/main.html inline script
  */
 
+import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
+
 // ─── State ──────────────────────────────────────────────────────────
 let scanController: AbortController | null = null;
 let cachedConfig: Record<string, unknown> | null = null;
@@ -13,6 +15,10 @@ let currentPhotoDataURL: string | null = null;
 let currentPDFText = '';
 let currentPDFFileName = '';
 let selectedProviderForModal: string | null = null;
+let scraperController: AbortController | null = null;
+let currentScraperPlatform: 'linkedin' | 'google' = 'linkedin';
+let scraperResultsWindow: Window | null = null;
+
 
 // Public helper to reset config cache between test runs
 (window as unknown as Record<string, unknown>).__resetConfigCache = () => {
@@ -1238,7 +1244,339 @@ if (photoModal) {
   if (savedScan) {
     applyScanResultsToUI(savedScan);
   }
+
+  refreshScrapingResultsButton();
 })();
+
+// ─── Job Scraper UI Logic ───────────────────────────────────────────
+function openJobScraperModal(): void {
+  const dropdown = document.getElementById('actions-dropdown');
+  if (dropdown) dropdown.classList.add('hidden');
+
+  const modal = document.getElementById('job-scraper-modal');
+  if (modal) modal.style.display = 'flex';
+
+  switchScraperPlatform('linkedin');
+  updateQueryPreview();
+  refreshScrapingResultsButton();
+}
+
+function closeJobScraperModal(): void {
+  const modal = document.getElementById('job-scraper-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
+  currentScraperPlatform = platform;
+  const btnLinkedin = document.getElementById('toggle-platform-linkedin');
+  const btnGoogle = document.getElementById('toggle-platform-google');
+  const googleSection = document.getElementById('google-domains-section');
+
+  if (platform === 'linkedin') {
+    if (btnLinkedin) {
+      btnLinkedin.style.background = 'var(--accent)';
+      btnLinkedin.style.color = '#fff';
+    }
+    if (btnGoogle) {
+      btnGoogle.style.background = 'transparent';
+      btnGoogle.style.color = 'rgba(255,255,255,0.7)';
+    }
+    if (googleSection) googleSection.style.display = 'none';
+  } else {
+    if (btnGoogle) {
+      btnGoogle.style.background = 'var(--accent)';
+      btnGoogle.style.color = '#fff';
+    }
+    if (btnLinkedin) {
+      btnLinkedin.style.background = 'transparent';
+      btnLinkedin.style.color = 'rgba(255,255,255,0.7)';
+    }
+    if (googleSection) googleSection.style.display = 'block';
+  }
+
+  updateQueryPreview();
+}
+
+function updateQueryPreview(): string {
+  const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
+  const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
+  const stack = (document.getElementById('scraper-stack') as HTMLInputElement)?.value.trim() || '';
+  const employment = (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+  const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
+  const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
+
+  let generatedUrl = '';
+
+  if (currentScraperPlatform === 'linkedin') {
+    const parts: string[] = [];
+    if (keywords) parts.push(keywords);
+    if (role) parts.push(role);
+    if (stack) parts.push(stack);
+    if (employment) parts.push(employment);
+    if (region) parts.push(region);
+    if (currency) parts.push(currency);
+
+    const q = parts.join(' ');
+    generatedUrl = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(q)}`;
+  } else {
+    const parts: string[] = [];
+    if (keywords) parts.push(keywords);
+    if (role) parts.push(role);
+    if (stack) parts.push(stack);
+    if (employment) parts.push(employment);
+
+    const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked')) as HTMLInputElement[];
+    const domains = checkedBoxes.map(cb => cb.value.trim()).filter(Boolean);
+
+    if (domains.length > 0) {
+      const siteQuery = domains.map(d => `site:${d}`).join(' OR ');
+      parts.push(`(${siteQuery})`);
+    }
+
+    parts.push('("careers" OR "jobs" OR "open positions")');
+    if (region) parts.push(region);
+    if (currency) parts.push(currency);
+
+    const q = parts.join(' ');
+    generatedUrl = `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+  }
+
+  const previewElem = document.getElementById('query-url-preview');
+  if (previewElem) {
+    previewElem.textContent = generatedUrl;
+  }
+
+  return generatedUrl;
+}
+
+function addCustomDomain(): void {
+  const input = document.getElementById('custom-domain-input') as HTMLInputElement;
+  if (!input) return;
+  const val = input.value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  if (!val) return;
+
+  const checklist = document.getElementById('domains-checklist');
+  if (checklist) {
+    const label = document.createElement('label');
+    label.style.fontSize = '12px';
+    label.style.color = '#ddd';
+    label.style.cursor = 'pointer';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = val;
+    cb.checked = true;
+    cb.onchange = () => updateQueryPreview();
+
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(` ${val}`));
+    checklist.appendChild(label);
+  }
+
+  input.value = '';
+  updateQueryPreview();
+}
+
+function copyQueryToClipboard(): void {
+  const url = updateQueryPreview();
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('btn-try-yourself');
+    if (btn) {
+      const origText = btn.innerHTML;
+      btn.innerHTML = '✓ Copied!';
+      setTimeout(() => {
+        btn.innerHTML = origText;
+      }, 2000);
+    }
+  });
+}
+
+async function startScraping(): Promise<void> {
+  const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
+  const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
+  const stack = (document.getElementById('scraper-stack') as HTMLInputElement)?.value.trim() || '';
+  const employmentType = (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+  const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
+  const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
+
+  const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked')) as HTMLInputElement[];
+  const customDomains = checkedBoxes.map(cb => cb.value.trim()).filter(Boolean);
+
+  const queryPayload = {
+    source: currentScraperPlatform,
+    keywords,
+    role,
+    stack,
+    employmentType,
+    region,
+    currency,
+    customDomains: currentScraperPlatform === 'google' ? customDomains : undefined,
+  };
+
+  closeJobScraperModal();
+
+  const targetUrl = `/public/results.html?source=${currentScraperPlatform}&loading=true`;
+  scraperResultsWindow = window.open(targetUrl, '_blank');
+
+  const overlay = document.getElementById('scraper-overlay');
+  const label = document.getElementById('scraper-source-label');
+  const fallbackBtn = document.getElementById('btn-open-results-fallback');
+  if (label) label.textContent = currentScraperPlatform === 'linkedin' ? 'LinkedIn' : 'Google';
+  if (fallbackBtn) fallbackBtn.style.display = 'none';
+  if (overlay) overlay.style.display = 'flex';
+
+  scraperController = new AbortController();
+
+  try {
+    const resp = await fetch('/api/scraper/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(queryPayload),
+      signal: scraperController.signal,
+    });
+
+    if (!resp.ok) {
+      if (overlay) overlay.style.display = 'none';
+      const err = await resp.json();
+      alert(`Scraper error: ${err.error || 'Failed to execute scraper'}`);
+      return;
+    }
+
+    const data = await resp.json();
+    sessionStorage.setItem('scraper-results', JSON.stringify(data));
+    localStorage.setItem(getScraperResultsStorageKey(currentScraperPlatform), JSON.stringify(data));
+    refreshScrapingResultsButton();
+
+    if (scraperResultsWindow && !scraperResultsWindow.closed) {
+      scraperResultsWindow.location.href = `/public/results.html?source=${currentScraperPlatform}`;
+      if (overlay) overlay.style.display = 'none';
+    } else {
+      if (fallbackBtn) fallbackBtn.style.display = 'inline-block';
+    }
+  } catch (err: unknown) {
+    if (overlay) overlay.style.display = 'none';
+    if ((err as Error).name !== 'AbortError') {
+      alert(`Scraping error: ${(err as Error).message}`);
+    }
+  }
+}
+
+function openResultsTabFromOverlay(): void {
+  const overlay = document.getElementById('scraper-overlay');
+  if (overlay) overlay.style.display = 'none';
+  scraperResultsWindow = window.open(`/public/results.html?source=${currentScraperPlatform}`, '_blank');
+}
+
+function refreshScrapingResultsButton(): void {
+  const btn = document.getElementById('btn-open-scraping-results');
+  if (!btn) return;
+
+  const hasResults = hasSavedScraperResults();
+  btn.style.display = hasResults ? 'flex' : 'none';
+}
+
+function hasSavedScraperResults(): boolean {
+  const files: Array<'linkedin' | 'google'> = ['linkedin', 'google'];
+  for (const source of files) {
+    const savedRaw = localStorage.getItem(getScraperResultsStorageKey(source));
+    if (savedRaw) {
+      try {
+        const parsed = JSON.parse(savedRaw);
+        if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
+          return true;
+        }
+      } catch {
+        // ignore malformed local cache values
+      }
+    }
+  }
+  return false;
+}
+
+function openLatestScrapingResults(): void {
+  const sources: Array<'linkedin' | 'google'> = ['linkedin', 'google'];
+  for (const source of sources) {
+    const savedRaw = localStorage.getItem(getScraperResultsStorageKey(source));
+    if (savedRaw) {
+
+// ─── Global Window Exports (for HTML onclick handlers) ────────────────
+(window as unknown as Record<string, unknown>).refreshScrapingResultsButton = refreshScrapingResultsButton;
+(window as unknown as Record<string, unknown>).openLatestScrapingResults = openLatestScrapingResults;
+(window as unknown as Record<string, unknown>).openJobScraperModal = openJobScraperModal;
+(window as unknown as Record<string, unknown>).closeJobScraperModal = closeJobScraperModal;
+(window as unknown as Record<string, unknown>).switchScraperPlatform = switchScraperPlatform;
+(window as unknown as Record<string, unknown>).startScraping = startScraping;
+(window as unknown as Record<string, unknown>).openResultsTabFromOverlay = openResultsTabFromOverlay;
+(window as unknown as Record<string, unknown>).toggleActions = toggleActions;
+(window as unknown as Record<string, unknown>).openAIModal = openAIModal;
+(window as unknown as Record<string, unknown>).closeAIModal = closeAIModal;
+(window as unknown as Record<string, unknown>).handlePDFUpload = handlePDFUpload;
+(window as unknown as Record<string, unknown>).confirmGeneration = confirmGeneration;
+(window as unknown as Record<string, unknown>).openPhotoUploadModal = openPhotoUploadModal;
+(window as unknown as Record<string, unknown>).closePhotoUploadModal = closePhotoUploadModal;
+(window as unknown as Record<string, unknown>).handlePhotoUpload = handlePhotoUpload;
+(window as unknown as Record<string, unknown>).confirmPhotoUpload = confirmPhotoUpload;
+(window as unknown as Record<string, unknown>).openProvidersModal = openProvidersModal;
+(window as unknown as Record<string, unknown>).closeProvidersModal = closeProvidersModal;
+(window as unknown as Record<string, unknown>).selectProviderInModal = selectProviderInModal;
+(window as unknown as Record<string, unknown>).handleProviderCheckboxClick = handleProviderCheckboxClick;
+(window as unknown as Record<string, unknown>).confirmProvidersSelection = confirmProvidersSelection;
+(window as unknown as Record<string, unknown>).cancelProvidersSelection = cancelProvidersSelection;
+(window as unknown as Record<string, unknown>).handleScanButtonClick = handleScanButtonClick;
+(window as unknown as Record<string, unknown>).validateJDInput = validateJDInput;
+(window as unknown as Record<string, unknown>).polishResume = polishResume;
+(window as unknown as Record<string, unknown>).cancelPolish = cancelPolish;
+(window as unknown as Record<string, unknown>).rollbackPolish = rollbackPolish;
+(window as unknown as Record<string, unknown>).updateQueryPreview = updateQueryPreview;
+(window as unknown as Record<string, unknown>).addCustomDomain = addCustomDomain;
+(window as unknown as Record<string, unknown>).copyQueryToClipboard = copyQueryToClipboard;
+(window as unknown as Record<string, unknown>).toggleLeft = toggleLeft;
+(window as unknown as Record<string, unknown>).expandRight = expandRight;
+(window as unknown as Record<string, unknown>).closeRight = closeRight;
+      try {
+        const parsed = JSON.parse(savedRaw);
+        if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
+          const target = `/public/results.html?source=${source}`;
+          scraperResultsWindow = window.open(target, '_blank');
+          if (scraperResultsWindow && !scraperResultsWindow.closed) {
+            return;
+          }
+        }
+      } catch {
+        // ignore malformed local cache values
+      }
+    }
+  }
+
+  const fallbackTarget = '/public/results.html?source=linkedin';
+  scraperResultsWindow = window.open(fallbackTarget, '_blank');
+}
+
+function cancelScraping(): void {
+  if (scraperController) {
+    scraperController.abort();
+    scraperController = null;
+  }
+  const overlay = document.getElementById('scraper-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+// Global Escape Key Listener for Modals & Overlays
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    const scraperModal = document.getElementById('job-scraper-modal');
+    if (scraperModal && scraperModal.style.display !== 'none') {
+      closeJobScraperModal();
+      return;
+    }
+
+    const scraperOverlay = document.getElementById('scraper-overlay');
+    if (scraperOverlay && scraperOverlay.style.display !== 'none') {
+      cancelScraping();
+      return;
+    }
+  }
+});
 
 // Expose functions globally for inline onclick handlers in main.html
 (window as unknown as Record<string, unknown>).toggleLeft = toggleLeft;
@@ -1268,3 +1606,15 @@ if (photoModal) {
 (window as unknown as Record<string, unknown>).renderResume = renderResume;
 (window as unknown as Record<string, unknown>).loadResumeData = loadResumeData;
 (window as unknown as Record<string, unknown>).updatePolishButton = updatePolishButton;
+(window as unknown as Record<string, unknown>).openJobScraperModal = openJobScraperModal;
+(window as unknown as Record<string, unknown>).closeJobScraperModal = closeJobScraperModal;
+(window as unknown as Record<string, unknown>).switchScraperPlatform = switchScraperPlatform;
+(window as unknown as Record<string, unknown>).openLatestScrapingResults = openLatestScrapingResults;
+(window as unknown as Record<string, unknown>).updateQueryPreview = updateQueryPreview;
+(window as unknown as Record<string, unknown>).addCustomDomain = addCustomDomain;
+(window as unknown as Record<string, unknown>).copyQueryToClipboard = copyQueryToClipboard;
+(window as unknown as Record<string, unknown>).startScraping = startScraping;
+(window as unknown as Record<string, unknown>).cancelScraping = cancelScraping;
+(window as unknown as Record<string, unknown>).openResultsTabFromOverlay = openResultsTabFromOverlay;
+
+

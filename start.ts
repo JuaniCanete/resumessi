@@ -13,6 +13,11 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { getProviderConfig, validateInferenceRequest } from './src/providers';
 import { runInference, runPolish } from './src/router';
+import { scrapeLinkedIn, validateLinkedInStorageState } from './src/scraper/linkedin';
+import { scrapeGoogle } from './src/scraper/google';
+import { generateLinkedInStorageState } from './scripts/linkedin-auth';
+import { getRequestPath } from './src/scraper/runtime-utils';
+import type { ScraperQuery, ScraperResult } from './src/scraper/types';
 
 // Wrap in try-catch for graceful degradation
 let pdfParse: ((buffer: Buffer) => Promise<{ text: string }>) | null = null;
@@ -63,6 +68,11 @@ function parseEnvFile(): Record<string, string | undefined> {
     TEXT_LIGHT_COLOR: '#404040',
     BG_BADGE_COLOR: '#f1f5f9',
     SUCCESS_COLOR: '#0ea5e9',
+    LINKEDIN_AUTH: 'codegen',
+    LINKEDIN_EMAIL: '',
+    LINKEDIN_PASSWORD: '',
+    LINKEDIN_OTP_SECRET: '',
+    CHROME_PATH: '',
   };
 
   const envPath = path.join(ROOT, '.env');
@@ -78,9 +88,9 @@ function parseEnvFile(): Record<string, string | undefined> {
         (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
-if (Object.prototype.hasOwnProperty.call(env, key) || key.includes('COLOR') || key === 'AI_INFERENCE_ORDER') {
-         env[key] = value;
-       }
+      if (Object.prototype.hasOwnProperty.call(env, key) || key.includes('COLOR') || key === 'AI_INFERENCE_ORDER' || key.startsWith('LINKEDIN_') || key === 'CHROME_PATH') {
+        env[key] = value;
+      }
     });
   }
   return env;
@@ -132,8 +142,10 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
+  const requestPath = req.url ? getRequestPath(req.url) : '/';
+
   // Serve /config.json endpoint — client-safe, NO API keys
-  if (req.url === '/config.json') {
+  if (requestPath === '/config.json') {
     const config = getConfigFromEnv();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(config));
@@ -141,7 +153,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   }
 
   // API Infer — new unified provider router endpoint
-  if (req.url === '/api/infer' && req.method === 'POST') {
+  if (requestPath === '/api/infer' && req.method === 'POST') {
     try {
       const body = await getRequestBody(req);
       const requestData = JSON.parse(body);
@@ -204,8 +216,8 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   }
 
   // Serve prompt files dynamically
-  if (req.url && req.url.startsWith('/api/prompts/')) {
-    const promptName = req.url.replace('/api/prompts/', '');
+  if (requestPath.startsWith('/api/prompts/')) {
+    const promptName = requestPath.replace('/api/prompts/', '');
     const promptPath = path.join(ROOT, 'src', 'prompts', promptName);
 
     // Security: prevent directory traversal
@@ -235,7 +247,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   }
 
   // API Routes
-  if (req.url === '/api/parse-resume-pdf' && req.method === 'POST') {
+  if (requestPath === '/api/parse-resume-pdf' && req.method === 'POST') {
     if (!pdfParse || !formidable) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'PDF parsing not available. Install dependencies.' }));
@@ -299,7 +311,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     return;
   }
 
-  if (req.url === '/api/polish-resume' && req.method === 'POST') {
+  if (requestPath === '/api/polish-resume' && req.method === 'POST') {
     const body = await getRequestBody(req);
     let resumeData: Record<string, unknown>;
     try {
@@ -363,7 +375,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     return;
   }
 
-  if (req.url === '/api/save-polished' && req.method === 'POST') {
+  if (requestPath === '/api/save-polished' && req.method === 'POST') {
     const body = await getRequestBody(req);
     const polishedData = JSON.parse(body);
 
@@ -382,7 +394,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     return;
   }
 
-  if (req.url === '/api/save-resume-data' && req.method === 'POST') {
+  if (requestPath === '/api/save-resume-data' && req.method === 'POST') {
     const body = await getRequestBody(req);
     try {
       const resumeData = JSON.parse(body);
@@ -405,7 +417,116 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     return;
   }
 
-  if (req.url === '/api/rollback' && req.method === 'POST') {
+  if (requestPath === '/api/scraper/start' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const query: ScraperQuery = JSON.parse(body);
+
+      if (!query.source || !['linkedin', 'google'].includes(query.source)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: "Invalid request: 'source' must be 'linkedin' or 'google'" }));
+        return;
+      }
+
+      const env = getFullConfigFromEnv();
+      let rawResults: ScraperResult[] = [];
+
+      if (query.source === 'linkedin') {
+        rawResults = await scrapeLinkedIn(query, env);
+      } else {
+        rawResults = await scrapeGoogle(query);
+      }
+
+      let summaryText = '';
+      if (rawResults.length > 0) {
+        try {
+          const promptPath = path.join(ROOT, 'src', 'prompts', 'scraper-summarize.txt');
+          const systemPrompt = fs.existsSync(promptPath)
+            ? fs.readFileSync(promptPath, 'utf-8')
+            : 'You are a job scraper summarizer assistant.';
+
+          const prompt = `User Query: ${JSON.stringify(query)}\n\nScraped Results:\n${JSON.stringify(rawResults, null, 2)}`;
+          const inferenceResult = await runInference(systemPrompt, prompt, {}, env, null, null, null, 'scraper');
+          summaryText = inferenceResult.text;
+        } catch (err: unknown) {
+          console.warn('[Scraper API] Summarization warning:', (err as Error).message);
+        }
+      }
+
+      const resultsDir = path.join(ROOT, 'data', 'scraper-results');
+      if (!fs.existsSync(resultsDir)) {
+        fs.mkdirSync(resultsDir, { recursive: true });
+      }
+
+      const resultPayload = {
+        timestamp: new Date().toISOString(),
+        source: query.source,
+        query,
+        totalResults: rawResults.length,
+        results: rawResults,
+        summary: summaryText,
+      };
+
+      const outputFile = path.join(resultsDir, `${query.source}.json`);
+      fs.writeFileSync(outputFile, JSON.stringify(resultPayload, null, 2));
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(resultPayload));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Scraper failed: ' + (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/scraper/validate-linkedin' && req.method === 'POST') {
+    try {
+      const valid = await validateLinkedInStorageState();
+      const env = parseEnvFile();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ valid, authMode: env.LINKEDIN_AUTH || 'codegen' }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/scraper/regenerate-linkedin' && req.method === 'POST') {
+    try {
+      const env = getFullConfigFromEnv();
+      const success = await generateLinkedInStorageState(env);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success, message: success ? 'Storage state regenerated' : 'Failed to regenerate storage state' }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/scraper/results' && req.method === 'GET') {
+    try {
+      const urlObj = new URL(req.url || '/', `http://localhost:${PORT}`);
+      const source = urlObj.searchParams.get('source') || 'linkedin';
+      const resultsFile = path.join(ROOT, 'data', 'scraper-results', `${source}.json`);
+
+      if (fs.existsSync(resultsFile)) {
+        const content = fs.readFileSync(resultsFile, 'utf-8');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(content);
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ timestamp: null, source, totalResults: 0, results: [] }));
+      }
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/rollback' && req.method === 'POST') {
     const filePath = path.join(ROOT, 'src', 'resume', 'output', 'resume-data-AI-polished.json');
 
     try {
@@ -423,7 +544,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   }
 
   // Default to main.html for root
-  let filePath = req.url === '/' ? '/public/main.html' : req.url;
+  let filePath = requestPath === '/' ? '/public/main.html' : requestPath;
   filePath = path.join(ROOT, filePath as string);
 
   // Security: prevent directory traversal

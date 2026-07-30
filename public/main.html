@@ -1060,6 +1060,18 @@
             onmouseenter="this.style.background='#ef4444'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">Cancel</button>
     </div>
 
+    <div id="scraper-overlay" data-testid="scraper-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+         background: rgba(0,0,0,0.65); backdrop-filter: blur(10px); z-index: 9998; align-items: center; justify-content: center; flex-direction: column; gap: 16px;">
+        <p style="color: #fff; font-size: 18px; font-weight: 700; font-family: 'Comfortaa', sans-serif; text-align: center;">
+            🔎 Scraping <span id="scraper-source-label">LinkedIn</span> <span class="dot-anim"></span>
+        </p>
+        <button id="btn-open-results-fallback" onclick="openResultsTabFromOverlay()" style="display: none; background: var(--accent); color: #fff; padding: 10px 24px; border-radius: 7px; font-family: 'Comfortaa', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; border: none; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);">
+            📊 View Scraper Results ↗
+        </button>
+        <button id="btn-cancel-scraper" onclick="cancelScraping()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 24px; border-radius: 7px; font-family: 'Comfortaa', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
+            onmouseenter="this.style.background='#ef4444'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">Cancel</button>
+    </div>
+
     <aside id="left-sidebar" class="panel no-print">
         <div class="panel-inner">
 
@@ -1121,6 +1133,10 @@
                     aria-expanded="false" aria-haspopup="true" title="Actions"><span class="actions-label">Actions
                         ▾</span></button>
                 <div id="actions-dropdown" data-testid="actions-dropdown" class="actions-dropdown hidden" role="menu">
+                    <button class="actions-option" id="btn-find-job-dropdown" data-testid="find-job-button" role="menuitem" onclick="openJobScraperModal()">
+                        <span class="actions-option-icon">🪏</span>
+                        <span class="actions-option-text">Find a Job</span>
+                    </button>
                     <button class="actions-option" role="menuitem" onclick="toggleLeft()">
                         <span class="actions-option-icon">🔍</span>
                         <span class="actions-option-text">JD Validation</span>
@@ -1128,6 +1144,10 @@
                     <button class="actions-option" role="menuitem" onclick="openRight()">
                         <span class="actions-option-icon">📊</span>
                         <span class="actions-option-text">ATS Results</span>
+                    </button>
+                    <button class="actions-option" id="btn-open-scraping-results" data-testid="scraping-results-button" role="menuitem" onclick="openLatestScrapingResults()" style="display: none;">
+                        <span class="actions-option-icon">🗃️</span>
+                        <span class="actions-option-text">Scraping Results</span>
                     </button>
                     <button class="actions-option" role="menuitem" onclick="window.print()">
                         <span class="actions-option-icon">⬇</span>
@@ -1297,6 +1317,111 @@
             </div>
             <div id="photo-upload-loading" style="display: none; text-align: center; padding: 20px;">
                 <p style="color: var(--accent);" class="dot-anim">Processing photo...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Scraper Modal -->
+    <div id="job-scraper-modal" data-testid="job-scraper-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 580px; width: 92%; max-height: 88vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(255,255,255,0.12);">
+            <button onclick="closeJobScraperModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
+                onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
+            <h2 style="color: #fff; margin-bottom: 4px; text-align: center;">🔎 Find a Job</h2>
+            <p style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 20px; font-family: 'Comfortaa', sans-serif;">Search LinkedIn & Google job postings using AI query builder</p>
+
+            <!-- Platform Toggle -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; background: rgba(0,0,0,0.25); padding: 5px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.08);">
+                <button id="toggle-platform-linkedin" onclick="switchScraperPlatform('linkedin')" style="flex: 1; padding: 10px; border-radius: 7px; border: none; background: var(--accent); color: #fff; font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
+                    🔗 LinkedIn
+                </button>
+                <button id="toggle-platform-google" onclick="switchScraperPlatform('google')" style="flex: 1; padding: 10px; border-radius: 7px; border: none; background: transparent; color: rgba(255,255,255,0.7); font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
+                    🔍 Google
+                </button>
+            </div>
+
+            <!-- Query Builder Fields -->
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Keywords / Title</label>
+                    <input type="text" id="scraper-keywords" placeholder="e.g. Fullstack Engineer, Frontend Developer" oninput="updateQueryPreview()" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Role Hint</label>
+                        <input type="text" id="scraper-role" placeholder="e.g. Senior, Lead, Staff" oninput="updateQueryPreview()" style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12.5px; outline: none;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Stack / Technologies</label>
+                        <input type="text" id="scraper-stack" placeholder="e.g. React, Node.js, TypeScript" oninput="updateQueryPreview()" style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12.5px; outline: none;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Employment</label>
+                        <select id="scraper-employment" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
+                            <option value="">Any</option>
+                            <option value="contractor">Contractor</option>
+                            <option value="fulltime">Full-time</option>
+                            <option value="parttime">Part-time</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Region</label>
+                        <select id="scraper-region" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
+                            <option value="">Worldwide</option>
+                            <option value="LATAM">LATAM</option>
+                            <option value="US">US</option>
+                            <option value="EU">EU</option>
+                            <option value="Remote">Remote</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Currency</label>
+                        <select id="scraper-currency" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
+                            <option value="">Any</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="ARS">ARS</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Google Target Domains (Google view only) -->
+                <div id="google-domains-section" style="display: none; background: rgba(0,0,0,0.2); padding: 14px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.08);">
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">Target Domains</label>
+                    <div id="domains-checklist" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="teamtailor.com" checked onchange="updateQueryPreview()"> teamtailor.com</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="greenhouse.io" checked onchange="updateQueryPreview()"> greenhouse.io</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="lever.co" checked onchange="updateQueryPreview()"> lever.co</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="workday.com" checked onchange="updateQueryPreview()"> workday.com</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="jobs.ashbyhq.com" checked onchange="updateQueryPreview()"> ashbyhq.com</label>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="custom-domain-input" placeholder="Add custom domain (e.g. bamboohr.com)" style="flex: 1; padding: 7px 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 12px; outline: none;">
+                        <button onclick="addCustomDomain()" style="padding: 7px 14px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; font-size: 12px; cursor: pointer; font-family: 'Comfortaa', sans-serif;">+ Add</button>
+                    </div>
+                </div>
+
+                <!-- Generated URL Preview & Copy -->
+                <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Query Preview</label>
+                    <div id="query-url-preview" style="background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.12); padding: 10px 12px; border-radius: 7px; font-family: monospace; font-size: 11.5px; color: #a5f3fc; word-break: break-all; max-height: 70px; overflow-y: auto;">
+                        https://www.linkedin.com/jobs/search/?keywords=
+                    </div>
+                    <button id="btn-try-yourself" onclick="copyQueryToClipboard()" style="margin-top: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 7px 14px; border-radius: 6px; font-family: 'Comfortaa', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; gap: 6px;">
+                        📋 Try yourself (Copy URL)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Actions -->
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="closeJobScraperModal()">Cancel</button>
+                <button id="btn-start-scraping" class="p-btn p-btn-primary" style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700;" onclick="startScraping()">
+                    🔎 Start Scraping
+                </button>
             </div>
         </div>
     </div>

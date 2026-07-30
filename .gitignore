@@ -52,3 +52,8 @@ playwright-report/
 
 # Husky git hook files (auto-generated)
 .husky/_/
+
+# Scraper session & results data
+data/storage-state/
+data/scraper-results/
+

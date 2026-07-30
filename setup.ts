@@ -110,6 +110,12 @@ TEXT_COLOR=${env.TEXT_COLOR || '#171717'}
 TEXT_LIGHT_COLOR=${env.TEXT_LIGHT_COLOR || '#404040'}
 BG_BADGE_COLOR=${env.BG_BADGE_COLOR || '#f1f5f9'}
 SUCCESS_COLOR=${env.SUCCESS_COLOR || '#0ea5e9'}
+
+# --- LinkedIn Scraper ---
+LINKEDIN_AUTH=${env.LINKEDIN_AUTH || 'codegen'}
+LINKEDIN_EMAIL=${env.LINKEDIN_EMAIL || ''}
+LINKEDIN_PASSWORD=${env.LINKEDIN_PASSWORD || ''}
+LINKEDIN_OTP_SECRET=${env.LINKEDIN_OTP_SECRET || ''}
 `;
   fs.writeFileSync(filePath, content, 'utf-8');
 }
@@ -139,7 +145,7 @@ async function main(): Promise<void> {
       console.log('');
       console.log('⚠️                                                                                             ⚠️');
       console.log('\t.env file already exists.');
-      console.log('\tRunning setup would override your existing API keys, it is recommended to save them.');
+      console.log('\tI cannot guarantee that your existing keys would be maintained, save them.');
       console.log('⚠️                                                                                             ⚠️');
       console.log('');
       const confirm = await ask('Type "continue" to proceed: ');
@@ -155,72 +161,64 @@ async function main(): Promise<void> {
 
   if (!isSilent) {
     console.log('');
-    console.log('Set the order of your inference providers, and prepare the API keys:');
+    console.log('Configure your AI provider API keys and models:');
     console.log('');
 
     const validIds = new Set(PROVIDERS.map(p => p.id));
-    const displayOrder = DEFAULT_AI_INFERENCE_ORDER
+    const orderedProviders = DEFAULT_AI_INFERENCE_ORDER
       .split(',')
       .map(s => s.trim().toLowerCase())
       .filter(s => validIds.has(s));
-    if (displayOrder.length === 0) {
-      displayOrder.push(...DEFAULT_AI_INFERENCE_ORDER.split(','));
+    if (orderedProviders.length === 0) {
+      orderedProviders.push(...DEFAULT_AI_INFERENCE_ORDER.split(','));
     }
-    for (let i = 0; i < displayOrder.length; i++) {
-      const p = PROVIDERS.find(prov => prov.id === displayOrder[i]);
+    for (let i = 0; i < orderedProviders.length; i++) {
+      const p = PROVIDERS.find(prov => prov.id === orderedProviders[i]);
       if (!p) continue;
       console.log(`  ${i + 1}. ${p.name} (${p.id}): ${PROVIDER_URLS[p.id]}`);
     }
 
     console.log('');
-    console.log(`Enter the order of preference of providers you want to configure or press Enter to use default order: ${DEFAULT_AI_INFERENCE_ORDER}`);
-    console.log('If you leave a provider unconfigured it would not be consumed');
+    console.log('Enter the provider IDs you want to use, separated by commas (default: mistral,cohere,gemini,groq):');
     console.log('');
 
-    const selection = await ask('Enter provider preference order from the list above: (eg: 1,3,4,2): ');
+    const selection = await ask('Provider IDs: ', DEFAULT_AI_INFERENCE_ORDER);
     console.log('');
+    const selectedProviders: ProviderDef[] = [];
+    const selectedOrder: string[] = [];
     if (selection.trim()) {
-      const indices = selection.split(',').map(s => parseInt(s.trim(), 10) - 1).filter(i => i >= 0 && i < displayOrder.length);
-      const selectedProviders: ProviderDef[] = [];
-      const selectedOrder: string[] = [];
-      for (const idx of indices) {
-        const providerId = displayOrder[idx];
+      const inputIds = selection.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+      for (const providerId of inputIds) {
         const p = PROVIDERS.find(prov => prov.id === providerId);
         if (p) {
           selectedProviders.push(p);
           selectedOrder.push(p.id);
         }
       }
-      env.AI_INFERENCE_ORDER = selectedOrder.join(',') || DEFAULT_AI_INFERENCE_ORDER;
-
-      for (const p of selectedProviders) {
-        const currentKey = env[p.keyEnv] && env[p.keyEnv] !== `your_${p.id}_key_here`
-          ? env[p.keyEnv] : '';
-        const newKey = await ask(`  ${p.name} API Key — ${PROVIDER_URLS[p.id]}: `, currentKey || '');
-        if (newKey) {
-          env[p.keyEnv] = newKey;
-          env[p.modelEnv] = env[p.modelEnv] || p.defaultModel;
+    }
+    if (selectedOrder.length === 0) {
+      for (const providerId of orderedProviders) {
+        const p = PROVIDERS.find(prov => prov.id === providerId);
+        if (p) {
+          selectedProviders.push(p);
+          selectedOrder.push(p.id);
         }
       }
-    } else {
-      env.AI_INFERENCE_ORDER = DEFAULT_AI_INFERENCE_ORDER;
-      // Prompt for API keys for all providers in default order
-      const defaultProviders = DEFAULT_AI_INFERENCE_ORDER.split(',').map(s => s.trim().toLowerCase());
-      for (const providerId of defaultProviders) {
-        const p = PROVIDERS.find(prov => prov.id === providerId);
-        if (!p) continue;
-        const currentKey = env[p.keyEnv] && env[p.keyEnv] !== `your_${p.id}_key_here`
-          ? env[p.keyEnv] : '';
-        const newKey = await ask(`  ${p.name} API Key — ${PROVIDER_URLS[p.id]}: `, currentKey || '');
-        if (newKey) {
-          env[p.keyEnv] = newKey;
-          env[p.modelEnv] = env[p.modelEnv] || p.defaultModel;
-        }
+    }
+    env.AI_INFERENCE_ORDER = selectedOrder.join(',') || DEFAULT_AI_INFERENCE_ORDER;
+
+    for (const p of selectedProviders) {
+      const currentKey = env[p.keyEnv] && env[p.keyEnv] !== `your_${p.id}_key_here`
+        ? env[p.keyEnv] : '';
+      const newKey = await ask(`  ${p.name} API Key — ${PROVIDER_URLS[p.id]}: `, currentKey || '');
+      if (newKey) {
+        env[p.keyEnv] = newKey;
+        env[p.modelEnv] = env[p.modelEnv] || p.defaultModel;
       }
     }
 
     console.log('');
-    console.log('Active providers - Order in which they are going to be consumed');
+    console.log('Configured providers');
     const orderProviders = (env.AI_INFERENCE_ORDER || DEFAULT_AI_INFERENCE_ORDER)
       .split(',')
       .map(s => s.trim().toLowerCase())
@@ -255,9 +253,26 @@ async function main(): Promise<void> {
       console.log('');
     }
     console.log('');
-    console.log('You can do later:');
-    console.log('- Edit AI_INFERENCE_ORDER in .env');
-    console.log('- Add or replace API keys in .env');
+    console.log('You can update provider settings later by editing the values in .env.');
+
+    console.log('');
+    console.log('╔══════════════════════════════════════════╗');
+    console.log('║     LinkedIn Scraper Configuration       ║');
+    console.log('╚══════════════════════════════════════════╝');
+    console.log('');
+    console.log('Select LinkedIn Auth Mechanism:');
+    console.log('  1. Codegen (Manual login in visible browser window — recommended & safest)');
+    console.log('  2. Automated (AI login using credentials + Google Authenticator TOTP)');
+    console.log('');
+    const linkedinChoice = await ask('Choice (1 or 2, default: 1): ', '1');
+    if (linkedinChoice === '2') {
+      env.LINKEDIN_AUTH = 'ai';
+      env.LINKEDIN_EMAIL = await ask('  LinkedIn Email: ', env.LINKEDIN_EMAIL || '');
+      env.LINKEDIN_PASSWORD = await ask('  LinkedIn Password: ', env.LINKEDIN_PASSWORD || '');
+      env.LINKEDIN_OTP_SECRET = await ask('  Google Authenticator OTP Secret (base32): ', env.LINKEDIN_OTP_SECRET || '');
+    } else {
+      env.LINKEDIN_AUTH = 'codegen';
+    }
   } else {
     // Silent mode: ensure at least one key exists
     const hasAnyKey = PROVIDERS.some(p => env[p.keyEnv] && env[p.keyEnv] !== `your_${p.id}_key_here`);
