@@ -1245,11 +1245,11 @@ if (photoModal) {
     applyScanResultsToUI(savedScan);
   }
 
-  refreshScrapingResultsButton();
+  await refreshScrapingResultsButton();
 })();
 
 // ─── Job Scraper UI Logic ───────────────────────────────────────────
-function openJobScraperModal(): void {
+async function openJobScraperModal(): Promise<void> {
   const dropdown = document.getElementById('actions-dropdown');
   if (dropdown) dropdown.classList.add('hidden');
 
@@ -1258,7 +1258,7 @@ function openJobScraperModal(): void {
 
   switchScraperPlatform('linkedin');
   updateQueryPreview();
-  refreshScrapingResultsButton();
+  await refreshScrapingResultsButton();
 }
 
 function closeJobScraperModal(): void {
@@ -1467,17 +1467,18 @@ function openResultsTabFromOverlay(): void {
   scraperResultsWindow = window.open(`/public/results.html?source=${currentScraperPlatform}`, '_blank');
 }
 
-function refreshScrapingResultsButton(): void {
+async function refreshScrapingResultsButton(): Promise<void> {
   const btn = document.getElementById('btn-open-scraping-results');
   if (!btn) return;
 
-  const hasResults = hasSavedScraperResults();
+  const hasResults = await hasSavedScraperResults();
   btn.style.display = hasResults ? 'flex' : 'none';
 }
 
-function hasSavedScraperResults(): boolean {
-  const files: Array<'linkedin' | 'google'> = ['linkedin', 'google'];
-  for (const source of files) {
+async function hasSavedScraperResults(): Promise<boolean> {
+  const sources: Array<'linkedin' | 'google'> = ['linkedin', 'google'];
+  // First check localStorage (results from current session)
+  for (const source of sources) {
     const savedRaw = localStorage.getItem(getScraperResultsStorageKey(source));
     if (savedRaw) {
       try {
@@ -1490,6 +1491,22 @@ function hasSavedScraperResults(): boolean {
       }
     }
   }
+  // Then check server for existing result files on disk
+  for (const source of sources) {
+    try {
+      const resp = await fetch(`/api/scraper/results?source=${source}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && Array.isArray(data.results) && data.results.length > 0) {
+          // Cache in localStorage for future checks
+          localStorage.setItem(getScraperResultsStorageKey(source), JSON.stringify(data));
+          return true;
+        }
+      }
+    } catch {
+      // ignore network errors
+    }
+  }
   return false;
 }
 
@@ -1498,41 +1515,6 @@ function openLatestScrapingResults(): void {
   for (const source of sources) {
     const savedRaw = localStorage.getItem(getScraperResultsStorageKey(source));
     if (savedRaw) {
-
-// ─── Global Window Exports (for HTML onclick handlers) ────────────────
-(window as unknown as Record<string, unknown>).refreshScrapingResultsButton = refreshScrapingResultsButton;
-(window as unknown as Record<string, unknown>).openLatestScrapingResults = openLatestScrapingResults;
-(window as unknown as Record<string, unknown>).openJobScraperModal = openJobScraperModal;
-(window as unknown as Record<string, unknown>).closeJobScraperModal = closeJobScraperModal;
-(window as unknown as Record<string, unknown>).switchScraperPlatform = switchScraperPlatform;
-(window as unknown as Record<string, unknown>).startScraping = startScraping;
-(window as unknown as Record<string, unknown>).openResultsTabFromOverlay = openResultsTabFromOverlay;
-(window as unknown as Record<string, unknown>).toggleActions = toggleActions;
-(window as unknown as Record<string, unknown>).openAIModal = openAIModal;
-(window as unknown as Record<string, unknown>).closeAIModal = closeAIModal;
-(window as unknown as Record<string, unknown>).handlePDFUpload = handlePDFUpload;
-(window as unknown as Record<string, unknown>).confirmGeneration = confirmGeneration;
-(window as unknown as Record<string, unknown>).openPhotoUploadModal = openPhotoUploadModal;
-(window as unknown as Record<string, unknown>).closePhotoUploadModal = closePhotoUploadModal;
-(window as unknown as Record<string, unknown>).handlePhotoUpload = handlePhotoUpload;
-(window as unknown as Record<string, unknown>).confirmPhotoUpload = confirmPhotoUpload;
-(window as unknown as Record<string, unknown>).openProvidersModal = openProvidersModal;
-(window as unknown as Record<string, unknown>).closeProvidersModal = closeProvidersModal;
-(window as unknown as Record<string, unknown>).selectProviderInModal = selectProviderInModal;
-(window as unknown as Record<string, unknown>).handleProviderCheckboxClick = handleProviderCheckboxClick;
-(window as unknown as Record<string, unknown>).confirmProvidersSelection = confirmProvidersSelection;
-(window as unknown as Record<string, unknown>).cancelProvidersSelection = cancelProvidersSelection;
-(window as unknown as Record<string, unknown>).handleScanButtonClick = handleScanButtonClick;
-(window as unknown as Record<string, unknown>).validateJDInput = validateJDInput;
-(window as unknown as Record<string, unknown>).polishResume = polishResume;
-(window as unknown as Record<string, unknown>).cancelPolish = cancelPolish;
-(window as unknown as Record<string, unknown>).rollbackPolish = rollbackPolish;
-(window as unknown as Record<string, unknown>).updateQueryPreview = updateQueryPreview;
-(window as unknown as Record<string, unknown>).addCustomDomain = addCustomDomain;
-(window as unknown as Record<string, unknown>).copyQueryToClipboard = copyQueryToClipboard;
-(window as unknown as Record<string, unknown>).toggleLeft = toggleLeft;
-(window as unknown as Record<string, unknown>).expandRight = expandRight;
-(window as unknown as Record<string, unknown>).closeRight = closeRight;
       try {
         const parsed = JSON.parse(savedRaw);
         if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
@@ -1615,6 +1597,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 (window as unknown as Record<string, unknown>).copyQueryToClipboard = copyQueryToClipboard;
 (window as unknown as Record<string, unknown>).startScraping = startScraping;
 (window as unknown as Record<string, unknown>).cancelScraping = cancelScraping;
+(window as unknown as Record<string, unknown>).refreshScrapingResultsButton = refreshScrapingResultsButton;
 (window as unknown as Record<string, unknown>).openResultsTabFromOverlay = openResultsTabFromOverlay;
 
 
