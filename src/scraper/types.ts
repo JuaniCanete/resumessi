@@ -7,6 +7,7 @@ export interface ScraperResult {
   company?: string;
   postedDate?: string;
   aiSummary?: string;
+  parameters?: string[];  // AI-extracted job parameters (location, remote, salary, etc.)
 }
 
 export interface ScraperQuery {

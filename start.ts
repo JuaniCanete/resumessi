@@ -137,6 +137,37 @@ function getRequestBody(req: http.IncomingMessage): Promise<string> {
   });
 }
 
+// Extract structured job parameters (location, remote, salary, etc.) via AI
+async function extractJobParameters(results: ScraperResult[], env: Record<string, string | undefined>): Promise<void> {
+  if (results.length === 0) return;
+  try {
+    const promptPath = path.join(ROOT, 'src', 'prompts', 'scraper-parameters.txt');
+    const systemPrompt = fs.existsSync(promptPath)
+      ? fs.readFileSync(promptPath, 'utf-8')
+      : 'You are a job parameter extraction assistant. Return only valid JSON.';
+
+    const prompt = `Scraped Results:\n${JSON.stringify(results, null, 2)}`;
+    const inferenceResult = await runInference(systemPrompt, prompt, {}, env, null, null, null, 'scraper');
+    let raw = inferenceResult.text;
+    raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    // Extract first JSON array from response
+    const jsonMatch = raw.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      raw = jsonMatch[0];
+    }
+
+    const parsed = JSON.parse(raw) as Array<{ index: number; parameters: string[] }>;
+    for (const entry of parsed) {
+      if (entry.index >= 0 && entry.index < results.length && Array.isArray(entry.parameters)) {
+        results[entry.index].parameters = entry.parameters;
+      }
+    }
+  } catch (err: unknown) {
+    console.warn('[Scraper API] Parameter extraction warning:', (err as Error).message);
+  }
+}
+
 const server = http.createServer(async (req: http.IncomingMessage, res: http.ServerResponse) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -452,6 +483,9 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         } catch (err: unknown) {
           console.warn('[Scraper API] Summarization warning:', (err as Error).message);
         }
+
+        // Extract structured job parameters (location, remote, salary, etc.) via AI
+        await extractJobParameters(rawResults, env);
       }
 
       const resultsDir = path.join(ROOT, 'data', 'scraper-results');
@@ -556,16 +590,35 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         return;
       }
 
-      // Fetch the URL content
-      const fetchUrl = (urlStr: string): Promise<string> => {
+      // Fetch the URL content (follows redirects, sets realistic User-Agent)
+      const fetchUrl = (urlStr: string, maxRedirects = 5): Promise<string> => {
         return new Promise((resolve, reject) => {
           const client = urlStr.startsWith('https') ? https : http;
-          client.get(urlStr, (response) => {
+          const req = client.get(urlStr, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.9',
+            },
+          }, (response) => {
+            // Follow redirects (301, 302, 303, 307, 308)
+            if (response.statusCode && [301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
+              if (maxRedirects <= 0) {
+                reject(new Error('Too many redirects'));
+                return;
+              }
+              const redirectUrl = response.headers.location;
+              // Handle relative redirects
+              const nextUrl = redirectUrl.startsWith('http') ? redirectUrl : new URL(redirectUrl, urlStr).href;
+              fetchUrl(nextUrl, maxRedirects - 1).then(resolve).catch(reject);
+              return;
+            }
             let data = '';
             response.on('data', (chunk: string) => data += chunk);
             response.on('end', () => resolve(data));
             response.on('error', reject);
-          }).on('error', reject);
+          });
+          req.on('error', reject);
         });
       };
 
@@ -585,7 +638,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         .trim();
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ text: text.substring(0, 10000) }));
+      res.end(JSON.stringify({ text: text.substring(0, 15000) }));
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Failed to fetch URL: ' + (err as Error).message }));

@@ -5,6 +5,9 @@
 
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 
+// Declare global function for TypeScript benefit
+declare function closeJdEditModal(): void;
+
 // ─── State ──────────────────────────────────────────────────────────
 let scanController: AbortController | null = null;
 let cachedConfig: Record<string, unknown> | null = null;
@@ -1555,6 +1558,12 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     const scraperOverlay = document.getElementById('scraper-overlay');
     if (scraperOverlay && scraperOverlay.style.display !== 'none') {
       cancelScraping();
+      return;
+    }
+
+    const jdEditModal = document.getElementById('jd-edit-modal');
+    if (jdEditModal && jdEditModal.classList.contains('show')) {
+      closeJdEditModal();
       return;
     }
   }

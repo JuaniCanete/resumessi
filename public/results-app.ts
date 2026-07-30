@@ -7,6 +7,7 @@ interface ScraperResult {
   company?: string;
   postedDate?: string;
   aiSummary?: string;
+  parameters?: string[];
 }
 
 interface ScraperRunPayload {
@@ -213,13 +214,20 @@ function renderPage(page: number): void {
     card.dataset.snippet = item.snippet || '';
     card.dataset.aiSummary = item.aiSummary || '';
 
-    // Click to expand/collapse
+    // Click to expand/collapse (accordion: collapse all other cards first)
     card.addEventListener('click', (e: MouseEvent) => {
       // Don't toggle if clicking on a link or button
       const target = e.target as HTMLElement;
       if (target.tagName === 'A' || target.tagName === 'BUTTON' || target.closest('a') || target.closest('button')) {
         return;
       }
+      // Collapse all other expanded cards before toggling the clicked one
+      const expandedCards = container.querySelectorAll('.result-card.expanded');
+      expandedCards.forEach((expanded: Element) => {
+        if (expanded !== card) {
+          expanded.classList.remove('expanded');
+        }
+      });
       card.classList.toggle('expanded');
     });
 
@@ -251,11 +259,6 @@ function renderPage(page: number): void {
       company.className = 'result-company';
       company.textContent = item.company;
       footerLeft.appendChild(company);
-    } else {
-      const source = document.createElement('span');
-      source.className = 'result-company';
-      source.textContent = item.source.toUpperCase();
-      footerLeft.appendChild(source);
     }
 
     if (item.postedDate) {
@@ -300,13 +303,21 @@ function renderPage(page: number): void {
       body.appendChild(aiSummary);
     }
 
+    // Parameters row (AI-extracted job parameters)
+    if (item.parameters && item.parameters.length > 0) {
+      const parameters = document.createElement('div');
+      parameters.className = 'result-parameters';
+      parameters.textContent = `Parameters found: ${item.parameters.join(' • ')}`;
+      body.appendChild(parameters);
+    }
+
     // Check JD button
     const checkJdBtn = document.createElement('button');
     checkJdBtn.className = 'result-check-jd-btn';
     checkJdBtn.textContent = 'Check JD 🔍';
     checkJdBtn.addEventListener('click', (e: MouseEvent) => {
       e.stopPropagation();
-      openJdEditModal(item.url, item.snippet || '');
+      openJdEditModal(item);
     });
     body.appendChild(checkJdBtn);
 
@@ -407,8 +418,24 @@ function applyAtsResultsToUI(screening: Record<string, unknown>): void {
 
 // ─── JD Edit Modal ────────────────────────────────────────────────────
 
-function openJdEditModal(jobUrl: string, snippet: string): void {
-  currentAtsJobUrl = jobUrl;
+// Strip markdown syntax from a string to produce plain text
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/#+\s*/g, '')
+    .replace(/>\s*/g, '')
+    .replace(/[-*+]\s+/g, '• ')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function openJdEditModal(item: ScraperResult): void {
+  currentAtsJobUrl = item.url;
   const modal = document.getElementById('jd-edit-modal');
   const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
   const loading = document.getElementById('jd-fetch-loading');
@@ -416,8 +443,16 @@ function openJdEditModal(jobUrl: string, snippet: string): void {
 
   if (!modal) return;
 
-  // Pre-fill with snippet as starting point
-  textarea.value = snippet;
+  // Build richer fallback content from available fields so the modal is never empty
+  const fallbackParts: string[] = [];
+  if (item.title) fallbackParts.push(item.title);
+  if (item.company) fallbackParts.push(`Company: ${item.company}`);
+  if (item.snippet) fallbackParts.push(item.snippet);
+  if (item.aiSummary) fallbackParts.push(stripMarkdown(item.aiSummary));
+  const fallbackContent = fallbackParts.join('\n\n');
+
+  // Pre-fill with fallback content as starting point
+  textarea.value = fallbackContent;
   textarea.disabled = true;
   scanBtn.disabled = true;
   if (loading) loading.classList.add('show');
@@ -425,16 +460,16 @@ function openJdEditModal(jobUrl: string, snippet: string): void {
   modal.classList.add('show');
 
   // Fetch the full job description
-  fetchJobDescription(jobUrl)
+  fetchJobDescription(item.url)
     .then((fullText) => {
-      textarea.value = fullText || snippet;
+      textarea.value = fullText || fallbackContent;
       textarea.disabled = false;
       scanBtn.disabled = false;
       if (loading) loading.classList.remove('show');
     })
     .catch(() => {
-      // Fallback to snippet
-      textarea.value = snippet;
+      // Fallback to pre-built content
+      textarea.value = fallbackContent;
       textarea.disabled = false;
       scanBtn.disabled = false;
       if (loading) loading.classList.remove('show');
@@ -525,6 +560,22 @@ async function runAtsScanFromResults(): Promise<void> {
   `;
   document.head.appendChild(style);
 })();
+
+// Global Escape Key Listener for JD Modal & ATS Sidebar
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    const jdModal = document.getElementById('jd-edit-modal');
+    if (jdModal && jdModal.classList.contains('show')) {
+      closeJdEditModal();
+      return;
+    }
+    const atsSidebar = document.getElementById('ats-sidebar');
+    if (atsSidebar && atsSidebar.classList.contains('open')) {
+      closeAtsSidebar();
+      return;
+    }
+  }
+});
 
 // Global exports
 (window as unknown as Record<string, unknown>).prevPage = prevPage;
