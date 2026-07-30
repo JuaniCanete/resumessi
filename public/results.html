@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>resumessi — Job Scraper Results</title>
-
-    <!-- Google Fonts: Comfortaa & Inter -->
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐐%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -24,6 +24,7 @@
             --bg-badge: #f1f5f9;
             --success: #0ea5e9;
             --whitetext: #f8fafc;
+            --ats-w: 360px;
         }
 
         * {
@@ -38,6 +39,11 @@
             color: var(--whitetext);
             min-height: 100vh;
             padding: 30px 20px;
+            transition: padding-right 0.3s cubic-bezier(.4,0,.2,1);
+        }
+
+        body.ats-open {
+            padding-right: var(--ats-w);
         }
 
         .container {
@@ -106,85 +112,13 @@
             font-weight: 600;
         }
 
-        .summary-card {
-            background: rgba(37, 99, 235, 0.1);
-            border: 1px solid rgba(37, 99, 235, 0.3);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 24px;
-        }
-
-        .summary-title {
-            font-family: 'Comfortaa', sans-serif;
-            font-size: 14px;
-            font-weight: 700;
-            color: #60a5fa;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .summary-text {
-            font-size: 13.5px;
-            line-height: 1.6;
-            color: #e2e8f0;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-
-        .summary-text h1,
-        .summary-text h2,
-        .summary-text h3,
-        .summary-text h4 {
-            font-family: 'Comfortaa', sans-serif;
-            color: #fff;
-            margin: 12px 0 8px 0;
-            font-weight: 700;
-        }
-
-        .summary-text h1 { font-size: 16px; }
-        .summary-text h2 { font-size: 15px; }
-        .summary-text h3 { font-size: 14px; }
-        .summary-text h4 { font-size: 13px; }
-
-        .summary-text p {
-            margin: 8px 0;
-        }
-
-        .summary-text ul,
-        .summary-text ol {
-            margin: 8px 0 8px 20px;
-            padding-left: 20px;
-        }
-
-        .summary-text li {
-            margin: 4px 0;
-        }
-
-        .summary-text strong {
-            color: #60a5fa;
-            font-weight: 700;
-        }
-
-        .summary-text em {
-            color: #cbd5e1;
-            font-style: italic;
-        }
-
-        .summary-text code {
-            background: rgba(255, 255, 255, 0.08);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 12.5px;
-        }
-
-        .summary-text a {
+        .meta-item a {
             color: #60a5fa;
             text-decoration: none;
+            font-weight: 600;
         }
 
-        .summary-text a:hover {
+        .meta-item a:hover {
             text-decoration: underline;
         }
 
@@ -199,13 +133,23 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 12px;
             padding: 20px;
-            transition: transform 0.15s, border-color 0.15s;
+            transition: transform 0.15s, border-color 0.15s, max-height 0.3s ease;
             overflow: hidden;
+            cursor: pointer;
+            max-height: 120px;
+        }
+
+        .result-card.expanded {
+            max-height: 800px;
+            border-color: rgba(37, 99, 235, 0.4);
         }
 
         .result-card:hover {
-            transform: translateY(-2px);
             border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .result-card.expanded:hover {
+            border-color: rgba(37, 99, 235, 0.5);
         }
 
         .result-card-header {
@@ -225,11 +169,45 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
             word-break: break-word;
+            flex: 1;
         }
 
         .result-title:hover {
             color: var(--accent);
-            text-decoration: underline;
+        }
+
+        .result-source-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+
+        .result-source-badge.linkedin {
+            background: rgba(10, 102, 194, 0.2);
+            color: #70b5f9;
+            border: 1px solid rgba(10, 102, 194, 0.3);
+        }
+
+        .result-source-badge.google {
+            background: rgba(234, 67, 53, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(234, 67, 53, 0.25);
+        }
+
+        .result-card-body {
+            display: none;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .result-card.expanded .result-card-body {
+            display: block;
         }
 
         .result-snippet {
@@ -241,12 +219,70 @@
             overflow-wrap: break-word;
         }
 
+        .result-ai-summary {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #e2e8f0;
+            margin-bottom: 12px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .result-ai-summary h1,
+        .result-ai-summary h2,
+        .result-ai-summary h3,
+        .result-ai-summary h4 {
+            font-family: 'Comfortaa', sans-serif;
+            color: #fff;
+            margin: 12px 0 8px 0;
+            font-weight: 700;
+        }
+
+        .result-ai-summary h1 { font-size: 15px; }
+        .result-ai-summary h2 { font-size: 14px; }
+        .result-ai-summary h3 { font-size: 13px; }
+        .result-ai-summary h4 { font-size: 12px; }
+
+        .result-ai-summary p {
+            margin: 6px 0;
+        }
+
+        .result-ai-summary ul,
+        .result-ai-summary ol {
+            margin: 6px 0 6px 20px;
+            padding-left: 20px;
+        }
+
+        .result-ai-summary li {
+            margin: 3px 0;
+        }
+
+        .result-ai-summary strong {
+            color: #60a5fa;
+            font-weight: 700;
+        }
+
+        .result-ai-summary code {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
         .result-footer {
             display: flex;
             align-items: center;
             justify-content: space-between;
             font-size: 12px;
             color: #64748b;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .result-footer-left {
+            display: flex;
+            align-items: center;
             gap: 12px;
             flex-wrap: wrap;
         }
@@ -263,6 +299,36 @@
 
         .result-link-btn:hover {
             text-decoration: underline;
+        }
+
+        .result-check-jd-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #fbbf24;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 12px;
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.25);
+            border-radius: 6px;
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .result-check-jd-btn:hover {
+            background: rgba(251, 191, 36, 0.2);
+        }
+
+        .result-company {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .result-posted-date {
+            font-size: 11px;
+            color: #64748b;
         }
 
         .pagination {
@@ -318,6 +384,318 @@
             color: #94a3b8;
             margin-bottom: 8px;
         }
+
+        /* ATS Sidebar */
+        #ats-sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: var(--ats-w);
+            height: 100vh;
+            background: var(--secondary);
+            color: #fff;
+            z-index: 200;
+            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.25);
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(.4, 0, .2, 1);
+            overflow-y: auto;
+        }
+
+        #ats-sidebar.open {
+            transform: translateX(0);
+        }
+
+        #ats-sidebar .panel-inner {
+            padding: 20px 22px 28px;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #ats-sidebar .panel-ctrl-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+
+        #ats-sidebar .ctrl-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: #ffffff;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, color 0.2s;
+            flex-shrink: 0;
+        }
+
+        #ats-sidebar .ctrl-btn:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        #ats-sidebar .panel-label-row {
+            font-size: 11px;
+            color: #ffffff;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            flex: 1;
+            text-align: center;
+        }
+
+        #ats-sidebar .result-score-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 0;
+        }
+
+        #ats-sidebar .result-score-circle {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 4px solid var(--success);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--success);
+            background: rgba(14, 165, 233, 0.1);
+            flex-shrink: 0;
+        }
+
+        #ats-sidebar .result-score-circle.good {
+            border-color: #10b981;
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        #ats-sidebar .result-score-circle.mid {
+            border-color: #f59e0b;
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        #ats-sidebar .result-score-circle.low {
+            border-color: #ef4444;
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        #ats-sidebar .result-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        #ats-sidebar .result-match-text {
+            font-size: 16px;
+            font-weight: 700;
+            color: #38bdf8;
+            margin-top: 2px;
+        }
+
+        #ats-sidebar .result-section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        #ats-sidebar .result-body {
+            font-size: 12.5px;
+            color: var(--whitetext);
+            line-height: 1.65;
+        }
+
+        #ats-sidebar .result-keyword {
+            display: inline-block;
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 4px;
+            padding: 2px 7px;
+            font-size: 11px;
+            margin: 3px 3px 0 0;
+        }
+
+        #ats-sidebar .p-divider {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 16px 0;
+        }
+
+        #ats-sidebar .ats-loading {
+            display: none;
+            text-align: center;
+            font-size: 12px;
+            color: var(--accent);
+            padding: 20px 0;
+        }
+
+        #ats-sidebar .ats-loading.show {
+            display: block;
+        }
+
+        /* JD Edit Modal */
+        #jd-edit-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        #jd-edit-modal.show {
+            display: flex;
+        }
+
+        #jd-edit-modal .modal-content {
+            background: var(--secondary);
+            padding: 28px;
+            border-radius: 14px;
+            max-width: 640px;
+            width: 92%;
+            max-height: 88vh;
+            overflow-y: auto;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        #jd-edit-modal .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 28px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            line-height: 1;
+            transition: background 0.2s;
+        }
+
+        #jd-edit-modal .modal-close:hover {
+            background: var(--accent);
+        }
+
+        #jd-edit-modal h2 {
+            color: #fff;
+            margin-bottom: 8px;
+            text-align: center;
+            font-family: 'Comfortaa', sans-serif;
+        }
+
+        #jd-edit-modal p.desc {
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 12px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        #jd-edit-modal textarea {
+            width: 100%;
+            min-height: 250px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 7px;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: vertical;
+            outline: none;
+        }
+
+        #jd-edit-modal textarea:focus {
+            border-color: var(--accent);
+        }
+
+        #jd-edit-modal .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        #jd-edit-modal .modal-actions button {
+            flex: 1;
+            padding: 11px 14px;
+            border: none;
+            border-radius: 7px;
+            font-weight: 700;
+            font-size: 13px;
+            font-family: 'Comfortaa', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        #jd-edit-modal .modal-actions button:active {
+            transform: scale(0.98);
+        }
+
+        #jd-edit-modal .btn-cancel {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        #jd-edit-modal .btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        #jd-edit-modal .btn-scan {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        #jd-edit-modal .btn-scan:hover {
+            background: #1d4ed8;
+        }
+
+        #jd-edit-modal .btn-scan:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        #jd-edit-modal .jd-fetch-loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: var(--accent);
+            font-size: 13px;
+        }
+
+        #jd-edit-modal .jd-fetch-loading.show {
+            display: block;
+        }
     </style>
 </head>
 
@@ -328,21 +706,15 @@
         <div class="header">
             <div class="header-top">
                 <div class="title">
-                    🔎 resumessi Job Scraper Results
+                    resumessi Job Scraper Results
                 </div>
                 <span id="source-badge" class="source-badge linkedin">LinkedIn</span>
             </div>
             <div class="meta-row">
                 <div class="meta-item">Scanned: <span id="meta-timestamp">Loading...</span></div>
                 <div class="meta-item">Total Findings: <span id="meta-total">0</span></div>
-                <div class="meta-item">Query: <span id="meta-query">—</span></div>
+                <div class="meta-item">Query: <span id="meta-query">—</span> <span id="query-link-wrapper" style="display: none;">. <a id="query-link" href="#" target="_blank" rel="noopener noreferrer">Link</a></span></div>
             </div>
-        </div>
-
-        <!-- AI Summary Card (if present) -->
-        <div id="summary-card" class="summary-card" style="display: none;">
-            <div class="summary-title">✨ AI Overview & Relevance Summary</div>
-            <div id="summary-text" class="summary-text"></div>
         </div>
 
         <!-- Results List -->
@@ -359,6 +731,79 @@
             <button id="btn-prev-page" class="page-btn" onclick="prevPage()">◀ Previous</button>
             <span id="page-info" class="page-info">Page 1 of 1</span>
             <button id="btn-next-page" class="page-btn" onclick="nextPage()">Next ▶</button>
+        </div>
+    </div>
+
+    <!-- ATS Sidebar -->
+    <div id="ats-sidebar">
+        <div class="panel-inner">
+            <div class="panel-ctrl-row">
+                <span class="panel-label-row">resumessi ATS results</span>
+                <button class="ctrl-btn" onclick="closeAtsSidebar()" title="Close ATS results"
+                    aria-label="Close ATS results">&#x2716;</button>
+            </div>
+
+            <div class="result-score-row">
+                <div class="result-score-circle" id="ats-score-circle">--</div>
+                <div>
+                    <div class="result-label">ATS Match</div>
+                    <div class="result-match-text" id="ats-score-text">Pending</div>
+                </div>
+            </div>
+
+            <div id="ats-scan-again-msg" class="result-body"
+                style="color: #fca5a5; margin-top: 6px; margin-bottom: 14px; padding: 12px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 6px;">
+                Click "Check JD" on a job card to start an ATS scan.
+            </div>
+
+            <div id="ats-breakdown-section" style="display: none; margin-bottom: 14px;">
+                <hr class="p-divider" style="margin: 12px 0;">
+                <div class="result-section-title">The Match Breakdown</div>
+                <div class="result-body"
+                    style="display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">
+                    <div style="display: flex; justify-content: space-between;"><span>Keyword Match:</span><span
+                            id="ats-br-skills" style="font-weight: 700;">--</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span>Experience Alignment:</span><span
+                            id="ats-br-experience" style="font-weight: 700;">--</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span>Education/Cert Fit:</span><span
+                            id="ats-br-education" style="font-weight: 700;">--</span></div>
+                </div>
+            </div>
+
+            <hr class="p-divider">
+
+            <div style="margin-bottom: 16px;">
+                <div class="result-section-title">Feedback</div>
+                <div class="result-body" id="ats-feedback">&mdash;</div>
+            </div>
+
+            <hr class="p-divider">
+
+            <div>
+                <div class="result-section-title">Missing Keywords</div>
+                <div id="ats-keywords" class="result-body">&mdash;</div>
+            </div>
+
+            <div class="ats-loading" id="ats-loading">
+                <span class="dot-anim">Scanning with AI</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- JD Edit Modal -->
+    <div id="jd-edit-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeJdEditModal()">×</button>
+            <h2>Review Job Description</h2>
+            <p class="desc">Edit the fetched JD text below to remove unrelated content (benefits, navigation, etc.), then scan with ATS.</p>
+            <div class="jd-fetch-loading" id="jd-fetch-loading">
+                <span class="dot-anim">Fetching job description...</span>
+            </div>
+            <textarea id="jd-edit-textarea" placeholder="Job description text will appear here after fetching..."></textarea>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeJdEditModal()">Cancel</button>
+                <button class="btn-scan" id="btn-scan-jd" onclick="runAtsScanFromResults()">🔍 Validate with ATS</button>
+            </div>
         </div>
     </div>
 

@@ -18,6 +18,7 @@ import { scrapeGoogle } from './src/scraper/google';
 import { generateLinkedInStorageState } from './scripts/linkedin-auth';
 import { getRequestPath } from './src/scraper/runtime-utils';
 import type { ScraperQuery, ScraperResult } from './src/scraper/types';
+import * as https from 'https';
 
 // Wrap in try-catch for graceful degradation
 let pdfParse: ((buffer: Buffer) => Promise<{ text: string }>) | null = null;
@@ -539,6 +540,174 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Failed to rollback polished resume: ' + (err as Error).message }));
+    }
+    return;
+  }
+
+  // API: Fetch URL content (for Check JD feature)
+  if (requestPath === '/api/fetch-url' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const { url } = JSON.parse(body);
+
+      if (!url || typeof url !== 'string') {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing or invalid URL' }));
+        return;
+      }
+
+      // Fetch the URL content
+      const fetchUrl = (urlStr: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const client = urlStr.startsWith('https') ? https : http;
+          client.get(urlStr, (response) => {
+            let data = '';
+            response.on('data', (chunk: string) => data += chunk);
+            response.on('end', () => resolve(data));
+            response.on('error', reject);
+          }).on('error', reject);
+        });
+      };
+
+      const html = await fetchUrl(url);
+
+      // Simple HTML to text extraction
+      const text = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+        .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+        .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&#39;/g, "'")
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ text: text.substring(0, 10000) }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to fetch URL: ' + (err as Error).message }));
+    }
+    return;
+  }
+
+  // API: ATS Scan (for Check JD feature in results page)
+  if (requestPath === '/api/ats/scan' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const { jobDescription } = JSON.parse(body);
+
+      if (!jobDescription || typeof jobDescription !== 'string') {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing or invalid jobDescription' }));
+        return;
+      }
+
+      // Load the resume data
+      const resumeDataPath = path.join(ROOT, 'src', 'resume', 'output', 'resume-data.json');
+      let resumeText = '';
+      if (fs.existsSync(resumeDataPath)) {
+        const resumeData = JSON.parse(fs.readFileSync(resumeDataPath, 'utf-8'));
+        // Extract text from resume data structure
+        const basics = resumeData.basics || {};
+        const name = basics.name || 'Candidate';
+        const title = basics.title || '';
+        const summary = resumeData.summary || '';
+        const experience = resumeData.experience || [];
+        const skills = resumeData.skills || {};
+        const education = resumeData.education || [];
+
+        let rt = `Name: ${name}\n`;
+        if (title) rt += `Title: ${title}\n`;
+        if (summary) rt += `\nSummary:\n${summary}\n`;
+
+        if (experience.length > 0) {
+          rt += '\nExperience:\n';
+          for (const exp of experience) {
+            rt += `- ${exp.title} at ${exp.company} (${exp.date})\n`;
+            if (exp.bullets) {
+              for (const bullet of exp.bullets) {
+                rt += `  - ${bullet}\n`;
+              }
+            }
+          }
+        }
+
+        if (Object.keys(skills).length > 0) {
+          rt += '\nSkills:\n';
+          for (const [category, skillList] of Object.entries(skills)) {
+            rt += `${category}: ${(skillList as Array<{name: string}>).map((s: {name: string}) => s.name).join(', ')}\n`;
+          }
+        }
+
+        if (education.length > 0) {
+          rt += '\nEducation:\n';
+          for (const edu of education) {
+            rt += `- ${edu.degree} at ${edu.institution} (${edu.year})\n`;
+          }
+        }
+
+        resumeText = rt;
+      } else {
+        // If no resume data file exists, return a specific error
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'No resume data found. Please load a resume on the main page first.' }));
+        return;
+      }
+
+      // Load the ATS prompt template
+      const promptPath = path.join(ROOT, 'src', 'prompts', 'ats-scan.txt');
+      if (!fs.existsSync(promptPath)) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'ATS prompt template not found' }));
+        return;
+      }
+
+      let basePrompt = fs.readFileSync(promptPath, 'utf-8');
+      basePrompt = basePrompt.replace('{job_description}', jobDescription);
+      basePrompt = basePrompt.replace('{resume_text}', resumeText);
+
+      const env = getFullConfigFromEnv();
+
+      try {
+        const result = await runInference(
+          'You are an ATS resume scorer. Return only valid JSON matching the requested schema.',
+          basePrompt,
+          { temperature: 0, max_tokens: 2048 },
+          env,
+          null,
+          null,
+          null,
+          'ats',
+        );
+
+        let raw = result.text;
+        raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        // Extract first JSON object from response
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          raw = jsonMatch[0];
+        }
+
+        const parsed = JSON.parse(raw) as { ai_screening: Record<string, unknown> };
+        const screening = parsed.ai_screening;
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(screening));
+      } catch (err: unknown) {
+        if ((err as Error).message === 'No providers configured. Set at least one *_API_KEY in .env.') {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: (err as Error).message }));
+          return;
+        }
+        throw err;
+      }
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'ATS scan error: ' + (err as Error).message }));
     }
     return;
   }

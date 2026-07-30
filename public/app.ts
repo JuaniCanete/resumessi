@@ -1472,7 +1472,7 @@ async function refreshScrapingResultsButton(): Promise<void> {
   if (!btn) return;
 
   const hasResults = await hasSavedScraperResults();
-  btn.style.display = hasResults ? 'flex' : 'none';
+  btn.style.display = hasResults ? 'block' : 'none';
 }
 
 async function hasSavedScraperResults(): Promise<boolean> {

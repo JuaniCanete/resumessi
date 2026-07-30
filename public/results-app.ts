@@ -6,6 +6,7 @@ interface ScraperResult {
   author?: string;
   company?: string;
   postedDate?: string;
+  aiSummary?: string;
 }
 
 interface ScraperRunPayload {
@@ -22,6 +23,7 @@ let currentPage = 1;
 const RESULTS_PER_PAGE = 10;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 const initTime = Date.now();
+let currentAtsJobUrl: string | null = null;
 
 async function initResultsPage(): Promise<void> {
   const urlParams = new URLSearchParams(window.location.search);
@@ -40,7 +42,7 @@ async function initResultsPage(): Promise<void> {
 function showLoadingUI(source: 'linkedin' | 'google'): void {
   const badge = document.getElementById('source-badge');
   if (badge) {
-    badge.textContent = source === 'linkedin' ? '🔗 LinkedIn' : '🔍 Google';
+    badge.textContent = source === 'linkedin' ? 'LinkedIn' : 'Google';
     badge.className = `source-badge ${source}`;
   }
 
@@ -116,6 +118,32 @@ async function loadDataAndRender(sourceParam: 'linkedin' | 'google'): Promise<vo
   renderResultsUI();
 }
 
+function buildQueryUrl(source: 'linkedin' | 'google', query: Record<string, string>): string {
+  const parts: string[] = [];
+  if (query.keywords) parts.push(query.keywords);
+  if (query.role) parts.push(query.role);
+  if (query.stack) parts.push(query.stack);
+
+  if (source === 'linkedin') {
+    if (query.employmentType) parts.push(query.employmentType);
+    if (query.region) parts.push(query.region);
+    if (query.currency) parts.push(query.currency);
+    const fullQuery = parts.join(' ');
+    return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(fullQuery)}`;
+  } else {
+    if (query.employmentType) parts.push(query.employmentType);
+    // Google search uses site: domains for job boards
+    const defaultDomains = ['teamtailor.com', 'greenhouse.io', 'lever.co', 'workday.com', 'jobs.ashbyhq.com'];
+    const siteQuery = defaultDomains.map(d => `site:${d}`).join(' OR ');
+    parts.push(`(${siteQuery})`);
+    parts.push('("careers" OR "jobs" OR "open positions")');
+    if (query.region) parts.push(query.region);
+    if (query.currency) parts.push(query.currency);
+    const fullQuery = parts.join(' ');
+    return `https://www.google.com/search?q=${encodeURIComponent(fullQuery)}`;
+  }
+}
+
 function renderResultsUI(): void {
   if (!currentPayload || !currentPayload.results || currentPayload.results.length === 0) {
     const noResults = document.getElementById('no-results');
@@ -127,7 +155,7 @@ function renderResultsUI(): void {
 
   const badge = document.getElementById('source-badge');
   if (badge) {
-    badge.textContent = currentPayload.source === 'linkedin' ? '🔗 LinkedIn' : '🔍 Google';
+    badge.textContent = currentPayload.source === 'linkedin' ? 'LinkedIn' : 'Google';
     badge.className = `source-badge ${currentPayload.source}`;
   }
 
@@ -150,19 +178,14 @@ function renderResultsUI(): void {
     queryElem.textContent = parts.length > 0 ? parts.join(' • ') : 'All jobs';
   }
 
-  if (currentPayload.summary) {
-    const card = document.getElementById('summary-card');
-    const text = document.getElementById('summary-text');
-    if (card && text) {
-      card.style.display = 'block';
-      // Use marked library to render markdown
-      const marked = (window as unknown as Record<string, unknown>).marked;
-      if (marked && typeof marked === 'object' && 'parse' in marked) {
-        text.innerHTML = (marked as { parse: (s: string) => string }).parse(currentPayload.summary);
-      } else {
-        text.textContent = currentPayload.summary;
-      }
-    }
+  // Build query URL and show link
+  const queryLinkWrapper = document.getElementById('query-link-wrapper');
+  const queryLink = document.getElementById('query-link') as HTMLAnchorElement;
+  if (queryLinkWrapper && queryLink && currentPayload.query) {
+    const source = currentPayload.source;
+    const url = buildQueryUrl(source, currentPayload.query);
+    queryLink.href = url;
+    queryLinkWrapper.style.display = 'inline';
   }
 
   renderPage(currentPage);
@@ -186,43 +209,108 @@ function renderPage(page: number): void {
   for (const item of pageResults) {
     const card = document.createElement('div');
     card.className = 'result-card';
+    card.dataset.url = item.url;
+    card.dataset.snippet = item.snippet || '';
+    card.dataset.aiSummary = item.aiSummary || '';
 
+    // Click to expand/collapse
+    card.addEventListener('click', (e: MouseEvent) => {
+      // Don't toggle if clicking on a link or button
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'A' || target.tagName === 'BUTTON' || target.closest('a') || target.closest('button')) {
+        return;
+      }
+      card.classList.toggle('expanded');
+    });
+
+    // Header: title + source badge
     const header = document.createElement('div');
     header.className = 'result-card-header';
 
-    const titleLink = document.createElement('a');
-    titleLink.className = 'result-title';
-    titleLink.href = item.url;
-    titleLink.target = '_blank';
-    titleLink.rel = 'noopener noreferrer';
-    titleLink.textContent = item.title;
+    const titleEl = document.createElement('span');
+    titleEl.className = 'result-title';
+    titleEl.textContent = item.title;
 
-    header.appendChild(titleLink);
+    const sourceBadge = document.createElement('span');
+    sourceBadge.className = `result-source-badge ${item.source}`;
+    sourceBadge.textContent = item.source.toUpperCase();
+
+    header.appendChild(titleEl);
+    header.appendChild(sourceBadge);
     card.appendChild(header);
+
+    // Footer (always visible): company + action buttons
+    const footer = document.createElement('div');
+    footer.className = 'result-footer';
+
+    const footerLeft = document.createElement('div');
+    footerLeft.className = 'result-footer-left';
+
+    if (item.company) {
+      const company = document.createElement('span');
+      company.className = 'result-company';
+      company.textContent = item.company;
+      footerLeft.appendChild(company);
+    } else {
+      const source = document.createElement('span');
+      source.className = 'result-company';
+      source.textContent = item.source.toUpperCase();
+      footerLeft.appendChild(source);
+    }
+
+    if (item.postedDate) {
+      const date = document.createElement('span');
+      date.className = 'result-posted-date';
+      date.textContent = item.postedDate;
+      footerLeft.appendChild(date);
+    }
+
+    const applyBtn = document.createElement('a');
+    applyBtn.className = 'result-link-btn';
+    applyBtn.href = item.url;
+    applyBtn.target = '_blank';
+    applyBtn.rel = 'noopener noreferrer';
+    applyBtn.textContent = 'Apply ↗';
+
+    footer.appendChild(footerLeft);
+    footer.appendChild(applyBtn);
+    card.appendChild(footer);
+
+    // Expanded body: snippet + AI summary + Check JD
+    const body = document.createElement('div');
+    body.className = 'result-card-body';
 
     if (item.snippet) {
       const snippet = document.createElement('div');
       snippet.className = 'result-snippet';
       snippet.textContent = item.snippet;
-      card.appendChild(snippet);
+      body.appendChild(snippet);
     }
 
-    const footer = document.createElement('div');
-    footer.className = 'result-footer';
+    if (item.aiSummary) {
+      const aiSummary = document.createElement('div');
+      aiSummary.className = 'result-ai-summary';
+      // Use marked library to render markdown
+      const marked = (window as unknown as Record<string, unknown>).marked;
+      if (marked && typeof marked === 'object' && 'parse' in marked) {
+        aiSummary.innerHTML = (marked as { parse: (s: string) => string }).parse(item.aiSummary);
+      } else {
+        aiSummary.textContent = item.aiSummary;
+      }
+      body.appendChild(aiSummary);
+    }
 
-    const info = document.createElement('span');
-    info.textContent = item.company ? `Company: ${item.company}` : item.source.toUpperCase();
+    // Check JD button
+    const checkJdBtn = document.createElement('button');
+    checkJdBtn.className = 'result-check-jd-btn';
+    checkJdBtn.textContent = 'Check JD 🔍';
+    checkJdBtn.addEventListener('click', (e: MouseEvent) => {
+      e.stopPropagation();
+      openJdEditModal(item.url, item.snippet || '');
+    });
+    body.appendChild(checkJdBtn);
 
-    const linkBtn = document.createElement('a');
-    linkBtn.className = 'result-link-btn';
-    linkBtn.href = item.url;
-    linkBtn.target = '_blank';
-    linkBtn.rel = 'noopener noreferrer';
-    linkBtn.innerHTML = 'View listing ↗';
-
-    footer.appendChild(info);
-    footer.appendChild(linkBtn);
-    card.appendChild(footer);
+    card.appendChild(body);
 
     container.appendChild(card);
   }
@@ -256,9 +344,194 @@ function nextPage(): void {
   }
 }
 
+// ─── ATS Sidebar ──────────────────────────────────────────────────────
+
+function openAtsSidebar(): void {
+  const sidebar = document.getElementById('ats-sidebar');
+  if (sidebar) sidebar.classList.add('open');
+  document.body.classList.add('ats-open');
+}
+
+function closeAtsSidebar(): void {
+  const sidebar = document.getElementById('ats-sidebar');
+  if (sidebar) sidebar.classList.remove('open');
+  document.body.classList.remove('ats-open');
+}
+
+function applyAtsResultsToUI(screening: Record<string, unknown>): void {
+  const circle = document.getElementById('ats-score-circle')!;
+  circle.textContent = String(screening.overall_score);
+
+  let tierClass = 'low';
+  if (screening.tier === 'STRONG_MATCH') tierClass = 'good';
+  else if (screening.tier === 'GOOD_MATCH') tierClass = 'mid';
+  circle.className = 'result-score-circle ' + tierClass;
+
+  document.getElementById('ats-score-text')!.textContent = screening.tier as string;
+  const feedbackEl = document.getElementById('ats-feedback')!;
+  feedbackEl.textContent = (screening.feedback as string) || '\u2014';
+  feedbackEl.style.color = '';
+
+  const breakdown = screening.breakdown as Record<string, unknown>;
+  const elSkills = document.getElementById('ats-br-skills')!;
+  const elExp = document.getElementById('ats-br-experience')!;
+  const elEdu = document.getElementById('ats-br-education')!;
+
+  elSkills.textContent = `${breakdown.skills_score}%`;
+  elExp.textContent = `${breakdown.experience_years_score}%`;
+  elEdu.textContent = breakdown.education_match ? 'PASS' : 'FAIL';
+
+  elSkills.style.color = (breakdown.skills_score as number) >= 80 ? '#10b981' : (breakdown.skills_score as number) >= 60 ? '#f59e0b' : '#ef4444';
+  elExp.style.color = (breakdown.experience_years_score as number) >= 80 ? '#10b981' : (breakdown.experience_years_score as number) >= 60 ? '#f59e0b' : '#ef4444';
+  elEdu.style.color = breakdown.education_match ? '#10b981' : '#ef4444';
+
+  const kwEl = document.getElementById('ats-keywords')!;
+  const missingKeywords = screening.missingKeywords as string[] | undefined;
+  if (missingKeywords && missingKeywords.length > 0) {
+    kwEl.innerHTML = missingKeywords
+      .map(k => `<span class="result-keyword">${k}</span>`)
+      .join('');
+  } else {
+    kwEl.textContent = 'None detected \u2014 great match!';
+    kwEl.style.color = '#86efac';
+  }
+
+  document.getElementById('ats-scan-again-msg')!.style.display = 'none';
+  document.getElementById('ats-breakdown-section')!.style.display = 'block';
+
+  // Hide loading
+  document.getElementById('ats-loading')!.classList.remove('show');
+
+  openAtsSidebar();
+}
+
+// ─── JD Edit Modal ────────────────────────────────────────────────────
+
+function openJdEditModal(jobUrl: string, snippet: string): void {
+  currentAtsJobUrl = jobUrl;
+  const modal = document.getElementById('jd-edit-modal');
+  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+  const loading = document.getElementById('jd-fetch-loading');
+  const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+
+  if (!modal) return;
+
+  // Pre-fill with snippet as starting point
+  textarea.value = snippet;
+  textarea.disabled = true;
+  scanBtn.disabled = true;
+  if (loading) loading.classList.add('show');
+
+  modal.classList.add('show');
+
+  // Fetch the full job description
+  fetchJobDescription(jobUrl)
+    .then((fullText) => {
+      textarea.value = fullText || snippet;
+      textarea.disabled = false;
+      scanBtn.disabled = false;
+      if (loading) loading.classList.remove('show');
+    })
+    .catch(() => {
+      // Fallback to snippet
+      textarea.value = snippet;
+      textarea.disabled = false;
+      scanBtn.disabled = false;
+      if (loading) loading.classList.remove('show');
+    });
+}
+
+async function fetchJobDescription(url: string): Promise<string> {
+  try {
+    const resp = await fetch('/api/fetch-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    if (resp.ok) {
+      const data = await resp.json() as { text: string };
+      return data.text;
+    }
+  } catch {
+    // Fallback
+  }
+  return '';
+}
+
+function closeJdEditModal(): void {
+  const modal = document.getElementById('jd-edit-modal');
+  if (modal) modal.classList.remove('show');
+  currentAtsJobUrl = null;
+}
+
+async function runAtsScanFromResults(): Promise<void> {
+  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+  const jdText = textarea.value.trim();
+  if (!jdText) {
+    alert('Please enter a job description text.');
+    return;
+  }
+
+  closeJdEditModal();
+
+  // Show loading in ATS sidebar
+  const loading = document.getElementById('ats-loading');
+  if (loading) loading.classList.add('show');
+  openAtsSidebar();
+
+  try {
+    const resp = await fetch('/api/ats/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobDescription: jdText }),
+    });
+
+    if (!resp.ok) {
+      const errData = await resp.json() as { error?: string };
+      throw new Error(errData.error || `HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json() as Record<string, unknown>;
+    if (data.error) throw new Error(data.error as string);
+
+    applyAtsResultsToUI(data);
+  } catch (err: unknown) {
+    if (loading) loading.classList.remove('show');
+    const feedbackEl = document.getElementById('ats-feedback')!;
+    feedbackEl.textContent = 'ATS scan error: ' + (err as Error).message;
+    feedbackEl.style.color = '#ef4444';
+    document.getElementById('ats-scan-again-msg')!.style.display = 'none';
+    document.getElementById('ats-breakdown-section')!.style.display = 'none';
+  }
+}
+
+// ─── Dot animation helper ─────────────────────────────────────────────
+// Add CSS for dot animation if not present
+(function ensureDotAnimStyle(): void {
+  if (document.getElementById('dot-anim-style')) return;
+  const style = document.createElement('style');
+  style.id = 'dot-anim-style';
+  style.textContent = `
+    .dot-anim::after {
+      content: '';
+      animation: dotdot 1.4s infinite;
+    }
+    @keyframes dotdot {
+      0% { content: ''; }
+      33% { content: '.'; }
+      66% { content: '..'; }
+      100% { content: '...'; }
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
 // Global exports
 (window as unknown as Record<string, unknown>).prevPage = prevPage;
 (window as unknown as Record<string, unknown>).nextPage = nextPage;
+(window as unknown as Record<string, unknown>).closeAtsSidebar = closeAtsSidebar;
+(window as unknown as Record<string, unknown>).closeJdEditModal = closeJdEditModal;
+(window as unknown as Record<string, unknown>).runAtsScanFromResults = runAtsScanFromResults;
 
 document.addEventListener('DOMContentLoaded', () => {
   initResultsPage();
