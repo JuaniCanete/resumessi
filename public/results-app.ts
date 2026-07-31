@@ -55,7 +55,7 @@ function showLoadingUI(source: 'linkedin' | 'google'): void {
           🔎 Scraping ${source === 'linkedin' ? 'LinkedIn' : 'Google'}...
         </h3>
         <p style="font-size: 13.5px; color: #94a3b8; max-width: 500px; margin: 0 auto 20px auto; line-height: 1.6;">
-          Extracting job listings, parsing company information, and generating AI relevance summaries. This may take 5–15 seconds...
+          Extracting job listings, parsing company information, and generating AI relevance summaries ...
         </p>
         <div style="display: inline-block; padding: 8px 18px; background: rgba(37,99,235,0.15); border: 1px solid rgba(37,99,235,0.3); border-radius: 20px; color: #60a5fa; font-size: 12.5px; font-weight: 600;">
           Please keep this tab open
@@ -128,6 +128,7 @@ function buildQueryUrl(source: 'linkedin' | 'google', query: Record<string, stri
   if (source === 'linkedin') {
     if (query.employmentType) parts.push(query.employmentType);
     if (query.region) parts.push(query.region);
+    if (query.country) parts.push(query.country);
     if (query.currency) parts.push(query.currency);
     const fullQuery = parts.join(' ');
     return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(fullQuery)}`;
@@ -138,7 +139,15 @@ function buildQueryUrl(source: 'linkedin' | 'google', query: Record<string, stri
     const siteQuery = defaultDomains.map(d => `site:${d}`).join(' OR ');
     parts.push(`(${siteQuery})`);
     parts.push('("careers" OR "jobs" OR "open positions")');
-    if (query.region) parts.push(query.region);
+
+    // Combine country and region into a single quoted group, e.g. ("LATAM" OR "Argentina")
+    const locationParts: string[] = [];
+    if (query.region) locationParts.push(query.region);
+    if (query.country) locationParts.push(query.country);
+    if (locationParts.length > 0) {
+      parts.push(`(${locationParts.map(l => `"${l}"`).join(' OR ')})`);
+    }
+
     if (query.currency) parts.push(query.currency);
     const fullQuery = parts.join(' ');
     return `https://www.google.com/search?q=${encodeURIComponent(fullQuery)}`;
@@ -175,7 +184,7 @@ function renderResultsUI(): void {
   const queryElem = document.getElementById('meta-query');
   if (queryElem && currentPayload.query) {
     const q = currentPayload.query;
-    const parts = [q.keywords, q.role, q.stack, q.employmentType, q.region, q.currency].filter(Boolean);
+    const parts = [q.keywords, q.role, q.stack, q.employmentType, q.region, q.country, q.currency].filter(Boolean);
     queryElem.textContent = parts.length > 0 ? parts.join(' • ') : 'All jobs';
   }
 
@@ -231,7 +240,7 @@ function renderPage(page: number): void {
       card.classList.toggle('expanded');
     });
 
-    // Header: title + source badge
+    // Header: title + Check JD button (button in header so it's always visible)
     const header = document.createElement('div');
     header.className = 'result-card-header';
 
@@ -239,12 +248,21 @@ function renderPage(page: number): void {
     titleEl.className = 'result-title';
     titleEl.textContent = item.title;
 
-    const sourceBadge = document.createElement('span');
-    sourceBadge.className = `result-source-badge ${item.source}`;
-    sourceBadge.textContent = item.source.toUpperCase();
+    // Check JD button (in header so it's always visible, not lost in long text)
+    const checkJdBtn = document.createElement('button');
+    checkJdBtn.className = 'result-check-jd-btn';
+    checkJdBtn.textContent = 'Check JD 🔍';
+    checkJdBtn.addEventListener('click', (e: MouseEvent) => {
+      e.stopPropagation();
+      openJdEditModal(item);
+    });
+
+    const headerActions = document.createElement('div');
+    headerActions.className = 'result-card-header-actions';
+    headerActions.appendChild(checkJdBtn);
 
     header.appendChild(titleEl);
-    header.appendChild(sourceBadge);
+    header.appendChild(headerActions);
     card.appendChild(header);
 
     // Footer (always visible): company + action buttons
@@ -279,14 +297,18 @@ function renderPage(page: number): void {
     footer.appendChild(applyBtn);
     card.appendChild(footer);
 
-    // Expanded body: snippet + AI summary + Check JD
+    // Expanded body: snippet + AI summary + parameters
     const body = document.createElement('div');
     body.className = 'result-card-body';
 
     if (item.snippet) {
       const snippet = document.createElement('div');
+      const trimmedAtChar = 100;
       snippet.className = 'result-snippet';
-      snippet.textContent = item.snippet;
+      const snippetText = item.snippet.length > trimmedAtChar
+        ? item.snippet.substring(0, trimmedAtChar) + '...'
+        : item.snippet;
+      snippet.textContent = snippetText;
       body.appendChild(snippet);
     }
 
@@ -310,16 +332,6 @@ function renderPage(page: number): void {
       parameters.textContent = `Parameters found: ${item.parameters.join(' • ')}`;
       body.appendChild(parameters);
     }
-
-    // Check JD button
-    const checkJdBtn = document.createElement('button');
-    checkJdBtn.className = 'result-check-jd-btn';
-    checkJdBtn.textContent = 'Check JD 🔍';
-    checkJdBtn.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      openJdEditModal(item);
-    });
-    body.appendChild(checkJdBtn);
 
     card.appendChild(body);
 

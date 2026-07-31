@@ -12,7 +12,7 @@ export const DEFAULT_TARGET_DOMAINS = [
 export function buildGoogleSearchUrl(query: ScraperQuery): string {
   const parts: string[] = [];
 
-  if (query.keywords) parts.push(query.keywords);
+  if (query.keywords) parts.push(`"${query.keywords}"`);
   if (query.role) parts.push(query.role);
   if (query.stack) parts.push(query.stack);
   if (query.employmentType) parts.push(query.employmentType);
@@ -25,7 +25,14 @@ export function buildGoogleSearchUrl(query: ScraperQuery): string {
   parts.push(`(${siteQuery})`);
   parts.push('("careers" OR "jobs" OR "open positions")');
 
-  if (query.region) parts.push(query.region);
+  // Combine country and region into a single quoted group, e.g. ("LATAM" OR "Argentina")
+  const locationParts: string[] = [];
+  if (query.region) locationParts.push(query.region);
+  if (query.country) locationParts.push(query.country);
+  if (locationParts.length > 0) {
+    parts.push(`(${locationParts.map(l => `"${l}"`).join(' OR ')})`);
+  }
+
   if (query.currency) parts.push(query.currency);
 
   const fullQuery = parts.join(' ');

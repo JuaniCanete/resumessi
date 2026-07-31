@@ -1320,7 +1320,7 @@ function updateQueryPreview(): string {
     if (currency) parts.push(currency);
 
     const q = parts.join(' ');
-    generatedUrl = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(q)}`;
+    generatedUrl = `https://www.linkedin.com/jobs/search-results/?keywords=${encodeURIComponent(q)}`;
   } else {
     const parts: string[] = [];
     if (keywords) parts.push(keywords);

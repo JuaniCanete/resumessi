@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { buildScraperSearchUrls } from '../../src/scraper/pagination';
 
 test('buildScraperSearchUrls adds pagination offsets for LinkedIn', () => {
-  const urls = buildScraperSearchUrls('https://www.linkedin.com/jobs/search/?keywords=react', 'linkedin', 3);
+  const urls = buildScraperSearchUrls('https://www.linkedin.com/jobs/search-results/?keywords=react', 'linkedin', 3);
   assert.deepEqual(urls, [
-    'https://www.linkedin.com/jobs/search/?keywords=react',
-    'https://www.linkedin.com/jobs/search/?keywords=react&start=25',
-    'https://www.linkedin.com/jobs/search/?keywords=react&start=50',
+    'https://www.linkedin.com/jobs/search-results/?keywords=react',
+    'https://www.linkedin.com/jobs/search-results/?keywords=react&start=25',
+    'https://www.linkedin.com/jobs/search-results/?keywords=react&start=50',
   ]);
 });
 
