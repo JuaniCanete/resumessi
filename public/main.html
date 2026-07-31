@@ -1078,7 +1078,7 @@
             <div class="panel-ctrl-row">
                 <button class="ctrl-btn" onclick="toggleLeft()" title="Collapse sidebar"
                     aria-label="Collapse sidebar">&#9776;</button>
-                <span class="panel-label-row">resumessi JD validation</span>
+                <span class="panel-label-row">JD validation</span>
             </div>
 
             <div class="p-group" style="flex: 1; display: flex; flex-direction: column;">
@@ -1186,7 +1186,7 @@
             <div class="panel-ctrl-row">
                 <button class="ctrl-btn" id="rp-expand-btn" onclick="expandRight()" title="Expand panel"
                     aria-label="Expand panel">&#x26F6;</button>
-                <span class="panel-label-row">resumessi ATS results</span>
+                <span class="panel-label-row">ATS results</span>
                 <button class="ctrl-btn" onclick="closeRight()" title="Collapse results"
                     aria-label="Collapse results">&#x2716;</button>
             </div>
@@ -1357,7 +1357,7 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
                     <div>
                         <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Employment</label>
                         <select id="scraper-employment" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
@@ -1366,6 +1366,10 @@
                             <option value="fulltime">Full-time</option>
                             <option value="parttime">Part-time</option>
                         </select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Country</label>
+                        <input type="text" id="scraper-country" placeholder="e.g. Argentina" oninput="updateQueryPreview()" style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12.5px; outline: none;">
                     </div>
                     <div>
                         <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Region</label>

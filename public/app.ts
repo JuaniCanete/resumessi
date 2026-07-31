@@ -1305,6 +1305,7 @@ function updateQueryPreview(): string {
   const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
   const stack = (document.getElementById('scraper-stack') as HTMLInputElement)?.value.trim() || '';
   const employment = (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+  const country = (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
   const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
   const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
 
@@ -1316,6 +1317,7 @@ function updateQueryPreview(): string {
     if (role) parts.push(role);
     if (stack) parts.push(stack);
     if (employment) parts.push(employment);
+    if (country) parts.push(country);
     if (region) parts.push(region);
     if (currency) parts.push(currency);
 
@@ -1337,7 +1339,15 @@ function updateQueryPreview(): string {
     }
 
     parts.push('("careers" OR "jobs" OR "open positions")');
-    if (region) parts.push(region);
+
+    // Combine country and region into a single quoted group for Google
+    const locationParts: string[] = [];
+    if (region) locationParts.push(region);
+    if (country) locationParts.push(country);
+    if (locationParts.length > 0) {
+      parts.push(`("${locationParts.join('" OR "')}")`);
+    }
+
     if (currency) parts.push(currency);
 
     const q = parts.join(' ');
@@ -1399,6 +1409,7 @@ async function startScraping(): Promise<void> {
   const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
   const stack = (document.getElementById('scraper-stack') as HTMLInputElement)?.value.trim() || '';
   const employmentType = (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+  const country = (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
   const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
   const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
 
@@ -1411,6 +1422,7 @@ async function startScraping(): Promise<void> {
     role,
     stack,
     employmentType,
+    country,
     region,
     currency,
     customDomains: currentScraperPlatform === 'google' ? customDomains : undefined,
