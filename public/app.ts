@@ -1397,7 +1397,7 @@ function updateQueryPreview(): string {
 }
 
 function toggleAllDomains(master: HTMLInputElement): void {
-  const checkboxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(:last-child)')) as HTMLInputElement[];
+  const checkboxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
   checkboxes.forEach(cb => { cb.checked = master.checked; });
   updateQueryPreview();
 }
@@ -1655,6 +1655,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 (window as unknown as Record<string, unknown>).openLatestScrapingResults = openLatestScrapingResults;
 (window as unknown as Record<string, unknown>).updateQueryPreview = updateQueryPreview;
 (window as unknown as Record<string, unknown>).addCustomDomain = addCustomDomain;
+(window as unknown as Record<string, unknown>).toggleAllDomains = toggleAllDomains;
 (window as unknown as Record<string, unknown>).copyQueryToClipboard = copyQueryToClipboard;
 (window as unknown as Record<string, unknown>).startScraping = startScraping;
 (window as unknown as Record<string, unknown>).cancelScraping = cancelScraping;
