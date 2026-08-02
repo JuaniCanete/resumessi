@@ -12,8 +12,8 @@ export interface ScraperResult {
 
 export interface ScraperQuery {
   source: 'linkedin' | 'google';
-  keywords: string;
-  role?: string;
+  role: string;
+  seniority?: string;
   employmentType?: string;    // e.g. 'fulltime' | 'contractor' | 'parttime'
   region?: string;            // e.g. 'LATAM' | 'US' | 'EU'
   country?: string;           // e.g. 'Argentina' | 'Brazil' | 'Mexico'

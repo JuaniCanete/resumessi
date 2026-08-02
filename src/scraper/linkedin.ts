@@ -36,8 +36,8 @@ export async function validateLinkedInStorageState(): Promise<boolean> {
 
 export function buildLinkedInSearchUrl(query: ScraperQuery): string {
   const parts: string[] = [];
-  if (query.keywords) parts.push(`"${query.keywords}"`);
-  if (query.role) parts.push(query.role);
+  if (query.role) parts.push(`"${query.role}"`);
+  if (query.seniority) parts.push(query.seniority);
   if (query.stack) parts.push(query.stack);
   if (query.employmentType) parts.push(query.employmentType);
   if (query.region) parts.push(query.region);

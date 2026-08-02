@@ -37,7 +37,28 @@ async function initResultsPage(): Promise<void> {
     return;
   }
 
+  updateResultsTabs(sourceParam);
   await loadDataAndRender(sourceParam);
+}
+
+function updateResultsTabs(source: 'linkedin' | 'google'): void {
+  const linkedinTab = document.getElementById('tab-linkedin');
+  const googleTab = document.getElementById('tab-google');
+  if (linkedinTab) {
+    linkedinTab.className = source === 'linkedin' ? 'result-tab-btn active' : 'result-tab-btn';
+    linkedinTab.style.background = source === 'linkedin' ? 'var(--accent)' : 'transparent';
+    linkedinTab.style.color = source === 'linkedin' ? '#fff' : 'rgba(255,255,255,0.7)';
+  }
+  if (googleTab) {
+    googleTab.className = source === 'google' ? 'result-tab-btn active' : 'result-tab-btn';
+    googleTab.style.background = source === 'google' ? 'var(--accent)' : 'transparent';
+    googleTab.style.color = source === 'google' ? '#fff' : 'rgba(255,255,255,0.7)';
+  }
+}
+
+function switchResultsTab(source: 'linkedin' | 'google'): void {
+  updateResultsTabs(source);
+  loadDataAndRender(source);
 }
 
 function showLoadingUI(source: 'linkedin' | 'google'): void {
@@ -73,7 +94,7 @@ function startPolling(source: 'linkedin' | 'google'): void {
       const resp = await fetch(`/api/scraper/results?source=${source}`);
       if (resp.ok) {
         const data = await resp.json() as ScraperRunPayload;
-        if (data && data.results && data.results.length > 0 && data.timestamp) {
+        if (data && data.timestamp) {
           const timestampMs = new Date(data.timestamp).getTime();
           if (timestampMs > initTime - 10000) {
             if (pollInterval) clearInterval(pollInterval);
@@ -121,8 +142,8 @@ async function loadDataAndRender(sourceParam: 'linkedin' | 'google'): Promise<vo
 
 function buildQueryUrl(source: 'linkedin' | 'google', query: Record<string, string>): string {
   const parts: string[] = [];
-  if (query.keywords) parts.push(query.keywords);
   if (query.role) parts.push(query.role);
+  if (query.seniority) parts.push(query.seniority);
   if (query.stack) parts.push(query.stack);
 
   if (source === 'linkedin') {
@@ -155,18 +176,19 @@ function buildQueryUrl(source: 'linkedin' | 'google', query: Record<string, stri
 }
 
 function renderResultsUI(): void {
+  // Always update badge first, even when there are no results
+  const badge = document.getElementById('source-badge');
+  if (badge && currentPayload) {
+    badge.textContent = currentPayload.source === 'linkedin' ? 'LinkedIn' : 'Google';
+    badge.className = `source-badge ${currentPayload.source}`;
+  }
+
   if (!currentPayload || !currentPayload.results || currentPayload.results.length === 0) {
     const noResults = document.getElementById('no-results');
     if (noResults) noResults.style.display = 'block';
     const pagination = document.getElementById('pagination');
     if (pagination) pagination.style.display = 'none';
     return;
-  }
-
-  const badge = document.getElementById('source-badge');
-  if (badge) {
-    badge.textContent = currentPayload.source === 'linkedin' ? 'LinkedIn' : 'Google';
-    badge.className = `source-badge ${currentPayload.source}`;
   }
 
   const timestampElem = document.getElementById('meta-timestamp');
@@ -184,7 +206,7 @@ function renderResultsUI(): void {
   const queryElem = document.getElementById('meta-query');
   if (queryElem && currentPayload.query) {
     const q = currentPayload.query;
-    const parts = [q.keywords, q.role, q.stack, q.employmentType, q.region, q.country, q.currency].filter(Boolean);
+    const parts = [q.role, q.seniority, q.stack, q.employmentType, q.region, q.country, q.currency].filter(Boolean);
     queryElem.textContent = parts.length > 0 ? parts.join(' • ') : 'All jobs';
   }
 

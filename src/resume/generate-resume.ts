@@ -193,7 +193,7 @@ async function main(): Promise<void> {
       }
     } else if (actualName) {
       // AI returned empty name but we found one in the input
-      console.warn('⚠️  AI returned empty name. Using expected name "' + actualName + '".');
+      console.warn('⚠️ AI returned empty name. Using expected name "' + actualName + '".');
       result.basics.name = actualName;
     }
 

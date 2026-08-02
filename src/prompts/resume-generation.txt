@@ -21,12 +21,14 @@
 # - For experience bullets, preserve HTML formatting like <strong> for emphasis
 # - Expert skills get "expert": true, others get false
 # - If any section is missing data, use empty arrays or null values
+# - For certifications or link backed information, preserve the links URLs
 #
 # ═══════════════════════════════════════════════════════════════
 # IDENTITY PRESERVATION — STRICT RULES
 # ═══════════════════════════════════════════════════════════════
 # - Extract the candidate's name VERBATIM from the input text. Do NOT paraphrase, normalize, "correct", or invent a name.
 # - If the input text says "Juani Cañete", the output basics.name MUST be "Juani Cañete".
+# - basics.name should be a name and the name should exist in the input text
 # - You are FORBIDDEN to generate output for any placeholder name like "John Doe", "Jane Doe", "Alex Johnson", or similar.
 # - If no name is visible in the input, output an empty string "" for basics.name — NEVER invent a fake name.
 #

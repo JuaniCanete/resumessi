@@ -294,14 +294,17 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         return;
       }
 
-      const file = Object.values(files)[0] as { filepath?: string } | undefined;
-      if (!file || !file.filepath) {
+      const rawFileField = Object.values(files)[0];
+      const file = Array.isArray(rawFileField) ? rawFileField[0] : rawFileField;
+      const parsedFile = file as { filepath?: string; originalFilename?: string } | undefined;
+
+      if (!parsedFile || !parsedFile.filepath) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'No PDF uploaded' }));
         return;
       }
 
-      const filepath = file.filepath;
+      const filepath =  parsedFile.filepath;
 
       try {
         const buffer = fs.readFileSync(filepath);
