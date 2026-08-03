@@ -137,6 +137,42 @@ function getRequestBody(req: http.IncomingMessage): Promise<string> {
   });
 }
 
+// Simple in-memory token bucket rate limiter (per IP) for resource-heavy endpoints.
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10;     // max requests per window per IP
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function getClientIp(req: http.IncomingMessage): string {
+  return req.socket.remoteAddress || 'unknown';
+}
+
+// Prune expired rate-limit buckets to avoid unbounded memory growth.
+function pruneRateLimitBuckets(): void {
+  const now = Date.now();
+  for (const [ip, bucket] of rateLimitBuckets) {
+    if (bucket.resetAt <= now) {
+      rateLimitBuckets.delete(ip);
+    }
+  }
+}
+
+function checkRateLimit(ip: string): { allowed: boolean; retryAfterMs: number } {
+  if (rateLimitBuckets.size > 1000) {
+    pruneRateLimitBuckets();
+  }
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(ip);
+  if (!bucket || bucket.resetAt <= now) {
+    rateLimitBuckets.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, retryAfterMs: 0 };
+  }
+  if (bucket.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return { allowed: false, retryAfterMs: bucket.resetAt - now };
+  }
+  bucket.count += 1;
+  return { allowed: true, retryAfterMs: 0 };
+}
+
 // Extract structured job parameters (location, remote, salary, etc.) via AI
 async function extractJobParameters(results: ScraperResult[], env: Record<string, string | undefined>): Promise<void> {
   if (results.length === 0) return;
@@ -453,6 +489,12 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   }
 
   if (requestPath === '/api/scraper/start' && req.method === 'POST') {
+    const rateLimitResult = checkRateLimit(getClientIp(req));
+    if (!rateLimitResult.allowed) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) });
+      res.end(JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }));
+      return;
+    }
     try {
       const body = await getRequestBody(req);
       const query: ScraperQuery = JSON.parse(body);
@@ -583,6 +625,12 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
   // API: Fetch URL content (for Check JD feature)
   if (requestPath === '/api/fetch-url' && req.method === 'POST') {
+    const rateLimitResult = checkRateLimit(getClientIp(req));
+    if (!rateLimitResult.allowed) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) });
+      res.end(JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }));
+      return;
+    }
     try {
       const body = await getRequestBody(req);
       const { url } = JSON.parse(body);
@@ -673,6 +721,12 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
   // API: ATS Scan (for Check JD feature in results page)
   if (requestPath === '/api/ats/scan' && req.method === 'POST') {
+    const rateLimitResult = checkRateLimit(getClientIp(req));
+    if (!rateLimitResult.allowed) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) });
+      res.end(JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }));
+      return;
+    }
     try {
       const body = await getRequestBody(req);
       const { jobDescription } = JSON.parse(body);
