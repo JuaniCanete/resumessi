@@ -188,12 +188,19 @@ function renderResultsUI(): void {
   }
 
   if (!currentPayload || !currentPayload.results || currentPayload.results.length === 0) {
+    // Clear any previously rendered cards so only the empty state shows
+    const list = document.getElementById('results-list');
+    if (list) list.innerHTML = '';
     const noResults = document.getElementById('no-results');
     if (noResults) noResults.style.display = 'block';
     const pagination = document.getElementById('pagination');
     if (pagination) pagination.style.display = 'none';
     return;
   }
+
+  // Hide the empty state when results are present
+  const noResults = document.getElementById('no-results');
+  if (noResults) noResults.style.display = 'none';
 
   const timestampElem = document.getElementById('meta-timestamp');
   if (timestampElem) {
