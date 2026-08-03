@@ -62,24 +62,36 @@ export function extractGoogleResultUrl(rawUrl: string): string {
   return rawUrl;
 }
 
+// Ordered list of selector strategies for Google search result blocks. Each
+// strategy is tried in sequence until one yields results. Google changes their
+// DOM frequently, so we layer stable fallbacks (data-* attributes, generic
+// heading anchors) on top of the current class names.
+const GOOGLE_RESULT_SELECTOR_STRATEGIES: string[] = [
+  // Primary: current Google result containers
+  'div.g, div.MjjYud',
+  // data-* attributes (more stable than class names)
+  'div[data-snf], div[data-hveid], div[data-async-context]',
+  // Search-result list containers
+  'div#search div.g, div#main div.g, div#rso div.g',
+  // Generic fallbacks: any heading inside a link that points to an external site
+  'a[href^="http"] h3',
+  'div.BNeawe',
+  'div.search-result, div[data-snf="n"]',
+];
+
 /**
  * Extract Google search result blocks from the current page.
+ * Tries multiple selector strategies in order and returns results from the
+ * first strategy that yields any blocks.
  */
 async function extractGoogleResults(page: import('playwright').Page): Promise<ScraperResult[]> {
   const pageResults: ScraperResult[] = [];
 
-  // Try multiple selector patterns for Google search results
-  const selectorPatterns = [
-    'div.g, div.MjjYud',
-    'div.search-result, div[data-snf="n"]',
-    'div.BNeawe',
-    'div.g a[href^="http"] h3',
-    'div#search div.g',
-    'div#main div.g',
-  ];
-
   let searchBlocks: import('playwright').Locator[] = [];
-  for (const selector of selectorPatterns) {
+  let triedSelectors: string[] = [];
+
+  for (const selector of GOOGLE_RESULT_SELECTOR_STRATEGIES) {
+    triedSelectors.push(selector);
     try {
       const locator = page.locator(selector);
       const count = await locator.count();
@@ -95,7 +107,21 @@ async function extractGoogleResults(page: import('playwright').Page): Promise<Sc
   }
 
   if (searchBlocks.length === 0) {
-    console.warn('[Google Scraper] No results found with any selector. Page may have different structure or be blocked.');
+    // Explicit failure diagnostics: list every selector tried plus page context
+    console.warn(
+      '[Google Scraper] No results found with any selector strategy. ' +
+      `Tried: ${triedSelectors.join(' | ')}. ` +
+      'Google may have changed their DOM structure or blocked automated access. ' +
+      'Update GOOGLE_RESULT_SELECTOR_STRATEGIES in src/scraper/google.ts.',
+    );
+    try {
+      console.log('[Google Scraper] Page title:', await page.title());
+      console.log('[Google Scraper] Current URL:', page.url());
+      const bodyText = await page.evaluate(() => document.body ? document.body.innerText.substring(0, 500) : '');
+      console.log('[Google Scraper] Body text preview:', JSON.stringify(bodyText));
+    } catch {
+      // ignore diagnostics errors
+    }
     const screenshotPath = path.join(process.cwd(), 'data', 'scraper-results', 'google-debug.png');
     try {
       await page.screenshot({ path: screenshotPath, fullPage: true });
