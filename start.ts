@@ -528,9 +528,6 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         } catch (err: unknown) {
           console.warn('[Scraper API] Summarization warning:', (err as Error).message);
         }
-
-        // Extract structured job parameters (location, remote, salary, etc.) via AI
-        await extractJobParameters(rawResults, env);
       }
 
       const resultsDir = path.join(ROOT, 'data', 'scraper-results');
@@ -549,6 +546,26 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
       const outputFile = path.join(resultsDir, `${query.source}.json`);
       fs.writeFileSync(outputFile, JSON.stringify(resultPayload, null, 2));
+
+      // Run parameter extraction in the background so the response is not
+      // delayed by a slow/failing AI call. When it completes, the results
+      // file is updated in place with the extracted parameters.
+      if (rawResults.length > 0) {
+        const resultsCopy = rawResults.map(r => ({ ...r }));
+        const outputFileCopy = outputFile;
+        const envCopy = env;
+        void (async () => {
+          try {
+            await extractJobParameters(resultsCopy, envCopy);
+            const current = JSON.parse(fs.readFileSync(outputFileCopy, 'utf-8'));
+            current.results = resultsCopy;
+            fs.writeFileSync(outputFileCopy, JSON.stringify(current, null, 2));
+            console.log('[Scraper API] Parameter extraction completed in background.');
+          } catch (err: unknown) {
+            console.warn('[Scraper API] Background parameter extraction failed:', (err as Error).message);
+          }
+        })();
+      }
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(resultPayload));
