@@ -24,7 +24,6 @@ let currentPage = 1;
 const RESULTS_PER_PAGE = 10;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 const initTime = Date.now();
-let currentAtsJobUrl: string | null = null;
 
 async function initResultsPage(): Promise<void> {
   const urlParams = new URLSearchParams(window.location.search);
@@ -113,6 +112,11 @@ function startPolling(source: 'linkedin' | 'google'): void {
 }
 
 async function loadDataAndRender(sourceParam: 'linkedin' | 'google'): Promise<void> {
+  // Reset stale payload when switching sources so the new source is always fetched
+  if (currentPayload && currentPayload.source !== sourceParam) {
+    currentPayload = null;
+  }
+
   const rawSession = sessionStorage.getItem('scraper-results');
   if (rawSession) {
     try {
@@ -469,7 +473,6 @@ function stripMarkdown(text: string): string {
 }
 
 function openJdEditModal(item: ScraperResult): void {
-  currentAtsJobUrl = item.url;
   const modal = document.getElementById('jd-edit-modal');
   const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
   const loading = document.getElementById('jd-fetch-loading');
@@ -530,7 +533,6 @@ async function fetchJobDescription(url: string): Promise<string> {
 function closeJdEditModal(): void {
   const modal = document.getElementById('jd-edit-modal');
   if (modal) modal.classList.remove('show');
-  currentAtsJobUrl = null;
 }
 
 async function runAtsScanFromResults(): Promise<void> {
@@ -617,6 +619,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 (window as unknown as Record<string, unknown>).closeAtsSidebar = closeAtsSidebar;
 (window as unknown as Record<string, unknown>).closeJdEditModal = closeJdEditModal;
 (window as unknown as Record<string, unknown>).runAtsScanFromResults = runAtsScanFromResults;
+(window as unknown as Record<string, unknown>).switchResultsTab = switchResultsTab;
 
 document.addEventListener('DOMContentLoaded', () => {
   initResultsPage();
