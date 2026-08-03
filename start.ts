@@ -593,6 +593,21 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         return;
       }
 
+      // SSRF protection: strict URL allowlist (protocol + hostname)
+      const ALLOWED_HOSTS = new Set([
+        'www.linkedin.com',
+        'linkedin.com',
+        'www.google.com',
+        'google.com',
+      ]);
+      const validateUrl = (urlStr: string): URL => {
+        const parsed = new URL(urlStr);
+        if (parsed.protocol !== 'https:') throw new Error('Only HTTPS allowed');
+        if (!ALLOWED_HOSTS.has(parsed.hostname)) throw new Error('Host not allowed');
+        return parsed;
+      };
+      validateUrl(url);
+
       // Fetch the URL content (follows redirects, sets realistic User-Agent)
       const fetchUrl = (urlStr: string, maxRedirects = 5): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -613,6 +628,13 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
               const redirectUrl = response.headers.location;
               // Handle relative redirects
               const nextUrl = redirectUrl.startsWith('http') ? redirectUrl : new URL(redirectUrl, urlStr).href;
+              try {
+                // Redirects must also satisfy the allowlist to prevent SSRF bypass
+                validateUrl(nextUrl);
+              } catch (err: unknown) {
+                reject(new Error(`Redirect blocked: ${(err as Error).message}`));
+                return;
+              }
               fetchUrl(nextUrl, maxRedirects - 1).then(resolve).catch(reject);
               return;
             }
