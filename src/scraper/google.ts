@@ -78,17 +78,19 @@ async function extractGoogleResults(page: import('playwright').Page): Promise<Sc
     'div#main div.g',
   ];
 
-  let searchBlocks: import('playwright').ElementHandle[] = [];
+  let searchBlocks: import('playwright').Locator[] = [];
   for (const selector of selectorPatterns) {
     try {
-      searchBlocks = await page.$$(selector);
+      const locator = page.locator(selector);
+      const count = await locator.count();
+      if (count > 0) {
+        searchBlocks = await locator.all();
+        console.log(`[Google Scraper] Found ${count} results using selector: ${selector}`);
+        break;
+      }
     } catch (err: unknown) {
       console.warn(`[Google Scraper] Selector failed (${selector}):`, (err as Error).message);
       continue;
-    }
-    if (searchBlocks.length > 0) {
-      console.log(`[Google Scraper] Found ${searchBlocks.length} results using selector: ${selector}`);
-      break;
     }
   }
 
@@ -104,13 +106,13 @@ async function extractGoogleResults(page: import('playwright').Page): Promise<Sc
   }
 
   for (const block of searchBlocks) {
-    const titleElem = await block.$('h3');
-    const linkElem = await block.$('a[href^="http"]');
-    const snippetElem = await block.$('div.VwiC3b, div.IsZvec, div[style*="-webkit-line-clamp"], div.BNeawe');
+    const titleLocator = block.locator('h3').first();
+    const linkLocator = block.locator('a[href^="http"]').first();
+    const snippetLocator = block.locator('div.VwiC3b, div.IsZvec, div[style*="-webkit-line-clamp"], div.BNeawe').first();
 
-    const title = titleElem ? (await titleElem.textContent())?.trim() : '';
-    const rawUrl = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
-    const snippet = snippetElem ? (await snippetElem.textContent())?.trim() : '';
+    const title = (await titleLocator.textContent())?.trim() ?? '';
+    const rawUrl = (await linkLocator.getAttribute('href')) || '';
+    const snippet = (await snippetLocator.textContent())?.trim() ?? '';
 
     // Unwrap Google's /url?q= redirect to get the real destination
     const url = extractGoogleResultUrl(rawUrl);

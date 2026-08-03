@@ -96,61 +96,83 @@ async function extractLinkedInJobDescription(
   }
 }
 
+// Ordered list of selector strategies for LinkedIn job cards. Each strategy is
+// tried in sequence until one yields results. Exact class names change when
+// LinkedIn updates their UI, so we layer stable fallbacks (data-testid,
+// data-job-id, generic list items) on top.
+const LINKEDIN_CARD_SELECTOR_STRATEGIES: string[][] = [
+  // Primary: current authenticated layout
+  ['.job-card-container, .base-card, .jobs-search-results__list-item, .job-card-list'],
+  // data-testid attributes (more stable than class names)
+  ['[data-testid="job-card"], [data-job-id], li[data-testid="job-card"]'],
+  // Guest / unauthenticated layout
+  ['ul.jobs-search__results-list > li', '.jobs-search-results__list-item'],
+  // Generic fallbacks: any anchor pointing to a LinkedIn job posting
+  ['a[href*="/jobs/view/"], a[href*="/jobs/"]'],
+];
+
 /**
  * Extract job card postings from the current LinkedIn search results page.
+ * Tries multiple selector strategies in order and returns results from the
+ * first strategy that yields any cards.
  */
 async function extractLinkedInCards(page: import('playwright').Page): Promise<ScraperResult[]> {
-  const pageResults: ScraperResult[] = [];
+  let cardLocators: import('playwright').Locator[] = [];
 
-  // Extract job card postings from LinkedIn
-  const cards = await page.$$('.job-card-container, .base-card, .jobs-search-results__list-item, .job-card-list');
-
-  if (cards.length === 0) {
-    // Fallback selector for unauthenticated/guest layout
-    const guestCards = await page.$$('ul.jobs-search__results-list > li');
-    for (const card of guestCards) {
-      const titleElem = await card.$('.base-search-card__title, .job-card-list__title');
-      const linkElem = await card.$('a.base-card__full-link, a.job-card-list__title, a[href*="/jobs/"]');
-      const companyElem = await card.$('.base-search-card__subtitle, .job-card-container__company-name');
-      const locationElem = await card.$('.job-search-card__location');
-
-      const title = titleElem ? (await titleElem.textContent())?.trim() : '';
-      const url = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
-      const company = companyElem ? (await companyElem.textContent())?.trim() : '';
-      const location = locationElem ? (await locationElem.textContent())?.trim() : '';
-
-      if (title && url) {
-        pageResults.push({
-          title,
-          url: url.startsWith('http') ? url : `https://www.linkedin.com${url}`,
-          snippet: `${company ? `Company: ${company}. ` : ''}${location ? `Location: ${location}.` : ''}`,
-          source: 'linkedin',
-          company,
-        });
-      }
-    }
-  } else {
-    for (const card of cards) {
-      const titleElem = await card.$('.job-card-list__title, .job-card-container__link, strong');
-      const linkElem = await card.$('a[href*="/jobs/"]');
-      const companyElem = await card.$('.job-card-container__primary-description, .job-card-container__company-name');
-
-      const title = titleElem ? (await titleElem.textContent())?.trim() : '';
-      const url = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
-      const company = companyElem ? (await companyElem.textContent())?.trim() : '';
-
-      if (title && url) {
-        pageResults.push({
-          title,
-          url: url.startsWith('http') ? url : `https://www.linkedin.com${url}`,
-          snippet: company ? `Company: ${company}` : '',
-          source: 'linkedin',
-          company,
-        });
-      }
+  for (const selectors of LINKEDIN_CARD_SELECTOR_STRATEGIES) {
+    const locator = page.locator(selectors.join(', '));
+    const count = await locator.count();
+    if (count > 0) {
+      cardLocators = await locator.all();
+      console.log(`[LinkedIn Scraper] Found ${count} cards using selectors: ${selectors.join(', ')}`);
+      break;
     }
   }
 
+  if (cardLocators.length === 0) {
+    console.warn(
+      '[LinkedIn Scraper] No job cards found with any selector strategy. ' +
+      'LinkedIn may have changed their DOM structure. Update LINKEDIN_CARD_SELECTOR_STRATEGIES in src/scraper/linkedin.ts.',
+    );
+    return [];
+  }
+
+  const pageResults: ScraperResult[] = [];
+
+  for (const card of cardLocators) {
+    // Titles are the most reliable signal; try all known title selectors
+    const titleLocator = card.locator(
+      '.job-card-list__title, .job-card-container__link, .base-search-card__title, strong, [data-testid="job-title"], a[href*="/jobs/"] h3, h3, a[href*="/jobs/"]',
+    ).first();
+    // Prefer explicit job-posting links over generic anchors
+    const linkLocator = card.locator(
+      'a[href*="/jobs/view/"], a.job-card-list__title, a.job-card-container__link, a.base-card__full-link, a[href*="/jobs/"]',
+    ).first();
+    const companyLocator = card.locator(
+      '.job-card-container__primary-description, .job-card-container__company-name, .base-search-card__subtitle, [data-testid="company-name"], .job-card-container__company-name',
+    ).first();
+    const locationLocator = card.locator(
+      '.job-search-card__location, [data-testid="job-location"], .job-card-container__metadata-item, .job-card-container__metadata-wrapper',
+    ).first();
+
+    const title = (await titleLocator.textContent())?.trim() ?? '';
+    const url = (await linkLocator.getAttribute('href')) || '';
+    const company = (await companyLocator.textContent())?.trim() ?? '';
+    const location = (await locationLocator.textContent())?.trim() ?? '';
+
+    if (title && url) {
+      const fullUrl = url.startsWith('http') ? url : `https://www.linkedin.com${url}`;
+      pageResults.push({
+        title,
+        url: fullUrl,
+        snippet: `${company ? `Company: ${company}. ` : ''}${location ? `Location: ${location}.` : ''}`.replace(/\. $/, '.'),
+        source: 'linkedin',
+        company,
+      });
+    }
+  }
+
+  console.log(`[LinkedIn Scraper] Extracted ${pageResults.length} jobs from ${cardLocators.length} cards`);
   return pageResults;
 }
 
