@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { launchStealthBrowser, randomDelay } from './browser';
+import { buildScraperSearchUrls } from './pagination';
 import type { ScraperQuery, ScraperResult } from './types';
 import { generateLinkedInStorageState } from '../../scripts/linkedin-auth';
 
@@ -95,6 +96,64 @@ async function extractLinkedInJobDescription(
   }
 }
 
+/**
+ * Extract job card postings from the current LinkedIn search results page.
+ */
+async function extractLinkedInCards(page: import('playwright').Page): Promise<ScraperResult[]> {
+  const pageResults: ScraperResult[] = [];
+
+  // Extract job card postings from LinkedIn
+  const cards = await page.$$('.job-card-container, .base-card, .jobs-search-results__list-item, .job-card-list');
+
+  if (cards.length === 0) {
+    // Fallback selector for unauthenticated/guest layout
+    const guestCards = await page.$$('ul.jobs-search__results-list > li');
+    for (const card of guestCards) {
+      const titleElem = await card.$('.base-search-card__title, .job-card-list__title');
+      const linkElem = await card.$('a.base-card__full-link, a.job-card-list__title, a[href*="/jobs/"]');
+      const companyElem = await card.$('.base-search-card__subtitle, .job-card-container__company-name');
+      const locationElem = await card.$('.job-search-card__location');
+
+      const title = titleElem ? (await titleElem.textContent())?.trim() : '';
+      const url = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
+      const company = companyElem ? (await companyElem.textContent())?.trim() : '';
+      const location = locationElem ? (await locationElem.textContent())?.trim() : '';
+
+      if (title && url) {
+        pageResults.push({
+          title,
+          url: url.startsWith('http') ? url : `https://www.linkedin.com${url}`,
+          snippet: `${company ? `Company: ${company}. ` : ''}${location ? `Location: ${location}.` : ''}`,
+          source: 'linkedin',
+          company,
+        });
+      }
+    }
+  } else {
+    for (const card of cards) {
+      const titleElem = await card.$('.job-card-list__title, .job-card-container__link, strong');
+      const linkElem = await card.$('a[href*="/jobs/"]');
+      const companyElem = await card.$('.job-card-container__primary-description, .job-card-container__company-name');
+
+      const title = titleElem ? (await titleElem.textContent())?.trim() : '';
+      const url = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
+      const company = companyElem ? (await companyElem.textContent())?.trim() : '';
+
+      if (title && url) {
+        pageResults.push({
+          title,
+          url: url.startsWith('http') ? url : `https://www.linkedin.com${url}`,
+          snippet: company ? `Company: ${company}` : '',
+          source: 'linkedin',
+          company,
+        });
+      }
+    }
+  }
+
+  return pageResults;
+}
+
 export async function scrapeLinkedIn(
   query: ScraperQuery,
   env: Record<string, string | undefined>,
@@ -112,69 +171,28 @@ export async function scrapeLinkedIn(
     storageStatePath: fs.existsSync(STORAGE_FILE) ? STORAGE_FILE : undefined,
   });
 
-  const searchUrl = buildLinkedInSearchUrl(query);
-  console.log(`[LinkedIn Scraper] Scraping URL: ${searchUrl}`);
+  const baseUrl = buildLinkedInSearchUrl(query);
+  const pageCount = query.pageCount ?? 3;
+  const searchUrls = buildScraperSearchUrls(baseUrl, 'linkedin', pageCount);
+  console.log(`[LinkedIn Scraper] Scraping ${searchUrls.length} page(s): ${searchUrls.join(', ')}`);
 
   const page = await context.newPage();
   const results: ScraperResult[] = [];
 
   try {
-    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await randomDelay(2000, 4000);
+    for (const searchUrl of searchUrls) {
+      await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await randomDelay(2000, 4000);
 
-    // Scroll down to load jobs dynamically
-    for (let i = 0; i < 3; i++) {
-      await page.evaluate(() => window.scrollBy(0, 600));
-      await randomDelay(1500, 3000);
-    }
-
-    // Extract job card postings from LinkedIn
-    const cards = await page.$$('.job-card-container, .base-card, .jobs-search-results__list-item, .job-card-list');
-
-    if (cards.length === 0) {
-      // Fallback selector for unauthenticated/guest layout
-      const guestCards = await page.$$('ul.jobs-search__results-list > li');
-      for (const card of guestCards) {
-        const titleElem = await card.$('.base-search-card__title, .job-card-list__title');
-        const linkElem = await card.$('a.base-card__full-link, a.job-card-list__title, a[href*="/jobs/"]');
-        const companyElem = await card.$('.base-search-card__subtitle, .job-card-container__company-name');
-        const locationElem = await card.$('.job-search-card__location');
-
-        const title = titleElem ? (await titleElem.textContent())?.trim() : '';
-        const url = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
-        const company = companyElem ? (await companyElem.textContent())?.trim() : '';
-        const location = locationElem ? (await locationElem.textContent())?.trim() : '';
-
-        if (title && url) {
-          results.push({
-            title,
-            url: url.startsWith('http') ? url : `https://www.linkedin.com${url}`,
-            snippet: `${company ? `Company: ${company}. ` : ''}${location ? `Location: ${location}.` : ''}`,
-            source: 'linkedin',
-            company,
-          });
-        }
+      // Scroll down to load jobs dynamically
+      for (let i = 0; i < 3; i++) {
+        await page.evaluate(() => window.scrollBy(0, 600));
+        await randomDelay(1500, 3000);
       }
-    } else {
-      for (const card of cards) {
-        const titleElem = await card.$('.job-card-list__title, .job-card-container__link, strong');
-        const linkElem = await card.$('a[href*="/jobs/"]');
-        const companyElem = await card.$('.job-card-container__primary-description, .job-card-container__company-name');
 
-        const title = titleElem ? (await titleElem.textContent())?.trim() : '';
-        const url = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
-        const company = companyElem ? (await companyElem.textContent())?.trim() : '';
-
-        if (title && url) {
-          results.push({
-            title,
-            url: url.startsWith('http') ? url : `https://www.linkedin.com${url}`,
-            snippet: company ? `Company: ${company}` : '',
-            source: 'linkedin',
-            company,
-          });
-        }
-      }
+      const pageResults = await extractLinkedInCards(page);
+      console.log(`[LinkedIn Scraper] Page ${searchUrl} yielded ${pageResults.length} results`);
+      results.push(...pageResults);
     }
 
     // Visit individual job pages to extract the full JD ("About the job" → "Set alert for similar jobs")

@@ -20,6 +20,7 @@ export interface ScraperQuery {
   currency?: string;          // e.g. 'USD' | 'ARS' | 'EUR'
   stack?: string;             // e.g. 'React, Node.js, TypeScript'
   customDomains?: string[];   // target domains for Google scraper
+  pageCount?: number;         // number of search result pages to scrape (default 3)
 }
 
 export interface ScraperRunMeta {

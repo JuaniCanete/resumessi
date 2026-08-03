@@ -1,5 +1,6 @@
 import path from 'path';
 import { launchStealthBrowser, randomDelay } from './browser';
+import { buildScraperSearchUrls } from './pagination';
 import type { ScraperQuery, ScraperResult } from './types';
 
 export const DEFAULT_TARGET_DOMAINS = [
@@ -61,90 +62,107 @@ export function extractGoogleResultUrl(rawUrl: string): string {
   return rawUrl;
 }
 
+/**
+ * Extract Google search result blocks from the current page.
+ */
+async function extractGoogleResults(page: import('playwright').Page): Promise<ScraperResult[]> {
+  const pageResults: ScraperResult[] = [];
+
+  // Try multiple selector patterns for Google search results
+  const selectorPatterns = [
+    'div.g, div.MjjYud',
+    'div.search-result, div[data-snf="n"]',
+    'div.BNeawe',
+    'div.g a[href^="http"] h3',
+    'div#search div.g',
+    'div#main div.g',
+  ];
+
+  let searchBlocks: import('playwright').ElementHandle[] = [];
+  for (const selector of selectorPatterns) {
+    try {
+      searchBlocks = await page.$$(selector);
+    } catch (err: unknown) {
+      console.warn(`[Google Scraper] Selector failed (${selector}):`, (err as Error).message);
+      continue;
+    }
+    if (searchBlocks.length > 0) {
+      console.log(`[Google Scraper] Found ${searchBlocks.length} results using selector: ${selector}`);
+      break;
+    }
+  }
+
+  if (searchBlocks.length === 0) {
+    console.warn('[Google Scraper] No results found with any selector. Page may have different structure or be blocked.');
+    const screenshotPath = path.join(process.cwd(), 'data', 'scraper-results', 'google-debug.png');
+    try {
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      console.log('[Google Scraper] Saved debug screenshot to:', screenshotPath);
+    } catch {
+      // ignore screenshot errors
+    }
+  }
+
+  for (const block of searchBlocks) {
+    const titleElem = await block.$('h3');
+    const linkElem = await block.$('a[href^="http"]');
+    const snippetElem = await block.$('div.VwiC3b, div.IsZvec, div[style*="-webkit-line-clamp"], div.BNeawe');
+
+    const title = titleElem ? (await titleElem.textContent())?.trim() : '';
+    const rawUrl = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
+    const snippet = snippetElem ? (await snippetElem.textContent())?.trim() : '';
+
+    // Unwrap Google's /url?q= redirect to get the real destination
+    const url = extractGoogleResultUrl(rawUrl);
+
+    // Only skip actual Google-internal pages (search, accounts, etc.), not redirect-wrapped results
+    if (title && url && !url.includes('google.com/search') && !url.includes('accounts.google')) {
+      pageResults.push({
+        title,
+        url,
+        snippet: snippet || title,
+        source: 'google',
+      });
+    }
+  }
+
+  return pageResults;
+}
+
 export async function scrapeGoogle(query: ScraperQuery): Promise<ScraperResult[]> {
   const { browser, context } = await launchStealthBrowser({ headless: true });
-  const searchUrl = buildGoogleSearchUrl(query);
-  console.log(`[Google Scraper] Scraping URL: ${searchUrl}`);
+  const baseUrl = buildGoogleSearchUrl(query);
+  const pageCount = query.pageCount ?? 3;
+  const searchUrls = buildScraperSearchUrls(baseUrl, 'google', pageCount);
+  console.log(`[Google Scraper] Scraping ${searchUrls.length} page(s): ${searchUrls.join(', ')}`);
 
   const page = await context.newPage();
   const results: ScraperResult[] = [];
 
   try {
-    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await randomDelay(2000, 3500);
+    for (const searchUrl of searchUrls) {
+      await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await randomDelay(2000, 3500);
 
-    console.log('[Google Scraper] Page title:', await page.title());
-    console.log('[Google Scraper] Current URL:', page.url());
+      console.log('[Google Scraper] Page title:', await page.title());
+      console.log('[Google Scraper] Current URL:', page.url());
 
-    // Detect Google bot-block page (CAPTCHA / "sorry" page)
-    if (page.url().includes('/sorry/index')) {
-      console.warn('[Google Scraper] Google is blocking automated access (CAPTCHA / sorry page).');
-      const screenshotPath = path.join(process.cwd(), 'data', 'scraper-results', 'google-debug.png');
-      try {
-        await page.screenshot({ path: screenshotPath, fullPage: true });
-        console.log('[Google Scraper] Saved debug screenshot to:', screenshotPath);
-      } catch {
-        // ignore screenshot errors
-      }
-      return results;
-    }
-
-    // Try multiple selector patterns for Google search results
-    const selectorPatterns = [
-      'div.g, div.MjjYud',
-      'div.search-result, div[data-snf="n"]',
-      'div.BNeawe',
-      'div.g a[href^="http"] h3',
-      'div#search div.g',
-      'div#main div.g',
-    ];
-
-    let searchBlocks: import('playwright').ElementHandle[] = [];
-    for (const selector of selectorPatterns) {
-      try {
-        searchBlocks = await page.$$(selector);
-      } catch (err: unknown) {
-        console.warn(`[Google Scraper] Selector failed (${selector}):`, (err as Error).message);
-        continue;
-      }
-      if (searchBlocks.length > 0) {
-        console.log(`[Google Scraper] Found ${searchBlocks.length} results using selector: ${selector}`);
+      // Detect Google bot-block page (CAPTCHA / "sorry" page)
+      if (page.url().includes('/sorry/index')) {
+        console.warn('[Google Scraper] Google is blocking automated access (CAPTCHA / sorry page).');
+        const screenshotPath = path.join(process.cwd(), 'data', 'scraper-results', 'google-debug.png');
+        try {
+          await page.screenshot({ path: screenshotPath, fullPage: true });
+          console.log('[Google Scraper] Saved debug screenshot to:', screenshotPath);
+        } catch {
+          // ignore screenshot errors
+        }
         break;
       }
-    }
 
-    if (searchBlocks.length === 0) {
-      console.warn('[Google Scraper] No results found with any selector. Page may have different structure or be blocked.');
-      const screenshotPath = path.join(process.cwd(), 'data', 'scraper-results', 'google-debug.png');
-      try {
-        await page.screenshot({ path: screenshotPath, fullPage: true });
-        console.log('[Google Scraper] Saved debug screenshot to:', screenshotPath);
-      } catch {
-        // ignore screenshot errors
-      }
-    }
-
-    for (const block of searchBlocks) {
-      const titleElem = await block.$('h3');
-      const linkElem = await block.$('a[href^="http"]');
-      const snippetElem = await block.$('div.VwiC3b, div.IsZvec, div[style*="-webkit-line-clamp"], div.BNeawe');
-
-      const title = titleElem ? (await titleElem.textContent())?.trim() : '';
-      const rawUrl = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
-      const snippet = snippetElem ? (await snippetElem.textContent())?.trim() : '';
-
-      // Unwrap Google's /url?q= redirect to get the real destination
-      const url = extractGoogleResultUrl(rawUrl);
-
-      // Only skip actual Google-internal pages (search, accounts, etc.), not redirect-wrapped results
-      if (title && url && !url.includes('google.com/search') && !url.includes('accounts.google')) {
-        results.push({
-          title,
-          url,
-          snippet: snippet || title,
-          source: 'google',
-        });
-      }
+      const pageResults = await extractGoogleResults(page);
+      console.log(`[Google Scraper] Page ${searchUrl} yielded ${pageResults.length} results`);
+      results.push(...pageResults);
     }
   } catch (err: unknown) {
     console.error('[Google Scraper] Error during scraping:', (err as Error).message);

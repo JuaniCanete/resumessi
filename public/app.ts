@@ -844,23 +844,6 @@ function showModalError(message: string): void {
   document.getElementById('modal-actions')!.style.display = 'flex';
 }
 
-// function extractNameFromPDFText(text: string): string | null {
-//   if (!text) return null;
-//   const lines = text.split('\n');
-//   for (let i = 0; i < lines.length; i++) {
-//     const line = lines[i].trim();
-//     if (!line || line.length < 3 || line.length > 60) continue;
-//     if (/^(email|phone|location|linkedin|github|http|www|@)/i.test(line)) continue;
-//     const words = line.split(/\s+/);
-//     if (words.length >= 2 && words.length <= 4) {
-//       if (/^[a-zA-ZÀ-ÿñÑ'. -]+$/.test(line) && !/\d/.test(line)) {
-//         return line;
-//       }
-//     }
-//   }
-//   return null;
-// }
-
 function extractNameFromPDFText(text: string): string | null {
   if (!text) return null;
   
