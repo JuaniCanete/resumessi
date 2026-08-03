@@ -191,6 +191,18 @@ function renderResultsUI(): void {
     // Clear any previously rendered cards so only the empty state shows
     const list = document.getElementById('results-list');
     if (list) list.innerHTML = '';
+
+    // Reset header meta fields to their empty-state defaults so stale data from
+    // the previously selected source never lingers (Issue 6)
+    const timestampElem = document.getElementById('meta-timestamp');
+    if (timestampElem) timestampElem.textContent = 'No results';
+    const totalElem = document.getElementById('meta-total');
+    if (totalElem) totalElem.textContent = 'N/A';
+    const queryElem = document.getElementById('meta-query');
+    if (queryElem) queryElem.textContent = 'N/A';
+    const queryLinkWrapper = document.getElementById('query-link-wrapper');
+    if (queryLinkWrapper) queryLinkWrapper.style.display = 'none';
+
     const noResults = document.getElementById('no-results');
     if (noResults) noResults.style.display = 'block';
     const pagination = document.getElementById('pagination');

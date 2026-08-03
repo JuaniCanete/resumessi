@@ -70,6 +70,12 @@ test.describe('Scraper Results — Tab Switching', () => {
 		await expect(page.locator('#results-list')).not.toContainText('LinkedIn Job Result');
 		await expect(page.locator('#results-list')).toBeEmpty();
 		await expect(page.locator('#pagination')).not.toBeVisible();
+
+		// Header meta fields must be reset to empty-state defaults (Issue 6)
+		await expect(page.locator('#meta-timestamp')).toHaveText('No results');
+		await expect(page.locator('#meta-total')).toHaveText('N/A');
+		await expect(page.locator('#meta-query')).toHaveText('N/A');
+		await expect(page.locator('#query-link-wrapper')).not.toBeVisible();
 	});
 
 	test('switchResultsTab is wired and toggles between LinkedIn and Google results', async ({ page }) => {
