@@ -866,6 +866,8 @@ function extractNameFromPDFText(text: string): string | null {
   
   const lines = text.split('\n');
   const headerBlacklist = /^(summary|professional summary|profile|experience|work experience|education|skills|certifications|contact|about|objective|languages)/i;
+  // Common job-title / role words that should never be treated as a person's name
+  const jobTitleBlacklist = /^(senior|junior|lead|staff|principal|mid|mid-level|entry|entry-level|software|frontend|front-end|backend|back-end|fullstack|full-stack|devops|sdet|qa|quality|automation|engineer|developer|manager|director|architect|analyst|consultant|specialist|designer|product|project|program|scrum|agile|data|cloud|platform|infrastructure|network|security|test|testing|tester|intern|internship|contractor|freelance|remote|head|chief|cto|ceo|coo|cfo|vp|vice|president|founder|owner|recruiter|talent|people|hr|human|resources|marketing|sales|finance|legal|operations|support|success|account|business|strategy|growth|content|writer|copywriter|editor|teacher|professor|nurse|doctor|lawyer|accountant|architect|scientist|researcher|technician|coordinator|assistant|associate|representative|officer|leadership|lead)/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -874,6 +876,7 @@ function extractNameFromPDFText(text: string): string | null {
     if (/^(email|phone|location|linkedin|github|http|www|@)/i.test(line)) continue;
     if (headerBlacklist.test(line)) continue;
     if (line === line.toUpperCase() && /[A-Z]/.test(line)) continue;
+    if (jobTitleBlacklist.test(line)) continue;
 
     const words = line.split(/\s+/);
 
