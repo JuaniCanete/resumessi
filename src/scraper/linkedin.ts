@@ -97,15 +97,12 @@ async function extractLinkedInJobDescription(
   }
 }
 
-export async function scrapeLinkedIn(
-  query: ScraperQuery,
-  env: Record<string, string | undefined>,
-): Promise<ScraperResult[]> {
+export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult[]> {
   // Precondition: check state validity
   let isValid = await validateLinkedInStorageState();
   if (!isValid) {
     console.log('[LinkedIn Scraper] Storage state invalid or missing. Auto-regenerating...');
-    await generateLinkedInStorageState(env);
+    await generateLinkedInStorageState();
     isValid = await validateLinkedInStorageState();
   }
 

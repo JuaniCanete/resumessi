@@ -506,7 +506,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       let rawResults: ScraperResult[] = [];
 
       if (query.source === 'linkedin') {
-        rawResults = await scrapeLinkedIn(query, env);
+        rawResults = await scrapeLinkedIn(query);
       } else {
         rawResults = await scrapeGoogle(query);
       }
@@ -588,8 +588,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
   if (requestPath === '/api/scraper/regenerate-linkedin' && req.method === 'POST') {
     try {
-      const env = getFullConfigFromEnv();
-      const success = await generateLinkedInStorageState(env);
+      const success = await generateLinkedInStorageState();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success, message: success ? 'Storage state regenerated' : 'Failed to regenerate storage state' }));
     } catch (err: unknown) {
