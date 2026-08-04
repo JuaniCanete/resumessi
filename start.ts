@@ -70,9 +70,6 @@ function parseEnvFile(): Record<string, string | undefined> {
     BG_BADGE_COLOR: '#f1f5f9',
     SUCCESS_COLOR: '#0ea5e9',
     LINKEDIN_AUTH: 'codegen',
-    LINKEDIN_EMAIL: '',
-    LINKEDIN_PASSWORD: '',
-    LINKEDIN_OTP_SECRET: '',
     CHROME_PATH: '',
   };
 

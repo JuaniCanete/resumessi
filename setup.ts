@@ -113,9 +113,6 @@ SUCCESS_COLOR=${env.SUCCESS_COLOR || '#0ea5e9'}
 
 # --- LinkedIn Scraper ---
 LINKEDIN_AUTH=${env.LINKEDIN_AUTH || 'codegen'}
-LINKEDIN_EMAIL=${env.LINKEDIN_EMAIL || ''}
-LINKEDIN_PASSWORD=${env.LINKEDIN_PASSWORD || ''}
-LINKEDIN_OTP_SECRET=${env.LINKEDIN_OTP_SECRET || ''}
 `;
   fs.writeFileSync(filePath, content, 'utf-8');
 }
@@ -260,19 +257,8 @@ async function main(): Promise<void> {
     console.log('║     LinkedIn Scraper Configuration       ║');
     console.log('╚══════════════════════════════════════════╝');
     console.log('');
-    console.log('Select LinkedIn Auth Mechanism:');
-    console.log('  1. Codegen (Manual login in visible browser window — recommended & safest)');
-    console.log('  2. Automated (AI login using credentials + Google Authenticator TOTP)');
-    console.log('');
-    const linkedinChoice = await ask('Choice (1 or 2, default: 1): ', '1');
-    if (linkedinChoice === '2') {
-      env.LINKEDIN_AUTH = 'ai';
-      env.LINKEDIN_EMAIL = await ask('  LinkedIn Email: ', env.LINKEDIN_EMAIL || '');
-      env.LINKEDIN_PASSWORD = await ask('  LinkedIn Password: ', env.LINKEDIN_PASSWORD || '');
-      env.LINKEDIN_OTP_SECRET = await ask('  Google Authenticator OTP Secret (base32): ', env.LINKEDIN_OTP_SECRET || '');
-    } else {
-      env.LINKEDIN_AUTH = 'codegen';
-    }
+    console.log('LinkedIn authentication: codegen mode (manual login in visible browser window).');
+    env.LINKEDIN_AUTH = 'codegen';
   } else {
     // Silent mode: ensure at least one key exists
     const hasAnyKey = PROVIDERS.some(p => env[p.keyEnv] && env[p.keyEnv] !== `your_${p.id}_key_here`);
