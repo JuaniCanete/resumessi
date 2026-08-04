@@ -846,15 +846,36 @@ function showModalError(message: string): void {
 
 function extractNameFromPDFText(text: string): string | null {
   if (!text) return null;
+  
   const lines = text.split('\n');
+  const headerBlacklist = /^(summary|professional summary|profile|experience|work experience|education|skills|certifications|contact|about|objective|languages)/i;
+  // Common job-title / role words that should never be treated as a person's name
+  const jobTitleBlacklist = /^(senior|junior|lead|staff|principal|mid|mid-level|entry|entry-level|software|frontend|front-end|backend|back-end|fullstack|full-stack|devops|sdet|qa|quality|automation|engineer|developer|manager|director|architect|analyst|consultant|specialist|designer|product|project|program|scrum|agile|data|cloud|platform|infrastructure|network|security|test|testing|tester|intern|internship|contractor|freelance|remote|head|chief|cto|ceo|coo|cfo|vp|vice|president|founder|owner|recruiter|talent|people|hr|human|resources|marketing|sales|finance|legal|operations|support|success|account|business|strategy|growth|content|writer|copywriter|editor|teacher|professor|nurse|doctor|lawyer|accountant|architect|scientist|researcher|technician|coordinator|assistant|associate|representative|officer|leadership|lead)/i;
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
+
     if (!line || line.length < 3 || line.length > 60) continue;
     if (/^(email|phone|location|linkedin|github|http|www|@)/i.test(line)) continue;
+    if (headerBlacklist.test(line)) continue;
+    if (line === line.toUpperCase() && /[A-Z]/.test(line)) continue;
+    if (jobTitleBlacklist.test(line)) continue;
+
     const words = line.split(/\s+/);
+
     if (words.length >= 2 && words.length <= 4) {
       if (/^[a-zA-ZÀ-ÿñÑ'. -]+$/.test(line) && !/\d/.test(line)) {
-        return line;
+        const isLikelyName = words.every(word => {
+          const firstChar = word.charAt(0);
+          return (
+            firstChar === firstChar.toUpperCase() || 
+            /^(de|del|la|las|los|y)$/i.test(word)
+          );
+        });
+
+        if (isLikelyName) {
+          return line;
+        }
       }
     }
   }
@@ -907,7 +928,7 @@ async function confirmGeneration(): Promise<void> {
 
     const resumeData = JSON.parse(raw) as Record<string, unknown>;
 
-    const halluncinatedNames = ['john doe', 'jane doe', 'alex johnson', 'your name', 'candidate', 'todo'];
+    const hallucinatedNames = ['john doe', 'jane doe', 'alex johnson', 'your name', 'candidate', 'todo'];
 
     const expectedName = extractNameFromPDFText(currentPDFText);
     const basics = resumeData.basics as Record<string, unknown> | undefined;
@@ -916,7 +937,7 @@ async function confirmGeneration(): Promise<void> {
     if (outputNameRaw) {
       const outputLower = outputNameRaw.toLowerCase().trim();
 
-      const isHallucinated = halluncinatedNames.some(function (p) {
+      const isHallucinated = hallucinatedNames.some(function (p) {
         return outputLower === p || outputLower.includes(p);
       });
       if (isHallucinated) {
@@ -1301,10 +1322,11 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
 }
 
 function updateQueryPreview(): string {
-  const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
   const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
+  const seniority = (document.getElementById('scraper-seniority') as HTMLInputElement)?.value.trim() || '';
   const stack = (document.getElementById('scraper-stack') as HTMLInputElement)?.value.trim() || '';
   const employment = (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+  const country = (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
   const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
   const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
 
@@ -1312,10 +1334,11 @@ function updateQueryPreview(): string {
 
   if (currentScraperPlatform === 'linkedin') {
     const parts: string[] = [];
-    if (keywords) parts.push(keywords);
     if (role) parts.push(role);
+    if (seniority) parts.push(seniority);
     if (stack) parts.push(stack);
     if (employment) parts.push(employment);
+    if (country) parts.push(country);
     if (region) parts.push(region);
     if (currency) parts.push(currency);
 
@@ -1323,8 +1346,8 @@ function updateQueryPreview(): string {
     generatedUrl = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(q)}`;
   } else {
     const parts: string[] = [];
-    if (keywords) parts.push(keywords);
-    if (role) parts.push(role);
+    if (role) parts.push(`"${role}"`);
+    if (seniority) parts.push(seniority);
     if (stack) parts.push(stack);
     if (employment) parts.push(employment);
 
@@ -1334,10 +1357,17 @@ function updateQueryPreview(): string {
     if (domains.length > 0) {
       const siteQuery = domains.map(d => `site:${d}`).join(' OR ');
       parts.push(`(${siteQuery})`);
+      parts.push('("careers" OR "jobs" OR "open positions" OR "hiring")');
     }
 
-    parts.push('("careers" OR "jobs" OR "open positions")');
-    if (region) parts.push(region);
+    // Combine country and region into a single quoted group for Google
+    const locationParts: string[] = [];
+    if (region) locationParts.push(region);
+    if (country) locationParts.push(country);
+    if (locationParts.length > 0) {
+      parts.push(`("${locationParts.join('" OR "')}")`);
+    }
+
     if (currency) parts.push(currency);
 
     const q = parts.join(' ');
@@ -1350,6 +1380,12 @@ function updateQueryPreview(): string {
   }
 
   return generatedUrl;
+}
+
+function toggleAllDomains(master: HTMLInputElement): void {
+  const checkboxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
+  checkboxes.forEach(cb => { cb.checked = master.checked; });
+  updateQueryPreview();
 }
 
 function addCustomDomain(): void {
@@ -1395,25 +1431,27 @@ function copyQueryToClipboard(): void {
 }
 
 async function startScraping(): Promise<void> {
-  const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
   const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
+  const seniority = (document.getElementById('scraper-seniority') as HTMLInputElement)?.value.trim() || '';
   const stack = (document.getElementById('scraper-stack') as HTMLInputElement)?.value.trim() || '';
   const employmentType = (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+  const country = (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
   const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
   const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
 
   const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked')) as HTMLInputElement[];
-  const customDomains = checkedBoxes.map(cb => cb.value.trim()).filter(Boolean);
+  const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
 
   const queryPayload = {
     source: currentScraperPlatform,
-    keywords,
     role,
+    seniority,
     stack,
     employmentType,
+    country,
     region,
     currency,
-    customDomains: currentScraperPlatform === 'google' ? customDomains : undefined,
+    customDomains,
   };
 
   closeJobScraperModal();
@@ -1603,10 +1641,9 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 (window as unknown as Record<string, unknown>).openLatestScrapingResults = openLatestScrapingResults;
 (window as unknown as Record<string, unknown>).updateQueryPreview = updateQueryPreview;
 (window as unknown as Record<string, unknown>).addCustomDomain = addCustomDomain;
+(window as unknown as Record<string, unknown>).toggleAllDomains = toggleAllDomains;
 (window as unknown as Record<string, unknown>).copyQueryToClipboard = copyQueryToClipboard;
 (window as unknown as Record<string, unknown>).startScraping = startScraping;
 (window as unknown as Record<string, unknown>).cancelScraping = cancelScraping;
 (window as unknown as Record<string, unknown>).refreshScrapingResultsButton = refreshScrapingResultsButton;
 (window as unknown as Record<string, unknown>).openResultsTabFromOverlay = openResultsTabFromOverlay;
-
-

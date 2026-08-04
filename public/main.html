@@ -1078,7 +1078,7 @@
             <div class="panel-ctrl-row">
                 <button class="ctrl-btn" onclick="toggleLeft()" title="Collapse sidebar"
                     aria-label="Collapse sidebar">&#9776;</button>
-                <span class="panel-label-row">resumessi JD validation</span>
+                <span class="panel-label-row">JD validation</span>
             </div>
 
             <div class="p-group" style="flex: 1; display: flex; flex-direction: column;">
@@ -1186,7 +1186,7 @@
             <div class="panel-ctrl-row">
                 <button class="ctrl-btn" id="rp-expand-btn" onclick="expandRight()" title="Expand panel"
                     aria-label="Expand panel">&#x26F6;</button>
-                <span class="panel-label-row">resumessi ATS results</span>
+                <span class="panel-label-row">ATS results</span>
                 <button class="ctrl-btn" onclick="closeRight()" title="Collapse results"
                     aria-label="Collapse results">&#x2716;</button>
             </div>
@@ -1246,7 +1246,7 @@
                     background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
                 onmouseenter="this.style.background='var(--accent)'" 
                 onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            <h2 style="color: #fff; margin-bottom: 20px; text-align: center;">✨ AI Resume Generation</h2>
+            <h2 style="color: #fff; margin-bottom: 20px; text-align: center;">AI Resume Generation ✨</h2>
 
             <!-- Upload Section -->
             <div id="modal-upload-section">
@@ -1342,14 +1342,14 @@
             <!-- Query Builder Fields -->
             <div style="display: flex; flex-direction: column; gap: 14px;">
                 <div>
-                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Keywords / Title</label>
-                    <input type="text" id="scraper-keywords" placeholder="e.g. Fullstack Engineer, Frontend Developer" oninput="updateQueryPreview()" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Role / Title</label>
+                    <input type="text" id="scraper-role" placeholder="e.g. Fullstack Engineer, Frontend Developer" oninput="updateQueryPreview()" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                     <div>
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Role Hint</label>
-                        <input type="text" id="scraper-role" placeholder="e.g. Senior, Lead, Staff" oninput="updateQueryPreview()" style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12.5px; outline: none;">
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Seniority</label>
+                        <input type="text" id="scraper-seniority" placeholder="e.g. Senior, Lead, Staff" oninput="updateQueryPreview()" style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12.5px; outline: none;">
                     </div>
                     <div>
                         <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Stack / Technologies</label>
@@ -1357,7 +1357,7 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
                     <div>
                         <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Employment</label>
                         <select id="scraper-employment" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
@@ -1366,6 +1366,10 @@
                             <option value="fulltime">Full-time</option>
                             <option value="parttime">Part-time</option>
                         </select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Country</label>
+                        <input type="text" id="scraper-country" placeholder="e.g. Argentina" oninput="updateQueryPreview()" style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12.5px; outline: none;">
                     </div>
                     <div>
                         <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Region</label>
@@ -1392,11 +1396,12 @@
                 <div id="google-domains-section" style="display: none; background: rgba(0,0,0,0.2); padding: 14px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.08);">
                     <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">Target Domains</label>
                     <div id="domains-checklist" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="teamtailor.com" checked onchange="updateQueryPreview()"> teamtailor.com</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="greenhouse.io" checked onchange="updateQueryPreview()"> greenhouse.io</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="lever.co" checked onchange="updateQueryPreview()"> lever.co</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="workday.com" checked onchange="updateQueryPreview()"> workday.com</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="jobs.ashbyhq.com" checked onchange="updateQueryPreview()"> ashbyhq.com</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="teamtailor.com" onchange="updateQueryPreview()"> teamtailor.com</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="greenhouse.io" onchange="updateQueryPreview()"> greenhouse.io</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="lever.co" onchange="updateQueryPreview()"> lever.co</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="workday.com" onchange="updateQueryPreview()"> workday.com</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="jobs.ashbyhq.com" onchange="updateQueryPreview()"> ashbyhq.com</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;"><input type="checkbox" id="select-all-domains" onchange="toggleAllDomains(this)"> Select All / Deselect All</label>
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <input type="text" id="custom-domain-input" placeholder="Add custom domain (e.g. bamboohr.com)" style="flex: 1; padding: 7px 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 12px; outline: none;">

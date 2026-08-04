@@ -12,7 +12,7 @@ export interface ScraperResult {
 
 export interface ScraperQuery {
   source: 'linkedin' | 'google';
-  keywords: string;
+  keywords?: string;
   role?: string;
   seniority?: string;          // e.g. 'Senior' | 'Lead' | 'Junior'
   employmentType?: string;    // e.g. 'fulltime' | 'contractor' | 'parttime'
