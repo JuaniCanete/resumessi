@@ -137,6 +137,42 @@ function getRequestBody(req: http.IncomingMessage): Promise<string> {
   });
 }
 
+// Simple in-memory token bucket rate limiter (per IP) for resource-heavy endpoints.
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10;     // max requests per window per IP
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function getClientIp(req: http.IncomingMessage): string {
+  return req.socket.remoteAddress || 'unknown';
+}
+
+// Prune expired rate-limit buckets to avoid unbounded memory growth.
+function pruneRateLimitBuckets(): void {
+  const now = Date.now();
+  for (const [ip, bucket] of rateLimitBuckets) {
+    if (bucket.resetAt <= now) {
+      rateLimitBuckets.delete(ip);
+    }
+  }
+}
+
+function checkRateLimit(ip: string): { allowed: boolean; retryAfterMs: number } {
+  if (rateLimitBuckets.size > 1000) {
+    pruneRateLimitBuckets();
+  }
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(ip);
+  if (!bucket || bucket.resetAt <= now) {
+    rateLimitBuckets.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, retryAfterMs: 0 };
+  }
+  if (bucket.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return { allowed: false, retryAfterMs: bucket.resetAt - now };
+  }
+  bucket.count += 1;
+  return { allowed: true, retryAfterMs: 0 };
+}
+
 // Extract structured job parameters (location, remote, salary, etc.) via AI
 async function extractJobParameters(results: ScraperResult[], env: Record<string, string | undefined>): Promise<void> {
   if (results.length === 0) return;
@@ -294,14 +330,17 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         return;
       }
 
-      const file = Object.values(files)[0] as { filepath?: string } | undefined;
-      if (!file || !file.filepath) {
+      const rawFileField = Object.values(files)[0];
+      const file = Array.isArray(rawFileField) ? rawFileField[0] : rawFileField;
+      const parsedFile = file as { filepath?: string; originalFilename?: string } | undefined;
+
+      if (!parsedFile || !parsedFile.filepath) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'No PDF uploaded' }));
         return;
       }
 
-      const filepath = file.filepath;
+      const filepath =  parsedFile.filepath;
 
       try {
         const buffer = fs.readFileSync(filepath);
@@ -450,6 +489,12 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   }
 
   if (requestPath === '/api/scraper/start' && req.method === 'POST') {
+    const rateLimitResult = checkRateLimit(getClientIp(req));
+    if (!rateLimitResult.allowed) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) });
+      res.end(JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }));
+      return;
+    }
     try {
       const body = await getRequestBody(req);
       const query: ScraperQuery = JSON.parse(body);
@@ -483,9 +528,6 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         } catch (err: unknown) {
           console.warn('[Scraper API] Summarization warning:', (err as Error).message);
         }
-
-        // Extract structured job parameters (location, remote, salary, etc.) via AI
-        await extractJobParameters(rawResults, env);
       }
 
       const resultsDir = path.join(ROOT, 'data', 'scraper-results');
@@ -504,6 +546,26 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
       const outputFile = path.join(resultsDir, `${query.source}.json`);
       fs.writeFileSync(outputFile, JSON.stringify(resultPayload, null, 2));
+
+      // Run parameter extraction in the background so the response is not
+      // delayed by a slow/failing AI call. When it completes, the results
+      // file is updated in place with the extracted parameters.
+      if (rawResults.length > 0) {
+        const resultsCopy = rawResults.map(r => ({ ...r }));
+        const outputFileCopy = outputFile;
+        const envCopy = env;
+        void (async () => {
+          try {
+            await extractJobParameters(resultsCopy, envCopy);
+            const current = JSON.parse(fs.readFileSync(outputFileCopy, 'utf-8'));
+            current.results = resultsCopy;
+            fs.writeFileSync(outputFileCopy, JSON.stringify(current, null, 2));
+            console.log('[Scraper API] Parameter extraction completed in background.');
+          } catch (err: unknown) {
+            console.warn('[Scraper API] Background parameter extraction failed:', (err as Error).message);
+          }
+        })();
+      }
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(resultPayload));
@@ -580,6 +642,12 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
   // API: Fetch URL content (for Check JD feature)
   if (requestPath === '/api/fetch-url' && req.method === 'POST') {
+    const rateLimitResult = checkRateLimit(getClientIp(req));
+    if (!rateLimitResult.allowed) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) });
+      res.end(JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }));
+      return;
+    }
     try {
       const body = await getRequestBody(req);
       const { url } = JSON.parse(body);
@@ -589,6 +657,21 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         res.end(JSON.stringify({ error: 'Missing or invalid URL' }));
         return;
       }
+
+      // SSRF protection: strict URL allowlist (protocol + hostname)
+      const ALLOWED_HOSTS = new Set([
+        'www.linkedin.com',
+        'linkedin.com',
+        'www.google.com',
+        'google.com',
+      ]);
+      const validateUrl = (urlStr: string): URL => {
+        const parsed = new URL(urlStr);
+        if (parsed.protocol !== 'https:') throw new Error('Only HTTPS allowed');
+        if (!ALLOWED_HOSTS.has(parsed.hostname)) throw new Error('Host not allowed');
+        return parsed;
+      };
+      validateUrl(url);
 
       // Fetch the URL content (follows redirects, sets realistic User-Agent)
       const fetchUrl = (urlStr: string, maxRedirects = 5): Promise<string> => {
@@ -610,6 +693,13 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
               const redirectUrl = response.headers.location;
               // Handle relative redirects
               const nextUrl = redirectUrl.startsWith('http') ? redirectUrl : new URL(redirectUrl, urlStr).href;
+              try {
+                // Redirects must also satisfy the allowlist to prevent SSRF bypass
+                validateUrl(nextUrl);
+              } catch (err: unknown) {
+                reject(new Error(`Redirect blocked: ${(err as Error).message}`));
+                return;
+              }
               fetchUrl(nextUrl, maxRedirects - 1).then(resolve).catch(reject);
               return;
             }
@@ -648,6 +738,12 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
   // API: ATS Scan (for Check JD feature in results page)
   if (requestPath === '/api/ats/scan' && req.method === 'POST') {
+    const rateLimitResult = checkRateLimit(getClientIp(req));
+    if (!rateLimitResult.allowed) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) });
+      res.end(JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }));
+      return;
+    }
     try {
       const body = await getRequestBody(req);
       const { jobDescription } = JSON.parse(body);

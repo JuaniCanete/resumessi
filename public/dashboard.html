@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>resumessi AI - Dashboard</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐐%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0079bf;
+            --board-bg: rgba(0, 0, 0, 0.15);
+            --list-bg: #ebecf0;
+            --card-bg: #ffffff;
+            --text-color: #172b4d;
+            --text-muted: #5e6c84;
+            --primary: #0079bf;
+            --primary-hover: #026aa7;
+            --shadow: 0 1px 0 rgba(9,30,66,.25);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: rgba(0, 0, 0, 0.15);
+            padding: 10px 20px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .board-container {
+            flex: 1;
+            display: flex;
+            padding: 20px;
+            gap: 15px;
+            overflow-x: auto;
+            align-items: flex-start;
+        }
+
+        .list {
+            background-color: var(--list-bg);
+            border-radius: 3px;
+            width: 260px;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            box-shadow: var(--shadow);
+        }
+
+        .list-header {
+            padding: 10px 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .cards-container {
+            padding: 0 8px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 10px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 3px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            font-size: 14px;
+            word-wrap: break-word;
+            user-select: none;
+        }
+
+        .card:hover {
+            background-color: #f4f5f7;
+        }
+
+        .card.dragging {
+            opacity: 0.5;
+        }
+
+        .add-card-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 12px;
+            text-align: left;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .add-card-btn:hover {
+            background-color: rgba(9,30,66,.08);
+            color: var(--text-color);
+        }
+
+        .card-composer {
+            padding: 0 8px 8px 8px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .card-composer textarea {
+            width: 100%;
+            height: 60px;
+            border: none;
+            border-radius: 3px;
+            box-shadow: var(--shadow);
+            padding: 8px;
+            resize: none;
+            font-size: 14px;
+        }
+
+        .card-composer textarea:focus {
+            outline: 2px solid var(--primary);
+        }
+
+        .composer-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-confirm {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-confirm:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-cancel {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 3px;
+        }
+
+        .btn-cancel:hover {
+            background-color: rgba(9,30,66,.08);
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>Job organizer</div>
+    </header>
+
+    <div class="board-container" id="board">
+        <!-- Todo List -->
+        <div class="list" data-list-id="todo">
+            <div class="list-header">No news</div>
+            <div class="cards-container">
+                <div class="card" draggable="true">Job 1</div>
+                <div class="card" draggable="true">Job 2</div>
+            </div>
+            <button class="add-card-btn" onclick="showComposer(this)">+ Add a card</button>
+            <div class="card-composer">
+                <textarea placeholder="Enter a title for this card..."></textarea>
+                <div class="composer-actions">
+                    <button class="btn-confirm" onclick="addCard(this)">Add card</button>
+                    <button class="btn-cancel" onclick="hideComposer(this)">&times;</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doing List -->
+        <div class="list" data-list-id="doing">
+            <div class="list-header">Screening</div>
+            <div class="cards-container">
+                <div class="card" draggable="true">Design UI layout</div>
+            </div>
+            <button class="add-card-btn" onclick="showComposer(this)">+ Add a card</button>
+            <div class="card-composer">
+                <textarea placeholder="Enter a title for this card..."></textarea>
+                <div class="composer-actions">
+                    <button class="btn-confirm" onclick="addCard(this)">Add card</button>
+                    <button class="btn-cancel" onclick="hideComposer(this)">&times;</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Done List -->
+        <div class="list" data-list-id="done">
+            <div class="list-header">Tech round</div>
+            <div class="cards-container">
+                <div class="card" draggable="true">Project kickoff</div>
+            </div>
+            <button class="add-card-btn" onclick="showComposer(this)">+ Add a card</button>
+            <div class="card-composer">
+                <textarea placeholder="Enter a title for this card..."></textarea>
+                <div class="composer-actions">
+                    <button class="btn-confirm" onclick="addCard(this)">Add card</button>
+                    <button class="btn-cancel" onclick="hideComposer(this)">&times;</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Client Interview List -->
+        <div class="list" data-list-id="done">
+            <div class="list-header">Client interview</div>
+            <div class="cards-container">
+                <div class="card" draggable="true">Project kickoff</div>
+            </div>
+            <button class="add-card-btn" onclick="showComposer(this)">+ Add a card</button>
+            <div class="card-composer">
+                <textarea placeholder="Enter a title for this card..."></textarea>
+                <div class="composer-actions">
+                    <button class="btn-confirm" onclick="addCard(this)">Add card</button>
+                    <button class="btn-cancel" onclick="hideComposer(this)">&times;</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Offer cultural List -->
+        <div class="list" data-list-id="done">
+            <div class="list-header">Offer/Cultural fit</div>
+            <div class="cards-container">
+                <div class="card" draggable="true">Project kickoff</div>
+            </div>
+            <button class="add-card-btn" onclick="showComposer(this)">+ Add a card</button>
+            <div class="card-composer">
+                <textarea placeholder="Enter a title for this card..."></textarea>
+                <div class="composer-actions">
+                    <button class="btn-confirm" onclick="addCard(this)">Add card</button>
+                    <button class="btn-cancel" onclick="hideComposer(this)">&times;</button>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Hired List -->
+        <div class="list" data-list-id="done">
+            <div class="list-header">Hired</div>
+            <div class="cards-container">
+                <div class="card" draggable="true">Project kickoff</div>
+            </div>
+            <button class="add-card-btn" onclick="showComposer(this)">+ Add a card</button>
+            <div class="card-composer">
+                <textarea placeholder="Enter a title for this card..."></textarea>
+                <div class="composer-actions">
+                    <button class="btn-confirm" onclick="addCard(this)">Add card</button>
+                    <button class="btn-cancel" onclick="hideComposer(this)">&times;</button>
+                </div>
+            </div>
+        </div>        
+    </div>
+
+    <script>
+        let draggedCard = null;
+
+        function initDragAndDrop() {
+            const cards = document.querySelectorAll('.card');
+            const containers = document.querySelectorAll('.cards-container');
+
+            cards.forEach(card => {
+                card.addEventListener('dragstart', () => {
+                    draggedCard = card;
+                    setTimeout(() => card.classList.add('dragging'), 0);
+                });
+
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('dragging');
+                    draggedCard = null;
+                });
+            });
+
+            containers.forEach(container => {
+                container.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(container, e.clientY);
+                    if (afterElement == null) {
+                        container.appendChild(draggedCard);
+                    } else {
+                        container.insertBefore(draggedCard, afterElement);
+                    }
+                });
+            });
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.card:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: -Infinity }).element;
+        }
+
+        function showComposer(btn) {
+            btn.style.display = 'none';
+            const composer = btn.nextElementSibling;
+            composer.style.display = 'flex';
+            composer.querySelector('textarea').focus();
+        }
+
+        function hideComposer(btn) {
+            const composer = btn.closest('.card-composer');
+            const addBtn = composer.previousElementSibling;
+            composer.style.display = 'none';
+            addBtn.style.style = 'block';
+            addBtn.removeAttribute('style');
+            composer.querySelector('textarea').value = '';
+        }
+
+        function addCard(btn) {
+            const composer = btn.closest('.card-composer');
+            const textarea = composer.querySelector('textarea');
+            const text = textarea.value.trim();
+
+            if (text === '') return;
+
+            const list = composer.closest('.list');
+            const container = list.querySelector('.cards-container');
+
+            const newCard = document.createElement('div');
+            newCard.classList.add('card');
+            newCard.setAttribute('draggable', 'true');
+            newCard.innerText = text;
+
+            container.appendChild(newCard);
+            hideComposer(btn);
+            initDragAndDrop();
+        }
+
+        // Initialize drag events on load
+        initDragAndDrop();
+    </script>
+</body>
+</html>

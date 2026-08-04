@@ -64,10 +64,14 @@ export async function launchStealthBrowser(options: {
     headless,
     args: [
       '--disable-blink-features=AutomationControlled',
+      '--disable-automation',
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-infobars',
+      '--disable-dev-shm-usage',
       '--window-position=0,0',
+      '--window-size=1366,900',
+      '--lang=en-US,en',
       '--ignore-certificate-errors',
     ],
   };
@@ -86,6 +90,8 @@ export async function launchStealthBrowser(options: {
     userAgent:
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     locale: 'en-US',
+    timezoneId: 'America/Argentina/Buenos_Aires',
+    colorScheme: 'light',
   };
 
   if (options.storageStatePath && fs.existsSync(options.storageStatePath)) {
@@ -93,6 +99,18 @@ export async function launchStealthBrowser(options: {
   }
 
   const context = (await browser.newContext(contextOptions as Parameters<typeof browser.newContext>[0])) as unknown as BrowserContext;
+
+  // Hide automation signals that bot-detection systems (e.g. Google) look for
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+    (window as unknown as Record<string, unknown>).chrome = {
+      runtime: {},
+      loadTimes: () => ({}),
+      csi: () => ({}),
+    };
+  });
 
   return { browser, context };
 }

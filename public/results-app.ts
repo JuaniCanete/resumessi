@@ -24,7 +24,6 @@ let currentPage = 1;
 const RESULTS_PER_PAGE = 10;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 const initTime = Date.now();
-let currentAtsJobUrl: string | null = null;
 
 async function initResultsPage(): Promise<void> {
   const urlParams = new URLSearchParams(window.location.search);
@@ -435,7 +434,6 @@ function stripMarkdown(text: string): string {
 }
 
 function openJdEditModal(item: ScraperResult): void {
-  currentAtsJobUrl = item.url;
   const modal = document.getElementById('jd-edit-modal');
   const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
   const loading = document.getElementById('jd-fetch-loading');
@@ -496,7 +494,6 @@ async function fetchJobDescription(url: string): Promise<string> {
 function closeJdEditModal(): void {
   const modal = document.getElementById('jd-edit-modal');
   if (modal) modal.classList.remove('show');
-  currentAtsJobUrl = null;
 }
 
 async function runAtsScanFromResults(): Promise<void> {
