@@ -42,7 +42,7 @@ This document defines the standard for code reviews in the **resumessi** project
 
 ## Output Format
 
-Create a code review file in `code-review/<feature-name>.md` following this template:
+Create a code review file following this template:
 
 ```
 # Code Review: <feature-name>
@@ -78,6 +78,9 @@ For each finding, provide:
 - [ ] Needs changes
 
 ```
+
+- File should be added to thsi folder `code-review`
+- File name should be `<feature-name>.md`
 
 ## Sign-off
 
