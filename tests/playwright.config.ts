@@ -15,7 +15,7 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
-webServer: {
+  webServer: {
     command: 'cmd.exe /c "npx tsx ..\\start.ts --no-open"',
     url: 'http://localhost:3000/public/main.html',
     reuseExistingServer: false,

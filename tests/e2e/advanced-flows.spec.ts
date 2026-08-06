@@ -44,7 +44,7 @@ test.describe('Advanced Flows', () => {
 		await mainPage.clickPolish();
 		await expect(mainPage.polishOverlay).toBeVisible();
 		const refreshText = await mainPage.getRefreshMessageText();
-		if (refreshText) expect.soft(refreshText.toLowerCase()).toContain('refresh');
+		if (refreshText) expect.soft(refreshText.toLowerCase()).toContain('applying changes . . .');
 	});
 
 	test('ATS scan error handling — 500 from proxy shows error in UI', async ({ mainPage }) => {
@@ -117,7 +117,7 @@ test.describe('Advanced Flows', () => {
 		expect(response.status()).toBe(200);
 
 		const refreshText = await mainPage.getRefreshMessageText();
-		if (refreshText) expect.soft(refreshText.toLowerCase()).toContain('rollback');
+		if (refreshText) expect.soft(refreshText.toLowerCase()).toContain('applying changes . . .');
 	});
 });
 

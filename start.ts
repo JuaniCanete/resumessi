@@ -31,7 +31,7 @@ try {
   console.warn('PDF dependencies not installed. Run: npm install pdf-parse-fork formidable');
 }
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const ROOT = __dirname;
 
 // MIME types for common extensions
@@ -602,6 +602,11 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     try {
       const urlObj = new URL(req.url || '/', `http://localhost:${PORT}`);
       const source = urlObj.searchParams.get('source') || 'linkedin';
+      if (!['linkedin', 'google'].includes(source)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: "Invalid source. Must be 'linkedin' or 'google'." }));
+        return;
+      }
       const resultsFile = path.join(ROOT, 'data', 'scraper-results', `${source}.json`);
 
       if (fs.existsSync(resultsFile)) {
