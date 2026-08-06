@@ -10,6 +10,7 @@ type CallProviderFn = (
   key: string,
   params?: Record<string, unknown>,
   scope?: string,
+  correlationId?: string,
 ) => Promise<ProviderResponse>;
 
 type GetProviderConfigFn = (
@@ -50,6 +51,8 @@ export async function runInference(
     throw new Error('No providers configured. Set at least one *_API_KEY in .env.');
   }
 
+  const correlationId = crypto.randomUUID().slice(0, 8);
+
   const attempts: ProviderAttempt[] = [];
   let lastError: Error | null = null;
 
@@ -66,6 +69,7 @@ export async function runInference(
         providerConfig.key,
         params,
         scope,
+        correlationId,
       );
       return { text: result.text, provider: result.provider, usage: result.usage };
     } catch (err: unknown) {

@@ -522,6 +522,25 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
           const prompt = `User Query: ${JSON.stringify(query)}\n\nScraped Results:\n${JSON.stringify(rawResults, null, 2)}`;
           const inferenceResult = await runInference(systemPrompt, prompt, { temperature: 0, max_tokens: 1024, top_p: 0.1 }, env, null, null, null, 'scraper');
           summaryText = inferenceResult.text;
+
+          // Parse per-result aiSummary from JSON response
+          try {
+            let raw = summaryText;
+            raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+            const jsonMatch = raw.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+              raw = jsonMatch[0];
+            }
+            const summaries = JSON.parse(raw) as Array<{ index: number; aiSummary: string; queryAffinity: 'High' | 'Medium' | 'Low' }>;
+            for (const entry of summaries) {
+              if (entry.index >= 0 && entry.index < rawResults.length && typeof entry.aiSummary === 'string') {
+                rawResults[entry.index].aiSummary = entry.aiSummary;
+                rawResults[entry.index].queryAffinity = entry.queryAffinity;
+              }
+            }
+          } catch (parseErr: unknown) {
+            console.warn('[Scraper API] Failed to parse per-result summaries:', (parseErr as Error).message);
+          }
         } catch (err: unknown) {
           console.warn('[Scraper API] Summarization warning:', (err as Error).message);
         }

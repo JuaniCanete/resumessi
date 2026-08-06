@@ -7,6 +7,7 @@ interface ScraperResult {
   company?: string;
   postedDate?: string;
   aiSummary?: string;
+  queryAffinity?: 'High' | 'Medium' | 'Low';
   parameters?: string[];
 }
 
@@ -417,6 +418,14 @@ function renderPage(page: number): void {
         aiSummary.textContent = item.aiSummary;
       }
       body.appendChild(aiSummary);
+    }
+
+    if (item.queryAffinity) {
+      const queryAffinity = document.createElement('div');
+      queryAffinity.className = 'result-queryAffinity';
+      const color = item.queryAffinity === 'High' ? '#10b981' : item.queryAffinity === 'Medium' ? '#f59e0b' : '#ef4444';
+      queryAffinity.innerHTML = `<span style="color: ${color}; font-weight: 600;">Query Affinity: ${item.queryAffinity}</span>`;
+      body.appendChild(queryAffinity);
     }
 
     // Parameters row (AI-extracted job parameters)

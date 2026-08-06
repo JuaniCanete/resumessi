@@ -3,8 +3,17 @@ Your task is to analyze raw scraped job listings / posts and generate a structur
 
 For each job listing in the provided raw data:
 1. Summarize the role, seniority, key stack/requirements, location/employment type, and target company in 1-2 bullet points.
-2. Provide a relevance rating (High/Medium/Low) based on how well it matches the user query.
+2. Provide a queryAffinity rating (High/Medium/Low) based on how well it matches the user query.
 3. Keep the direct link provided in the raw data intact.
 
 Output format:
-Return clean, concise text summarizing the findings.
+Return ONLY a valid JSON array where each element corresponds to one input listing and has exactly these fields:
+- "index": the 0-based index of the listing in the input array
+- "aiSummary": concise markdown summary (1-3 bullet points)
+- "queryAffinity": "High" | "Medium" | "Low"
+
+Example:
+[
+  { "index": 0, "aiSummary": "- Senior SDET role at Redux...\n- Stack: Playwright, TypeScript, CI/CD\n- Location: Buenos Aires, Argentina (Remote)", "queryAffinity": "High" },
+  { "index": 1, "aiSummary": "- QA Automation Engineer at TechCorp...\n- Stack: Selenium, Java, Jenkins\n- Location: Remote, LATAM", "queryAffinity": "Medium" }
+]

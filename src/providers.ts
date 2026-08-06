@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import type {
   ProviderName,
   ProviderResponse,
@@ -7,21 +5,6 @@ import type {
   ProviderConfigResult,
   BuildRequestResult,
 } from './types/provider';
-
-const ROOT = path.join(__dirname, '..');
-const LOG_PATH = path.join(ROOT, 'debugging', 'logs', 'inference.log');
-
-function logInference(record: Record<string, unknown>): void {
-  try {
-    const logDir = path.dirname(LOG_PATH);
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
-    }
-    fs.appendFileSync(LOG_PATH, JSON.stringify(record) + '\n');
-  } catch {
-    // logging must never break inference
-  }
-}
 
 const PROVIDER_TIMEOUTS: Record<string, number> = {
   cohere: 30000,
@@ -59,10 +42,13 @@ async function callProvider(
   key: string,
   params: Record<string, unknown> = {},
   scope: string = 'generic',
+  correlationId?: string,
 ): Promise<ProviderResponse> {
   const { url, headers, body } = buildRequest(provider, system, prompt, model, key, params);
   const timeout = getProviderTimeout(provider);
   const startTime = Date.now();
+
+  const cid = correlationId || crypto.randomUUID().slice(0, 8);
 
   let httpStatus = 0;
   let ok = false;
@@ -107,8 +93,9 @@ async function callProvider(
     throw { status: httpStatus, provider, error: errorMsg };
   } finally {
     const latencyMs = Date.now() - startTime;
-    const record: Record<string, unknown> = {
+    const record = {
       timestamp: new Date().toISOString(),
+      correlationId: cid,
       scope,
       provider,
       model,
@@ -118,9 +105,9 @@ async function callProvider(
       ok,
     };
     if (!ok && errorMsg) {
-      record.error = errorMsg;
+      (record as Record<string, unknown>).error = errorMsg;
     }
-    logInference(record);
+    console.log(JSON.stringify(record));
   }
 }
 
@@ -150,7 +137,8 @@ function buildRequest(
 
     if (temperature !== undefined) body.temperature = temperature;
     if (max_tokens !== undefined) body.max_tokens = max_tokens;
-    if (top_p !== undefined) body.top_p = top_p;
+    // Cohere v2 chat API does not support top_p parameter
+    // if (top_p !== undefined) body.top_p = top_p;
 
     return {
       url: 'https://api.cohere.com/v2/chat',
@@ -195,7 +183,14 @@ function buildRequest(
 
     if (temperature !== undefined) body.temperature = temperature;
     if (max_tokens !== undefined) body.max_tokens = max_tokens;
-    if (top_p !== undefined) body.top_p = top_p;
+    // For Mistral/Groq: when temperature=0 (greedy sampling), top_p must be 1 or omitted
+    const temp = temperature as number | undefined;
+    if (top_p !== undefined && (temp === undefined || temp > 0)) {
+      body.top_p = top_p;
+    } else if (top_p !== undefined && temp === 0) {
+      // Greedy sampling requires top_p = 1
+      body.top_p = 1;
+    }
 
     const baseUrl = provider === 'mistral'
       ? 'https://api.mistral.ai/v1/chat/completions'
