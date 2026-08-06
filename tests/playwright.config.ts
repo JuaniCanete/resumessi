@@ -4,7 +4,7 @@ export default defineConfig({
   timeout: 15000,
   testDir: './e2e',
   outputDir: './test-results',
-  workers: 1,
+  workers: 2,
   reporter: [['html', { open: 'on-failure' }]],
   use: {
     baseURL: 'http://localhost:3000',
