@@ -16,8 +16,8 @@ export default defineConfig({
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
   webServer: {
-    command: 'cmd.exe /c "set PORT=3000&& npx tsx ..\\start.ts --no-open"',
-    url: 'http://localhost:3000/public/main.html',
+    command: 'cmd.exe /c "set PORT=3001&& npx tsx ..\\start.ts --no-open"',
+    url: 'http://localhost:3001/public/main.html',
     reuseExistingServer: false,
     timeout: 60000,
   },
