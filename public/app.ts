@@ -145,9 +145,13 @@ function applyScanResultsToUI(screening: Record<string, unknown>): void {
   const kwEl = document.getElementById('rp-keywords')!;
   const missingKeywords = screening.missingKeywords as string[] | undefined;
   if (missingKeywords && missingKeywords.length > 0) {
-    kwEl.innerHTML = missingKeywords
-      .map(k => `<span class="result-keyword">${k}</span>`)
-      .join('');
+    kwEl.textContent = '';
+    for (const k of missingKeywords) {
+      const span = document.createElement('span');
+      span.className = 'result-keyword';
+      span.textContent = k;
+      kwEl.appendChild(span);
+    }
   } else {
     kwEl.textContent = 'None detected \u2014 great match!';
     kwEl.style.color = '#86efac';
