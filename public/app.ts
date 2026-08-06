@@ -1145,23 +1145,60 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
 
   const currentSelected = localStorage.getItem('selected-ai-provider') || selectedProvider;
 
-  listEl.innerHTML = providers.map(provider => {
+  listEl.textContent = '';
+
+  for (const provider of providers) {
     const isSelected = provider === currentSelected;
-    const icon = escHtml(providerIcons[provider] || providerIcons.default);
-    const model = escHtml(providerModels[provider] || providerModels.default);
-    const desc = escHtml(providerDescriptions[provider] || providerDescriptions.default);
-    const displayName = escHtml(provider.charAt(0).toUpperCase() + provider.slice(1));
-    const escapedProvider = escHtml(provider);
-    return '<div class="provider-item" data-provider="' + escapedProvider + '" onclick="selectProviderInModal(\'' + escapedProvider + '\')">' +
-      '<input type="checkbox" class="provider-checkbox" ' + (isSelected ? 'checked' : '') + ' onclick="handleProviderCheckboxClick(event, \'' + escapedProvider + '\')">' +
-      '<div class="provider-header">' +
-      '<img src="' + icon + '" alt="' + escapedProvider + '" class="provider-img" onerror="this.style.display=\'none\'">' +
-      '<span class="provider-name">' + displayName + '</span>' +
-      '</div>' +
-      '<div class="provider-model">' + model + '</div>' +
-      '<div class="provider-description">' + desc + '</div>' +
-      '</div>';
-  }).join('');
+    const icon = providerIcons[provider] || providerIcons.default;
+    const model = providerModels[provider] || providerModels.default;
+    const desc = providerDescriptions[provider] || providerDescriptions.default;
+    const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
+
+    const item = document.createElement('div');
+    item.className = 'provider-item';
+    item.dataset.provider = provider;
+    item.addEventListener('click', () => selectProviderInModal(provider));
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'provider-checkbox';
+    checkbox.checked = isSelected;
+    checkbox.addEventListener('click', (event: Event) => {
+      event.stopPropagation();
+      selectProviderInModal(provider);
+    });
+
+    const header = document.createElement('div');
+    header.className = 'provider-header';
+
+    const img = document.createElement('img');
+    img.src = icon;
+    img.alt = provider;
+    img.className = 'provider-img';
+    img.addEventListener('error', () => { img.style.display = 'none'; });
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'provider-name';
+    nameSpan.textContent = displayName;
+
+    header.appendChild(img);
+    header.appendChild(nameSpan);
+
+    const modelDiv = document.createElement('div');
+    modelDiv.className = 'provider-model';
+    modelDiv.textContent = model;
+
+    const descDiv = document.createElement('div');
+    descDiv.className = 'provider-description';
+    descDiv.textContent = desc;
+
+    item.appendChild(checkbox);
+    item.appendChild(header);
+    item.appendChild(modelDiv);
+    item.appendChild(descDiv);
+
+    listEl.appendChild(item);
+  }
 
   setTimeout(() => {
     document.querySelectorAll('.provider-item').forEach(item => {
@@ -1185,12 +1222,14 @@ function selectProviderInModal(provider: string): void {
     const checkbox = item.querySelector('.provider-checkbox') as HTMLInputElement;
     if (checkbox) checkbox.checked = false;
   });
-  const selected = document.querySelector('.provider-item[data-provider="' + provider + '"]') as HTMLElement;
-  if (selected) {
-    selected.classList.add('selected');
-    const checkbox = selected.querySelector('.provider-checkbox') as HTMLInputElement;
-    if (checkbox) checkbox.checked = true;
-  }
+  document.querySelectorAll('.provider-item').forEach(item => {
+    const el = item as HTMLElement;
+    if (el.dataset.provider === provider) {
+      el.classList.add('selected');
+      const checkbox = el.querySelector('.provider-checkbox') as HTMLInputElement;
+      if (checkbox) checkbox.checked = true;
+    }
+  });
 }
 
 function confirmProvidersSelection(): void {
