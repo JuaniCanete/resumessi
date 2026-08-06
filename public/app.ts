@@ -429,7 +429,7 @@ function renderResume(data?: Record<string, unknown>): void {
     for (let ci = 0; ci < cats.length; ci++) {
       const category = cats[ci];
       const skillList = skills[category];
-      html += '<h2 class="section-title">' + category + '</h2>';
+      html += '<h2 class="section-title">' + escHtml(category) + '</h2>';
       html += '<div class="skills-grid">';
       for (let si = 0; si < skillList.length; si++) {
         const skill = skillList[si];
@@ -442,7 +442,7 @@ function renderResume(data?: Record<string, unknown>): void {
 
   if (d.techStack) {
     html += '<h2 class="section-title">Tech Stack</h2>';
-    html += '<p style="font-size: 12.5px; color: var(--text); margin-bottom: 25px; text-align: justify;">' + (d.techStack as string) + '</p>';
+    html += '<p style="font-size: 12.5px; color: var(--text); margin-bottom: 25px; text-align: justify;">' + escHtml(d.techStack as string) + '</p>';
   }
 
   const languages = d.languages as Array<{ name: string; level: string }> | undefined;
