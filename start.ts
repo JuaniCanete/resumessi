@@ -825,7 +825,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         const result = await runInference(
           'You are an ATS resume scorer. Return only valid JSON matching the requested schema.',
           basePrompt,
-          { temperature: 0, max_tokens: 2048 },
+          { temperature: 0, max_tokens: 2048, top_p: 0.1 },
           env,
           null,
           null,
