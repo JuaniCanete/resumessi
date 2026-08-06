@@ -180,7 +180,7 @@ async function extractJobParameters(results: ScraperResult[], env: Record<string
       : 'You are a job parameter extraction assistant. Return only valid JSON.';
 
     const prompt = `Scraped Results:\n${JSON.stringify(results, null, 2)}`;
-    const inferenceResult = await runInference(systemPrompt, prompt, {}, env, null, null, null, 'scraper');
+    const inferenceResult = await runInference(systemPrompt, prompt, { temperature: 0, max_tokens: 1024, top_p: 0.1 }, env, null, null, null, 'scraper');
     let raw = inferenceResult.text;
     raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
 
@@ -520,7 +520,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
             : 'You are a job scraper summarizer assistant.';
 
           const prompt = `User Query: ${JSON.stringify(query)}\n\nScraped Results:\n${JSON.stringify(rawResults, null, 2)}`;
-          const inferenceResult = await runInference(systemPrompt, prompt, {}, env, null, null, null, 'scraper');
+          const inferenceResult = await runInference(systemPrompt, prompt, { temperature: 0, max_tokens: 1024, top_p: 0.1 }, env, null, null, null, 'scraper');
           summaryText = inferenceResult.text;
         } catch (err: unknown) {
           console.warn('[Scraper API] Summarization warning:', (err as Error).message);
