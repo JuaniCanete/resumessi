@@ -4,6 +4,7 @@
  */
 
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
+import { buildQueryUrl } from './utils';
 
 // Declare global function for TypeScript benefit
 declare function closeJdEditModal(): void;
@@ -1368,54 +1369,26 @@ function updateQueryPreview(): string {
   const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
   const seniority = (document.getElementById('scraper-seniority') as HTMLInputElement)?.value.trim() || '';
   const stack = (document.getElementById('scraper-stack') as HTMLInputElement)?.value.trim() || '';
-  const employment = (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+  const employmentType = (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
   const country = (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
   const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
   const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
 
-  let generatedUrl = '';
+  const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked')) as HTMLInputElement[];
+  const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
 
-  if (currentScraperPlatform === 'linkedin') {
-    const parts: string[] = [];
-    if (role) parts.push(role);
-    if (seniority) parts.push(seniority);
-    if (stack) parts.push(stack);
-    if (employment) parts.push(employment);
-    if (country) parts.push(country);
-    if (region) parts.push(region);
-    if (currency) parts.push(currency);
-
-    const q = parts.join(' ');
-    generatedUrl = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(q)}`;
-  } else {
-    const parts: string[] = [];
-    if (role) parts.push(`"${role}"`);
-    if (seniority) parts.push(seniority);
-    if (stack) parts.push(stack);
-    if (employment) parts.push(employment);
-
-    const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked')) as HTMLInputElement[];
-    const domains = checkedBoxes.map(cb => cb.value.trim()).filter(Boolean);
-
-    if (domains.length > 0) {
-      const siteQuery = domains.map(d => `site:${d}`).join(' OR ');
-      parts.push(`(${siteQuery})`);
-      parts.push('("careers" OR "jobs" OR "open positions" OR "hiring")');
-    }
-
-    // Combine country and region into a single quoted group for Google
-    const locationParts: string[] = [];
-    if (region) locationParts.push(region);
-    if (country) locationParts.push(country);
-    if (locationParts.length > 0) {
-      parts.push(`("${locationParts.join('" OR "')}")`);
-    }
-
-    if (currency) parts.push(currency);
-
-    const q = parts.join(' ');
-    generatedUrl = `https://www.google.com/search?q=${encodeURIComponent(q)}`;
-  }
+  // Delegate to the shared URL builder (single source of truth)
+  const generatedUrl = buildQueryUrl(currentScraperPlatform, {
+    source: currentScraperPlatform,
+    role,
+    seniority,
+    stack,
+    employmentType,
+    country,
+    region,
+    currency,
+    customDomains,
+  });
 
   const previewElem = document.getElementById('query-url-preview');
   if (previewElem) {

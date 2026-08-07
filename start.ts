@@ -179,7 +179,18 @@ async function extractJobParameters(results: ScraperResult[], env: Record<string
       ? fs.readFileSync(promptPath, 'utf-8')
       : 'You are a job parameter extraction assistant. Return only valid JSON.';
 
-    const prompt = `Scraped Results:\n${JSON.stringify(results, null, 2)}`;
+    // Truncate results to avoid oversized prompts (keep token usage predictable)
+    const MAX_PROMPT_RESULTS = 10;
+    const trimmedResults = results.slice(0, MAX_PROMPT_RESULTS).map((r): Record<string, unknown> => {
+      const { snippet, aiSummary, ...rest } = r as unknown as Record<string, unknown>;
+      return {
+        ...rest,
+        snippet: typeof snippet === 'string' ? snippet.substring(0, 200) : '',
+        aiSummary: typeof aiSummary === 'string' ? aiSummary.substring(0, 200) : '',
+      };
+    });
+
+    const prompt = `Scraped Results:\n${JSON.stringify(trimmedResults, null, 2)}`;
     const inferenceResult = await runInference(systemPrompt, prompt, { temperature: 0, max_tokens: 1024, top_p: 0.1 }, env, null, null, null, 'scraper');
     let raw = inferenceResult.text;
     raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();

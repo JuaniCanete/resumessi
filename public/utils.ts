@@ -2,6 +2,9 @@
  * Shared utility functions for resumessi
  */
 
+import { buildScraperSearchUrl } from '../src/scraper/pagination';
+import type { ScraperQuery } from '../src/scraper/types';
+
 export function escHtml(value: string | null | undefined): string {
   if (!value) return '';
   const m: Record<string, number> = { '&': 38, '<': 60, '>': 62, '"': 34, "'": 39 };
@@ -78,38 +81,8 @@ export function stripMarkdown(text: string): string {
     .trim();
 }
 
-// Build a search URL for LinkedIn or Google from a scraper query
-export function buildQueryUrl(source: 'linkedin' | 'google', query: Record<string, string>): string {
-  const parts: string[] = [];
-  if (query.role) parts.push(query.role);
-  if (query.seniority) parts.push(query.seniority);
-  if (query.stack) parts.push(query.stack);
-
-  if (source === 'linkedin') {
-    if (query.employmentType) parts.push(query.employmentType);
-    if (query.region) parts.push(query.region);
-    if (query.country) parts.push(query.country);
-    if (query.currency) parts.push(query.currency);
-    const fullQuery = parts.join(' ');
-    return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(fullQuery)}`;
-  } else {
-    if (query.employmentType) parts.push(query.employmentType);
-    // Google search uses site: domains for job boards
-    const defaultDomains = ['teamtailor.com', 'greenhouse.io', 'lever.co', 'workday.com', 'jobs.ashbyhq.com'];
-    const siteQuery = defaultDomains.map(d => `site:${d}`).join(' OR ');
-    parts.push(`(${siteQuery})`);
-    parts.push('("careers" OR "jobs" OR "open positions")');
-
-    // Combine country and region into a single quoted group, e.g. ("LATAM" OR "Argentina")
-    const locationParts: string[] = [];
-    if (query.region) locationParts.push(query.region);
-    if (query.country) locationParts.push(query.country);
-    if (locationParts.length > 0) {
-      parts.push(`(${locationParts.map(l => `"${l}"`).join(' OR ')})`);
-    }
-
-    if (query.currency) parts.push(query.currency);
-    const fullQuery = parts.join(' ');
-    return `https://www.google.com/search?q=${encodeURIComponent(fullQuery)}`;
-  }
+// Build a search URL for LinkedIn or Google from a scraper query.
+// Delegates to the shared builder in src/scraper/pagination.ts (single source of truth).
+export function buildQueryUrl(source: 'linkedin' | 'google', query: ScraperQuery): string {
+  return buildScraperSearchUrl(source, query);
 }

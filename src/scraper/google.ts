@@ -1,47 +1,13 @@
 import path from 'path';
 import { launchStealthBrowser, randomDelay } from './browser';
-import { buildScraperSearchUrls } from './pagination';
+import { buildScraperSearchUrls, buildScraperSearchUrl, DEFAULT_TARGET_DOMAINS } from './pagination';
 import type { ScraperQuery, ScraperResult } from './types';
 
-export const DEFAULT_TARGET_DOMAINS = [
-  'teamtailor.com',
-  'greenhouse.io',
-  'lever.co',
-  'workday.com',
-  'jobs.ashbyhq.com',
-];
+export { DEFAULT_TARGET_DOMAINS };
 
+// Deprecated: use buildScraperSearchUrl('google', query) from pagination.ts instead
 export function buildGoogleSearchUrl(query: ScraperQuery): string {
-  const parts: string[] = [];
-
-  if (query.role) parts.push(`"${query.role}"`);
-  if (query.seniority) parts.push(`"${query.seniority}"`);
-  if (query.stack) parts.push(query.stack);
-  if (query.employmentType) parts.push(query.employmentType);
-
-  // Empty array means "no custom selection" → fall back to defaults
-  const domains = query.customDomains !== undefined && query.customDomains !== null && query.customDomains.length > 0
-    ? query.customDomains
-    : DEFAULT_TARGET_DOMAINS;
-
-  if (domains.length > 0) {
-    const siteQuery = domains.map(d => `site:${d.trim()}`).join(' OR ');
-    parts.push(`(${siteQuery})`);
-    parts.push('("careers" OR "jobs" OR "open positions")');
-  }
-
-  // Combine country and region into a single quoted group, e.g. ("LATAM" OR "Argentina")
-  const locationParts: string[] = [];
-  if (query.region) locationParts.push(query.region);
-  if (query.country) locationParts.push(query.country);
-  if (locationParts.length > 0) {
-    parts.push(`(${locationParts.map(l => `"${l}"`).join(' OR ')})`);
-  }
-
-  if (query.currency) parts.push(query.currency);
-
-  const fullQuery = parts.join(' ');
-  return `https://www.google.com/search?q=${encodeURIComponent(fullQuery)}`;
+  return buildScraperSearchUrl('google', query);
 }
 
 /**

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { launchStealthBrowser, randomDelay } from './browser';
-import { buildScraperSearchUrls } from './pagination';
+import { buildScraperSearchUrls, buildScraperSearchUrl } from './pagination';
 import type { ScraperQuery, ScraperResult } from './types';
 import { generateLinkedInStorageState } from '../../scripts/linkedin-auth';
 
@@ -130,19 +130,9 @@ export async function validateLinkedInStorageState(): Promise<boolean> {
   }
 }
 
+// Deprecated: use buildScraperSearchUrl('linkedin', query) from pagination.ts instead
 export function buildLinkedInSearchUrl(query: ScraperQuery): string {
-  const parts: string[] = [];
-  if (query.keywords) parts.push(query.keywords);
-  if (query.role) parts.push(query.role);
-  if (query.seniority) parts.push(query.seniority);
-  if (query.stack) parts.push(query.stack);
-  if (query.employmentType) parts.push(query.employmentType);
-  if (query.region) parts.push(query.region);
-  if (query.country) parts.push(query.country);
-  if (query.currency) parts.push(query.currency);
-
-  const fullQuery = parts.join(' ');
-  return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(fullQuery)}`;
+  return buildScraperSearchUrl('linkedin', query);
 }
 
 /**

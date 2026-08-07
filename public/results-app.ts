@@ -495,6 +495,12 @@ function closeAtsSidebar(): void {
   document.body.classList.remove('ats-open');
 }
 
+function scoreColor(score: number): string {
+  if (score >= 80) return '#10b981';
+  if (score >= 60) return '#f59e0b';
+  return '#ef4444';
+}
+
 function applyAtsResultsToUI(screening: Record<string, unknown>): void {
   const circle = document.getElementById('ats-score-circle')!;
   circle.textContent = String(screening.overall_score);
@@ -518,8 +524,8 @@ function applyAtsResultsToUI(screening: Record<string, unknown>): void {
   elExp.textContent = `${breakdown.experience_years_score}%`;
   elEdu.textContent = breakdown.education_match ? 'PASS' : 'FAIL';
 
-  elSkills.style.color = (breakdown.skills_score as number) >= 80 ? '#10b981' : (breakdown.skills_score as number) >= 60 ? '#f59e0b' : '#ef4444';
-  elExp.style.color = (breakdown.experience_years_score as number) >= 80 ? '#10b981' : (breakdown.experience_years_score as number) >= 60 ? '#f59e0b' : '#ef4444';
+  elSkills.style.color = scoreColor(breakdown.skills_score as number);
+  elExp.style.color = scoreColor(breakdown.experience_years_score as number);
   elEdu.style.color = breakdown.education_match ? '#10b981' : '#ef4444';
 
   const kwEl = document.getElementById('ats-keywords')!;
