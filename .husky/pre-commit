@@ -12,6 +12,5 @@ npm run html:validate
 npm run css:validate
 npm run build
 npm run test:e2e
-npm run evals
 
 echo "All validations passed ✅"

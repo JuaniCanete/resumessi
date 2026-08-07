@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+set -e
+
+BRANCH="${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
+if [ "$BRANCH" = "main" ]; then
+  echo "Running pre-push validations on $BRANCH..."
+  npm run build:check
+  npm run validate
+  npm run typecheck
+  npm run lint
+  npm run test:unit
+  npm run html:validate
+  npm run css:validate
+  npm run build
+  npm run test:e2e
+  npm run evals
+  echo "All pre-push validations passed ✅"
+fi
