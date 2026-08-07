@@ -1523,7 +1523,12 @@ async function startScraping(): Promise<void> {
     if (!resp.ok) {
       if (overlay) overlay.style.display = 'none';
       const err = await resp.json();
-      alert(`Scraper error: ${err.error || 'Failed to execute scraper'}`);
+      const errMsg = err.error || 'Failed to execute scraper';
+      // Signal failure to the results tab so it stops polling and shows an error
+      if (scraperResultsWindow && !scraperResultsWindow.closed) {
+        scraperResultsWindow.postMessage({ type: 'scrapeFailed', error: errMsg }, window.location.origin);
+      }
+      alert(`Scraper error: ${errMsg}`);
       return;
     }
 
@@ -1541,8 +1546,19 @@ async function startScraping(): Promise<void> {
     }
   } catch (err: unknown) {
     if (overlay) overlay.style.display = 'none';
-    if ((err as Error).name !== 'AbortError') {
-      alert(`Scraping error: ${(err as Error).message}`);
+    if ((err as Error).name === 'AbortError') {
+      // User cancelled the scrape — the results tab would otherwise poll forever,
+      // so signal it to stop and show a cancellation message
+      if (scraperResultsWindow && !scraperResultsWindow.closed) {
+        scraperResultsWindow.postMessage({ type: 'scrapeFailed', error: 'Scraping was cancelled.' }, window.location.origin);
+      }
+    } else {
+      const errMsg = (err as Error).message;
+      // Signal failure to the results tab so it stops polling and shows an error
+      if (scraperResultsWindow && !scraperResultsWindow.closed) {
+        scraperResultsWindow.postMessage({ type: 'scrapeFailed', error: errMsg }, window.location.origin);
+      }
+      alert(`Scraping error: ${errMsg}`);
     }
   }
 }

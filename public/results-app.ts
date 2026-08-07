@@ -159,12 +159,50 @@ function startPolling(source: 'linkedin' | 'google'): void {
             renderResultsUI();
           }
         }
+      } else if (resp.status === 400 || resp.status >= 500) {
+        // Server explicitly rejected the request — stop polling and surface an error
+        handleScrapeFailure('Scrape request was rejected by the server.');
       }
     } catch {
-      // Ignore polling fetch errors
+      // Ignore polling fetch errors (transient network issues)
     }
   }, 2000);
 }
+
+function handleScrapeFailure(errorMessage: string): void {
+  // Stop polling immediately so the tab does not hang on the spinner forever
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+
+  // Hide any loading UI
+  const list = document.getElementById('results-list');
+  if (list) list.innerHTML = '';
+
+  // Show the error state
+  const errorEl = document.getElementById('scrape-error');
+  if (errorEl) {
+    const msgEl = document.getElementById('scrape-error-message');
+    if (msgEl) msgEl.textContent = errorMessage || 'The scraping process could not be completed. Please try again.';
+    errorEl.style.display = 'block';
+  }
+
+  // Hide the empty state and pagination so only the error is visible
+  const noResults = document.getElementById('no-results');
+  if (noResults) noResults.style.display = 'none';
+  const pagination = document.getElementById('pagination');
+  if (pagination) pagination.style.display = 'none';
+}
+
+// Listen for failure signals sent from the main app tab (postMessage)
+window.addEventListener('message', (event: MessageEvent) => {
+  if (event.origin !== window.location.origin) return;
+  const data = event.data as { type?: string; error?: string } | undefined;
+  if (data && data.type === 'scrapeFailed') {
+    handleScrapeFailure(data.error || 'The scraping process could not be completed. Please try again.');
+  }
+});
 
 async function loadDataAndRender(sourceParam: 'linkedin' | 'google'): Promise<void> {
   // Reset stale payload when switching sources so the new source is always fetched
