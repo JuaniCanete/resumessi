@@ -42,7 +42,6 @@
   "author": "Juani Cañete",
   "license": "MIT",
   "dependencies": {
-    "authenticator": "^1.1.5",
     "formidable": "^3.5.0",
     "pdf-parse-fork": "^1.1.0",
     "playwright-extra": "^4.3.0",
