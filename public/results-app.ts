@@ -66,18 +66,24 @@ interface ScraperRunPayload {
   totalResults: number;
   results: ScraperResult[];
   summary?: string;
+  runId?: string;
 }
 
 let currentPayload: ScraperRunPayload | null = null;
 let currentPage = 1;
 const RESULTS_PER_PAGE = 10;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
-const initTime = Date.now();
+let currentRunId: string | null = null;
 
 async function initResultsPage(): Promise<void> {
   const urlParams = new URLSearchParams(window.location.search);
   const sourceParam = (urlParams.get('source') || 'linkedin').toLowerCase() as 'linkedin' | 'google';
   const isLoadingParam = urlParams.get('loading') === 'true';
+  const runIdParam = urlParams.get('runId');
+
+  if (runIdParam) {
+    currentRunId = runIdParam;
+  }
 
   if (isLoadingParam) {
     showLoadingUI(sourceParam);
@@ -142,9 +148,9 @@ function startPolling(source: 'linkedin' | 'google'): void {
       const resp = await fetch(`/api/scraper/results?source=${source}`);
       if (resp.ok) {
         const data = await resp.json() as ScraperRunPayload;
-        if (data && data.timestamp) {
-          const timestampMs = new Date(data.timestamp).getTime();
-          if (timestampMs > initTime - 10000) {
+        if (data && data.timestamp && data.runId) {
+          // Validate runId matches the one we're polling for
+          if (data.runId === currentRunId) {
             if (pollInterval) clearInterval(pollInterval);
             currentPayload = data;
             sessionStorage.setItem('scraper-results', JSON.stringify(data));

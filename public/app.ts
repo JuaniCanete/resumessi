@@ -1499,6 +1499,7 @@ async function startScraping(): Promise<void> {
 
   closeJobScraperModal();
 
+  // Open results tab with loading state immediately
   const targetUrl = `/public/results.html?source=${currentScraperPlatform}&loading=true`;
   scraperResultsWindow = window.open(targetUrl, '_blank');
 
@@ -1527,12 +1528,13 @@ async function startScraping(): Promise<void> {
     }
 
     const data = await resp.json();
+    const runId = data.runId || '';
     sessionStorage.setItem('scraper-results', JSON.stringify(data));
     localStorage.setItem(getScraperResultsStorageKey(currentScraperPlatform), JSON.stringify(data));
     refreshScrapingResultsButton();
 
     if (scraperResultsWindow && !scraperResultsWindow.closed) {
-      scraperResultsWindow.location.href = `/public/results.html?source=${currentScraperPlatform}`;
+      scraperResultsWindow.location.href = `/public/results.html?source=${currentScraperPlatform}${runId ? `&runId=${runId}` : ''}`;
       if (overlay) overlay.style.display = 'none';
     } else {
       if (fallbackBtn) fallbackBtn.style.display = 'inline-block';
@@ -1548,7 +1550,16 @@ async function startScraping(): Promise<void> {
 function openResultsTabFromOverlay(): void {
   const overlay = document.getElementById('scraper-overlay');
   if (overlay) overlay.style.display = 'none';
-  scraperResultsWindow = window.open(`/public/results.html?source=${currentScraperPlatform}`, '_blank');
+  const savedRaw = sessionStorage.getItem('scraper-results');
+  let runId = '';
+  if (savedRaw) {
+    try {
+      const parsed = JSON.parse(savedRaw);
+      runId = parsed.runId || '';
+    } catch { /* ignore */ }
+  }
+  const url = `/public/results.html?source=${currentScraperPlatform}${runId ? `&runId=${runId}` : ''}`;
+  scraperResultsWindow = window.open(url, '_blank');
 }
 
 async function refreshScrapingResultsButton(): Promise<void> {

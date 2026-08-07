@@ -558,6 +558,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         totalResults: rawResults.length,
         results: rawResults,
         summary: summaryText,
+        runId: crypto.randomUUID(),
       };
 
       const outputFile = path.join(resultsDir, `${query.source}.json`);
