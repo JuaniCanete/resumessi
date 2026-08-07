@@ -57,3 +57,6 @@ playwright-report/
 data/storage-state/
 data/scraper-results/
 
+# Dashboard page — belongs to a separate branch; untracked until it is ready
+public/dashboard.html
+
