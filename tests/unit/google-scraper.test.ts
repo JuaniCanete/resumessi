@@ -41,12 +41,11 @@ test('buildGoogleSearchUrl uses custom domains when provided', () => {
   assert.ok(!decoded.includes('site:teamtailor.com'));
 });
 
-test('buildGoogleSearchUrl includes role, seniority, stack, and location parts', () => {
+test('buildGoogleSearchUrl includes role, seniority, and location parts', () => {
   const query: ScraperQuery = {
     source: 'google',
     role: 'Fullstack Engineer',
     seniority: 'Senior',
-    stack: 'React',
     country: 'Argentina',
     region: 'LATAM',
     currency: 'USD',
@@ -55,7 +54,6 @@ test('buildGoogleSearchUrl includes role, seniority, stack, and location parts',
   const decoded = decodeURIComponent(url);
   assert.ok(decoded.includes('"Fullstack Engineer"'));
   assert.ok(decoded.includes('Senior'));
-  assert.ok(decoded.includes('React'));
   assert.ok(decoded.includes('"LATAM" OR "Argentina"'));
   assert.ok(decoded.includes('USD'));
 });

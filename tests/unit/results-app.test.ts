@@ -46,17 +46,16 @@ test('stripMarkdown handles empty string', () => {
 
 // ─── buildQueryUrl ────────────────────────────────────────────────────
 
-test('buildQueryUrl builds LinkedIn URL with role, seniority, stack', () => {
+test('buildQueryUrl builds LinkedIn URL with role, and maps seniority to f_E', () => {
   const url = buildQueryUrl('linkedin', {
     role: 'SDET',
     seniority: 'Senior',
-    stack: 'TypeScript',
   });
-  const decoded = decodeURIComponent(url);
+  const decoded = decodeURIComponent(url).replace(/\+/g, ' ');
   assert.ok(decoded.startsWith('https://www.linkedin.com/jobs/search/?keywords='));
   assert.ok(decoded.includes('SDET'));
-  assert.ok(decoded.includes('Senior'));
-  assert.ok(decoded.includes('TypeScript'));
+  // Seniority is encoded as the LinkedIn f_E numeric filter, not plain text
+  assert.ok(decoded.includes('f_E=4'));
 });
 
 test('buildQueryUrl includes employment type, region, country, currency for LinkedIn', () => {
@@ -93,12 +92,11 @@ test('buildQueryUrl combines region and country into quoted group for Google', (
 });
 
 test('buildQueryUrl URL-encodes special characters', () => {
-  const url = buildQueryUrl('linkedin', { role: 'Fullstack Engineer', stack: 'React & Node.js' });
+  const url = buildQueryUrl('linkedin', { role: 'Fullstack Engineer / Developer' });
   assert.ok(!url.includes(' '));
-  assert.ok(!url.includes('&'));
-  const decoded = decodeURIComponent(url);
-  assert.ok(decoded.includes('Fullstack Engineer'));
-  assert.ok(decoded.includes('React & Node.js'));
+  // URLSearchParams form-encodes spaces as '+'; decode them back to spaces
+  const decoded = decodeURIComponent(url).replace(/\+/g, ' ');
+  assert.ok(decoded.includes('Fullstack Engineer / Developer'));
 });
 
 test('buildQueryUrl returns base URL when no query parts provided', () => {

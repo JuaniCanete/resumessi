@@ -9,20 +9,20 @@ test('buildLinkedInSearchUrl returns base URL when no query parts are provided',
   assert.equal(url, 'https://www.linkedin.com/jobs/search/?keywords=');
 });
 
-test('buildLinkedInSearchUrl includes keywords, role, seniority, and stack', () => {
+test('buildLinkedInSearchUrl includes keywords and role, and maps seniority to f_E', () => {
   const query: ScraperQuery = {
     source: 'linkedin',
     keywords: 'SDET',
     role: 'QA Engineer',
     seniority: 'Senior',
-    stack: 'TypeScript',
   };
   const url = buildLinkedInSearchUrl(query);
-  const decoded = decodeURIComponent(url);
+  // URLSearchParams form-encodes spaces as '+'; decode them back to spaces
+  const decoded = decodeURIComponent(url).replace(/\+/g, ' ');
   assert.ok(decoded.includes('SDET'));
   assert.ok(decoded.includes('QA Engineer'));
-  assert.ok(decoded.includes('Senior'));
-  assert.ok(decoded.includes('TypeScript'));
+  // Seniority is encoded as the LinkedIn f_E numeric filter, not plain text
+  assert.ok(decoded.includes('f_E=4'));
 });
 
 test('buildLinkedInSearchUrl includes employment type, region, country, and currency', () => {
@@ -35,7 +35,7 @@ test('buildLinkedInSearchUrl includes employment type, region, country, and curr
     currency: 'USD',
   };
   const url = buildLinkedInSearchUrl(query);
-  const decoded = decodeURIComponent(url);
+  const decoded = decodeURIComponent(url).replace(/\+/g, ' ');
   assert.ok(decoded.includes('Backend Engineer'));
   assert.ok(decoded.includes('fulltime'));
   assert.ok(decoded.includes('LATAM'));
@@ -46,17 +46,14 @@ test('buildLinkedInSearchUrl includes employment type, region, country, and curr
 test('buildLinkedInSearchUrl URL-encodes special characters in the query', () => {
   const query: ScraperQuery = {
     source: 'linkedin',
-    role: 'Fullstack Engineer',
-    stack: 'React & Node.js',
+    role: 'Fullstack Engineer / Developer',
   };
   const url = buildLinkedInSearchUrl(query);
-  // The raw URL must not contain unencoded spaces or ampersands
+  // The raw URL must not contain unencoded spaces or special chars
   assert.ok(!url.includes(' '));
-  assert.ok(!url.includes('&'));
-  // Decoding should recover the original parts
-  const decoded = decodeURIComponent(url);
-  assert.ok(decoded.includes('Fullstack Engineer'));
-  assert.ok(decoded.includes('React & Node.js'));
+  // Decoding should recover the original parts (URLSearchParams encodes spaces as '+')
+  const decoded = decodeURIComponent(url).replace(/\+/g, ' ');
+  assert.ok(decoded.includes('Fullstack Engineer / Developer'));
 });
 
 test('buildLinkedInSearchUrl omits empty optional fields', () => {
@@ -64,7 +61,6 @@ test('buildLinkedInSearchUrl omits empty optional fields', () => {
     source: 'linkedin',
     role: 'SDET',
     seniority: '',
-    stack: '',
     employmentType: '',
     region: '',
     country: '',

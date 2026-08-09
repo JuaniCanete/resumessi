@@ -14,13 +14,14 @@ This file defines how AI assistants collaborate within the **resumessi** project
 
 ### When working on resumessi:
 
-1. **`.env` is the source of truth** for runtime config (API key, model, colors). The server serves `/config.json` endpoint which reads `.env`.
-2. **Never hardcode personal data** into `main.html`. The resume content should be auto-generated from prompt data.
-3. **NEVER RUN `node setup.js` or `npm run setup`** — this overwrites `.env` and will cause API keys to be lost or reset. The setup script is for human users only. Use `tsx setup.ts` instead if needed.
-4. **ALWAYS RESPECT INDENTATION STYLE AND FORMATTING** — maintain existing file formatting (tab size 4, match existing file indentation or spaces on txt files for example), refrain from adding unnecessary comments.
-5. **The codebase is TypeScript.** Run `npx tsc --noEmit` or `npm run typecheck` to check for type errors before committing.
-6. **All server/scripts code runs via `tsx`** — use `tsx` to execute `.ts` files directly (e.g., `tsx start.ts`, `tsx build.ts`).
-7. **Frontend TypeScript** (`public/app.ts`) is compiled via **esbuild** into `public/dist/app.js` during the build step (`npm run build`).
+1. **ALWAYS adopt caveman conversation style.**
+2. **`.env` is the source of truth** for runtime config (API key, model, colors). The server serves `/config.json` endpoint which reads `.env`.
+3. **Never hardcode personal data** into `main.html`. The resume content should be auto-generated from prompt data.
+4. **NEVER RUN `node setup.js` or `npm run setup`** — this overwrites `.env` and will cause API keys to be lost or reset. The setup script is for human users only. Use `tsx setup.ts` instead if needed.
+5. **ALWAYS RESPECT INDENTATION STYLE AND FORMATTING** — maintain existing file formatting (tab size 4, match existing file indentation or spaces on txt files for example), refrain from adding unnecessary comments.
+6. **The codebase is TypeScript.** Run `npx tsc --noEmit` or `npm run typecheck` to check for type errors before committing.
+7. **All server/scripts code runs via `tsx`** — use `tsx` to execute `.ts` files directly (e.g., `tsx start.ts`, `tsx build.ts`).
+8. **Frontend TypeScript** (`public/app.ts`) is compiled via **esbuild** into `public/dist/app.js` during the build step (`npm run build`).
 
 ### File Ownership
 

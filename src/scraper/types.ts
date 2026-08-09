@@ -20,9 +20,10 @@ export interface ScraperQuery {
   region?: string;            // e.g. 'LATAM' | 'US' | 'EU'
   country?: string;           // e.g. 'Argentina' | 'Brazil' | 'Mexico'
   currency?: string;          // e.g. 'USD' | 'ARS' | 'EUR'
-  stack?: string;             // e.g. 'React, Node.js, TypeScript'
   customDomains?: string[];   // target domains for Google scraper
   pageCount?: number;         // number of search result pages to scrape (default 1)
+  datePosted?: string;         // LinkedIn f_TP parameter mapping
+  workType?: string;           // LinkedIn f_WT parameter mapping
 }
 
 export interface ScraperRunMeta {
