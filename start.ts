@@ -69,8 +69,9 @@ function parseEnvFile(): Record<string, string | undefined> {
     TEXT_LIGHT_COLOR: '#404040',
     BG_BADGE_COLOR: '#f1f5f9',
     SUCCESS_COLOR: '#0ea5e9',
-    LINKEDIN_AUTH: 'codegen',
     CHROME_PATH: '',
+    GOOGLE_API_KEY: '',
+    GOOGLE_CX_ID: '',
   };
 
   const envPath = path.join(ROOT, '.env');
@@ -519,7 +520,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       if (query.source === 'linkedin') {
         rawResults = await scrapeLinkedIn(query);
       } else {
-        rawResults = await scrapeGoogle(query);
+        rawResults = await scrapeGoogle(query, env);
       }
 
       let summaryText = '';
@@ -607,9 +608,8 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   if (requestPath === '/api/scraper/validate-linkedin' && req.method === 'POST') {
     try {
       const valid = await validateLinkedInStorageState();
-      const env = parseEnvFile();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ valid, authMode: env.LINKEDIN_AUTH || 'codegen' }));
+      res.end(JSON.stringify({ valid, authMode: 'codegen' }));
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: (err as Error).message }));

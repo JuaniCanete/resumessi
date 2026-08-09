@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGoogleSearchUrl, extractGoogleResultUrl, DEFAULT_TARGET_DOMAINS } from '../../src/scraper/google';
+import { buildGoogleSearchUrl, extractGoogleResultUrl, DEFAULT_TARGET_DOMAINS, scrapeGoogle } from '../../src/scraper/google';
 import type { ScraperQuery } from '../../src/scraper/types';
 
 test('buildGoogleSearchUrl uses default domains when customDomains is empty array', () => {
@@ -80,4 +80,70 @@ test('DEFAULT_TARGET_DOMAINS contains the expected job board domains', () => {
     'workday.com',
     'jobs.ashbyhq.com',
   ]);
+});
+
+test('scrapeGoogle returns empty array when credentials are missing', async () => {
+  const query: ScraperQuery = { source: 'google', role: 'Engineer' };
+  const results = await scrapeGoogle(query, {});
+  assert.deepEqual(results, []);
+});
+
+test('scrapeGoogle parses Custom Search API results successfully', async (t) => {
+  const query: ScraperQuery = { source: 'google', role: 'Engineer', pageCount: 1 };
+  const mockEnv = { GOOGLE_API_KEY: 'test-key', GOOGLE_CX_ID: 'test-cx' };
+
+  const mockResponse = {
+    items: [
+      {
+        title: 'Software Engineer Job',
+        link: 'https://www.google.com/url?q=https%3A%2F%2Fjobs.lever.co%2Ftest&sa=U',
+        snippet: 'We are hiring a Software Engineer...'
+      }
+    ]
+  };
+
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  globalThis.fetch = async (input: Parameters<typeof fetch>[0]) => {
+    const urlStr = input.toString();
+    assert.ok(urlStr.includes('key=test-key'));
+    assert.ok(urlStr.includes('cx=test-cx'));
+    assert.ok(urlStr.includes('q='));
+    return {
+      status: 200,
+      ok: true,
+      json: async () => mockResponse,
+      text: async () => JSON.stringify(mockResponse)
+    } as Response;
+  };
+
+  const results = await scrapeGoogle(query, mockEnv);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].title, 'Software Engineer Job');
+  assert.equal(results[0].url, 'https://jobs.lever.co/test');
+  assert.equal(results[0].snippet, 'We are hiring a Software Engineer...');
+});
+
+test('scrapeGoogle handles 429 quota limit error gracefully', async (t) => {
+  const query: ScraperQuery = { source: 'google', role: 'Engineer', pageCount: 1 };
+  const mockEnv = { GOOGLE_API_KEY: 'test-key', GOOGLE_CX_ID: 'test-cx' };
+
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  globalThis.fetch = async () => {
+    return {
+      status: 429,
+      ok: false,
+      text: async () => 'Quota Exceeded'
+    } as Response;
+  };
+
+  const results = await scrapeGoogle(query, mockEnv);
+  assert.deepEqual(results, []);
 });

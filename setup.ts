@@ -111,8 +111,6 @@ TEXT_LIGHT_COLOR=${env.TEXT_LIGHT_COLOR || '#404040'}
 BG_BADGE_COLOR=${env.BG_BADGE_COLOR || '#f1f5f9'}
 SUCCESS_COLOR=${env.SUCCESS_COLOR || '#0ea5e9'}
 
-# --- LinkedIn Scraper ---
-LINKEDIN_AUTH=${env.LINKEDIN_AUTH || 'codegen'}
 `;
   fs.writeFileSync(filePath, content, 'utf-8');
 }
@@ -257,8 +255,6 @@ async function main(): Promise<void> {
     console.log('║     LinkedIn Scraper Configuration       ║');
     console.log('╚══════════════════════════════════════════╝');
     console.log('');
-    console.log('LinkedIn authentication: codegen mode (manual login in visible browser window).');
-    env.LINKEDIN_AUTH = 'codegen';
   } else {
     // Silent mode: ensure at least one key exists
     const hasAnyKey = PROVIDERS.some(p => env[p.keyEnv] && env[p.keyEnv] !== `your_${p.id}_key_here`);
