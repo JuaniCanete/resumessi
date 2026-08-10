@@ -24,7 +24,7 @@
             --success: #0ea5e9;
             --whitetext: #f8fafc;
             --ats-w: 360px;
-            --sidebar-w: 280px;
+            --sidebar-w: 400px;
             --static: rgba(255, 255, 255, 0.08);
         }
 
@@ -1380,6 +1380,30 @@
         .board-card {
             position: relative;
         }
+
+        #floating-footer {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 7px;
+            font-weight: 700;
+            font-size: 13px;
+            font-family: 'Comfortaa', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, opacity 0.2s;
+            margin-top: 10px;
+        }
+
+        #floating-footer a {
+            color: var(--bg-badge);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        #floating-footer a:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
     </style>
 </head>
 
@@ -1417,6 +1441,15 @@
                     <span class="tab-icon">🚀</span>
                     Start scraping
                 </button>
+            </div>
+            <div id="floating-footer" class="no-print">
+                <span>Developed by Juani Ca&ntilde;ete</span>
+                <span class="dev-separator">&bull;</span>
+                <a href="https://github.com/JuaniCanete?tab=repositories" target="_blank"
+                    rel="noopener noreferrer">GitHub</a>
+                <span class="dev-separator">&bull;</span>
+                <a href="https://www.linkedin.com/in/juanignaciocanete/" target="_blank"
+                    rel="noopener noreferrer">LinkedIn</a>
             </div>
         </div>
     </aside>
