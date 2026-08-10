@@ -373,7 +373,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
             error: 'PDF_TOO_LARGE',
-            message: `Resume is ~${estimatedPages} pages. Recommended is 1-2 pages, take into account that processing this PDF would consume extra tokens.`,
+            message: `Resume is ~${estimatedPages} pages. Recommended is 1-2 pages, take into account that processing this PDF will consume extra tokens.`,
             pages: estimatedPages,
             textPreview: text.substring(0, 10000),
           }));

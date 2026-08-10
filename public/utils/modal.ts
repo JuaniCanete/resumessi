@@ -269,11 +269,11 @@ export function showToast(options: ToastOptions): void {
 export function confirmDelete(
   itemName: string,
   onConfirm: () => void | Promise<void>,
-  options?: { onCancel?: () => void; variant?: 'danger' | 'warning' }
+  options?: { onCancel?: () => void; variant?: 'danger' | 'warning'; message?: string }
 ): void {
   showConfirmModal({
     title: 'Remove Item',
-    message: `This ${itemName} would be removed and would no longer be shown until a new scraping is done. Do you want to continue?`,
+    message: options?.message || `This ${itemName} will be removed and will no longer be shown until a new scraping is done. Do you want to continue?`,
     confirmText: 'Remove',
     cancelText: 'Cancel',
     variant: options?.variant || 'danger',
@@ -289,7 +289,7 @@ export function confirmUnsave(
 ): void {
   showConfirmModal({
     title: 'Unsave Item',
-    message: `This ${itemName} would be removed from saved jobs. Do you want to continue?`,
+    message: `This ${itemName} will be removed from saved jobs. Do you want to continue?`,
     confirmText: 'Unsave',
     cancelText: 'Cancel',
     variant: 'warning',

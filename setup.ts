@@ -140,7 +140,7 @@ async function main(): Promise<void> {
       console.log('');
       console.log('⚠️                                                                                             ⚠️');
       console.log('\t.env file already exists.');
-      console.log('\tI cannot guarantee that your existing keys would be maintained, save them.');
+      console.log('\tI cannot guarantee that your existing keys will be maintained, save them.');
       console.log('⚠️                                                                                             ⚠️');
       console.log('');
       const confirm = await ask('Type "continue" to proceed: ');

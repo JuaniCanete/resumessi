@@ -25,6 +25,7 @@
             --whitetext: #f8fafc;
             --ats-w: 360px;
             --sidebar-w: 280px;
+            --static: rgba(255, 255, 255, 0.08);
         }
 
         * {
@@ -48,6 +49,73 @@
 
         body.sidebar-collapsed #sidebar-open-stub {
             display: flex !important;
+        }
+
+        /* ── Shared Button Styles ────────────────────────── */
+        .p-btn {
+            width: 100%;
+            padding: 11px 14px;
+            border: none;
+            border-radius: 7px;
+            font-weight: 700;
+            font-size: 13px;
+            font-family: 'Comfortaa', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, opacity 0.2s;
+            margin-top: 10px;
+        }
+
+        .p-btn:active {
+            transform: scale(0.98);
+        }
+
+        .p-btn-primary {
+            background: var(--static);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .p-btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .p-btn-primary:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .p-btn-secondary {
+            background: var(--static);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .p-btn-secondary:hover {
+            background: #1d4ed8;
+            color: #fff;
+        }
+
+        .dot-anim::after {
+            content: '';
+            animation: dotdot 1.4s infinite;
+        }
+
+        @keyframes dotdot {
+            0% {
+                content: '';
+            }
+
+            33% {
+                content: '.';
+            }
+
+            66% {
+                content: '..';
+            }
+
+            100% {
+                content: '...';
+            }
         }
 
         body.ats-open {

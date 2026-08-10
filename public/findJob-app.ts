@@ -873,7 +873,7 @@ function handleDashboardDelete(job: ScraperResult): void {
         showToast({ message: 'Failed to delete job: ' + (err as Error).message, type: 'error' });
       }
     },
-    { variant: 'danger' }
+    { variant: 'danger', message: 'This card will be removed from the board. Do you want to continue?' }
   );
 }
 

@@ -56,7 +56,6 @@ playwright-report/
 # Scraper session & results data
 data/storage-state/
 data/scraper-results/
+data/job-data.json
 
-# Dashboard page — belongs to a separate branch; untracked until it is ready
-public/dashboard.html
 
