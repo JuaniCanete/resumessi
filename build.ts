@@ -53,7 +53,7 @@ function injectPromptLast(filePath: string, placeholder: string, value: string):
 
 async function buildFrontend(): Promise<void> {
   const entryPoint = path.join(ROOT, 'public', 'app.ts');
-  const resultsEntryPoint = path.join(ROOT, 'public', 'results-app.ts');
+  const findJobEntryPoint = path.join(ROOT, 'public', 'findJob-app.ts');
   const outDir = path.join(ROOT, 'public', 'dist');
 
   if (!fs.existsSync(outDir)) {
@@ -63,7 +63,7 @@ async function buildFrontend(): Promise<void> {
   try {
     const entryPoints: string[] = [];
     if (fs.existsSync(entryPoint)) entryPoints.push(entryPoint);
-    if (fs.existsSync(resultsEntryPoint)) entryPoints.push(resultsEntryPoint);
+    if (fs.existsSync(findJobEntryPoint)) entryPoints.push(findJobEntryPoint);
 
     if (entryPoints.length > 0) {
       await esbuild.build({

@@ -1133,7 +1133,7 @@
                     aria-expanded="false" aria-haspopup="true" title="Actions"><span class="actions-label">Actions
                         ▾</span></button>
                 <div id="actions-dropdown" data-testid="actions-dropdown" class="actions-dropdown hidden" role="menu">
-                    <button class="actions-option" id="btn-find-job-dropdown" data-testid="find-job-button" role="menuitem" onclick="openJobScraperModal()">
+                    <button class="actions-option" id="btn-find-job-dropdown" data-testid="find-job-button" role="menuitem" onclick="window.location.href='/public/findJob.html?source=linkedin'">
                         <span class="actions-option-icon">🪏</span>
                         <span class="actions-option-text">Find a Job</span>
                     </button>
@@ -1144,10 +1144,6 @@
                     <button class="actions-option" role="menuitem" onclick="openRight()">
                         <span class="actions-option-icon">📊</span>
                         <span class="actions-option-text">ATS Results</span>
-                    </button>
-                    <button class="actions-option" id="btn-open-scraping-results" data-testid="scraping-results-button" role="menuitem" onclick="openLatestScrapingResults()" style="display: none;">
-                        <span class="actions-option-icon">📋</span>
-                        <span class="actions-option-text">Scraping Results</span>
                     </button>
                     <button class="actions-option" role="menuitem" onclick="window.print()">
                         <span class="actions-option-icon">⬇</span>

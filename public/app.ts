@@ -1570,7 +1570,7 @@ async function startScraping(): Promise<void> {
   closeJobScraperModal();
 
   // Open results tab with loading state immediately
-  const targetUrl = `/public/results.html?source=${currentScraperPlatform}&loading=true`;
+  const targetUrl = `/public/findJob.html?source=${currentScraperPlatform}&loading=true`;
   scraperResultsWindow = window.open(targetUrl, '_blank');
 
   const overlay = document.getElementById('scraper-overlay');
@@ -1609,7 +1609,7 @@ async function startScraping(): Promise<void> {
     refreshScrapingResultsButton();
 
     if (scraperResultsWindow && !scraperResultsWindow.closed) {
-      scraperResultsWindow.location.href = `/public/results.html?source=${currentScraperPlatform}${runId ? `&runId=${runId}` : ''}`;
+      scraperResultsWindow.location.href = `/public/findJob.html?source=${currentScraperPlatform}${runId ? `&runId=${runId}` : ''}`;
       if (overlay) overlay.style.display = 'none';
     } else {
       if (fallbackBtn) fallbackBtn.style.display = 'inline-block';
@@ -1644,7 +1644,7 @@ function openResultsTabFromOverlay(): void {
       runId = parsed.runId || '';
     } catch { /* ignore */ }
   }
-  const url = `/public/results.html?source=${currentScraperPlatform}${runId ? `&runId=${runId}` : ''}`;
+  const url = `/public/findJob.html?source=${currentScraperPlatform}${runId ? `&runId=${runId}` : ''}`;
   scraperResultsWindow = window.open(url, '_blank');
 }
 
@@ -1699,7 +1699,7 @@ function openLatestScrapingResults(): void {
       try {
         const parsed = JSON.parse(savedRaw);
         if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
-          const target = `/public/results.html?source=${source}`;
+          const target = `/public/findJob.html?source=${source}`;
           scraperResultsWindow = window.open(target, '_blank');
           if (scraperResultsWindow && !scraperResultsWindow.closed) {
             return;
@@ -1711,7 +1711,7 @@ function openLatestScrapingResults(): void {
     }
   }
 
-  const fallbackTarget = '/public/results.html?source=linkedin';
+  const fallbackTarget = '/public/findJob.html?source=linkedin';
   scraperResultsWindow = window.open(fallbackTarget, '_blank');
 }
 

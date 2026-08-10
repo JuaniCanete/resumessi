@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// Mirrors the ScraperRunPayload shape from public/results-app.ts
+// Mirrors the ScraperRunPayload shape from public/findJob-app.ts
 interface MockResult {
   title: string;
   url: string;
@@ -57,7 +57,7 @@ test.describe('Scraper Results — Tab Switching', () => {
 			});
 		});
 
-		await page.goto('/public/results.html?source=linkedin', { waitUntil: 'domcontentloaded' });
+		await page.goto('/public/findJob.html?source=linkedin', { waitUntil: 'domcontentloaded' });
 
 		// LinkedIn shows a card and no empty state
 		await expect(page.locator('#results-list')).toContainText('LinkedIn Job Result');
@@ -95,7 +95,7 @@ test.describe('Scraper Results — Tab Switching', () => {
 			});
 		});
 
-		await page.goto('/public/results.html?source=linkedin', { waitUntil: 'domcontentloaded' });
+		await page.goto('/public/findJob.html?source=linkedin', { waitUntil: 'domcontentloaded' });
 
 		// LinkedIn should be active by default and show the LinkedIn result
 		await expect(page.locator('#tab-linkedin')).toHaveClass(/active/);

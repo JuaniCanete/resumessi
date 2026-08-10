@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { getRequestPath, getScraperResultsStorageKey } from '../../src/scraper/runtime-utils';
 
 test('getRequestPath strips query strings from file requests', () => {
-  assert.equal(getRequestPath('/public/results.html?source=linkedin'), '/public/results.html');
-  assert.equal(getRequestPath('/public/results.html?source=google&loading=true'), '/public/results.html');
+  assert.equal(getRequestPath('/public/findJob.html?source=linkedin'), '/public/findJob.html');
+  assert.equal(getRequestPath('/public/findJob.html?source=google&loading=true'), '/public/findJob.html');
   assert.equal(getRequestPath('/api/scraper/results?source=linkedin'), '/api/scraper/results');
 });
 

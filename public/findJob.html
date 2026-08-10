@@ -4,14 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>resumessi - Job Scraper Results</title>
+    <title>resumessi - Job Finder</title>
     <link rel="icon" type="image/svg+xml"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐐%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Markdown Parser -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <style>
@@ -25,6 +24,7 @@
             --success: #0ea5e9;
             --whitetext: #f8fafc;
             --ats-w: 360px;
+            --sidebar-w: 280px;
         }
 
         * {
@@ -38,17 +38,139 @@
             background: #0d0f12;
             color: var(--whitetext);
             min-height: 100vh;
-            padding: 30px 20px;
-            transition: padding-right 0.3s cubic-bezier(.4,0,.2,1);
+            transition: padding-left 0.3s cubic-bezier(.4, 0, .2, 1), padding-right 0.3s cubic-bezier(.4, 0, .2, 1);
+            padding-left: var(--sidebar-w);
+        }
+
+        body.sidebar-collapsed {
+            padding-left: 0;
+        }
+
+        body.sidebar-collapsed #sidebar-open-stub {
+            display: flex !important;
         }
 
         body.ats-open {
             padding-right: var(--ats-w);
         }
 
+        /* ── Sidebar ────────────────────────────────────── */
+        #findjob-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-w);
+            height: 100vh;
+            background: var(--secondary);
+            color: #fff;
+            z-index: 200;
+            box-shadow: 4px 0 16px rgba(0, 0, 0, 0.25);
+            transition: transform 0.3s cubic-bezier(.4, 0, .2, 1);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #findjob-sidebar.collapsed {
+            transform: translateX(calc(-1 * var(--sidebar-w)));
+        }
+
+        .sidebar-inner {
+            padding: 20px 22px 28px;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-ctrl-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-label {
+            font-size: 11px;
+            color: #ffffff;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            flex: 1;
+            text-align: center;
+        }
+
+        .ctrl-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: #ffffff;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .ctrl-btn:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .sidebar-tab {
+            width: 100%;
+            padding: 12px 14px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.8);
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-tab:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        .sidebar-tab.active {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .sidebar-tab .tab-icon {
+            font-size: 16px;
+            width: 24px;
+            text-align: center;
+        }
+
+        /* ── Main Content ──────────────────────────────── */
+        .main-content {
+            min-height: 100vh;
+        }
+
         .container {
             max-width: 900px;
             margin: 0 auto;
+            padding: 30px 20px;
         }
 
         .header {
@@ -245,10 +367,21 @@
             font-weight: 700;
         }
 
-        .result-ai-summary h1 { font-size: 15px; }
-        .result-ai-summary h2 { font-size: 14px; }
-        .result-ai-summary h3 { font-size: 13px; }
-        .result-ai-summary h4 { font-size: 12px; }
+        .result-ai-summary h1 {
+            font-size: 15px;
+        }
+
+        .result-ai-summary h2 {
+            font-size: 14px;
+        }
+
+        .result-ai-summary h3 {
+            font-size: 13px;
+        }
+
+        .result-ai-summary h4 {
+            font-size: 12px;
+        }
 
         .result-ai-summary p {
             margin: 6px 0;
@@ -340,11 +473,6 @@
 
         .result-check-jd-btn:hover {
             background: rgba(251, 191, 36, 0.2);
-        }
-
-        .result-tab-btn.active {
-            background: var(--accent) !important;
-            color: #fff !important;
         }
 
         .result-card-header-actions {
@@ -451,7 +579,120 @@
             font-weight: 600;
         }
 
-        /* ATS Sidebar */
+        /* Source tabs (LinkedIn / Google) */
+        .source-tabs {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .result-tab-btn {
+            padding: 6px 14px;
+            border-radius: 7px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            font-family: 'Comfortaa', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .result-tab-btn.active {
+            background: var(--accent) !important;
+            color: #fff !important;
+        }
+
+        /* ── Sidebar Open Stub ─────────────────────────── */
+        #sidebar-open-stub {
+            position: fixed;
+            top: 14px;
+            left: 0;
+            z-index: 300;
+            width: 26px;
+            height: 44px;
+            background: var(--accent);
+            border: none;
+            border-radius: 0 8px 8px 0;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 3px 0 8px rgba(0, 0, 0, 0.3);
+            transition: color 0.2s, background 0.2s;
+        }
+
+        #sidebar-open-stub:hover {
+            color: var(--accent);
+            background: #1e293b;
+        }
+
+        /* ── Action buttons on cards ───────────────────── */
+        .result-card-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .card-action-btn {
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        .card-action-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .card-action-btn.save {
+            border-color: rgba(16, 185, 129, 0.4);
+            color: #34d399;
+        }
+
+        .card-action-btn.save:hover {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .card-action-btn.remove {
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #f87171;
+        }
+
+        .card-action-btn.remove:hover {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .card-action-btn.apply {
+            border-color: rgba(37, 99, 235, 0.4);
+            color: #60a5fa;
+        }
+
+        .card-action-btn.apply:hover {
+            background: rgba(37, 99, 235, 0.15);
+        }
+
+        .card-action-btn.unsave {
+            border-color: rgba(245, 158, 11, 0.4);
+            color: #fbbf24;
+        }
+
+        .card-action-btn.unsave:hover {
+            background: rgba(245, 158, 11, 0.15);
+        }
+
+        /* ── ATS Sidebar ─────────────────────────────── */
         #ats-sidebar {
             position: fixed;
             top: 0;
@@ -616,7 +857,7 @@
             display: block;
         }
 
-        /* JD Edit Modal */
+        /* ── JD Edit Modal ────────────────────────────── */
         #jd-edit-modal {
             display: none;
             position: fixed;
@@ -762,54 +1003,335 @@
         #jd-edit-modal .jd-fetch-loading.show {
             display: block;
         }
+
+        /* ── Job Dashboard Board ──────────────────────── */
+        .board-container {
+            display: flex;
+            gap: 16px;
+            overflow-x: auto;
+            padding: 10px 4px 20px 4px;
+            align-items: flex-start;
+            min-height: 300px;
+        }
+
+        .board-list {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            width: 280px;
+            min-width: 260px;
+            max-height: 75vh;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .board-list-header {
+            padding: 14px 16px;
+            font-weight: 700;
+            font-size: 13px;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .board-list-count {
+            background: rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .board-cards-container {
+            padding: 10px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 80px;
+        }
+
+        .board-card {
+            background: #161920;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: grab;
+            font-size: 13px;
+            color: #e2e8f0;
+            word-wrap: break-word;
+            user-select: none;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .board-card:hover {
+            background: #1c1f2a;
+            border-color: rgba(37, 99, 235, 0.35);
+        }
+
+        .board-card.dragging {
+            opacity: 0.5;
+        }
+
+        .board-card-title {
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+
+        .board-card-meta {
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .board-card-company {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+
+        .board-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .board-card-source {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .board-card-source.linkedin {
+            background: rgba(10, 102, 194, 0.2);
+            color: #70b5f9;
+            border: 1px solid rgba(10, 102, 194, 0.3);
+        }
+
+        .board-card-source.google {
+            background: rgba(234, 67, 53, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(234, 67, 53, 0.25);
+        }
+
+        .board-add-card-btn {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            padding: 10px 12px;
+            text-align: left;
+            border-radius: 0 0 10px 10px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s, color 0.2s;
+            font-family: 'Comfortaa', sans-serif;
+        }
+
+        .board-add-card-btn:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: #e2e8f0;
+        }
+
+        .board-card-composer {
+            padding: 0 10px 10px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .board-card-composer textarea {
+            width: 100%;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 8px;
+            resize: none;
+            font-size: 13px;
+            color: #e2e8f0;
+            font-family: 'Comfortaa', sans-serif;
+            outline: none;
+        }
+
+        .board-card-composer textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .board-composer-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .board-btn-confirm {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: 'Comfortaa', sans-serif;
+        }
+
+        .board-btn-confirm:hover {
+            background: #1d4ed8;
+        }
+
+        .board-btn-cancel {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .board-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
+        }
+
+        .board-empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
+        }
     </style>
 </head>
 
 <body>
 
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-top">
-                <div class="title">
-                    Job Scraper Results
+    <!-- Sidebar Open Stub -->
+    <button id="sidebar-open-stub" onclick="toggleSidebar()" title="Open sidebar" aria-label="Open sidebar">&#9776;</button>
+
+    <!-- Sidebar -->
+    <aside id="findjob-sidebar" class="no-print">
+        <div class="sidebar-inner">
+            <div class="sidebar-ctrl-row">
+                <button class="ctrl-btn" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Collapse sidebar">&#9776;</button>
+                <span class="sidebar-label">Job Finder</span>
+            </div>
+
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" data-tab="scraping" onclick="switchTab('scraping')">
+                    <span class="tab-icon">🔎</span>
+                    Scraping Results
+                </button>
+                <button class="sidebar-tab" data-tab="saved" onclick="switchTab('saved')">
+                    <span class="tab-icon">💾</span>
+                    Saved Jobs
+                </button>
+                <button class="sidebar-tab" data-tab="dashboard" onclick="switchTab('dashboard')">
+                    <span class="tab-icon">📊</span>
+                    Job Dashboard
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container">
+            <!-- Scraping Results Tab -->
+            <div id="tab-scraping" class="tab-content">
+                <div class="header">
+                    <div class="header-top">
+                        <div class="title">
+                            Scraping Results
+                        </div>
+                        <div class="source-tabs">
+                            <button id="tab-linkedin" onclick="switchResultsTab('linkedin')" class="result-tab-btn active" style="padding: 6px 14px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.15); background: var(--accent); color: #fff; font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 12px; cursor: pointer;">LinkedIn</button>
+                            <button id="tab-google" onclick="switchResultsTab('google')" class="result-tab-btn" style="padding: 6px 14px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.7); font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 12px; cursor: pointer;">Google</button>
+                            <span id="source-badge" class="source-badge linkedin" style="display: none;">LinkedIn</span>
+                        </div>
+                    </div>
+                    <div class="meta-row">
+                        <div class="meta-item">Scanned: <span id="meta-timestamp">No results</span></div>
+                        <div class="meta-item">Total Findings: <span id="meta-total">N/A</span></div>
+                        <div class="meta-item">Query: <span id="meta-query">N/A</span><span id="query-link-wrapper" style="display: none;">. <a id="query-link" href="#" target="_blank" rel="noopener noreferrer">Link</a></span></div>
+                    </div>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button id="tab-linkedin" onclick="switchResultsTab('linkedin')" class="result-tab-btn active" style="padding: 6px 14px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.15); background: var(--accent); color: #fff; font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 12px; cursor: pointer;">LinkedIn</button>
-                    <button id="tab-google" onclick="switchResultsTab('google')" class="result-tab-btn" style="padding: 6px 14px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.7); font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 12px; cursor: pointer;">Google</button>
-                    <span id="source-badge" class="source-badge linkedin" style="display: none;">LinkedIn</span>
+
+                <div id="results-list" class="results-list"></div>
+
+                <div id="no-results" class="no-results" style="display: none;">
+                    <h3>There are no scraping results available</h3>
+                    <p style="font-size: 13px; color: #64748b;">Results will appear here.</p>
+                </div>
+
+                <div id="scrape-error" class="scrape-error" style="display: none;">
+                    <h3>⚠️ Scraping Failed</h3>
+                    <p id="scrape-error-message">The scraping process could not be completed. Please try again.</p>
+                    <div>
+                        <span class="retry-hint">Go back to the main tab, adjust your query, and retry.</span>
+                    </div>
+                </div>
+
+                <div id="pagination" class="pagination" style="display: none;">
+                    <button id="btn-prev-page" class="page-btn" onclick="prevPage()">◀ Previous</button>
+                    <span id="page-info" class="page-info">Page 1 of 1</span>
+                    <button id="btn-next-page" class="page-btn" onclick="nextPage()">Next ▶</button>
                 </div>
             </div>
-            <div class="meta-row">
-                <div class="meta-item">Scanned: <span id="meta-timestamp">No results</span></div>
-                <div class="meta-item">Total Findings: <span id="meta-total">N/A</span></div>
-                <div class="meta-item">Query: <span id="meta-query">N/A</span><span id="query-link-wrapper" style="display: none;">. <a id="query-link" href="#" target="_blank" rel="noopener noreferrer">Link</a></span></div>
+
+            <!-- Saved Jobs Tab -->
+            <div id="tab-saved" class="tab-content" style="display: none;">
+                <div class="header">
+                    <div class="header-top">
+                        <div class="title">Saved Jobs</div>
+                    </div>
+                    <div class="meta-row">
+                        <div class="meta-item">Total Saved: <span id="saved-meta-total">0</span></div>
+                        <div class="meta-item">Sources: <span id="saved-meta-sources">None</span></div>
+                    </div>
+                </div>
+                <div id="saved-results-list" class="results-list"></div>
+                <div id="saved-no-results" class="no-results" style="display: none;">
+                    <h3>No saved jobs yet</h3>
+                    <p style="font-size: 13px; color: #64748b;">Save jobs from Scraping Results to see them here.</p>
+                </div>
             </div>
-        </div>
 
-        <!-- Results List -->
-        <div id="results-list" class="results-list"></div>
-
-        <!-- No Results Empty State -->
-        <div id="no-results" class="no-results" style="display: none;">
-            <h3>There are no scraping results available</h3>
-            <p style="font-size: 13px; color: #64748b;">Results will appear here.</p>
-        </div>
-
-        <!-- Scrape Failure Error State -->
-        <div id="scrape-error" class="scrape-error" style="display: none;">
-            <h3>⚠️ Scraping Failed</h3>
-            <p id="scrape-error-message">The scraping process could not be completed. Please try again.</p>
-            <div>
-                <span class="retry-hint">Go back to the main tab, adjust your query, and retry.</span>
+            <!-- Job Dashboard Tab -->
+            <div id="tab-dashboard" class="tab-content" style="display: none;">
+                <div class="header">
+                    <div class="header-top">
+                        <div class="title">Job Dashboard</div>
+                    </div>
+                    <div class="meta-row">
+                        <div class="meta-item">Total Applications: <span id="dashboard-meta-total">0</span></div>
+                        <div class="meta-item">Statuses: <span id="dashboard-meta-statuses">None</span></div>
+                    </div>
+                </div>
+                <div id="dashboard-board" class="board-container"></div>
+                <div id="dashboard-no-results" class="no-results" style="display: none;">
+                    <h3>No applications yet</h3>
+                    <p style="font-size: 13px; color: #64748b;">Mark jobs as "Applied?" from Scraping Results or Saved Jobs to track them here.</p>
+                </div>
             </div>
-        </div>
-
-        <!-- Pagination -->
-        <div id="pagination" class="pagination" style="display: none;">
-            <button id="btn-prev-page" class="page-btn" onclick="prevPage()">◀ Previous</button>
-            <span id="page-info" class="page-info">Page 1 of 1</span>
-            <button id="btn-next-page" class="page-btn" onclick="nextPage()">Next ▶</button>
         </div>
     </div>
 
@@ -886,7 +1408,7 @@
         </div>
     </div>
 
-    <script src="/public/dist/results-app.js"></script>
+    <script src="/public/dist/findJob-app.js"></script>
 
 </body>
 

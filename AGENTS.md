@@ -48,8 +48,12 @@ This file defines how AI assistants collaborate within the **resumessi** project
 | `scripts/linkedin-auth.ts` | LinkedIn session auth helper (TS) | ✅ Yes — generate/refresh session state |
 | `src/scraper/` | LinkedIn & Google scraper modules (TS) | ✅ Yes — core scraper logic & types |
 | `src/prompts/scraper-summarize.txt` | Scraper LLM summarization prompt | ✅ Yes — improve summary structure |
-| `public/results.html` | Standalone job scraper results view | ✅ Yes — improve UI/UX |
-| `public/results-app.ts` | Standalone results page logic (TS) | ✅ Yes — improve paginated view |
+| `public/findJob.html` | Unified job finder page with sidebar | ✅ Yes — improve UI/UX |
+| `public/findJob-app.ts` | Job finder page logic (TS) | ✅ Yes — improve paginated view |
+| `public/utils/modal.ts` | Shared modal/toast utilities | ✅ Yes — add helpers |
+| `public/utils/storage.ts` | Client-side localStorage helpers | ✅ Yes — add helpers |
+| `public/utils/types.ts` | Shared client-side types | ✅ Yes — add helpers |
+| `src/storage/jobData.ts` | Unified job data storage module | ✅ Yes — add storage logic |
 | `Dockerfile.scraper` | CI Dockerfile for Playwright Chrome | ✅ Yes — maintain container setup |
 | `data/storage-state/` | Saved LinkedIn session cookies | ❌ No — auto-generated (gitignored) |
 | `data/scraper-results/` | Saved scraper output (linkedin.json, google.json) | ❌ No — auto-generated (gitignored) |

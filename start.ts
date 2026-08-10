@@ -18,6 +18,17 @@ import { scrapeGoogle } from './src/scraper/google';
 import { generateLinkedInStorageState } from './scripts/linkedin-auth';
 import { getRequestPath } from './src/scraper/runtime-utils';
 import type { ScraperQuery, ScraperResult } from './src/scraper/types';
+import {
+  loadJobData,
+  saveJobData,
+  markScrapingResultRemoved,
+  saveJobFromScraping,
+  unsaveJob,
+  getSavedJobs,
+  applyToJob,
+  getJobDashboard,
+  updateDashboardJob,
+} from './src/storage/jobData';
 import * as https from 'https';
 
 // Wrap in try-catch for graceful degradation
@@ -650,6 +661,159 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: (err as Error).message }));
+    }
+    return;
+  }
+
+  // API: Job Data - Saved Jobs
+  if (requestPath === '/api/job-data/saved' && req.method === 'GET') {
+    try {
+      const urlObj = new URL(req.url || '/', `http://localhost:${PORT}`);
+      const source = urlObj.searchParams.get('source') as 'linkedin' | 'google' | null;
+      const savedJobs = await getSavedJobs(source || undefined);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(savedJobs));
+      return;
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to load saved jobs: ' + (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/job-data/dashboard' && req.method === 'GET') {
+    try {
+      const dashboard = await getJobDashboard();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(dashboard));
+      return;
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to load dashboard: ' + (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/job-data/save' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const { item, source } = JSON.parse(body) as { item: ScraperResult; source: 'linkedin' | 'google' };
+      if (!item || !source) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing item or source' }));
+        return;
+      }
+      await saveJobFromScraping(item, source);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to save job: ' + (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/job-data/unsave' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const { url, source } = JSON.parse(body) as { url: string; source: 'linkedin' | 'google' };
+      if (!url || !source) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing url or source' }));
+        return;
+      }
+      await unsaveJob(source, url);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to unsave job: ' + (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/job-data/remove' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const { url, source } = JSON.parse(body) as { url: string; source: 'linkedin' | 'google' };
+      if (!url || !source) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing url or source' }));
+        return;
+      }
+      await markScrapingResultRemoved(source, url);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to remove job: ' + (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/job-data/apply' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const { item, source } = JSON.parse(body) as { item: ScraperResult; source: 'linkedin' | 'google' };
+      if (!item || !source) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing item or source' }));
+        return;
+      }
+      await applyToJob(item, source);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to apply to job: ' + (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/job-data/dashboard/add' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const job = JSON.parse(body) as ScraperResult & { saved?: boolean; applied?: boolean; savedAt?: string; appliedAt?: string; status?: string };
+      if (!job || !job.title) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing job title' }));
+        return;
+      }
+      const data = await loadJobData();
+      const newJob = {
+        ...job,
+        saved: true,
+        applied: true,
+        savedAt: new Date().toISOString(),
+        appliedAt: new Date().toISOString(),
+        status: (job.status || 'No News') as 'No News' | 'Interviewing' | 'Offer' | 'Rejected',
+      } as ScraperResult & { saved: boolean; applied: boolean; savedAt: string; appliedAt: string; status: 'No News' | 'Interviewing' | 'Offer' | 'Rejected' };
+      data.jobDashboard.push(newJob);
+      await saveJobData(data);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to add job: ' + (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/job-data/update-status' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const { url, status } = JSON.parse(body) as { url: string; status: string };
+      if (!url || !status) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing url or status' }));
+        return;
+      }
+      await updateDashboardJob(url, { status: status as 'No News' | 'Interviewing' | 'Offer' | 'Rejected' });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to update status: ' + (err as Error).message }));
     }
     return;
   }

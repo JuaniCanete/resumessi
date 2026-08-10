@@ -86,3 +86,7 @@ export function stripMarkdown(text: string): string {
 export function buildQueryUrl(source: 'linkedin' | 'google', query: ScraperQuery): string {
   return buildScraperSearchUrl(source, query);
 }
+
+// Re-export shared modules
+export * from './utils/modal';
+export * from './utils/storage';
