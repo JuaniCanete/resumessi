@@ -7,22 +7,5 @@
     "linkedin": [],
     "google": []
   },
-  "jobDashboard": [
-    {
-      "title": "Remote Software Development Engineer in Test (SDET) ...",
-      "url": "https://www.remoterocketship.com/country/latin-america/jobs/sdet/",
-      "snippet": "Search 55 software development engineer in test (sdet) remote jobs in Latin America. 4 added this week. Apply to flexible positions like software engineer ...",
-      "source": "google",
-      "aiSummary": "- Remote SDET role in Latin America\n- 55+ job listings available\n- Remote jobs not found on LinkedIn",
-      "queryAffinity": "High",
-      "parameters": [
-        "Latin America",
-        "Remote"
-      ],
-      "applied": true,
-      "appliedAt": "2026-08-10T17:00:15.333Z",
-      "status": "No News",
-      "notes": ""
-    }
-  ]
+  "jobDashboard": []
 }

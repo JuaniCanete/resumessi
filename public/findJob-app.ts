@@ -733,6 +733,7 @@ function createBoardCard(job: ScraperResult): HTMLElement {
 
   const footer = document.createElement('div');
   footer.className = 'board-card-footer';
+  footer.style.position = 'relative';
 
   const sourceBadge = document.createElement('span');
   sourceBadge.className = `board-card-source ${job.source}`;
@@ -746,7 +747,44 @@ function createBoardCard(job: ScraperResult): HTMLElement {
     footer.appendChild(date);
   }
 
+  const menuBtn = document.createElement('button');
+  menuBtn.className = 'board-card-menu-btn';
+  menuBtn.textContent = '⋯';
+  menuBtn.addEventListener('click', (e: MouseEvent) => {
+    e.stopPropagation();
+    const menu = card.querySelector('.board-card-menu');
+    if (menu) {
+      menu.classList.toggle('show');
+    }
+  });
+  footer.appendChild(menuBtn);
+
   card.appendChild(footer);
+
+  const menu = document.createElement('div');
+  menu.className = 'board-card-menu';
+
+  const renameItem = document.createElement('button');
+  renameItem.className = 'board-card-menu-item';
+  renameItem.textContent = 'Rename';
+  renameItem.addEventListener('click', (e: MouseEvent) => {
+    e.stopPropagation();
+    menu.classList.remove('show');
+    startRename(card, title, job);
+  });
+  menu.appendChild(renameItem);
+
+  const deleteItem = document.createElement('button');
+  deleteItem.className = 'board-card-menu-item danger';
+  deleteItem.textContent = 'Delete';
+  deleteItem.addEventListener('click', (e: MouseEvent) => {
+    e.stopPropagation();
+    menu.classList.remove('show');
+    handleDashboardDelete(job);
+  });
+  menu.appendChild(deleteItem);
+
+  card.appendChild(menu);
 
   card.addEventListener('dragstart', (e: DragEvent) => {
     draggedCardUrl = job.url;
@@ -762,6 +800,70 @@ function createBoardCard(job: ScraperResult): HTMLElement {
   });
 
   return card;
+}
+
+function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult): void {
+  const currentTitle = job.title || '';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = currentTitle;
+  input.style.cssText = 'width: 100%; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 6px 8px; color: #e2e8f0; font-family: Comfortaa, sans-serif; font-size: 13px; outline: none;';
+
+  titleEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const finish = async (save: boolean) => {
+    const newTitle = save ? input.value.trim() : currentTitle;
+    if (save && newTitle && newTitle !== currentTitle) {
+      try {
+        const resp = await fetch('/api/job-data/rename', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: job.url, title: newTitle }),
+        });
+        if (!resp.ok) throw new Error('Failed to rename job');
+        showToast({ message: 'Job renamed', type: 'success' });
+      } catch (err: unknown) {
+        showToast({ message: 'Failed to rename job: ' + (err as Error).message, type: 'error' });
+      }
+    }
+
+    const newTitleEl = document.createElement('div');
+    newTitleEl.className = 'board-card-title';
+    newTitleEl.textContent = newTitle || 'Untitled Job';
+    input.replaceWith(newTitleEl);
+  };
+
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      input.blur();
+    } else if (e.key === 'Escape') {
+      finish(false);
+    }
+  });
+}
+
+function handleDashboardDelete(job: ScraperResult): void {
+  confirmDelete(
+    'job',
+    async () => {
+      try {
+        const resp = await fetch('/api/job-data/dashboard/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: job.url }),
+        });
+        if (!resp.ok) throw new Error('Failed to delete job');
+        showToast({ message: 'Job removed from dashboard', type: 'success' });
+        renderDashboard();
+      } catch (err: unknown) {
+        showToast({ message: 'Failed to delete job: ' + (err as Error).message, type: 'error' });
+      }
+    },
+    { variant: 'danger' }
+  );
 }
 
 function initBoardDragAndDrop(): void {
