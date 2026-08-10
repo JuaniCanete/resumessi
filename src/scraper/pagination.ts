@@ -4,8 +4,9 @@ export const DEFAULT_TARGET_DOMAINS = [
     'teamtailor.com',
     'greenhouse.io',
     'lever.co',
-    'workday.com',
+    'myworkdayjobs.com',
     'jobs.ashbyhq.com',
+    'bamboohr.com',
 ];
 
 const LINKEDIN_SENIORITY_MAP: Record<string, string> = {

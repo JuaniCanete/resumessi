@@ -14,7 +14,7 @@ test('buildGoogleSearchUrl uses default domains when customDomains is empty arra
   assert.ok(decoded.includes('site:teamtailor.com'));
   assert.ok(decoded.includes('site:greenhouse.io'));
   assert.ok(decoded.includes('site:lever.co'));
-  assert.ok(decoded.includes('site:workday.com'));
+  assert.ok(decoded.includes('site:myworkdayjobs.com'));
   assert.ok(decoded.includes('site:jobs.ashbyhq.com'));
 });
 
@@ -77,8 +77,9 @@ test('DEFAULT_TARGET_DOMAINS contains the expected job board domains', () => {
     'teamtailor.com',
     'greenhouse.io',
     'lever.co',
-    'workday.com',
+    'myworkdayjobs.com',
     'jobs.ashbyhq.com',
+    'bamboohr.com',
   ]);
 });
 

@@ -1334,6 +1334,10 @@ async function openJobScraperModal(): Promise<void> {
   if (workTypeSelect) workTypeSelect.value = '';
   const employmentSelect = document.getElementById('scraper-employment') as HTMLSelectElement;
   if (employmentSelect) employmentSelect.value = '';
+  const googleSeniorityInput = document.getElementById('scraper-seniority-google') as HTMLInputElement;
+  if (googleSeniorityInput) googleSeniorityInput.value = '';
+  const googleEmploymentInput = document.getElementById('scraper-employment-google') as HTMLInputElement;
+  if (googleEmploymentInput) googleEmploymentInput.value = '';
   const countryInput = document.getElementById('scraper-country') as HTMLInputElement;
   if (countryInput) countryInput.value = '';
   const regionSelect = document.getElementById('scraper-region') as HTMLSelectElement;
@@ -1367,9 +1371,10 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
   currentScraperPlatform = platform;
   const btnLinkedin = document.getElementById('toggle-platform-linkedin');
   const btnGoogle = document.getElementById('toggle-platform-google');
-  const googleSection = document.getElementById('google-domains-section');
   const seniorityField = document.getElementById('scraper-field-seniority');
   const employmentField = document.getElementById('scraper-field-employment');
+  const googleSeniorityField = document.getElementById('scraper-field-seniority-google');
+  const googleEmploymentField = document.getElementById('scraper-field-employment-google');
   const countryField = document.getElementById('scraper-field-country');
   const regionField = document.getElementById('scraper-field-region');
   const currencyField = document.getElementById('scraper-field-currency');
@@ -1385,7 +1390,7 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
       btnGoogle.style.background = 'transparent';
       btnGoogle.style.color = 'rgba(255,255,255,0.7)';
     }
-    // LinkedIn: show seniority, date posted, work type, employment, country, region, currency; hide google domains
+    // LinkedIn: show LinkedIn fields (seniority, date posted, work type, employment, country, region, currency); hide Google fields
     if (seniorityField) seniorityField.style.display = 'block';
     if (employmentField) employmentField.style.display = 'block';
     if (countryField) countryField.style.display = 'block';
@@ -1393,7 +1398,8 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
     if (currencyField) currencyField.style.display = 'block';
     if (datePostedField) datePostedField.style.display = 'block';
     if (workTypeField) workTypeField.style.display = 'block';
-    if (googleSection) googleSection.style.display = 'none';
+    if (googleSeniorityField) googleSeniorityField.style.display = 'none';
+    if (googleEmploymentField) googleEmploymentField.style.display = 'none';
   } else {
     if (btnGoogle) {
       btnGoogle.style.background = 'var(--accent)';
@@ -1403,15 +1409,16 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
       btnLinkedin.style.background = 'transparent';
       btnLinkedin.style.color = 'rgba(255,255,255,0.7)';
     }
-    // Google: show seniority, employment, country, region, currency, google domains; hide date posted and work type
-    if (seniorityField) seniorityField.style.display = 'block';
-    if (employmentField) employmentField.style.display = 'block';
+    // Google: show Google fields (seniority, employment, country, region, currency); hide LinkedIn-only fields
+    if (seniorityField) seniorityField.style.display = 'none';
+    if (employmentField) employmentField.style.display = 'none';
     if (countryField) countryField.style.display = 'block';
     if (regionField) regionField.style.display = 'block';
     if (currencyField) currencyField.style.display = 'block';
     if (datePostedField) datePostedField.style.display = 'none';
     if (workTypeField) workTypeField.style.display = 'none';
-    if (googleSection) googleSection.style.display = 'block';
+    if (googleSeniorityField) googleSeniorityField.style.display = 'block';
+    if (googleEmploymentField) googleEmploymentField.style.display = 'block';
   }
 
   updateQueryPreview();
@@ -1419,17 +1426,18 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
 
 function updateQueryPreview(): string {
   const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
-  const seniority = (document.getElementById('scraper-seniority') as HTMLInputElement)?.value.trim() || '';
-  const employmentType = (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+  const seniority = currentScraperPlatform === 'google'
+    ? (document.getElementById('scraper-seniority-google') as HTMLInputElement)?.value.trim() || ''
+    : (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
+  const employmentType = currentScraperPlatform === 'google'
+    ? (document.getElementById('scraper-employment-google') as HTMLInputElement)?.value.trim() || ''
+    : (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
   const country = (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
   const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
   const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
   const datePosted = (document.getElementById('scraper-date-posted') as HTMLSelectElement)?.value || '';
   const workType = (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
   const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
-
-  const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked')) as HTMLInputElement[];
-  const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
 
   // Delegate to the shared URL builder (single source of truth)
   const generatedUrl = buildQueryUrl(currentScraperPlatform, {
@@ -1443,7 +1451,6 @@ function updateQueryPreview(): string {
     datePosted,
     workType,
     keywords,
-    customDomains,
   });
 
   const previewElem = document.getElementById('query-url-preview');
@@ -1451,40 +1458,6 @@ function updateQueryPreview(): string {
     previewElem.textContent = decodeURIComponent(generatedUrl);
   }
   return generatedUrl;
-}
-
-function toggleAllDomains(master: HTMLInputElement): void {
-  const checkboxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
-  checkboxes.forEach(cb => { cb.checked = master.checked; });
-  updateQueryPreview();
-}
-
-function addCustomDomain(): void {
-  const input = document.getElementById('custom-domain-input') as HTMLInputElement;
-  if (!input) return;
-  const val = input.value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-  if (!val) return;
-
-  const checklist = document.getElementById('domains-checklist');
-  if (checklist) {
-    const label = document.createElement('label');
-    label.style.fontSize = '12px';
-    label.style.color = '#ddd';
-    label.style.cursor = 'pointer';
-
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.value = val;
-    cb.checked = true;
-    cb.onchange = () => updateQueryPreview();
-
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode(` ${val}`));
-    checklist.appendChild(label);
-  }
-
-  input.value = '';
-  updateQueryPreview();
 }
 
 function openQueryInBrowser(): void {
@@ -1512,17 +1485,18 @@ async function startScraping(): Promise<void> {
     return;
   }
 
-  const seniority = (document.getElementById('scraper-seniority') as HTMLInputElement)?.value.trim() || '';
-  const employmentType = (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+  const seniority = currentScraperPlatform === 'google'
+    ? (document.getElementById('scraper-seniority-google') as HTMLInputElement)?.value.trim() || ''
+    : (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
+  const employmentType = currentScraperPlatform === 'google'
+    ? (document.getElementById('scraper-employment-google') as HTMLInputElement)?.value.trim() || ''
+    : (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
   const country = (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
   const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
   const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
   const datePosted = (document.getElementById('scraper-date-posted') as HTMLSelectElement)?.value || '';
   const workType = (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
   const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
-
-  const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked')) as HTMLInputElement[];
-  const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
 
   const queryPayload = {
     source: currentScraperPlatform,
@@ -1535,7 +1509,6 @@ async function startScraping(): Promise<void> {
     datePosted,
     workType,
     keywords,
-    customDomains,
   };
 
   closeJobScraperModal();
@@ -1751,8 +1724,6 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 (window as unknown as Record<string, unknown>).switchScraperPlatform = switchScraperPlatform;
 (window as unknown as Record<string, unknown>).openLatestScrapingResults = openLatestScrapingResults;
 (window as unknown as Record<string, unknown>).updateQueryPreview = updateQueryPreview;
-(window as unknown as Record<string, unknown>).addCustomDomain = addCustomDomain;
-(window as unknown as Record<string, unknown>).toggleAllDomains = toggleAllDomains;
 (window as unknown as Record<string, unknown>).openQueryInBrowser = openQueryInBrowser;
 (window as unknown as Record<string, unknown>).clearRoleError = clearRoleError;
 (window as unknown as Record<string, unknown>).startScraping = startScraping;
