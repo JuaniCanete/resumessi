@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { buildGoogleSearchUrl, extractGoogleResultUrl, DEFAULT_TARGET_DOMAINS, scrapeGoogle } from '../../src/scraper/google';
 import type { ScraperQuery } from '../../src/scraper/types';
 
-test('buildGoogleSearchUrl uses default domains when customDomains is empty array', () => {
+test('buildGoogleSearchUrl skips site filters when customDomains is empty array', () => {
   const query: ScraperQuery = {
     source: 'google',
     role: 'SDET',
@@ -11,11 +11,7 @@ test('buildGoogleSearchUrl uses default domains when customDomains is empty arra
   };
   const url = buildGoogleSearchUrl(query);
   const decoded = decodeURIComponent(url);
-  assert.ok(decoded.includes('site:teamtailor.com'));
-  assert.ok(decoded.includes('site:greenhouse.io'));
-  assert.ok(decoded.includes('site:lever.co'));
-  assert.ok(decoded.includes('site:myworkdayjobs.com'));
-  assert.ok(decoded.includes('site:jobs.ashbyhq.com'));
+  assert.ok(!decoded.includes('site:'));
 });
 
 test('buildGoogleSearchUrl uses default domains when customDomains is undefined', () => {
@@ -89,12 +85,12 @@ test('scrapeGoogle returns empty array when credentials are missing', async () =
   assert.deepEqual(results, []);
 });
 
-test('scrapeGoogle parses Custom Search API results successfully', async (t) => {
+test('scrapeGoogle parses SerpAPI results successfully', async (t) => {
   const query: ScraperQuery = { source: 'google', role: 'Engineer', pageCount: 1 };
-  const mockEnv = { GOOGLE_API_KEY: 'test-key', GOOGLE_CX_ID: 'test-cx' };
+  const mockEnv = { GOOGLE_API_KEY: 'test-key' };
 
   const mockResponse = {
-    items: [
+    organic_results: [
       {
         title: 'Software Engineer Job',
         link: 'https://www.google.com/url?q=https%3A%2F%2Fjobs.lever.co%2Ftest&sa=U',
@@ -110,8 +106,7 @@ test('scrapeGoogle parses Custom Search API results successfully', async (t) => 
 
   globalThis.fetch = async (input: Parameters<typeof fetch>[0]) => {
     const urlStr = input.toString();
-    assert.ok(urlStr.includes('key=test-key'));
-    assert.ok(urlStr.includes('cx=test-cx'));
+    assert.ok(urlStr.includes('api_key=test-key'));
     assert.ok(urlStr.includes('q='));
     return {
       status: 200,
@@ -130,7 +125,7 @@ test('scrapeGoogle parses Custom Search API results successfully', async (t) => 
 
 test('scrapeGoogle handles 429 quota limit error gracefully', async (t) => {
   const query: ScraperQuery = { source: 'google', role: 'Engineer', pageCount: 1 };
-  const mockEnv = { GOOGLE_API_KEY: 'test-key', GOOGLE_CX_ID: 'test-cx' };
+  const mockEnv = { GOOGLE_API_KEY: 'test-key' };
 
   const originalFetch = globalThis.fetch;
   t.after(() => {

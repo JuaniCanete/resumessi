@@ -1375,6 +1375,7 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
   const linkedinRow2 = document.getElementById('scraper-row-linkedin-2');
   const googleSeniorityField = document.getElementById('scraper-field-seniority-google');
   const googleEmploymentField = document.getElementById('scraper-field-employment-google');
+  const googleSection = document.getElementById('google-domains-section');
   const countryField = document.getElementById('scraper-field-country');
   const regionField = document.getElementById('scraper-field-region');
   const currencyField = document.getElementById('scraper-field-currency');
@@ -1396,6 +1397,7 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
     if (currencyField) currencyField.style.display = 'block';
     if (googleSeniorityField) googleSeniorityField.style.display = 'none';
     if (googleEmploymentField) googleEmploymentField.style.display = 'none';
+    if (googleSection) googleSection.style.display = 'none';
   } else {
     if (btnGoogle) {
       btnGoogle.style.background = 'var(--accent)';
@@ -1405,7 +1407,7 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
       btnLinkedin.style.background = 'transparent';
       btnLinkedin.style.color = 'rgba(255,255,255,0.7)';
     }
-    // Google: show Google fields (seniority, employment, country, region, currency); hide LinkedIn rows
+    // Google: show Google fields (seniority, employment, country, region, currency, domains); hide LinkedIn rows
     if (linkedinRow1) linkedinRow1.style.display = 'none';
     if (linkedinRow2) linkedinRow2.style.display = 'none';
     if (countryField) countryField.style.display = 'block';
@@ -1413,6 +1415,7 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
     if (currencyField) currencyField.style.display = 'block';
     if (googleSeniorityField) googleSeniorityField.style.display = 'block';
     if (googleEmploymentField) googleEmploymentField.style.display = 'block';
+    if (googleSection) googleSection.style.display = 'block';
   }
 
   updateQueryPreview();
@@ -1433,6 +1436,9 @@ function updateQueryPreview(): string {
   const workType = (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
   const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
 
+  const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')) as HTMLInputElement[];
+  const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
+
   // Delegate to the shared URL builder (single source of truth)
   const generatedUrl = buildQueryUrl(currentScraperPlatform, {
     source: currentScraperPlatform,
@@ -1445,6 +1451,7 @@ function updateQueryPreview(): string {
     datePosted,
     workType,
     keywords,
+    customDomains,
   });
 
   const previewElem = document.getElementById('query-url-preview');
@@ -1452,6 +1459,40 @@ function updateQueryPreview(): string {
     previewElem.textContent = decodeURIComponent(generatedUrl);
   }
   return generatedUrl;
+}
+
+function toggleAllDomains(master: HTMLInputElement): void {
+  const checkboxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
+  checkboxes.forEach(cb => { cb.checked = master.checked; });
+  updateQueryPreview();
+}
+
+function addCustomDomain(): void {
+  const input = document.getElementById('custom-domain-input') as HTMLInputElement;
+  if (!input) return;
+  const val = input.value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  if (!val) return;
+
+  const checklist = document.getElementById('domains-checklist');
+  if (checklist) {
+    const label = document.createElement('label');
+    label.style.fontSize = '12px';
+    label.style.color = '#ddd';
+    label.style.cursor = 'pointer';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = val;
+    cb.checked = true;
+    cb.onchange = () => updateQueryPreview();
+
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(` ${val}`));
+    checklist.appendChild(label);
+  }
+
+  input.value = '';
+  updateQueryPreview();
 }
 
 function openQueryInBrowser(): void {
@@ -1492,6 +1533,9 @@ async function startScraping(): Promise<void> {
   const workType = (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
   const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
 
+  const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')) as HTMLInputElement[];
+  const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
+
   const queryPayload = {
     source: currentScraperPlatform,
     role,
@@ -1503,6 +1547,7 @@ async function startScraping(): Promise<void> {
     datePosted,
     workType,
     keywords,
+    customDomains,
   };
 
   closeJobScraperModal();
@@ -1718,6 +1763,8 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 (window as unknown as Record<string, unknown>).switchScraperPlatform = switchScraperPlatform;
 (window as unknown as Record<string, unknown>).openLatestScrapingResults = openLatestScrapingResults;
 (window as unknown as Record<string, unknown>).updateQueryPreview = updateQueryPreview;
+(window as unknown as Record<string, unknown>).addCustomDomain = addCustomDomain;
+(window as unknown as Record<string, unknown>).toggleAllDomains = toggleAllDomains;
 (window as unknown as Record<string, unknown>).openQueryInBrowser = openQueryInBrowser;
 (window as unknown as Record<string, unknown>).clearRoleError = clearRoleError;
 (window as unknown as Record<string, unknown>).startScraping = startScraping;

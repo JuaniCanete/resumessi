@@ -71,7 +71,6 @@ function parseEnvFile(): Record<string, string | undefined> {
     SUCCESS_COLOR: '#0ea5e9',
     CHROME_PATH: '',
     GOOGLE_API_KEY: '',
-    GOOGLE_CX_ID: '',
   };
 
   const envPath = path.join(ROOT, '.env');

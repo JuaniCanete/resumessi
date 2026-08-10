@@ -31,10 +31,9 @@ export async function scrapeGoogle(
   env: Record<string, string | undefined>
 ): Promise<ScraperResult[]> {
   const apiKey = env.GOOGLE_API_KEY;
-  const cxId = env.GOOGLE_CX_ID;
 
-  if (!apiKey || !cxId) {
-    console.error('[Google Scraper] Error: GOOGLE_API_KEY or GOOGLE_CX_ID is missing in env.');
+  if (!apiKey) {
+    console.error('[Google Scraper] Error: GOOGLE_API_KEY is missing in env.');
     return [];
   }
 
@@ -57,13 +56,12 @@ export async function scrapeGoogle(
   const results: ScraperResult[] = [];
   const pageCount = query.pageCount ?? 1;
 
-  console.log(`[Google Scraper] Scraping up to ${pageCount} page(s) of Google Custom Search API for query: "${searchQuery}"`);
+  console.log(`[Google Scraper] Scraping up to ${pageCount} page(s) of SerpAPI for query: "${searchQuery}"`);
 
   for (let page = 0; page < pageCount; page++) {
-    const startParam = page * 10 + 1; // API is 1-indexed for the 'start' param
-    const apiUrl = new URL('https://www.googleapis.com/customsearch/v1');
-    apiUrl.searchParams.set('key', apiKey);
-    apiUrl.searchParams.set('cx', cxId);
+    const startParam = page * 10;
+    const apiUrl = new URL('https://serpapi.com/search.json?engine=google');
+    apiUrl.searchParams.set('api_key', apiKey);
     apiUrl.searchParams.set('q', searchQuery);
     apiUrl.searchParams.set('start', String(startParam));
 
@@ -71,22 +69,21 @@ export async function scrapeGoogle(
     // apiUrl.searchParams.set('dateRestrict', 'd7');
 
     try {
-      console.log(apiUrl.toString());
       const response = await fetch(apiUrl.toString());
       if (response.status === 429) {
-        console.error('[Google Scraper] Google API quota exceeded (HTTP 429).');
+        console.error('[Google Scraper] SerpAPI quota exceeded (HTTP 429).');
         return results; // Return whatever results we gathered so far
       }
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[Google Scraper] Google API error (HTTP ${response.status}):`, errorText);
+        console.error(`[Google Scraper] SerpAPI error (HTTP ${response.status}):`, errorText);
         break;
       }
 
       const data = await response.json();
-      const items = data.items || [];
-      console.log(`[Google Scraper] Received ${items.length} items from Google API for page ${page + 1}`);
+      const items = data.organic_results || [];
+      console.log(`[Google Scraper] Received ${items.length} items from SerpAPI for page ${page + 1}`);
 
       for (const item of items) {
         const title = item.title || '';

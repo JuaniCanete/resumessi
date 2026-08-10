@@ -81,8 +81,8 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google', query: Scra
     if (query.seniority) parts.push(`"${query.seniority}"`);
     if (query.employmentType) parts.push(query.employmentType);
 
-    // Empty array means "no custom selection" → fall back to defaults
-    const domains = query.customDomains !== undefined && query.customDomains !== null && query.customDomains.length > 0
+    // undefined/null → fall back to defaults; empty array → no site filtering
+    const domains = query.customDomains !== undefined && query.customDomains !== null
         ? query.customDomains
         : DEFAULT_TARGET_DOMAINS;
 
