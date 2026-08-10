@@ -1,4 +1,5 @@
 import { stripMarkdown, buildQueryUrl, confirmDelete, confirmUnsave, showToast } from './utils';
+import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import type { ScraperResult } from './utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -21,7 +22,12 @@ const RESULTS_PER_PAGE = 10;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let currentRunId: string | null = null;
 let currentSource: 'linkedin' | 'google' = 'linkedin';
-let currentTab: 'scraping' | 'saved' | 'dashboard' = 'scraping';
+let currentTab: 'scraping' | 'saved' | 'dashboard' | 'resume' = 'scraping';
+
+// Scraper state
+let scraperController: AbortController | null = null;
+let currentScraperPlatform: 'linkedin' | 'google' = 'linkedin';
+let scraperResultsWindow: Window | null = null;
 
 // DANGEROUS_TAGS for sanitization
 const DANGEROUS_TAGS = new Set([
@@ -76,8 +82,13 @@ function toggleSidebar(): void {
   localStorage.setItem('findJob.sidebarOpen', String(!isCollapsed));
 }
 
-function switchTab(tab: 'scraping' | 'saved' | 'dashboard'): void {
+function switchTab(tab: 'scraping' | 'saved' | 'dashboard' | 'resume'): void {
   currentTab = tab;
+
+  if (tab === 'resume') {
+    window.location.href = '/public/main.html';
+    return;
+  }
 
   // Update sidebar tabs
   document.querySelectorAll('.sidebar-tab').forEach(btn => {
@@ -105,7 +116,7 @@ function switchTab(tab: 'scraping' | 'saved' | 'dashboard'): void {
 
 function loadSidebarState(): void {
   const sidebarOpen = localStorage.getItem('findJob.sidebarOpen');
-  const activeTab = localStorage.getItem('findJob.activeTab') as 'scraping' | 'saved' | 'dashboard' | null;
+  const activeTab = localStorage.getItem('findJob.activeTab') as 'scraping' | 'saved' | 'dashboard' | 'resume' | null;
 
   const sidebar = document.getElementById('findjob-sidebar');
   if (sidebar) {
@@ -115,7 +126,7 @@ function loadSidebarState(): void {
     }
   }
 
-  if (activeTab && ['scraping', 'saved', 'dashboard'].includes(activeTab)) {
+  if (activeTab && activeTab !== 'resume') {
     switchTab(activeTab);
   }
 }
@@ -1375,10 +1386,430 @@ async function runAtsScanFromResults(): Promise<void> {
   document.head.appendChild(style);
 })();
 
+// ─── Job Scraper UI Logic ───────────────────────────────────────────
+async function openJobScraperModal(): Promise<void> {
+  const dropdown = document.getElementById('actions-dropdown');
+  if (dropdown) dropdown.classList.add('hidden');
+
+  // Reset form fields
+  const roleInput = document.getElementById('scraper-role') as HTMLInputElement;
+  if (roleInput) roleInput.value = '';
+  const keywordsInput = document.getElementById('scraper-keywords') as HTMLInputElement;
+  if (keywordsInput) keywordsInput.value = '';
+  const senioritySelect = document.getElementById('scraper-seniority') as HTMLSelectElement;
+  if (senioritySelect) senioritySelect.value = '';
+  const datePostedSelect = document.getElementById('scraper-date-posted') as HTMLSelectElement;
+  if (datePostedSelect) datePostedSelect.value = 'week';
+  const workTypeSelect = document.getElementById('scraper-work-type') as HTMLSelectElement;
+  if (workTypeSelect) workTypeSelect.value = '';
+  const employmentSelect = document.getElementById('scraper-employment') as HTMLSelectElement;
+  if (employmentSelect) employmentSelect.value = '';
+  const googleSeniorityInput = document.getElementById('scraper-seniority-google') as HTMLInputElement;
+  if (googleSeniorityInput) googleSeniorityInput.value = '';
+  const googleEmploymentInput = document.getElementById('scraper-employment-google') as HTMLInputElement;
+  if (googleEmploymentInput) googleEmploymentInput.value = '';
+  const countryInput = document.getElementById('scraper-country') as HTMLInputElement;
+  if (countryInput) countryInput.value = '';
+  const regionSelect = document.getElementById('scraper-region') as HTMLSelectElement;
+  if (regionSelect) regionSelect.value = '';
+  const currencySelect = document.getElementById('scraper-currency') as HTMLSelectElement;
+  if (currencySelect) currencySelect.value = '';
+
+  // Reset domain checkboxes: all default sites checked by default (so the
+  // initial query includes them), and the master select-all checkbox too
+  const domainBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
+  domainBoxes.forEach(cb => { cb.checked = true; });
+  const selectAllCb = document.getElementById('select-all-domains') as HTMLInputElement | null;
+  if (selectAllCb) selectAllCb.checked = true;
+
+  clearRoleError();
+
+  const modal = document.getElementById('job-scraper-modal');
+  if (modal) modal.style.display = 'flex';
+
+  switchScraperPlatform('linkedin');
+  updateQueryPreview();
+  await refreshScrapingResultsButton();
+}
+
+function closeJobScraperModal(): void {
+  const modal = document.getElementById('job-scraper-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function clearRoleError(): void {
+  const errSpan = document.getElementById('scraper-role-error');
+  if (errSpan) errSpan.style.display = 'none';
+  const roleInput = document.getElementById('scraper-role');
+  if (roleInput) roleInput.style.border = '1px solid rgba(255,255,255,0.15)';
+}
+
+function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
+  currentScraperPlatform = platform;
+  const btnLinkedin = document.getElementById('toggle-platform-linkedin');
+  const btnGoogle = document.getElementById('toggle-platform-google');
+  const linkedinRow1 = document.getElementById('scraper-row-linkedin-1');
+  const linkedinRow2 = document.getElementById('scraper-row-linkedin-2');
+  const googleSeniorityField = document.getElementById('scraper-field-seniority-google');
+  const googleEmploymentField = document.getElementById('scraper-field-employment-google');
+  const googleSection = document.getElementById('google-domains-section');
+  const countryField = document.getElementById('scraper-field-country');
+  const regionField = document.getElementById('scraper-field-region');
+  const currencyField = document.getElementById('scraper-field-currency');
+
+  if (platform === 'linkedin') {
+    if (btnLinkedin) {
+      btnLinkedin.style.background = 'var(--accent)';
+      btnLinkedin.style.color = '#fff';
+    }
+    if (btnGoogle) {
+      btnGoogle.style.background = 'transparent';
+      btnGoogle.style.color = 'rgba(255,255,255,0.7)';
+    }
+    // LinkedIn: show LinkedIn rows (seniority, date posted, work type, employment, country, region, currency); hide Google fields
+    if (linkedinRow1) linkedinRow1.style.display = 'grid';
+    if (linkedinRow2) linkedinRow2.style.display = 'grid';
+    if (countryField) countryField.style.display = 'block';
+    if (regionField) regionField.style.display = 'block';
+    if (currencyField) currencyField.style.display = 'block';
+    if (googleSeniorityField) googleSeniorityField.style.display = 'none';
+    if (googleEmploymentField) googleEmploymentField.style.display = 'none';
+    if (googleSection) googleSection.style.display = 'none';
+  } else {
+    if (btnGoogle) {
+      btnGoogle.style.background = 'var(--accent)';
+      btnGoogle.style.color = '#fff';
+    }
+    if (btnLinkedin) {
+      btnLinkedin.style.background = 'transparent';
+      btnLinkedin.style.color = 'rgba(255,255,255,0.7)';
+    }
+    // Google: show Google fields (seniority, employment, country, region, currency, domains); hide LinkedIn rows
+    if (linkedinRow1) linkedinRow1.style.display = 'none';
+    if (linkedinRow2) linkedinRow2.style.display = 'none';
+    if (countryField) countryField.style.display = 'block';
+    if (regionField) regionField.style.display = 'block';
+    if (currencyField) currencyField.style.display = 'block';
+    if (googleSeniorityField) googleSeniorityField.style.display = 'block';
+    if (googleEmploymentField) googleEmploymentField.style.display = 'block';
+    if (googleSection) googleSection.style.display = 'block';
+  }
+
+  updateQueryPreview();
+}
+
+function updateQueryPreview(): string {
+  const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
+  const seniority = currentScraperPlatform === 'google'
+    ? (document.getElementById('scraper-seniority-google') as HTMLInputElement)?.value.trim() || ''
+    : (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
+  const employmentType = currentScraperPlatform === 'google'
+    ? (document.getElementById('scraper-employment-google') as HTMLInputElement)?.value.trim() || ''
+    : (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+  const country = (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
+  const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
+  const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
+  const datePosted = (document.getElementById('scraper-date-posted') as HTMLSelectElement)?.value || '';
+  const workType = (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
+  const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
+
+  const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')) as HTMLInputElement[];
+  const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
+
+  // Sync the master "Select All" checkbox with the individual domain checkboxes
+  if (currentScraperPlatform === 'google') {
+    const selectAll = document.getElementById('select-all-domains') as HTMLInputElement | null;
+    if (selectAll) {
+      const allDomainBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
+      const allChecked = allDomainBoxes.length > 0 && allDomainBoxes.every(cb => cb.checked);
+      selectAll.checked = allChecked;
+    }
+  }
+
+  // Delegate to the shared URL builder (single source of truth)
+  const generatedUrl = buildQueryUrl(currentScraperPlatform, {
+    source: currentScraperPlatform,
+    role,
+    seniority,
+    employmentType,
+    country,
+    region,
+    currency,
+    datePosted,
+    workType,
+    keywords,
+    customDomains,
+  });
+
+  const previewElem = document.getElementById('query-url-preview');
+  if (previewElem) {
+    previewElem.textContent = decodeURIComponent(generatedUrl);
+  }
+  return generatedUrl;
+}
+
+function toggleAllDomains(master: HTMLInputElement): void {
+  const checkboxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
+  checkboxes.forEach(cb => { cb.checked = master.checked; });
+  updateQueryPreview();
+}
+
+function addCustomDomain(): void {
+  const input = document.getElementById('custom-domain-input') as HTMLInputElement;
+  if (!input) return;
+  const val = input.value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  if (!val) return;
+
+  const checklist = document.getElementById('domains-checklist');
+  if (checklist) {
+    const label = document.createElement('label');
+    label.style.fontSize = '12px';
+    label.style.color = '#ddd';
+    label.style.cursor = 'pointer';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = val;
+    cb.checked = true;
+    cb.onchange = () => updateQueryPreview();
+
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(` ${val}`));
+    checklist.appendChild(label);
+  }
+
+  input.value = '';
+  updateQueryPreview();
+}
+
+function openQueryInBrowser(): void {
+  // Validate first
+  const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
+  if (!role) {
+    const errSpan = document.getElementById('scraper-role-error');
+    if (errSpan) errSpan.style.display = 'block';
+    const roleInput = document.getElementById('scraper-role');
+    if (roleInput) roleInput.style.border = '1px solid #ef4444';
+    return;
+  }
+
+  const url = updateQueryPreview();
+  window.open(url, '_blank');
+}
+
+async function startScraping(): Promise<void> {
+  const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
+  if (!role) {
+    const errSpan = document.getElementById('scraper-role-error');
+    if (errSpan) errSpan.style.display = 'block';
+    const roleInput = document.getElementById('scraper-role');
+    if (roleInput) roleInput.style.border = '1px solid #ef4444';
+    return;
+  }
+
+  const seniority = currentScraperPlatform === 'google'
+    ? (document.getElementById('scraper-seniority-google') as HTMLInputElement)?.value.trim() || ''
+    : (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
+  const employmentType = currentScraperPlatform === 'google'
+    ? (document.getElementById('scraper-employment-google') as HTMLInputElement)?.value.trim() || ''
+    : (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+  const country = (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
+  const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
+  const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
+  const datePosted = (document.getElementById('scraper-date-posted') as HTMLSelectElement)?.value || '';
+  const workType = (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
+  const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
+
+  const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')) as HTMLInputElement[];
+  const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
+
+  const queryPayload = {
+    source: currentScraperPlatform,
+    role,
+    seniority,
+    employmentType,
+    country,
+    region,
+    currency,
+    datePosted,
+    workType,
+    keywords,
+    customDomains,
+  };
+
+  closeJobScraperModal();
+
+  // Open results tab with loading state immediately
+  const targetUrl = `/public/findJob.html?source=${currentScraperPlatform}&loading=true`;
+  scraperResultsWindow = window.open(targetUrl, '_blank');
+
+  const overlay = document.getElementById('scraper-overlay');
+  const label = document.getElementById('scraper-source-label');
+  const fallbackBtn = document.getElementById('btn-open-results-fallback');
+  if (label) label.textContent = currentScraperPlatform === 'linkedin' ? 'LinkedIn' : 'Google';
+  if (fallbackBtn) fallbackBtn.style.display = 'none';
+  if (overlay) overlay.style.display = 'flex';
+
+  scraperController = new AbortController();
+
+  try {
+    const resp = await fetch('/api/scraper/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(queryPayload),
+      signal: scraperController.signal,
+    });
+
+    if (!resp.ok) {
+      if (overlay) overlay.style.display = 'none';
+      const err = await resp.json();
+      const errMsg = err.error || 'Failed to execute scraper';
+      // Signal failure to the results tab so it stops polling and shows an error
+      if (scraperResultsWindow && !scraperResultsWindow.closed) {
+        scraperResultsWindow.postMessage({ type: 'scrapeFailed', error: errMsg }, window.location.origin);
+      }
+      alert(`Scraper error: ${errMsg}`);
+      return;
+    }
+
+    const data = await resp.json();
+    const runId = data.runId || '';
+    sessionStorage.setItem('scraper-results', JSON.stringify(data));
+    localStorage.setItem(getScraperResultsStorageKey(currentScraperPlatform), JSON.stringify(data));
+    refreshScrapingResultsButton();
+
+    if (scraperResultsWindow && !scraperResultsWindow.closed) {
+      scraperResultsWindow.location.href = `/public/findJob.html?source=${currentScraperPlatform}${runId ? `&runId=${runId}` : ''}`;
+      if (overlay) overlay.style.display = 'none';
+    } else {
+      if (fallbackBtn) fallbackBtn.style.display = 'inline-block';
+    }
+  } catch (err: unknown) {
+    if (overlay) overlay.style.display = 'none';
+    if ((err as Error).name === 'AbortError') {
+      // User cancelled the scrape — the results tab would otherwise poll forever,
+      // so signal it to stop and show a cancellation message
+      if (scraperResultsWindow && !scraperResultsWindow.closed) {
+        scraperResultsWindow.postMessage({ type: 'scrapeFailed', error: 'Scraping was cancelled.' }, window.location.origin);
+      }
+    } else {
+      const errMsg = (err as Error).message;
+      // Signal failure to the results tab so it stops polling and shows an error
+      if (scraperResultsWindow && !scraperResultsWindow.closed) {
+        scraperResultsWindow.postMessage({ type: 'scrapeFailed', error: errMsg }, window.location.origin);
+      }
+      alert(`Scraping error: ${errMsg}`);
+    }
+  }
+}
+
+function openResultsTabFromOverlay(): void {
+  const overlay = document.getElementById('scraper-overlay');
+  if (overlay) overlay.style.display = 'none';
+  const savedRaw = sessionStorage.getItem('scraper-results');
+  let runId = '';
+  if (savedRaw) {
+    try {
+      const parsed = JSON.parse(savedRaw);
+      runId = parsed.runId || '';
+    } catch { /* ignore */ }
+  }
+  const url = `/public/findJob.html?source=${currentScraperPlatform}${runId ? `&runId=${runId}` : ''}`;
+  scraperResultsWindow = window.open(url, '_blank');
+}
+
+async function refreshScrapingResultsButton(): Promise<void> {
+  const btn = document.getElementById('btn-open-scraping-results');
+  if (!btn) return;
+
+  const hasResults = await hasSavedScraperResults();
+  btn.style.display = hasResults ? 'block' : 'none';
+}
+
+async function hasSavedScraperResults(): Promise<boolean> {
+  const sources: Array<'linkedin' | 'google'> = ['linkedin', 'google'];
+  // First check localStorage (results from current session)
+  for (const source of sources) {
+    const savedRaw = localStorage.getItem(getScraperResultsStorageKey(source));
+    if (savedRaw) {
+      try {
+        const parsed = JSON.parse(savedRaw);
+        if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
+          return true;
+        }
+      } catch {
+        // ignore malformed local cache values
+      }
+    }
+  }
+  // Then check server for existing result files on disk
+  for (const source of sources) {
+    try {
+      const resp = await fetch(`/api/scraper/results?source=${source}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && Array.isArray(data.results) && data.results.length > 0) {
+          // Cache in localStorage for future checks
+          localStorage.setItem(getScraperResultsStorageKey(source), JSON.stringify(data));
+          return true;
+        }
+      }
+    } catch {
+      // ignore network errors
+    }
+  }
+  return false;
+}
+
+function openLatestScrapingResults(): void {
+  const sources: Array<'linkedin' | 'google'> = ['linkedin', 'google'];
+  for (const source of sources) {
+    const savedRaw = localStorage.getItem(getScraperResultsStorageKey(source));
+    if (savedRaw) {
+      try {
+        const parsed = JSON.parse(savedRaw);
+        if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
+          const target = `/public/findJob.html?source=${source}`;
+          scraperResultsWindow = window.open(target, '_blank');
+          if (scraperResultsWindow && !scraperResultsWindow.closed) {
+            return;
+          }
+        }
+      } catch {
+        // ignore malformed local cache values
+      }
+    }
+  }
+
+  const fallbackTarget = '/public/findJob.html?source=linkedin';
+  scraperResultsWindow = window.open(fallbackTarget, '_blank');
+}
+
+function cancelScraping(): void {
+  if (scraperController) {
+    scraperController.abort();
+    scraperController = null;
+  }
+  const overlay = document.getElementById('scraper-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
 // ─── Global Keyboard ─────────────────────────────────────────────────────
 
 document.addEventListener('keydown', (e: KeyboardEvent) => {
   if (e.key === 'Escape') {
+    const scraperModal = document.getElementById('job-scraper-modal');
+    if (scraperModal && scraperModal.style.display !== 'none') {
+      closeJobScraperModal();
+      return;
+    }
+
+    const scraperOverlay = document.getElementById('scraper-overlay');
+    if (scraperOverlay && scraperOverlay.style.display !== 'none') {
+      cancelScraping();
+      return;
+    }
+
     const jdModal = document.getElementById('jd-edit-modal');
     if (jdModal && jdModal.classList.contains('show')) {
       closeJdEditModal();
@@ -1402,6 +1833,19 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 (window as unknown as Record<string, unknown>).switchResultsTab = switchResultsTab;
 (window as unknown as Record<string, unknown>).switchTab = switchTab;
 (window as unknown as Record<string, unknown>).toggleSidebar = toggleSidebar;
+(window as unknown as Record<string, unknown>).openJobScraperModal = openJobScraperModal;
+(window as unknown as Record<string, unknown>).closeJobScraperModal = closeJobScraperModal;
+(window as unknown as Record<string, unknown>).switchScraperPlatform = switchScraperPlatform;
+(window as unknown as Record<string, unknown>).openLatestScrapingResults = openLatestScrapingResults;
+(window as unknown as Record<string, unknown>).updateQueryPreview = updateQueryPreview;
+(window as unknown as Record<string, unknown>).addCustomDomain = addCustomDomain;
+(window as unknown as Record<string, unknown>).toggleAllDomains = toggleAllDomains;
+(window as unknown as Record<string, unknown>).openQueryInBrowser = openQueryInBrowser;
+(window as unknown as Record<string, unknown>).clearRoleError = clearRoleError;
+(window as unknown as Record<string, unknown>).startScraping = startScraping;
+(window as unknown as Record<string, unknown>).cancelScraping = cancelScraping;
+(window as unknown as Record<string, unknown>).refreshScrapingResultsButton = refreshScrapingResultsButton;
+(window as unknown as Record<string, unknown>).openResultsTabFromOverlay = openResultsTabFromOverlay;
 
 // ─── Init ────────────────────────────────────────────────────────────────
 

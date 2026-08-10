@@ -3,8 +3,8 @@
  * Extracted from public/main.html inline script
  */
 
-import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import { buildQueryUrl } from './utils';
+import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 
 // Declare global function for TypeScript benefit
 declare function closeJdEditModal(): void;
@@ -1312,8 +1312,6 @@ if (photoModal) {
   if (savedScan) {
     applyScanResultsToUI(savedScan);
   }
-
-  await refreshScrapingResultsButton();
 })();
 
 // ─── Job Scraper UI Logic ───────────────────────────────────────────
