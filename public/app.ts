@@ -1371,15 +1371,13 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
   currentScraperPlatform = platform;
   const btnLinkedin = document.getElementById('toggle-platform-linkedin');
   const btnGoogle = document.getElementById('toggle-platform-google');
-  const seniorityField = document.getElementById('scraper-field-seniority');
-  const employmentField = document.getElementById('scraper-field-employment');
+  const linkedinRow1 = document.getElementById('scraper-row-linkedin-1');
+  const linkedinRow2 = document.getElementById('scraper-row-linkedin-2');
   const googleSeniorityField = document.getElementById('scraper-field-seniority-google');
   const googleEmploymentField = document.getElementById('scraper-field-employment-google');
   const countryField = document.getElementById('scraper-field-country');
   const regionField = document.getElementById('scraper-field-region');
   const currencyField = document.getElementById('scraper-field-currency');
-  const datePostedField = document.getElementById('scraper-field-date-posted');
-  const workTypeField = document.getElementById('scraper-field-work-type');
 
   if (platform === 'linkedin') {
     if (btnLinkedin) {
@@ -1390,14 +1388,12 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
       btnGoogle.style.background = 'transparent';
       btnGoogle.style.color = 'rgba(255,255,255,0.7)';
     }
-    // LinkedIn: show LinkedIn fields (seniority, date posted, work type, employment, country, region, currency); hide Google fields
-    if (seniorityField) seniorityField.style.display = 'block';
-    if (employmentField) employmentField.style.display = 'block';
+    // LinkedIn: show LinkedIn rows (seniority, date posted, work type, employment, country, region, currency); hide Google fields
+    if (linkedinRow1) linkedinRow1.style.display = 'grid';
+    if (linkedinRow2) linkedinRow2.style.display = 'grid';
     if (countryField) countryField.style.display = 'block';
     if (regionField) regionField.style.display = 'block';
     if (currencyField) currencyField.style.display = 'block';
-    if (datePostedField) datePostedField.style.display = 'block';
-    if (workTypeField) workTypeField.style.display = 'block';
     if (googleSeniorityField) googleSeniorityField.style.display = 'none';
     if (googleEmploymentField) googleEmploymentField.style.display = 'none';
   } else {
@@ -1409,14 +1405,12 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
       btnLinkedin.style.background = 'transparent';
       btnLinkedin.style.color = 'rgba(255,255,255,0.7)';
     }
-    // Google: show Google fields (seniority, employment, country, region, currency); hide LinkedIn-only fields
-    if (seniorityField) seniorityField.style.display = 'none';
-    if (employmentField) employmentField.style.display = 'none';
+    // Google: show Google fields (seniority, employment, country, region, currency); hide LinkedIn rows
+    if (linkedinRow1) linkedinRow1.style.display = 'none';
+    if (linkedinRow2) linkedinRow2.style.display = 'none';
     if (countryField) countryField.style.display = 'block';
     if (regionField) regionField.style.display = 'block';
     if (currencyField) currencyField.style.display = 'block';
-    if (datePostedField) datePostedField.style.display = 'none';
-    if (workTypeField) workTypeField.style.display = 'none';
     if (googleSeniorityField) googleSeniorityField.style.display = 'block';
     if (googleEmploymentField) googleEmploymentField.style.display = 'block';
   }

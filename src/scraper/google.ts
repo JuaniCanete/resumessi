@@ -71,6 +71,7 @@ export async function scrapeGoogle(
     // apiUrl.searchParams.set('dateRestrict', 'd7');
 
     try {
+      console.log(apiUrl.toString());
       const response = await fetch(apiUrl.toString());
       if (response.status === 429) {
         console.error('[Google Scraper] Google API quota exceeded (HTTP 429).');
