@@ -1398,11 +1398,11 @@
 
                 <!-- Google fields (Google view only) -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div id="scraper-field-seniority-google">
+                    <div id="scraper-field-seniority-google" style="display: none;">
                         <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Seniority</label>
                         <input type="text" id="scraper-seniority-google" oninput="updateQueryPreview()" placeholder="e.g. Senior, Lead, Staff" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
                     </div>
-                    <div id="scraper-field-employment-google">
+                    <div id="scraper-field-employment-google" style="display: none;">
                         <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Employment</label>
                         <input type="text" id="scraper-employment-google" oninput="updateQueryPreview()" placeholder="e.g. Full-time, Contract" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
                     </div>
@@ -1415,15 +1415,21 @@
 
                 <!-- Google Target Domains (Google view only) -->
                 <div id="google-domains-section" style="display: none; background: rgba(0,0,0,0.2); padding: 14px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.08);">
-                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">Target Domains</label>
-                    <div id="domains-checklist" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="teamtailor.com" onchange="updateQueryPreview()"> teamtailor.com</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="greenhouse.io" onchange="updateQueryPreview()"> greenhouse.io</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="lever.co" onchange="updateQueryPreview()"> lever.co</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="myworkdayjobs.com" onchange="updateQueryPreview()"> myworkdayjobs.com</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="jobs.ashbyhq.com" onchange="updateQueryPreview()"> ashbyhq.com</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer;"><input type="checkbox" value="bamboohr.com" onchange="updateQueryPreview()"> bamboohr.com</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;"><input type="checkbox" id="select-all-domains" onchange="toggleAllDomains(this)"> Select All / Deselect All</label>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                        <label style="font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">Target Domains</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer; margin-bottom: 8px;">
+                            <input type="checkbox" id="select-all-domains" onchange="toggleAllDomains(this)"> Select All / Deselect All
+                        </label>
+                    </div>
+                    <div id="domains-checklist" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 96px; overflow-y: auto; margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="remoterocketship.com" onchange="updateQueryPreview()"> remoterocketship.com</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="myworkdayjobs.com" onchange="updateQueryPreview()"> myworkdayjobs.com</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="jobs.ashbyhq.com" onchange="updateQueryPreview()"> ashbyhq.com</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="teamtailor.com" onchange="updateQueryPreview()"> teamtailor.com</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="greenhouse.io" onchange="updateQueryPreview()"> greenhouse.io</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="lever.co" onchange="updateQueryPreview()"> lever.co</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="bamboohr.com" onchange="updateQueryPreview()"> bamboohr.com</label>
+                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="torre.ai" onchange="updateQueryPreview()"> torre.ai</label>
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <input type="text" id="custom-domain-input" placeholder="Add custom domain (e.g. recruitee.com)" style="flex: 1; padding: 7px 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 12px; outline: none;">

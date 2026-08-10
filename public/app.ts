@@ -1345,6 +1345,13 @@ async function openJobScraperModal(): Promise<void> {
   const currencySelect = document.getElementById('scraper-currency') as HTMLSelectElement;
   if (currencySelect) currencySelect.value = '';
 
+  // Reset domain checkboxes: all default sites checked by default (so the
+  // initial query includes them), and the master select-all checkbox too
+  const domainBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
+  domainBoxes.forEach(cb => { cb.checked = true; });
+  const selectAllCb = document.getElementById('select-all-domains') as HTMLInputElement | null;
+  if (selectAllCb) selectAllCb.checked = true;
+
   clearRoleError();
 
   const modal = document.getElementById('job-scraper-modal');
@@ -1438,6 +1445,16 @@ function updateQueryPreview(): string {
 
   const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')) as HTMLInputElement[];
   const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
+
+  // Sync the master "Select All" checkbox with the individual domain checkboxes
+  if (currentScraperPlatform === 'google') {
+    const selectAll = document.getElementById('select-all-domains') as HTMLInputElement | null;
+    if (selectAll) {
+      const allDomainBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
+      const allChecked = allDomainBoxes.length > 0 && allDomainBoxes.every(cb => cb.checked);
+      selectAll.checked = allChecked;
+    }
+  }
 
   // Delegate to the shared URL builder (single source of truth)
   const generatedUrl = buildQueryUrl(currentScraperPlatform, {

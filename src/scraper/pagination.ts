@@ -1,12 +1,14 @@
 import type { ScraperQuery } from './types';
 
 export const DEFAULT_TARGET_DOMAINS = [
+    'remoterocketship.com',
+    'myworkdayjobs.com',
+    'jobs.ashbyhq.com',
     'teamtailor.com',
     'greenhouse.io',
     'lever.co',
-    'myworkdayjobs.com',
-    'jobs.ashbyhq.com',
     'bamboohr.com',
+    'torre.ai',
 ];
 
 const LINKEDIN_SENIORITY_MAP: Record<string, string> = {
