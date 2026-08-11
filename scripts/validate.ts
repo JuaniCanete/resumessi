@@ -19,6 +19,7 @@ const REQUIRED_PROMPTS = [
   'src/prompts/resume-generation.txt',
   'src/prompts/extraction.txt',
   'src/prompts/polish.txt',
+  'src/prompts/clean-jd.txt',
 ];
 
 let hasErrors = false;

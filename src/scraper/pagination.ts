@@ -79,7 +79,17 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google', query: Scra
         return url.toString();
     }
 
+    // Quote role and keywords as separate terms (not one combined phrase)
     if (query.role) parts.push(`"${query.role}"`);
+    if (query.keywords) {
+        const keywordTerms = query.keywords
+            .split(',')
+            .map(k => k.trim())
+            .filter(k => k.length > 0);
+        for (const term of keywordTerms) {
+            parts.push(`"${term}"`);
+        }
+    }
     if (query.seniority) parts.push(`"${query.seniority}"`);
     if (query.employmentType) parts.push(query.employmentType);
 

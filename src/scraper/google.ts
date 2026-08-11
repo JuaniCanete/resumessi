@@ -99,6 +99,17 @@ export async function scrapeGoogle(
         console.warn('[Google Scraper] Failed to save debug response:', (debugErr as Error).message);
       }
 
+      // Only keep results whose hostname is one of the targeted ATS domains
+      // AND whose URL path looks like an actual job posting.
+      const allowedDomains = (query.customDomains !== undefined && query.customDomains !== null
+        ? query.customDomains
+        : DEFAULT_TARGET_DOMAINS).map(d => d.trim().toLowerCase());
+
+      const JOB_PATH_PATTERNS = [
+        '/jobs/', '/job/', '/careers', '/positions', '/position/',
+        '/job-board', '/openings', '/listing', '/joblist',
+      ];
+
       for (const item of items) {
         const title = item.title || '';
         const rawUrl = item.link || '';
@@ -106,14 +117,35 @@ export async function scrapeGoogle(
 
         const url = extractGoogleResultUrl(rawUrl);
 
-        if (title && url && !url.includes('google.com/search') && !url.includes('accounts.google')) {
-          results.push({
-            title,
-            url,
-            snippet: snippet || title,
-            source: 'google',
-          });
+        if (!title || !url || url.includes('google.com/search') || url.includes('accounts.google')) {
+          continue;
         }
+
+        let parsedUrl: URL;
+        try {
+          parsedUrl = new URL(url);
+        } catch {
+          continue;
+        }
+        const hostname = parsedUrl.hostname.toLowerCase();
+        // Strip leading "www." for comparison
+        const bareHost = hostname.startsWith('www.') ? hostname.slice(4) : hostname;
+        const isAllowed = allowedDomains.some(d => bareHost === d || bareHost.endsWith('.' + d));
+        if (!isAllowed) continue;
+
+        const pathname = parsedUrl.pathname.toLowerCase();
+        const looksLikeJob = JOB_PATH_PATTERNS.some(p => pathname.includes(p));
+        if (!looksLikeJob) {
+          console.log(`[Google Scraper] Skipping non-listing result (${url})`);
+          continue;
+        }
+
+        results.push({
+          title,
+          url,
+          snippet: snippet || title,
+          source: 'google',
+        });
       }
 
       // If we got fewer than 10 results, there is no next page

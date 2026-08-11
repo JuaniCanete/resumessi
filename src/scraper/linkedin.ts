@@ -63,7 +63,6 @@ async function extractLinkedInJobCards(page: import('playwright').Page): Promise
 async function extractLinkedInCards(
   page: import('playwright').Page,
   results: ScraperResult[],
-  query: ScraperQuery,
 ): Promise<void> {
   const cards = await extractLinkedInJobCards(page);
 
@@ -87,30 +86,32 @@ async function extractLinkedInCards(
     return;
   }
 
-  const queryTerms = [
-    query.role,
-    ...(query.keywords ? query.keywords.split(',').map(k => k.trim()).filter(Boolean) : []),
-  ].filter(Boolean) as string[];
-
   for (const card of cards) {
     const titleLink = await card.$('.job-card-list__title--link');
     const title = titleLink ? (await titleLink.getAttribute('aria-label'))?.trim() || '' : '';
     const linkElem = await card.$('a[href*="/jobs/"]');
-    const companyElem = await card.$('.job-card-container__primary-description, .job-card-container__company-name');
-
     const url = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
-    const company = companyElem ? (await companyElem.textContent())?.trim() : '';
 
     if (!title || !url) continue;
-    if (!url.startsWith('http')) continue;
 
-    if (queryTerms.length > 0) {
-      const titleLower = title.toLowerCase();
-      const hasMatch = queryTerms.some(term => titleLower.includes(term.toLowerCase()));
-      if (!hasMatch) {
-        console.log(`[LinkedIn Scraper] Skipping non-matching job: ${title}`);
-        continue;
+    // Company name: current LinkedIn DOM renders it as an <img alt="<Company> logo">
+    // (or a hashed span) inside the entity lockup — the old
+    // .job-card-container__primary-description / __company-name selectors no longer match.
+    let company = '';
+    try {
+      const logoImg = await card.$('img[alt$=" logo"], img[alt$=" logo "]');
+      if (logoImg) {
+        const alt = (await logoImg.getAttribute('alt')) || '';
+        company = alt.replace(/\s*logo\s*$/i, '').trim();
       }
+      if (!company) {
+        const lockupSpan = await card.$('.artdeco-entity-lockup__title + * span, .scaffold-layout__list-item span[dir="ltr"]');
+        if (lockupSpan) {
+          company = (await lockupSpan.textContent())?.trim() || '';
+        }
+      }
+    } catch {
+      // ignore company extraction errors
     }
 
     results.push({
@@ -224,17 +225,26 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
         await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
         await randomDelay(2000, 4000);
 
-        // Scroll down to load jobs dynamically
-        const maxScrolls = 12;
-        for (let i = 0; i < maxScrolls; i++) {
-          await page.evaluate(() => window.scrollBy(0, 800));
-          await randomDelay(1500, 3000);
-
-          const atBottom = await page.evaluate(() => {
-            return window.innerHeight + window.scrollY >= document.body.scrollHeight - 300;
-          });
-          if (atBottom) break;
-        }
+        // Lazy-load all job cards. LinkedIn renders the first ~7 cards and
+        // keeps the remaining result slots as empty skeleton <li> placeholders
+        // that only hydrate when individually scrolled into view (their
+        // IntersectionObserver fires on per-element intersection, not on
+        // container scrollTop). The container-scroll approach below plateaus
+        // at ~7; the per-card scrollIntoView + focus approach hydrates all 25.
+        const hydrated = await page.evaluate(async () => {
+          const cards = document.querySelectorAll(
+            'li[id*="ember"][class*="ember-view"][data-occludable-job-id]'
+          );
+          for (let i = 0; i < cards.length; i++) {
+            const card = cards[i] as HTMLElement;
+            card.scrollIntoView({ block: 'center', inline: 'center' });
+            card.focus();
+            // Yield to the event loop so IntersectionObserver callbacks flush
+            await new Promise(r => setTimeout(r, 550));
+          }
+          return document.querySelectorAll('.job-card-container').length;
+        });
+        console.log(`[LinkedIn Scraper] Hydrated ${hydrated} job cards on page ${searchUrl}`);
 
         // Save page HTML for debugging pagination/scroll behavior
         try {
@@ -249,7 +259,7 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
         }
 
         // Extract job card postings from LinkedIn with selector strategies and failure diagnostics
-        await extractLinkedInCards(page, results, query);
+        await extractLinkedInCards(page, results);
 
         console.log(`[LinkedIn Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
       }

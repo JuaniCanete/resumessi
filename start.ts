@@ -977,6 +977,86 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     return;
   }
 
+  if (requestPath === '/api/ats/clean-jd' && req.method === 'POST') {
+    const rateLimitResult = checkRateLimit(getClientIp(req));
+    if (!rateLimitResult.allowed) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) });
+      res.end(JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }));
+      return;
+    }
+    try {
+      const body = await getRequestBody(req);
+      const { jobDescription, url, source } = JSON.parse(body) as { jobDescription?: string; url?: string; source?: string };
+
+      if (!jobDescription || typeof jobDescription !== 'string') {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing or invalid jobDescription' }));
+        return;
+      }
+
+      const promptPath = path.join(ROOT, 'src', 'prompts', 'clean-jd.txt');
+      if (!fs.existsSync(promptPath)) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Clean JD prompt template not found' }));
+        return;
+      }
+
+      let basePrompt = fs.readFileSync(promptPath, 'utf-8');
+      basePrompt = basePrompt.replace('{url}', url || '');
+      basePrompt = basePrompt.replace('{source}', source || 'unknown');
+      basePrompt = basePrompt.replace('{raw_text}', jobDescription);
+
+      const env = getFullConfigFromEnv();
+
+      try {
+        const result = await runInference(
+          'You are a job description cleaner and classifier.',
+          basePrompt,
+          { temperature: 0, max_tokens: 2048, top_p: 0.1 },
+          env,
+          null,
+          null,
+          null,
+          'ats-clean',
+        );
+
+        let raw = result.text;
+        raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          raw = jsonMatch[0];
+        }
+
+        const parsed = JSON.parse(raw) as { isCollection: boolean; cleanedJD: string; notes: string };
+
+        if (parsed.isCollection) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: 'COLLECTION_DETECTED',
+            message: 'ATS is not possible as the link belongs to a collection of jobs instead of a job with unique JD. Enter to the link to gather JD or apply is recommended.',
+            notes: parsed.notes,
+          }));
+          return;
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ cleanedJD: parsed.cleanedJD }));
+      } catch (err: unknown) {
+        if ((err as Error).message === 'No providers configured. Set at least one *_API_KEY in .env.') {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: (err as Error).message }));
+          return;
+        }
+        throw err;
+      }
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Clean JD error: ' + (err as Error).message }));
+    }
+    return;
+  }
+
   // API: ATS Scan (for Check JD feature in results page)
   if (requestPath === '/api/ats/scan' && req.method === 'POST') {
     const rateLimitResult = checkRateLimit(getClientIp(req));
