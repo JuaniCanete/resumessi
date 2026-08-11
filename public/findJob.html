@@ -1454,6 +1454,11 @@
         </div>
     </aside>
 
+    <div id="refresh-message" data-testid="refresh-message" style="display: none; position: fixed; top: 20px; left: 50%; 
+         transform: translateX(-50%); background: var(--accent); color: #fff; padding: 12px 24px; 
+         border-radius: 8px; font-weight: 600; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+    </div>
+
     <!-- Main Content -->
     <div class="main-content">
         <div class="container">
@@ -1474,6 +1479,7 @@
                         <div class="meta-item">Scanned: <span id="meta-timestamp">No results</span></div>
                         <div class="meta-item">Total Findings: <span id="meta-total">N/A</span></div>
                         <div class="meta-item">Query: <span id="meta-query">N/A</span><span id="query-link-wrapper" style="display: none;">. <a id="query-link" href="#" target="_blank" rel="noopener noreferrer">Link</a></span></div>
+                        <div class="meta-item">AI Model: <span id="meta-provider">N/A</span></div>
                     </div>
                 </div>
 

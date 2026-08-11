@@ -22,6 +22,7 @@ export interface ScraperQuery {
   currency?: string;          // e.g. 'USD' | 'ARS' | 'EUR'
   customDomains?: string[];   // target domains for Google scraper
   pageCount?: number;         // number of search result pages to scrape (default 1)
+  startPage?: number;         // first page to scrape (1-indexed, default 1)
   datePosted?: string;         // LinkedIn f_TP parameter mapping
   workType?: string;           // LinkedIn f_WT parameter mapping
 }

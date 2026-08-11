@@ -1,5 +1,7 @@
 import { buildScraperSearchUrl, DEFAULT_TARGET_DOMAINS } from './pagination';
 import type { ScraperQuery, ScraperResult } from './types';
+import fs from 'fs';
+import path from 'path';
 
 export { DEFAULT_TARGET_DOMAINS };
 
@@ -55,11 +57,12 @@ export async function scrapeGoogle(
 
   const results: ScraperResult[] = [];
   const pageCount = query.pageCount ?? 1;
+  const startPage = query.startPage ?? 1;
 
-  console.log(`[Google Scraper] Scraping up to ${pageCount} page(s) of SerpAPI for query: "${searchQuery}"`);
+  console.log(`[Google Scraper] Scraping up to ${pageCount} page(s) starting from page ${startPage} of SerpAPI for query: "${searchQuery}"`);
 
   for (let page = 0; page < pageCount; page++) {
-    const startParam = page * 10;
+    const startParam = ((startPage - 1) + page) * 10;
     const apiUrl = new URL('https://serpapi.com/search.json?engine=google');
     apiUrl.searchParams.set('api_key', apiKey);
     apiUrl.searchParams.set('q', searchQuery);
@@ -84,6 +87,17 @@ export async function scrapeGoogle(
       const data = await response.json();
       const items = data.organic_results || [];
       console.log(`[Google Scraper] Received ${items.length} items from SerpAPI for page ${page + 1}`);
+
+      // Save SerpAPI response for debugging pagination behavior
+      try {
+        const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
+        if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+        const debugFile = path.join(debugDir, `google-page-${startPage + page}.json`);
+        fs.writeFileSync(debugFile, JSON.stringify(data, null, 2));
+        console.log(`[Google Scraper] Saved debug response to ${debugFile}`);
+      } catch (debugErr: unknown) {
+        console.warn('[Google Scraper] Failed to save debug response:', (debugErr as Error).message);
+      }
 
       for (const item of items) {
         const title = item.title || '';

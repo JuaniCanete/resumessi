@@ -1,4 +1,4 @@
-import { stripMarkdown, buildQueryUrl, confirmDelete, confirmUnsave, showToast } from './utils';
+import { stripMarkdown, buildQueryUrl, confirmDelete, confirmUnsave, showToast, showApplyModal } from './utils';
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import type { ScraperResult } from './utils';
 
@@ -12,6 +12,7 @@ interface ScraperRunPayload {
   results: ScraperResult[];
   summary?: string;
   runId?: string;
+  provider?: string;
 }
 
 // ─── State ───────────────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ let pollInterval: ReturnType<typeof setInterval> | null = null;
 let currentRunId: string | null = null;
 let currentSource: 'linkedin' | 'google' = 'linkedin';
 let currentTab: 'scraping' | 'saved' | 'dashboard' | 'resume' = 'scraping';
+let isLoadingResults = false;
 
 // Scraper state
 let scraperController: AbortController | null = null;
@@ -161,6 +163,7 @@ function updateResultsTabs(source: 'linkedin' | 'google'): void {
 }
 
 function showLoadingUI(source: 'linkedin' | 'google'): void {
+  isLoadingResults = true;
   const badge = document.getElementById('source-badge');
   if (badge) {
     badge.textContent = source === 'linkedin' ? 'LinkedIn' : 'Google';
@@ -185,6 +188,17 @@ function showLoadingUI(source: 'linkedin' | 'google'): void {
   }
 }
 
+function showRefreshMessage(): void {
+  const msg = document.getElementById('refresh-message');
+  if (msg) {
+    msg.textContent = 'Applying changes . . .';
+    msg.style.display = 'block';
+    setTimeout(() => {
+      msg.style.display = 'none';
+    }, 2000);
+  }
+}
+
 function startPolling(source: 'linkedin' | 'google'): void {
   if (pollInterval) clearInterval(pollInterval);
 
@@ -199,7 +213,8 @@ function startPolling(source: 'linkedin' | 'google'): void {
             currentPayload = data;
             sessionStorage.setItem('scraper-results', JSON.stringify(data));
             const source = data.source as 'linkedin' | 'google';
-            localStorage.setItem(`scraper-results:${source}`, JSON.stringify(data));
+            localStorage.setItem(`scraper-results:${source}`, JSON.stringify(currentPayload));
+            isLoadingResults = false;
             renderScrapingResults();
           }
         }
@@ -276,6 +291,7 @@ async function loadDataAndRender(sourceParam: 'linkedin' | 'google'): Promise<vo
 
 function renderScrapingResults(): void {
   if (currentTab !== 'scraping') return;
+  if (isLoadingResults) return;
 
   const badge = document.getElementById('source-badge');
   if (badge && currentPayload) {
@@ -321,7 +337,7 @@ function renderScrapingResults(): void {
   const queryElem = document.getElementById('meta-query');
   if (queryElem && currentPayload.query) {
     const q = currentPayload.query;
-    const parts = [q.role, q.seniority, q.stack, q.employmentType, q.region, q.country, q.currency].filter(Boolean);
+    const parts = [q.role, q.seniority, q.keywords, q.employmentType, q.region, q.country, q.currency].filter(Boolean);
     queryElem.textContent = parts.length > 0 ? parts.join(' • ') : 'All jobs';
   }
 
@@ -332,6 +348,11 @@ function renderScrapingResults(): void {
     const url = buildQueryUrl(source, currentPayload.query);
     queryLink.href = url;
     queryLinkWrapper.style.display = 'inline';
+  }
+
+  const providerElem = document.getElementById('meta-provider');
+  if (providerElem) {
+    providerElem.textContent = currentPayload.provider || 'N/A';
   }
 
   renderPage(currentPage);
@@ -1133,7 +1154,17 @@ function handleRemove(item: ScraperResult, source: 'linkedin' | 'google'): void 
           body: JSON.stringify({ url: item.url, source }),
         });
         if (!resp.ok) throw new Error('Failed to remove job');
-        showToast({ message: 'Job removed from results', type: 'success' });
+
+        if (currentPayload && currentPayload.results) {
+          currentPayload.results = currentPayload.results.filter(r => r.url !== item.url);
+          currentPayload.totalResults = currentPayload.results.length;
+          const totalPages = Math.ceil(currentPayload.results.length / RESULTS_PER_PAGE) || 1;
+          if (currentPage > totalPages) {
+            currentPage = 1;
+          }
+        }
+
+        showRefreshMessage();
         renderScrapingResults();
       } catch (err: unknown) {
         showToast({ message: 'Failed to remove job: ' + (err as Error).message, type: 'error' });
@@ -1143,18 +1174,28 @@ function handleRemove(item: ScraperResult, source: 'linkedin' | 'google'): void 
 }
 
 async function handleApply(item: ScraperResult, source: 'linkedin' | 'google'): Promise<void> {
-  try {
-    const resp = await fetch('/api/job-data/apply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ item, source }),
-    });
-    if (!resp.ok) throw new Error('Failed to apply to job');
-    showToast({ message: 'Job moved to dashboard', type: 'success' });
-    renderScrapingResults();
-  } catch (err: unknown) {
-    showToast({ message: 'Failed to apply to job: ' + (err as Error).message, type: 'error' });
-  }
+  showApplyModal({
+    item,
+    onConfirm: async (name: string) => {
+      try {
+        const resp = await fetch('/api/job-data/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item, source, customTitle: name }),
+        });
+        if (resp.status === 409) {
+          const data = await resp.json() as { error?: string };
+          showToast({ message: data.error || 'Card is already on board', type: 'error' });
+          return;
+        }
+        if (!resp.ok) throw new Error('Failed to apply to job');
+        showToast({ message: 'Job moved to dashboard', type: 'success' });
+        renderScrapingResults();
+      } catch (err: unknown) {
+        showToast({ message: 'Failed to apply to job: ' + (err as Error).message, type: 'error' });
+      }
+    },
+  });
 }
 
 function handleUnsave(item: ScraperResult, source: 'linkedin' | 'google'): void {
@@ -1823,6 +1864,17 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
   }
 });
 
+document.addEventListener('click', (e: MouseEvent) => {
+  const target = e.target as HTMLElement | null;
+  if (!target) return;
+  const insideMenu = target.closest('.board-card-menu') || target.closest('.board-card-menu-btn');
+  if (!insideMenu) {
+    document.querySelectorAll('.board-card-menu.show').forEach((menu) => {
+      menu.classList.remove('show');
+    });
+  }
+});
+
 // ─── Global Exports ──────────────────────────────────────────────────────
 
 (window as unknown as Record<string, unknown>).prevPage = prevPage;
@@ -1850,11 +1902,16 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 // ─── Init ────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const isLoadingParam = urlParams.get('loading') === 'true';
+
+  if (isLoadingParam) {
+    isLoadingResults = true;
+  }
+
   loadSidebarState();
 
-  const urlParams = new URLSearchParams(window.location.search);
   const sourceParam = (urlParams.get('source') || 'linkedin').toLowerCase() as 'linkedin' | 'google';
-  const isLoadingParam = urlParams.get('loading') === 'true';
   const runIdParam = urlParams.get('runId');
 
   if (runIdParam) {

@@ -108,22 +108,30 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google', query: Scra
     return `https://www.google.com/search?q=${encodeURIComponent(fullQuery)}`;
 }
 
-export function buildScraperSearchUrls(baseUrl: string, source: 'linkedin' | 'google', pageCount: number): string[] {
-    const urls = [baseUrl];
+export function buildScraperSearchUrls(baseUrl: string, source: 'linkedin' | 'google', pageCount: number, startPage: number = 1): string[] {
+    const urls: string[] = [];
 
     if (source === 'linkedin') {
-        for (let page = 1; page < pageCount; page += 1) {
-            const url = new URL(baseUrl);
-            url.searchParams.set('start', String(page * 25));
-            urls.push(url.toString());
+        for (let page = startPage; page < startPage + pageCount; page += 1) {
+            if (page === startPage) {
+                urls.push(baseUrl);
+            } else {
+                const url = new URL(baseUrl);
+                url.searchParams.set('start', String((page - 1) * 25));
+                urls.push(url.toString());
+            }
         }
         return urls;
     }
 
-    for (let page = 1; page < pageCount; page += 1) {
-        const url = new URL(baseUrl);
-        url.searchParams.set('start', String(page * 10));
-        urls.push(url.toString());
+    for (let page = startPage; page < startPage + pageCount; page += 1) {
+        if (page === startPage) {
+            urls.push(baseUrl);
+        } else {
+            const url = new URL(baseUrl);
+            url.searchParams.set('start', String((page - 1) * 10));
+            urls.push(url.toString());
+        }
     }
 
     return urls;
