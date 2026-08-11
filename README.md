@@ -8,13 +8,15 @@
 
 ## 🚀 Quick Start
 
-1. **Clone or download** this folder.
+1. **Clone** the project.
 2. **Run setup** — `npm run setup` creates `.env` from `.env.example`.
-3. **Edit `.env`** and add your AI API key.
-4. **Start the app** — `npm start` runs the local server and opens the app in your browser.
-5. **Build your resume** — Drop your existing resume in PDF format and a photo, and AI will generate a brand new one for you.
-6. **Paste a Job Description** in the left panel and click **Validate JD using AI**.
-
+4. **Complete steps from Wizard** This will setup all the API keys needed (SERP and AI providers).
+5. **Start the app** — `npm start` runs the local server and opens the app in your browser.
+6. **Build your resume** — Drop your existing resume in PDF format and a photo, and AI will generate a brand new one for you.
+7. **Paste a Job Description** in the left panel and click **Validate JD using AI**.
+8. **Start scraping for jobs** For Linkedin it uses storage state to treat the page respectfully. For Google it uses SERP API.
+9. **Apply or save jobs** Search the job that better match your preferences.
+10. **Manage your needs** Job dashboard allows to control the status of the applications, it can be withint the APP or outside the app.
 ---
 
 ## 📁 Project Structure
@@ -93,8 +95,10 @@ GROQ_MODEL=openai/gpt-oss-120b
 
 - `.env` is gitignored and served via `/config.json` at runtime.
 - **Inference order:** providers are tried in the order listed in `AI_INFERENCE_ORDER`. If a provider fails, the next one is tried automatically.
+- **AI API solo call** providers are also tried standalone for single API calls.
+- **Inference order** vs **AI API solo call** some tasks are long such as scraping a site, obtaining JDs and rendering them. In this case inference order takes precedence. Models uses auto-fallback.
 
-### Color Theme
+### Color Theme 
 
 Optional overrides in `.env`:
 
@@ -111,7 +115,7 @@ SUCCESS_COLOR=#0ea5e9
 
 ## 🖨️ PDF Export
 
-Click **Download Resume** to print/save as PDF. The print layout is optimized for ATS parsing.
+Click **Download Resume** to save as PDF. The print layout is optimized for ATS parsing.
 
 ---
 
