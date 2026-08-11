@@ -13,11 +13,15 @@ interface ScraperRunPayload {
   summary?: string;
   runId?: string;
   provider?: string;
+  metadataExtractionStatus?: 'extracting' | 'done';
 }
 
 // ─── State ───────────────────────────────────────────────────────────────
 
-let currentPayload: ScraperRunPayload | null = null;
+const payloadsBySource: Record<'linkedin' | 'google', ScraperRunPayload | null> = {
+  linkedin: null,
+  google: null,
+};
 let currentPage = 1;
 const RESULTS_PER_PAGE = 10;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -25,6 +29,10 @@ let currentRunId: string | null = null;
 let currentSource: 'linkedin' | 'google' = 'linkedin';
 let currentTab: 'scraping' | 'saved' | 'dashboard' | 'resume' = 'scraping';
 let isLoadingResults = false;
+const extractionStatus: Record<'linkedin' | 'google', 'idle' | 'extracting' | 'done'> = {
+  linkedin: 'idle',
+  google: 'idle',
+};
 
 // Scraper state
 let scraperController: AbortController | null = null;
@@ -214,14 +222,28 @@ function startPolling(source: 'linkedin' | 'google'): void {
       if (resp.ok) {
         const data = await resp.json() as ScraperRunPayload;
         if (data && data.timestamp && data.runId && data.runId === currentRunId) {
-          currentPayload = data;
+          payloadsBySource[source] = data;
           sessionStorage.setItem('scraper-results', JSON.stringify(data));
-          const resultSource = data.source as 'linkedin' | 'google';
-          localStorage.setItem(`scraper-results:${resultSource}`, JSON.stringify(currentPayload));
+          localStorage.setItem(`scraper-results:${source}`, JSON.stringify(data));
           isLoadingResults = false;
           const overlay = document.getElementById('scraper-overlay');
           if (overlay) overlay.style.display = 'none';
-          renderScrapingResults();
+
+          // Track metadata extraction status
+          const prevStatus = extractionStatus[source];
+          if (data.metadataExtractionStatus) {
+            extractionStatus[source] = data.metadataExtractionStatus;
+          }
+
+          // Only re-render if we're viewing this source's tab
+          if (source === currentSource) {
+            renderScrapingResults();
+          }
+
+          // Show toast when extraction finishes
+          if (prevStatus === 'extracting' && extractionStatus[source] === 'done') {
+            showToast({ message: 'Metadata extraction finished successfully.', type: 'success' });
+          }
 
           // Background summarization + parameter extraction may still be writing
           // to the results file after the scrape returns. Keep polling (and
@@ -282,28 +304,33 @@ function handleScrapeFailure(errorMessage: string): void {
 }
 
 async function loadDataAndRender(sourceParam: 'linkedin' | 'google'): Promise<void> {
-  if (currentPayload && currentPayload.source !== sourceParam) {
-    currentPayload = null;
-  }
+  currentSource = sourceParam;
 
   const rawSession = sessionStorage.getItem('scraper-results');
   if (rawSession) {
     try {
       const parsed = JSON.parse(rawSession) as ScraperRunPayload;
       if (parsed.source === sourceParam && parsed.results) {
-        currentPayload = parsed;
+        payloadsBySource[sourceParam] = parsed;
+        if (parsed.metadataExtractionStatus) {
+          extractionStatus[sourceParam] = parsed.metadataExtractionStatus;
+        }
       }
     } catch {
       // Fallback to fetch
     }
   }
 
-  if (!currentPayload) {
+  if (!payloadsBySource[sourceParam]) {
     try {
       const resp = await fetch(`/api/scraper/results?source=${sourceParam}`);
       if (resp.ok) {
-        currentPayload = await resp.json() as ScraperRunPayload;
-        localStorage.setItem(`scraper-results:${sourceParam}`, JSON.stringify(currentPayload));
+        const data = await resp.json() as ScraperRunPayload;
+        payloadsBySource[sourceParam] = data;
+        localStorage.setItem(`scraper-results:${sourceParam}`, JSON.stringify(data));
+        if (data.metadataExtractionStatus) {
+          extractionStatus[sourceParam] = data.metadataExtractionStatus;
+        }
       }
     } catch (err: unknown) {
       console.error('Failed to fetch scraper results:', (err as Error).message);
@@ -317,13 +344,22 @@ function renderScrapingResults(): void {
   if (currentTab !== 'scraping') return;
   if (isLoadingResults) return;
 
+  const activePayload = payloadsBySource[currentSource];
+  const isExtracting = extractionStatus[currentSource] === 'extracting';
+
   const badge = document.getElementById('source-badge');
-  if (badge && currentPayload) {
-    badge.textContent = currentPayload.source === 'linkedin' ? 'LinkedIn' : 'Google';
-    badge.className = `source-badge ${currentPayload.source}`;
+  if (badge && activePayload) {
+    badge.textContent = activePayload.source === 'linkedin' ? 'LinkedIn' : 'Google';
+    badge.className = `source-badge ${activePayload.source}`;
   }
 
-  if (!currentPayload || !currentPayload.results || currentPayload.results.length === 0) {
+  // Show extraction loading banner if metadata is being extracted
+  const extractionBanner = document.getElementById('extraction-loading');
+  if (extractionBanner) {
+    extractionBanner.style.display = isExtracting ? 'block' : 'none';
+  }
+
+  if (!activePayload || !activePayload.results || activePayload.results.length === 0) {
     const list = document.getElementById('results-list');
     if (list) list.innerHTML = '';
 
@@ -348,49 +384,50 @@ function renderScrapingResults(): void {
 
   const timestampElem = document.getElementById('meta-timestamp');
   if (timestampElem) {
-    timestampElem.textContent = currentPayload.timestamp
-      ? new Date(currentPayload.timestamp).toLocaleString()
+    timestampElem.textContent = activePayload.timestamp
+      ? new Date(activePayload.timestamp).toLocaleString()
       : 'N/A';
   }
 
   const totalElem = document.getElementById('meta-total');
   if (totalElem) {
-    totalElem.textContent = String(currentPayload.totalResults || currentPayload.results.length);
+    totalElem.textContent = String(activePayload.totalResults || activePayload.results.length);
   }
 
   const queryElem = document.getElementById('meta-query');
-  if (queryElem && currentPayload.query) {
-    const q = currentPayload.query;
+  if (queryElem && activePayload.query) {
+    const q = activePayload.query;
     const parts = [q.role, q.seniority, q.keywords, q.employmentType, q.region, q.country, q.currency].filter(Boolean);
     queryElem.textContent = parts.length > 0 ? parts.join(' • ') : 'All jobs';
   }
 
   const queryLinkWrapper = document.getElementById('query-link-wrapper');
   const queryLink = document.getElementById('query-link') as HTMLAnchorElement;
-  if (queryLinkWrapper && queryLink && currentPayload.query) {
-    const source = currentPayload.source;
-    const url = buildQueryUrl(source, currentPayload.query);
+  if (queryLinkWrapper && queryLink && activePayload.query) {
+    const source = activePayload.source;
+    const url = buildQueryUrl(source, activePayload.query);
     queryLink.href = url;
     queryLinkWrapper.style.display = 'inline';
   }
 
   const providerElem = document.getElementById('meta-provider');
   if (providerElem) {
-    providerElem.textContent = currentPayload.provider || 'N/A';
+    providerElem.textContent = activePayload.provider || 'N/A';
   }
 
   renderPage(currentPage);
 }
 
 function renderPage(page: number): void {
-  if (!currentPayload || !currentPayload.results) return;
+  const activePayload = payloadsBySource[currentSource];
+  if (!activePayload || !activePayload.results) return;
 
-  const totalPages = Math.ceil(currentPayload.results.length / RESULTS_PER_PAGE) || 1;
+  const totalPages = Math.ceil(activePayload.results.length / RESULTS_PER_PAGE) || 1;
   currentPage = Math.max(1, Math.min(page, totalPages));
 
   const startIdx = (currentPage - 1) * RESULTS_PER_PAGE;
   const endIdx = startIdx + RESULTS_PER_PAGE;
-  const pageResults = currentPayload.results.slice(startIdx, endIdx);
+  const pageResults = activePayload.results.slice(startIdx, endIdx);
 
   const container = document.getElementById('results-list');
   if (!container) return;
@@ -1179,10 +1216,10 @@ function handleRemove(item: ScraperResult, source: 'linkedin' | 'google'): void 
         });
         if (!resp.ok) throw new Error('Failed to remove job');
 
-        if (currentPayload && currentPayload.results) {
-          currentPayload.results = currentPayload.results.filter(r => r.url !== item.url);
-          currentPayload.totalResults = currentPayload.results.length;
-          const totalPages = Math.ceil(currentPayload.results.length / RESULTS_PER_PAGE) || 1;
+        if (payloadsBySource[source] && payloadsBySource[source]!.results) {
+          payloadsBySource[source]!.results = payloadsBySource[source]!.results.filter(r => r.url !== item.url);
+          payloadsBySource[source]!.totalResults = payloadsBySource[source]!.results.length;
+          const totalPages = Math.ceil(payloadsBySource[source]!.results.length / RESULTS_PER_PAGE) || 1;
           if (currentPage > totalPages) {
             currentPage = 1;
           }
@@ -1252,8 +1289,9 @@ function prevPage(): void {
 }
 
 function nextPage(): void {
-  if (!currentPayload || !currentPayload.results) return;
-  const totalPages = Math.ceil(currentPayload.results.length / RESULTS_PER_PAGE);
+  const activePayload = payloadsBySource[currentSource];
+  if (!activePayload || !activePayload.results) return;
+  const totalPages = Math.ceil(activePayload.results.length / RESULTS_PER_PAGE);
   if (currentPage < totalPages) {
     renderPage(currentPage + 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1778,9 +1816,14 @@ async function startScraping(): Promise<void> {
     if (data && data.runId) {
       currentRunId = data.runId;
     }
+    payloadsBySource[currentScraperPlatform] = data;
+    extractionStatus[currentScraperPlatform] = 'extracting';
     sessionStorage.setItem('scraper-results', JSON.stringify(data));
     localStorage.setItem(getScraperResultsStorageKey(currentScraperPlatform), JSON.stringify(data));
     refreshScrapingResultsButton();
+
+    // Show extraction loading state immediately
+    renderScrapingResults();
 
     startPolling(currentScraperPlatform);
   } catch (err: unknown) {
@@ -1953,6 +1996,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (isLoadingParam) {
     showLoadingUI(sourceParam);
+    currentSource = sourceParam;
+    updateResultsTabs(sourceParam);
     startPolling(sourceParam);
     return;
   }

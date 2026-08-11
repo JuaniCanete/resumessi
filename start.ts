@@ -548,6 +548,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         summary: '',
         runId: crypto.randomUUID(),
         provider: '',
+        metadataExtractionStatus: 'extracting',
       };
 
       const outputFile = path.join(resultsDir, `${query.source}.json`);
@@ -600,6 +601,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
             await extractJobParameters(resultsCopy, envCopy);
             const updated = JSON.parse(fs.readFileSync(outputFileCopy, 'utf-8'));
             updated.results = resultsCopy;
+            updated.metadataExtractionStatus = 'done';
             fs.writeFileSync(outputFileCopy, JSON.stringify(updated, null, 2));
             console.log('[Scraper API] Background parameter extraction completed.');
           } catch (err: unknown) {

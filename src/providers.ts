@@ -253,6 +253,80 @@ function parseResponse(provider: ProviderName, data: Record<string, unknown>): {
   return { text, usage };
 }
 
+function extractJsonFromText(text: string): string {
+  let cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+  const startIndex = cleaned.indexOf('{');
+  if (startIndex === -1) {
+    return cleaned;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = startIndex; i < cleaned.length; i++) {
+    const char = cleaned[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (char === '{') {
+      depth++;
+    } else if (char === '}') {
+      depth--;
+      if (depth === 0) {
+        return cleaned.slice(startIndex, i + 1);
+      }
+    }
+  }
+
+  return cleaned.slice(startIndex);
+}
+
+function safeJsonParse(text: string): { data: Record<string, unknown> | null; error: string | null } {
+  const cleaned = extractJsonFromText(text);
+  
+  try {
+    const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+    return { data: parsed, error: null };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Invalid JSON';
+    
+    // Try to fix common JSON issues
+    let repaired = cleaned;
+    
+    // Remove trailing commas
+    repaired = repaired.replace(/,\s*([}\]])/g, '$1');
+    
+    // Fix unquoted keys (line-anchored to avoid matching inside string values)
+    repaired = repaired.replace(/^([\s,{]*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/gm, '$1"$2":');
+    
+    try {
+      const parsed = JSON.parse(repaired) as Record<string, unknown>;
+      return { data: parsed, error: null };
+    } catch {
+      return { data: null, error: errorMsg };
+    }
+  }
+}
+
 function getProviderConfig(env: Record<string, string | undefined>): ProviderConfigResult {
   const order = (env.AI_INFERENCE_ORDER || 'cohere,mistral,gemini,groq')
     .split(',')
@@ -336,4 +410,6 @@ export {
   getProviderTimeout,
   getProviderConfig,
   validateInferenceRequest,
+  extractJsonFromText,
+  safeJsonParse,
 };
