@@ -30,6 +30,7 @@ Thumbs.db
 *.log
 npm-debug.log*
 debugging/
+data/scraper-debug/
 
 # AI agent personal configs
 AGENTS_LOCAL.md
