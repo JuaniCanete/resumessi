@@ -162,17 +162,22 @@ export async function getSavedJobs(source?: 'linkedin' | 'google'): Promise<Scra
   return [...data.savedJobs.linkedin, ...data.savedJobs.google];
 }
 
-export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'google'): Promise<void> {
+export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'google', customTitle?: string): Promise<void> {
   const data = await loadJobData();
+  const title = customTitle?.trim() || result.title || 'Untitled Job';
+  const existingTitle = data.jobDashboard.findIndex(j => j.title.toLowerCase() === title.toLowerCase());
+  if (existingTitle >= 0) {
+    throw new Error('DUPLICATE_TITLE');
+  }
   const dashboardJob: ScraperResult = {
     ...result,
+    title,
     applied: true,
     appliedAt: new Date().toISOString(),
     status: 'No News',
     notes: '',
   };
   data.jobDashboard.push(dashboardJob);
-  // Mark in source
   if (result.saved) {
     const savedIdx = data.savedJobs[source].findIndex(r => r.url === result.url);
     if (savedIdx >= 0) {

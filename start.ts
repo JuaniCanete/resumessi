@@ -534,41 +534,6 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         rawResults = await scrapeGoogle(query, env);
       }
 
-      let summaryText = '';
-      if (rawResults.length > 0) {
-        try {
-          const promptPath = path.join(ROOT, 'src', 'prompts', 'scraper-summarize.txt');
-          const systemPrompt = fs.existsSync(promptPath)
-            ? fs.readFileSync(promptPath, 'utf-8')
-            : 'You are a job scraper summarizer assistant.';
-
-          const prompt = `User Query: ${JSON.stringify(query)}\n\nScraped Results:\n${JSON.stringify(rawResults, null, 2)}`;
-          const inferenceResult = await runInference(systemPrompt, prompt, { temperature: 0, max_tokens: 1024, top_p: 0.1 }, env, null, null, null, 'scraper');
-          summaryText = inferenceResult.text;
-
-          // Parse per-result aiSummary from JSON response
-          try {
-            let raw = summaryText;
-            raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-            const jsonMatch = raw.match(/\[[\s\S]*\]/);
-            if (jsonMatch) {
-              raw = jsonMatch[0];
-            }
-            const summaries = JSON.parse(raw) as Array<{ index: number; aiSummary: string; queryAffinity: 'High' | 'Medium' | 'Low' }>;
-            for (const entry of summaries) {
-              if (entry.index >= 0 && entry.index < rawResults.length && typeof entry.aiSummary === 'string') {
-                rawResults[entry.index].aiSummary = entry.aiSummary;
-                rawResults[entry.index].queryAffinity = entry.queryAffinity;
-              }
-            }
-          } catch (parseErr: unknown) {
-            console.warn('[Scraper API] Failed to parse per-result summaries:', (parseErr as Error).message);
-          }
-        } catch (err: unknown) {
-          console.warn('[Scraper API] Summarization warning:', (err as Error).message);
-        }
-      }
-
       const resultsDir = path.join(ROOT, 'data', 'scraper-results');
       if (!fs.existsSync(resultsDir)) {
         fs.mkdirSync(resultsDir, { recursive: true });
@@ -580,29 +545,65 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         query,
         totalResults: rawResults.length,
         results: rawResults,
-        summary: summaryText,
+        summary: '',
         runId: crypto.randomUUID(),
+        provider: '',
       };
 
       const outputFile = path.join(resultsDir, `${query.source}.json`);
       fs.writeFileSync(outputFile, JSON.stringify(resultPayload, null, 2));
 
-      // Run parameter extraction in the background so the response is not
+      // Run AI summarization in the background so the response is not
       // delayed by a slow/failing AI call. When it completes, the results
-      // file is updated in place with the extracted parameters.
+      // file is updated in place with the summary and per-result aiSummary.
       if (rawResults.length > 0) {
         const resultsCopy = rawResults.map(r => ({ ...r }));
         const outputFileCopy = outputFile;
         const envCopy = env;
+        const queryCopy = query;
         void (async () => {
           try {
-            await extractJobParameters(resultsCopy, envCopy);
+            const promptPath = path.join(ROOT, 'src', 'prompts', 'scraper-summarize.txt');
+            const systemPrompt = fs.existsSync(promptPath)
+              ? fs.readFileSync(promptPath, 'utf-8')
+              : 'You are a job scraper summarizer assistant.';
+
+            const prompt = `User Query: ${JSON.stringify(queryCopy)}\n\nScraped Results:\n${JSON.stringify(resultsCopy, null, 2)}`;
+            const inferenceResult = await runInference(systemPrompt, prompt, { temperature: 0, max_tokens: 1024, top_p: 0.1 }, envCopy, null, null, null, 'scraper');
+            let summaryText = inferenceResult.text;
+
+            try {
+              let raw = summaryText;
+              raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+              const jsonMatch = raw.match(/\[[\s\S]*\]/);
+              if (jsonMatch) {
+                raw = jsonMatch[0];
+              }
+              const summaries = JSON.parse(raw) as Array<{ index: number; aiSummary: string; queryAffinity: 'High' | 'Medium' | 'Low' }>;
+              for (const entry of summaries) {
+                if (entry.index >= 0 && entry.index < resultsCopy.length && typeof entry.aiSummary === 'string') {
+                  resultsCopy[entry.index].aiSummary = entry.aiSummary;
+                  resultsCopy[entry.index].queryAffinity = entry.queryAffinity;
+                }
+              }
+            } catch (parseErr: unknown) {
+              console.warn('[Scraper API] Failed to parse per-result summaries:', (parseErr as Error).message);
+            }
+
             const current = JSON.parse(fs.readFileSync(outputFileCopy, 'utf-8'));
             current.results = resultsCopy;
+            current.summary = summaryText;
+            current.provider = inferenceResult.provider;
             fs.writeFileSync(outputFileCopy, JSON.stringify(current, null, 2));
-            console.log('[Scraper API] Parameter extraction completed in background.');
+            console.log('[Scraper API] Background summarization completed.');
+
+            await extractJobParameters(resultsCopy, envCopy);
+            const updated = JSON.parse(fs.readFileSync(outputFileCopy, 'utf-8'));
+            updated.results = resultsCopy;
+            fs.writeFileSync(outputFileCopy, JSON.stringify(updated, null, 2));
+            console.log('[Scraper API] Background parameter extraction completed.');
           } catch (err: unknown) {
-            console.warn('[Scraper API] Background parameter extraction failed:', (err as Error).message);
+            console.warn('[Scraper API] Background summarization failed:', (err as Error).message);
           }
         })();
       }
@@ -755,18 +756,24 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   if (requestPath === '/api/job-data/apply' && req.method === 'POST') {
     try {
       const body = await getRequestBody(req);
-      const { item, source } = JSON.parse(body) as { item: ScraperResult; source: 'linkedin' | 'google' };
+      const { item, source, customTitle } = JSON.parse(body) as { item: ScraperResult; source: 'linkedin' | 'google'; customTitle?: string };
       if (!item || !source) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Missing item or source' }));
         return;
       }
-      await applyToJob(item, source);
+      await applyToJob(item, source, customTitle);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
     } catch (err: unknown) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Failed to apply to job: ' + (err as Error).message }));
+      const message = (err as Error).message;
+      if (message === 'DUPLICATE_TITLE') {
+        res.writeHead(409, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Card is already on board' }));
+      } else {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to apply to job: ' + message }));
+      }
     }
     return;
   }

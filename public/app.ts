@@ -1342,6 +1342,10 @@ async function openJobScraperModal(): Promise<void> {
   if (regionSelect) regionSelect.value = '';
   const currencySelect = document.getElementById('scraper-currency') as HTMLSelectElement;
   if (currencySelect) currencySelect.value = '';
+  const pageCountSelect = document.getElementById('scraper-page-count') as HTMLSelectElement;
+  if (pageCountSelect) pageCountSelect.value = '1';
+  const startPageSelect = document.getElementById('scraper-start-page') as HTMLSelectElement;
+  if (startPageSelect) startPageSelect.value = '1';
 
   // Reset domain checkboxes: all default sites checked by default (so the
   // initial query includes them), and the master select-all checkbox too
@@ -1551,6 +1555,9 @@ async function startScraping(): Promise<void> {
   const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')) as HTMLInputElement[];
   const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
 
+  const pageCount = parseInt((document.getElementById('scraper-page-count') as HTMLSelectElement)?.value || '1', 10);
+  const startPage = parseInt((document.getElementById('scraper-start-page') as HTMLSelectElement)?.value || '1', 10);
+
   const queryPayload = {
     source: currentScraperPlatform,
     role,
@@ -1563,6 +1570,8 @@ async function startScraping(): Promise<void> {
     workType,
     keywords,
     customDomains,
+    pageCount,
+    startPage,
   };
 
   closeJobScraperModal();

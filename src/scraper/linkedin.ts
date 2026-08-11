@@ -198,28 +198,48 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
 
   const baseUrl = buildLinkedInSearchUrl(query);
   const pageCount = query.pageCount ?? 1;
-  const searchUrls = buildScraperSearchUrls(baseUrl, 'linkedin', pageCount);
-  console.log(`[LinkedIn Scraper] Scraping ${searchUrls.length} page(s): ${searchUrls.join(', ')}`);
+  const startPage = query.startPage ?? 1;
+  const searchUrls = buildScraperSearchUrls(baseUrl, 'linkedin', pageCount, startPage);
+  console.log(`[LinkedIn Scraper] Scraping ${searchUrls.length} page(s) starting from page ${startPage}: ${searchUrls.join(', ')}`);
 
   const page = await context.newPage();
   const results: ScraperResult[] = [];
 
-  try {
-    for (const searchUrl of searchUrls) {
-      await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await randomDelay(2000, 4000);
+    try {
+      for (let pageIndex = 0; pageIndex < searchUrls.length; pageIndex++) {
+        const searchUrl = searchUrls[pageIndex];
+        await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await randomDelay(2000, 4000);
 
-      // Scroll down to load jobs dynamically
-      for (let i = 0; i < 3; i++) {
-        await page.evaluate(() => window.scrollBy(0, 600));
-        await randomDelay(1500, 3000);
+        // Scroll down to load jobs dynamically
+        const maxScrolls = 12;
+        for (let i = 0; i < maxScrolls; i++) {
+          await page.evaluate(() => window.scrollBy(0, 800));
+          await randomDelay(1500, 3000);
+
+          const atBottom = await page.evaluate(() => {
+            return window.innerHeight + window.scrollY >= document.body.scrollHeight - 300;
+          });
+          if (atBottom) break;
+        }
+
+        // Save page HTML for debugging pagination/scroll behavior
+        try {
+          const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
+          if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+          const html = await page.content();
+          const debugFile = path.join(debugDir, `linkedin-page-${startPage + pageIndex}.html`);
+          fs.writeFileSync(debugFile, html);
+          console.log(`[LinkedIn Scraper] Saved debug HTML to ${debugFile}`);
+        } catch (debugErr: unknown) {
+          console.warn('[LinkedIn Scraper] Failed to save debug HTML:', (debugErr as Error).message);
+        }
+
+        // Extract job card postings from LinkedIn with selector strategies and failure diagnostics
+        await extractLinkedInCards(page, results);
+
+        console.log(`[LinkedIn Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
       }
-
-      // Extract job card postings from LinkedIn with selector strategies and failure diagnostics
-      await extractLinkedInCards(page, results);
-
-      console.log(`[LinkedIn Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
-    }
 
     // Visit individual job pages to extract the full JD
     if (results.length > 0) {
