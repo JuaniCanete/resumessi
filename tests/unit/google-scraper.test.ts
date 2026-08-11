@@ -95,7 +95,7 @@ test('scrapeGoogle parses SerpAPI results successfully', async (t) => {
     organic_results: [
       {
         title: 'Software Engineer Job',
-        link: 'https://www.google.com/url?q=https%3A%2F%2Fjobs.lever.co%2Ftest&sa=U',
+        link: 'https://www.google.com/url?q=https%3A%2F%2Fjobs.lever.co%2Ftest%2Fjobs%2F123&sa=U',
         snippet: 'We are hiring a Software Engineer...'
       }
     ]
@@ -121,7 +121,7 @@ test('scrapeGoogle parses SerpAPI results successfully', async (t) => {
   const results = await scrapeGoogle(query, mockEnv);
   assert.equal(results.length, 1);
   assert.equal(results[0].title, 'Software Engineer Job');
-  assert.equal(results[0].url, 'https://jobs.lever.co/test');
+  assert.equal(results[0].url, 'https://jobs.lever.co/test/jobs/123');
   assert.equal(results[0].snippet, 'We are hiring a Software Engineer...');
 });
 
