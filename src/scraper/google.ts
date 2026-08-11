@@ -56,7 +56,8 @@ export async function scrapeGoogle(
   }
 
   const results: ScraperResult[] = [];
-  const pageCount = query.pageCount ?? 1;
+  const MAX_GOOGLE_PAGES = 5;
+  const pageCount = Math.min(query.pageCount ?? 3, MAX_GOOGLE_PAGES);
   const startPage = query.startPage ?? 1;
 
   console.log(`[Google Scraper] Scraping up to ${pageCount} page(s) starting from page ${startPage} of SerpAPI for query: "${searchQuery}"`);
@@ -105,10 +106,20 @@ export async function scrapeGoogle(
         ? query.customDomains
         : DEFAULT_TARGET_DOMAINS).map(d => d.trim().toLowerCase());
 
-      const JOB_PATH_PATTERNS = [
-        '/jobs/', '/job/', '/careers', '/positions', '/position/',
-        '/job-board', '/openings', '/listing', '/joblist',
-      ];
+      // Job-board hostnames that should accept any path (their hostname alone
+      // identifies the result as a listing). We still enforce the domain
+      // allowlist above, so this is a permissive second signal only for ATS
+      // domains that don't always expose `/jobs/` in the URL path.
+      const JOB_BOARD_HOSTS = new Set([
+        'jobs.lever.co',
+        'jobs.ashbyhq.com',
+        'myworkdayjobs.com',
+        'teamtailor.com',
+        'greenhouse.io',
+        'bamboohr.com',
+        'torre.ai',
+        'remoterocketship.com',
+      ]);
 
       for (const item of items) {
         const title = item.title || '';
@@ -133,11 +144,18 @@ export async function scrapeGoogle(
         const isAllowed = allowedDomains.some(d => bareHost === d || bareHost.endsWith('.' + d));
         if (!isAllowed) continue;
 
-        const pathname = parsedUrl.pathname.toLowerCase();
-        const looksLikeJob = JOB_PATH_PATTERNS.some(p => pathname.includes(p));
-        if (!looksLikeJob) {
-          console.log(`[Google Scraper] Skipping non-listing result (${url})`);
-          continue;
+        const isJobBoardHost = JOB_BOARD_HOSTS.has(bareHost);
+        if (!isJobBoardHost) {
+          const JOB_PATH_PATTERNS = [
+            '/jobs/', '/job/', '/careers', '/positions', '/position/',
+            '/job-board', '/openings', '/listing', '/joblist',
+          ];
+          const pathname = parsedUrl.pathname.toLowerCase();
+          const looksLikeJob = JOB_PATH_PATTERNS.some(p => pathname.includes(p));
+          if (!looksLikeJob) {
+            console.log(`[Google Scraper] Skipping non-listing result (${url})`);
+            continue;
+          }
         }
 
         results.push({
