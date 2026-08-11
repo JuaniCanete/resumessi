@@ -1388,6 +1388,7 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
   const countryField = document.getElementById('scraper-field-country');
   const regionField = document.getElementById('scraper-field-region');
   const currencyField = document.getElementById('scraper-field-currency');
+  const linkedinPageLimitNote = document.getElementById('linkedin-page-limit-note');
 
   if (platform === 'linkedin') {
     if (btnLinkedin) {
@@ -1398,6 +1399,7 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
       btnGoogle.style.background = 'transparent';
       btnGoogle.style.color = 'rgba(255,255,255,0.7)';
     }
+    if (linkedinPageLimitNote) linkedinPageLimitNote.style.display = 'block';
     // LinkedIn: show LinkedIn rows (seniority, date posted, work type, employment, country, region, currency); hide Google fields
     if (linkedinRow1) linkedinRow1.style.display = 'grid';
     if (linkedinRow2) linkedinRow2.style.display = 'grid';
@@ -1416,6 +1418,7 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
       btnLinkedin.style.background = 'transparent';
       btnLinkedin.style.color = 'rgba(255,255,255,0.7)';
     }
+    if (linkedinPageLimitNote) linkedinPageLimitNote.style.display = 'none';
     // Google: show Google fields (seniority, employment, country, region, currency, domains); hide LinkedIn rows
     if (linkedinRow1) linkedinRow1.style.display = 'none';
     if (linkedinRow2) linkedinRow2.style.display = 'none';

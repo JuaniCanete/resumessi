@@ -20,11 +20,8 @@ const MAX_JD_EXTRACTIONS = 10;
 // DOM frequently, so we layer stable fallbacks (data-* attributes, generic
 // list-item patterns) on top of the current class names.
 const LINKEDIN_RESULT_SELECTOR_STRATEGIES: string[] = [
-  // Primary: current LinkedIn job card containers
   '.job-card-container, .base-card, .jobs-search-results__list-item, .job-card-list',
-  // Unauthenticated/guest layout list items
   'ul.jobs-search__results-list > li',
-  // Generic fallbacks: any list item that contains a job link
   'li[data-occludable-job-id]',
   'article.job-card, div.job-card',
 ];
@@ -66,6 +63,7 @@ async function extractLinkedInJobCards(page: import('playwright').Page): Promise
 async function extractLinkedInCards(
   page: import('playwright').Page,
   results: ScraperResult[],
+  query: ScraperQuery,
 ): Promise<void> {
   const cards = await extractLinkedInJobCards(page);
 
@@ -89,24 +87,39 @@ async function extractLinkedInCards(
     return;
   }
 
+  const queryTerms = [
+    query.role,
+    ...(query.keywords ? query.keywords.split(',').map(k => k.trim()).filter(Boolean) : []),
+  ].filter(Boolean) as string[];
+
   for (const card of cards) {
-    const titleElem = await card.$('.job-card-list__title, .job-card-container__link, strong');
+    const titleLink = await card.$('.job-card-list__title--link');
+    const title = titleLink ? (await titleLink.getAttribute('aria-label'))?.trim() || '' : '';
     const linkElem = await card.$('a[href*="/jobs/"]');
     const companyElem = await card.$('.job-card-container__primary-description, .job-card-container__company-name');
 
-    const title = titleElem ? (await titleElem.textContent())?.trim() : '';
     const url = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
     const company = companyElem ? (await companyElem.textContent())?.trim() : '';
 
-    if (title && url) {
-      results.push({
-        title,
-        url: url.startsWith('http') ? url : `https://www.linkedin.com${url}`,
-        snippet: company ? `Company: ${company}` : '',
-        source: 'linkedin',
-        company,
-      });
+    if (!title || !url) continue;
+    if (!url.startsWith('http')) continue;
+
+    if (queryTerms.length > 0) {
+      const titleLower = title.toLowerCase();
+      const hasMatch = queryTerms.some(term => titleLower.includes(term.toLowerCase()));
+      if (!hasMatch) {
+        console.log(`[LinkedIn Scraper] Skipping non-matching job: ${title}`);
+        continue;
+      }
     }
+
+    results.push({
+      title,
+      url: url.startsWith('http') ? url : `https://www.linkedin.com${url}`,
+      snippet: company ? `Company: ${company}` : '',
+      source: 'linkedin',
+      company,
+    });
   }
 }
 
@@ -236,7 +249,7 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
         }
 
         // Extract job card postings from LinkedIn with selector strategies and failure diagnostics
-        await extractLinkedInCards(page, results);
+        await extractLinkedInCards(page, results, query);
 
         console.log(`[LinkedIn Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
       }
