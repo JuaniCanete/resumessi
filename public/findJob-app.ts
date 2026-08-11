@@ -29,7 +29,6 @@ let isLoadingResults = false;
 // Scraper state
 let scraperController: AbortController | null = null;
 let currentScraperPlatform: 'linkedin' | 'google' = 'linkedin';
-let scraperResultsWindow: Window | null = null;
 
 // DANGEROUS_TAGS for sanitization
 const DANGEROUS_TAGS = new Set([
@@ -202,20 +201,43 @@ function showRefreshMessage(): void {
 function startPolling(source: 'linkedin' | 'google'): void {
   if (pollInterval) clearInterval(pollInterval);
 
+  // Safety: stop polling after 3 minutes no matter what, and always hide overlay.
+  let settledTicks = 0;
+  let totalTicks = 0;
+  const MAX_TICKS = 90; // 90 * 2000ms = 180s
+  const MAX_SETTLED_TICKS = 3; // grace ticks after background processing completes
+
   pollInterval = setInterval(async () => {
+    totalTicks += 1;
     try {
       const resp = await fetch(`/api/scraper/results?source=${source}`);
       if (resp.ok) {
         const data = await resp.json() as ScraperRunPayload;
-        if (data && data.timestamp && data.runId) {
-          if (data.runId === currentRunId) {
-            if (pollInterval) clearInterval(pollInterval);
-            currentPayload = data;
-            sessionStorage.setItem('scraper-results', JSON.stringify(data));
-            const source = data.source as 'linkedin' | 'google';
-            localStorage.setItem(`scraper-results:${source}`, JSON.stringify(currentPayload));
-            isLoadingResults = false;
-            renderScrapingResults();
+        if (data && data.timestamp && data.runId && data.runId === currentRunId) {
+          currentPayload = data;
+          sessionStorage.setItem('scraper-results', JSON.stringify(data));
+          const resultSource = data.source as 'linkedin' | 'google';
+          localStorage.setItem(`scraper-results:${resultSource}`, JSON.stringify(currentPayload));
+          isLoadingResults = false;
+          const overlay = document.getElementById('scraper-overlay');
+          if (overlay) overlay.style.display = 'none';
+          renderScrapingResults();
+
+          // Background summarization + parameter extraction may still be writing
+          // to the results file after the scrape returns. Keep polling (and
+          // re-rendering) until the provider is set AND every result has a
+          // parameters array, then allow a couple of grace ticks before stopping.
+          const backgroundDone = !!(data.provider && Array.isArray(data.results) &&
+            data.results.length > 0 &&
+            data.results.every(r => Array.isArray(r.parameters)));
+          if (backgroundDone) {
+            settledTicks += 1;
+            if (settledTicks >= MAX_SETTLED_TICKS) {
+              if (pollInterval) clearInterval(pollInterval);
+              pollInterval = null;
+            }
+          } else {
+            settledTicks = 0;
           }
         }
       } else if (resp.status === 400 || resp.status >= 500) {
@@ -223,6 +245,16 @@ function startPolling(source: 'linkedin' | 'google'): void {
       }
     } catch {
       // Ignore polling fetch errors
+    }
+
+    // Failsafe: stop polling and hide overlay after the cap
+    if (totalTicks >= MAX_TICKS) {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = null;
+      const overlay = document.getElementById('scraper-overlay');
+      if (overlay) overlay.style.display = 'none';
+      isLoadingResults = false;
+      renderScrapingResults();
     }
   }, 2000);
 }
@@ -248,14 +280,6 @@ function handleScrapeFailure(errorMessage: string): void {
   const pagination = document.getElementById('pagination');
   if (pagination) pagination.style.display = 'none';
 }
-
-window.addEventListener('message', (event: MessageEvent) => {
-  if (event.origin !== window.location.origin) return;
-  const data = event.data as { type?: string; error?: string } | undefined;
-  if (data && data.type === 'scrapeFailed') {
-    handleScrapeFailure(data.error || 'The scraping process could not be completed. Please try again.');
-  }
-});
 
 async function loadDataAndRender(sourceParam: 'linkedin' | 'google'): Promise<void> {
   if (currentPayload && currentPayload.source !== sourceParam) {
@@ -1330,8 +1354,36 @@ function openJdEditModal(item: ScraperResult): void {
   modal.classList.add('show');
 
   fetchJobDescription(item.url)
-    .then((fullText) => {
-      textarea.value = fullText || fallbackContent;
+    .then(async (rawText) => {
+      const textToClean = rawText || fallbackContent;
+      try {
+        const cleanResp = await fetch('/api/ats/clean-jd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jobDescription: textToClean,
+            url: item.url,
+            source: item.source,
+          }),
+        });
+
+        if (cleanResp.status === 409) {
+          const errData = await cleanResp.json() as { error?: string; message?: string };
+          closeJdEditModal();
+          showJdCollectionModal(errData.message || 'This link belongs to a collection of jobs. ATS scan is not possible.');
+          return;
+        }
+
+        if (cleanResp.ok) {
+          const cleanData = await cleanResp.json() as { cleanedJD?: string };
+          textarea.value = cleanData.cleanedJD || textToClean;
+        } else {
+          textarea.value = textToClean;
+        }
+      } catch {
+        textarea.value = textToClean;
+      }
+
       textarea.disabled = false;
       scanBtn.disabled = false;
       if (loading) loading.classList.remove('show');
@@ -1342,6 +1394,18 @@ function openJdEditModal(item: ScraperResult): void {
       scanBtn.disabled = false;
       if (loading) loading.classList.remove('show');
     });
+}
+
+function showJdCollectionModal(message: string): void {
+  const modal = document.getElementById('jd-collection-modal');
+  const msgEl = document.getElementById('jd-collection-message');
+  if (modal) modal.style.display = 'flex';
+  if (msgEl) msgEl.textContent = message;
+}
+
+function closeJdCollectionModal(): void {
+  const modal = document.getElementById('jd-collection-modal');
+  if (modal) modal.style.display = 'none';
 }
 
 async function fetchJobDescription(url: string): Promise<string> {
@@ -1680,16 +1744,15 @@ async function startScraping(): Promise<void> {
 
   closeJobScraperModal();
 
-  // Open results tab with loading state immediately
-  const targetUrl = `/public/findJob.html?source=${currentScraperPlatform}&loading=true`;
-  scraperResultsWindow = window.open(targetUrl, '_blank');
-
   const overlay = document.getElementById('scraper-overlay');
   const label = document.getElementById('scraper-source-label');
   const fallbackBtn = document.getElementById('btn-open-results-fallback');
   if (label) label.textContent = currentScraperPlatform === 'linkedin' ? 'LinkedIn' : 'Google';
   if (fallbackBtn) fallbackBtn.style.display = 'none';
   if (overlay) overlay.style.display = 'flex';
+
+  switchTab('scraping');
+  switchResultsTab(currentScraperPlatform);
 
   scraperController = new AbortController();
 
@@ -1705,58 +1768,27 @@ async function startScraping(): Promise<void> {
       if (overlay) overlay.style.display = 'none';
       const err = await resp.json();
       const errMsg = err.error || 'Failed to execute scraper';
-      // Signal failure to the results tab so it stops polling and shows an error
-      if (scraperResultsWindow && !scraperResultsWindow.closed) {
-        scraperResultsWindow.postMessage({ type: 'scrapeFailed', error: errMsg }, window.location.origin);
-      }
       alert(`Scraper error: ${errMsg}`);
       return;
     }
 
     const data = await resp.json();
-    const runId = data.runId || '';
+    // Record the run ID so the poller can match the completed run and hide the
+    // overlay once the results file (and background enrichments) are ready.
+    if (data && data.runId) {
+      currentRunId = data.runId;
+    }
     sessionStorage.setItem('scraper-results', JSON.stringify(data));
     localStorage.setItem(getScraperResultsStorageKey(currentScraperPlatform), JSON.stringify(data));
     refreshScrapingResultsButton();
 
-    if (scraperResultsWindow && !scraperResultsWindow.closed) {
-      scraperResultsWindow.location.href = `/public/findJob.html?source=${currentScraperPlatform}${runId ? `&runId=${runId}` : ''}`;
-      if (overlay) overlay.style.display = 'none';
-    } else {
-      if (fallbackBtn) fallbackBtn.style.display = 'inline-block';
-    }
+    startPolling(currentScraperPlatform);
   } catch (err: unknown) {
     if (overlay) overlay.style.display = 'none';
-    if ((err as Error).name === 'AbortError') {
-      // User cancelled the scrape — the results tab would otherwise poll forever,
-      // so signal it to stop and show a cancellation message
-      if (scraperResultsWindow && !scraperResultsWindow.closed) {
-        scraperResultsWindow.postMessage({ type: 'scrapeFailed', error: 'Scraping was cancelled.' }, window.location.origin);
-      }
-    } else {
-      const errMsg = (err as Error).message;
-      // Signal failure to the results tab so it stops polling and shows an error
-      if (scraperResultsWindow && !scraperResultsWindow.closed) {
-        scraperResultsWindow.postMessage({ type: 'scrapeFailed', error: errMsg }, window.location.origin);
-      }
-      alert(`Scraping error: ${errMsg}`);
+    if ((err as Error).name !== 'AbortError') {
+      alert(`Scraping error: ${(err as Error).message}`);
     }
   }
-}
-
-function openResultsTabFromOverlay(): void {
-  const overlay = document.getElementById('scraper-overlay');
-  if (overlay) overlay.style.display = 'none';
-  const savedRaw = sessionStorage.getItem('scraper-results');
-  let runId = '';
-  if (savedRaw) {
-    try {
-      const parsed = JSON.parse(savedRaw);
-      runId = parsed.runId || '';
-    } catch { /* ignore */ }
-  }
-  const url = `/public/findJob.html?source=${currentScraperPlatform}${runId ? `&runId=${runId}` : ''}`;
-  scraperResultsWindow = window.open(url, '_blank');
 }
 
 async function refreshScrapingResultsButton(): Promise<void> {
@@ -1810,11 +1842,8 @@ function openLatestScrapingResults(): void {
       try {
         const parsed = JSON.parse(savedRaw);
         if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
-          const target = `/public/findJob.html?source=${source}`;
-          scraperResultsWindow = window.open(target, '_blank');
-          if (scraperResultsWindow && !scraperResultsWindow.closed) {
-            return;
-          }
+          window.open(`/public/findJob.html?source=${source}`, '_blank');
+          return;
         }
       } catch {
         // ignore malformed local cache values
@@ -1822,8 +1851,7 @@ function openLatestScrapingResults(): void {
     }
   }
 
-  const fallbackTarget = '/public/findJob.html?source=linkedin';
-  scraperResultsWindow = window.open(fallbackTarget, '_blank');
+  window.open('/public/findJob.html?source=linkedin', '_blank');
 }
 
 function cancelScraping(): void {
@@ -1854,6 +1882,11 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     const jdModal = document.getElementById('jd-edit-modal');
     if (jdModal && jdModal.classList.contains('show')) {
       closeJdEditModal();
+      return;
+    }
+    const jdCollectionModal = document.getElementById('jd-collection-modal');
+    if (jdCollectionModal && jdCollectionModal.style.display !== 'none') {
+      closeJdCollectionModal();
       return;
     }
     const atsSidebar = document.getElementById('ats-sidebar');
@@ -1897,7 +1930,7 @@ document.addEventListener('click', (e: MouseEvent) => {
 (window as unknown as Record<string, unknown>).startScraping = startScraping;
 (window as unknown as Record<string, unknown>).cancelScraping = cancelScraping;
 (window as unknown as Record<string, unknown>).refreshScrapingResultsButton = refreshScrapingResultsButton;
-(window as unknown as Record<string, unknown>).openResultsTabFromOverlay = openResultsTabFromOverlay;
+(window as unknown as Record<string, unknown>).closeJdCollectionModal = closeJdCollectionModal;
 
 // ─── Init ────────────────────────────────────────────────────────────────
 
