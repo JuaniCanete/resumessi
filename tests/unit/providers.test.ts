@@ -19,6 +19,8 @@ import {
   getProviderTimeout,
   getProviderConfig,
   validateInferenceRequest,
+  extractJsonFromText,
+  safeJsonParse,
 } from '../../src/providers';
 
 // ── buildRequest ──────────────────────────────────────────────────────────────
@@ -232,6 +234,75 @@ test('validateInferenceRequest rejects invalid top_p', () => {
 test('validateInferenceRequest rejects extra fields', () => {
   const errors = validateInferenceRequest({ system: 'sys', prompt: 'Hello', extra: 'bad' });
   assert.ok(errors.some(e => e.includes('extra')));
+});
+
+// ── extractJsonFromText ─────────────────────────────────────────────────────────
+
+test('extractJsonFromText strips markdown fences and extracts JSON', () => {
+  const input = 'Here is the result:\n```json\n{"key": "value"}\n```\nThanks!';
+  assert.equal(extractJsonFromText(input), '{"key": "value"}');
+});
+
+test('extractJsonFromText extracts JSON with preamble text', () => {
+  const input = 'Sure, here you go: {"name": "test"} and more text after';
+  assert.equal(extractJsonFromText(input), '{"name": "test"}');
+});
+
+test('extractJsonFromText handles plain JSON without fences', () => {
+  const input = '{"a": 1, "b": 2}';
+  assert.equal(extractJsonFromText(input), '{"a": 1, "b": 2}');
+});
+
+test('extractJsonFromText uses non-greedy match for multiple objects', () => {
+  const input = 'first {"id": 1} then {"id": 2} end';
+  const result = extractJsonFromText(input);
+  assert.equal(result, '{"id": 1}');
+});
+
+test('extractJsonFromText returns empty string when no JSON found', () => {
+  const input = 'No JSON here, just text';
+  assert.equal(extractJsonFromText(input), 'No JSON here, just text');
+});
+
+// ── safeJsonParse ──────────────────────────────────────────────────────────────
+
+test('safeJsonParse returns parsed data for valid JSON', () => {
+  const result = safeJsonParse('{"name": "test"}');
+  assert.ok(result.data);
+  assert.equal((result.data as Record<string, unknown>).name, 'test');
+  assert.equal(result.error, null);
+});
+
+test('safeJsonParse strips markdown fences before parsing', () => {
+  const result = safeJsonParse('```json\n{"name": "test"}\n```');
+  assert.ok(result.data);
+  assert.equal((result.data as Record<string, unknown>).name, 'test');
+});
+
+test('safeJsonParse repairs trailing commas', () => {
+  const result = safeJsonParse('{"name": "test",}');
+  assert.ok(result.data);
+  assert.equal((result.data as Record<string, unknown>).name, 'test');
+});
+
+test('safeJsonParse repairs unquoted keys', () => {
+  const result = safeJsonParse('{name: "test"}');
+  assert.ok(result.data);
+  assert.equal((result.data as Record<string, unknown>).name, 'test');
+});
+
+test('safeJsonParse preserves top-level nested objects', () => {
+  const input = '{"outer": {"inner": "value"}, "note": "example"}';
+  const result = safeJsonParse(input);
+  assert.ok(result.data);
+  assert.equal((result.data as Record<string, unknown>).note, 'example');
+  assert.deepEqual((result.data as Record<string, unknown>).outer, { inner: 'value' });
+});
+
+test('safeJsonParse returns error for completely invalid JSON', () => {
+  const result = safeJsonParse('not json at all');
+  assert.equal(result.data, null);
+  assert.ok(result.error !== null);
 });
 
 

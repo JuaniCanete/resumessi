@@ -1475,15 +1475,19 @@
                             <span id="source-badge" class="source-badge linkedin" style="display: none;">LinkedIn</span>
                         </div>
                     </div>
-                    <div class="meta-row">
-                        <div class="meta-item">Scanned: <span id="meta-timestamp">No results</span></div>
-                        <div class="meta-item">Total Findings: <span id="meta-total">N/A</span></div>
-                        <div class="meta-item">Query: <span id="meta-query">N/A</span><span id="query-link-wrapper" style="display: none;">. <a id="query-link" href="#" target="_blank" rel="noopener noreferrer">Link</a></span></div>
-                        <div class="meta-item">AI Model: <span id="meta-provider">N/A</span></div>
-                    </div>
+                <div class="meta-row">
+                    <div class="meta-item">Scanned: <span id="meta-timestamp">No results</span></div>
+                    <div class="meta-item">Total Findings: <span id="meta-total">N/A</span></div>
+                    <div class="meta-item">Query: <span id="meta-query">N/A</span><span id="query-link-wrapper" style="display: none;">. <a id="query-link" href="#" target="_blank" rel="noopener noreferrer">Link</a></span></div>
+                    <div class="meta-item">AI Model: <span id="meta-provider">N/A</span></div>
                 </div>
+            </div>
 
-                <div id="results-list" class="results-list"></div>
+            <div id="extraction-loading" style="display: none; padding: 14px 18px; margin-bottom: 14px; background: rgba(37, 99, 235, 0.12); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 8px; font-size: 13px; font-weight: 600; color: #93c5fd;">
+                ⏳ Metadata extraction is in progress, this process usually takes one minute per page.
+            </div>
+
+            <div id="results-list" class="results-list"></div>
 
                 <div id="no-results" class="no-results" style="display: none;">
                     <h3>There are no scraping results available</h3>

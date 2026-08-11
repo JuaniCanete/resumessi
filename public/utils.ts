@@ -90,3 +90,34 @@ export function buildQueryUrl(source: 'linkedin' | 'google', query: ScraperQuery
 // Re-export shared modules
 export * from './utils/modal';
 export * from './utils/storage';
+
+export function resizeImage(dataUrl: string, maxWidth: number, maxHeight: number, quality: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = function () {
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.floor(width * ratio);
+        height = Math.floor(height * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = function () {
+      reject(new Error('Failed to load image for resizing'));
+    };
+    img.src = dataUrl;
+  });
+}

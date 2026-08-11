@@ -3,8 +3,9 @@
  * Extracted from public/main.html inline script
  */
 
-import { buildQueryUrl } from './utils';
+import { buildQueryUrl, resizeImage } from './utils';
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
+import { safeJsonParse } from '../src/providers';
 
 // Declare global function for TypeScript benefit
 declare function closeJdEditModal(): void;
@@ -249,16 +250,13 @@ async function runAtsScan(): Promise<void> {
     if (data.error) throw new Error(data.error);
 
     let raw = data.text;
-    raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    // Extract first JSON object from response — handles preamble text before JSON (e.g. Groq)
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      raw = jsonMatch[0];
+    const parsed = safeJsonParse(raw);
+    if (!parsed.data) {
+      throw new Error(parsed.error || 'AI returned invalid JSON. Please try again.');
     }
 
-    const result = JSON.parse(raw) as { ai_screening: Record<string, unknown> };
-    const screening = result.ai_screening;
+    const screening = (parsed.data.ai_screening || parsed.data) as Record<string, unknown>;
 
     applyScanResultsToUI(screening);
     saveScanResults(screening);
@@ -610,9 +608,16 @@ async function polishResume(): Promise<void> {
     const resumeData = await resp.json() as Record<string, unknown>;
 
     const resumeDataForPolish = JSON.parse(JSON.stringify(resumeData)) as Record<string, unknown>;
+    const origBasics = resumeData.basics as Record<string, unknown> | undefined;
     const basics = resumeDataForPolish.basics as Record<string, unknown> | undefined;
-    if (basics) {
-      basics.photo = '';
+    if (origBasics && basics) {
+      // Preserve all original basics fields that shouldn't be changed by polish
+      const preservedFields = ['photo', 'linkedin', 'github', 'website', 'profiles'];
+      preservedFields.forEach(field => {
+        if (origBasics[field] !== undefined) {
+          basics[field] = origBasics[field];
+        }
+      });
     }
 
     const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
@@ -635,11 +640,20 @@ async function polishResume(): Promise<void> {
 
     const polishedData = await polishResp.json() as Record<string, unknown>;
 
-    const origBasics = resumeData.basics as Record<string, unknown> | undefined;
-    if (origBasics && origBasics.photo) {
-      const pBasics = polishedData.basics as Record<string, unknown> || {};
-      pBasics.photo = origBasics.photo;
-      polishedData.basics = pBasics;
+    // Restore all preserved fields after polish
+    if (origBasics) {
+      const preservedFields = ['photo', 'linkedin', 'github', 'website', 'profiles'];
+      const pBasics = (polishedData.basics as Record<string, unknown> | null) || {};
+      let modified = false;
+      preservedFields.forEach(field => {
+        if (origBasics[field] !== undefined) {
+          pBasics[field] = origBasics[field];
+          modified = true;
+        }
+      });
+      if (modified) {
+        polishedData.basics = pBasics;
+      }
     }
 
     await fetch('/api/save-polished', {
@@ -929,9 +943,13 @@ async function confirmGeneration(): Promise<void> {
     if (data.error) throw new Error(data.error);
 
     let raw = data.text;
-    raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    const resumeData = JSON.parse(raw) as Record<string, unknown>;
+    const parsed = safeJsonParse(raw);
+    if (!parsed.data) {
+      throw new Error(parsed.error || 'AI returned invalid JSON. Please try again.');
+    }
+
+    const resumeData = parsed.data;
 
     const hallucinatedNames = ['john doe', 'jane doe', 'alex johnson', 'your name', 'candidate', 'todo'];
 
@@ -1067,7 +1085,7 @@ function handlePhotoUpload(input: HTMLInputElement): void {
   reader.readAsDataURL(file);
 }
 
-function confirmPhotoUpload(): void {
+async function confirmPhotoUpload(): Promise<void> {
   if (!currentPhotoDataURL) return;
 
   const resumeDataStr = localStorage.getItem('resume-data');
@@ -1075,9 +1093,20 @@ function confirmPhotoUpload(): void {
     try {
       const resumeData = JSON.parse(resumeDataStr) as Record<string, unknown>;
       if (!resumeData.basics) resumeData.basics = {};
-      (resumeData.basics as Record<string, unknown>).photo = currentPhotoDataURL;
+
+      // Resize/compress photo to avoid localStorage quota issues
+      let photoToStore = currentPhotoDataURL;
+      let resizeFailed = false;
+      try {
+        photoToStore = await resizeImage(currentPhotoDataURL, 400, 400, 0.7);
+      } catch (resizeErr) {
+        resizeFailed = true;
+        console.warn('Failed to resize photo, using original:', resizeErr);
+      }
+
+      (resumeData.basics as Record<string, unknown>).photo = photoToStore;
       localStorage.setItem('resume-data', JSON.stringify(resumeData));
-      localStorage.setItem('uploaded-photo', currentPhotoDataURL);
+      localStorage.setItem('uploaded-photo', photoToStore);
       renderResume(resumeData);
 
       fetch('/api/save-resume-data', {
@@ -1087,8 +1116,13 @@ function confirmPhotoUpload(): void {
       }).catch(saveErr => {
         console.warn('Could not save resume to server:', saveErr);
       });
+
+      if (resizeFailed) {
+        alert('Photo was not optimized. If you experience storage issues, try a smaller image.');
+      }
     } catch (e) {
       console.error('Error updating resume with photo:', e);
+      alert('Failed to save photo. The image may be too large. Please try a smaller image.');
     }
   }
 
