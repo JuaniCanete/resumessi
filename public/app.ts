@@ -541,10 +541,17 @@ async function updatePolishButton(): Promise<void> {
   const rollbackBtn = document.getElementById('btn-rollback-dropdown') as HTMLElement;
   const photoBtn = document.getElementById('btn-photo-upload-dropdown') as HTMLElement;
   const actionsTrigger = document.getElementById('actions-trigger') as HTMLElement;
+  const coverLetterBtn = document.getElementById('btn-cover-letter-dropdown') as HTMLElement;
   if (!dropdownBtn) return;
 
   if (photoBtn) {
     photoBtn.style.display = currentDataSource === 'placeholder' ? 'none' : 'block';
+  }
+
+  // Show cover letter button when ATS results exist
+  const hasAtsResults = loadScanResults() !== null;
+  if (coverLetterBtn) {
+    coverLetterBtn.style.display = hasAtsResults ? 'flex' : 'none';
   }
 
   if (currentDataSource !== 'generated') {
@@ -756,6 +763,11 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     const modal = document.getElementById('ai-modal');
     if (modal && modal.style.display === 'flex') {
       closeAIModal();
+      return;
+    }
+    const coverLetterModal = document.getElementById('cover-letter-modal');
+    if (coverLetterModal && coverLetterModal.style.display === 'flex') {
+      closeCoverLetterModal();
       return;
     }
     // Only close the actions dropdown if no modal/overlay is open
@@ -1346,6 +1358,9 @@ if (photoModal) {
   if (savedScan) {
     applyScanResultsToUI(savedScan);
   }
+
+  // Initial update of button visibility
+  updatePolishButton();
 })();
 
 // ─── Job Scraper UI Logic ───────────────────────────────────────────
@@ -1768,6 +1783,162 @@ function cancelScraping(): void {
   if (overlay) overlay.style.display = 'none';
 }
 
+// ─── Cover Letter Modal Functions ─────────────────────────────────────
+function openCoverLetterModal(): void {
+  const modal = document.getElementById('cover-letter-modal');
+  if (!modal) return;
+
+  // Reset modal state
+  document.getElementById('cover-letter-settings')!.style.display = 'flex';
+  document.getElementById('cover-letter-loading')!.style.display = 'none';
+  document.getElementById('cover-letter-error')!.style.display = 'none';
+  document.getElementById('cover-letter-result')!.style.display = 'none';
+  document.getElementById('cover-letter-actions')!.style.display = 'flex';
+  document.getElementById('cover-letter-result-actions')!.style.display = 'none';
+
+  // Set defaults
+  (document.getElementById('cl-tone') as HTMLSelectElement).value = 'Formal';
+  (document.getElementById('cl-english-level') as HTMLSelectElement).value = 'C1';
+  (document.getElementById('cl-focus') as HTMLInputElement).value = '';
+  (document.getElementById('cl-char-limit') as HTMLInputElement).value = '';
+
+  modal.style.display = 'flex';
+}
+
+function closeCoverLetterModal(): void {
+  const modal = document.getElementById('cover-letter-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function generateCoverLetter(): Promise<void> {
+  const jd = (document.getElementById('job-description') as HTMLTextAreaElement).value.trim();
+  if (!jd) {
+    alert('Please paste a Job Description first.');
+    return;
+  }
+
+  const tone = (document.getElementById('cl-tone') as HTMLSelectElement).value;
+  const englishLevel = (document.getElementById('cl-english-level') as HTMLSelectElement).value;
+  const focusAreas = (document.getElementById('cl-focus') as HTMLInputElement).value.trim();
+  const charLimitInput = (document.getElementById('cl-char-limit') as HTMLInputElement).value.trim();
+  const charLimit = charLimitInput === '' ? undefined : parseInt(charLimitInput, 10);
+
+  // Show loading, hide other sections
+  document.getElementById('cover-letter-settings')!.style.display = 'none';
+  document.getElementById('cover-letter-actions')!.style.display = 'none';
+  document.getElementById('cover-letter-loading')!.style.display = 'block';
+  document.getElementById('cover-letter-error')!.style.display = 'none';
+
+  const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
+
+  // Load ATS scan results from sessionStorage
+  const atsResults = loadScanResults();
+  const atsScore = atsResults ? String(atsResults.overall_score || 'N/A') : 'N/A';
+  const atsTier = atsResults ? String(atsResults.tier || 'N/A') : 'N/A';
+  const atsMissingKeywords = atsResults && Array.isArray(atsResults.missingKeywords)
+    ? (atsResults.missingKeywords as string[]).join(', ') || 'None'
+    : 'None';
+  const atsFeedback = atsResults ? String(atsResults.feedback || 'No feedback available') : 'No ATS scan performed';
+
+  try {
+    const response = await fetch('/api/generate-cover-letter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobDescription: jd,
+        tone,
+        englishLevel,
+        focusAreas,
+        charLimit,
+        provider: selectedProvider,
+        atsScore,
+        atsTier,
+        atsMissingKeywords,
+        atsFeedback,
+      }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({ error: 'Failed to generate cover letter' }));
+      throw new Error(errData.error || errData.suggestion || `HTTP ${response.status}`);
+    }
+
+    const coverLetterText = await response.text();
+
+    // Show result
+    document.getElementById('cover-letter-loading')!.style.display = 'none';
+    document.getElementById('cover-letter-result')!.style.display = 'block';
+    document.getElementById('cover-letter-result-actions')!.style.display = 'flex';
+    (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value = coverLetterText;
+  } catch (err: unknown) {
+    document.getElementById('cover-letter-loading')!.style.display = 'none';
+    document.getElementById('cover-letter-error')!.style.display = 'block';
+    document.getElementById('cover-letter-error-text')!.textContent = 'Error: ' + (err as Error).message;
+    document.getElementById('cover-letter-actions')!.style.display = 'flex';
+  }
+}
+
+function copyCoverLetter(): void {
+  const text = (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value;
+  if (!text) return;
+
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Cover letter copied to clipboard!');
+  }).catch(() => {
+    alert('Failed to copy. Please select and copy manually.');
+  });
+}
+
+function downloadCoverLetter(): void {
+  const text = (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value;
+  if (!text) return;
+
+  // Extract company and role from JD
+  const jd = (document.getElementById('job-description') as HTMLTextAreaElement).value;
+  let company = 'company';
+  let role = 'role';
+
+  // Try to extract company
+  const companyPatterns = [
+    /company[:\s]+([^\n]+)/i,
+    /at\s+([A-Z][A-Za-z\s&]+?)(?:\s*[-–]|\s*\(|\s*in|\s*,|\s*\.)/i,
+    /([A-Z][A-Za-z\s&]+?)\s+is\s+(?:looking|seeking|hiring)/i,
+  ];
+
+  for (const pattern of companyPatterns) {
+    const match = jd.match(pattern);
+    if (match && match[1]) {
+      company = match[1].trim().replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase();
+      break;
+    }
+  }
+
+  // Try to extract role
+  const rolePatterns = [
+    /(?:position|role|title|job)[:\s]+([^\n]+)/i,
+    /(?:hiring|looking for|seeking)\s+(?:a\s+)?([A-Z][A-Za-z\s]+?)(?:\s+to|\s+who|\s+with)/i,
+    /([A-Z][A-Za-z\s]+?)\s+position/i,
+  ];
+
+  for (const pattern of rolePatterns) {
+    const match = jd.match(pattern);
+    if (match && match[1]) {
+      role = match[1].trim().replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase();
+      break;
+    }
+  }
+
+  const filename = `${company}-${role}-cover-letter.txt`;
+
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // Global Escape Key Listener for Modals & Overlays
 document.addEventListener('keydown', (e: KeyboardEvent) => {
   if (e.key === 'Escape') {
@@ -1831,4 +2002,9 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 (window as unknown as Record<string, unknown>).startScraping = startScraping;
 (window as unknown as Record<string, unknown>).cancelScraping = cancelScraping;
 (window as unknown as Record<string, unknown>).refreshScrapingResultsButton = refreshScrapingResultsButton;
-(window as unknown as Record<string, unknown>).openResultsTabFromOverlay = openResultsTabFromOverlay;
+  (window as unknown as Record<string, unknown>).openResultsTabFromOverlay = openResultsTabFromOverlay;
+  (window as unknown as Record<string, unknown>).openCoverLetterModal = openCoverLetterModal;
+  (window as unknown as Record<string, unknown>).closeCoverLetterModal = closeCoverLetterModal;
+  (window as unknown as Record<string, unknown>).generateCoverLetter = generateCoverLetter;
+  (window as unknown as Record<string, unknown>).copyCoverLetter = copyCoverLetter;
+  (window as unknown as Record<string, unknown>).downloadCoverLetter = downloadCoverLetter;

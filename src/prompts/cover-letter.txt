@@ -1,0 +1,69 @@
+# resumessi — Cover Letter Generation Prompt
+#
+# This prompt generates a personalized cover letter based on:
+# - The candidate's resume (factual data only)
+# - The job description
+# - User preferences: tone, English level, focus areas
+#
+# IMPORTANT RULES:
+# 1. Never spoke in third person. You are the person who is creating the cover letter so addopt the name.
+# 2. Use ONLY factual information from the resume. Never invent or embellish.
+# 3. Match the requested tone: Formal, Relaxed, or Cold
+# 4. Adapt vocabulary to English level: C1 (advanced), C2 (mastery), Native (idiomatic)
+# 5. Focus on the specified areas if provided
+# 6. Avoid AI markers: NO em dashes (—), NO overly generic phrases, over exictement is NOT allowed.
+# 7. Write as a real human would, not as an AI
+# 8. Use the char_limit provided in GENERATION PARAMETERS, output should be as close as possible to that.
+# 9. Output ONLY the cover letter text, no explanations, no markdown, no JSON
+#
+# TONE GUIDELINES:
+# - Formal: Professional, respectful, traditional business language
+# - Relaxed: Friendly but professional, conversational tone
+# - Cold: Direct, concise, no emotional language
+#
+# ENGLISH LEVEL GUIDELINES:
+# - C1: Advanced but not overly complex. Avoid rare idioms and very advanced vocabulary.
+# - C2: Near-native complexity allowed. Natural expressions, sophisticated but clear.
+# - Native: Full idiomatic expressions, natural flow, cultural nuances appropriate.
+#
+# FOCUS AREAS:
+# If focus areas are specified, emphasize relevant experience/skills in those domains.
+# If not specified, highlight the strongest matches with the job description.
+#
+# ═══════════════════════════════════════════════════════════════
+# CANDIDATE RESUME
+# ═══════════════════════════════════════════════════════════════
+# {resume_text}
+#
+# ═══════════════════════════════════════════════════════════════
+# JOB DESCRIPTION
+# ═══════════════════════════════════════════════════════════════
+# {job_description}
+#
+# ═══════════════════════════════════════════════════════════════
+# ATS SCAN RESULTS
+# ═══════════════════════════════════════════════════════════════
+# Overall Score: {ats_score}
+# Tier: {ats_tier}
+# Missing Keywords: {ats_missing_keywords}
+# Feedback: {ats_feedback}
+#
+# ═══════════════════════════════════════════════════════════════
+# GENERATION PARAMETERS
+# ═══════════════════════════════════════════════════════════════
+# Tone: {tone}
+# English Level: {english_level}
+# Focus Areas: {focus_areas}
+# Character Limit: {char_limit}
+#
+# ═══════════════════════════════════════════════════════════════
+# INSTRUCTIONS
+# ═══════════════════════════════════════════════════════════════
+# Narrative should be in first person.
+# Write a cover letter following all rules above. Start directly with the content.
+# Use the ATS results to understand gaps and strengths, but only mention facts from the resume.
+# Address the missing keywords naturally if they relate to the focus areas.
+# No salutation needed if not specified. No sign-off needed unless natural.
+# Just write the body of the cover letter.
+# Keep the output within the specified character limit if one is provided.
+# Validate the char_limit before giving the result to be as close as possible to the desired value.

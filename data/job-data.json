@@ -7,23 +7,5 @@
     "linkedin": [],
     "google": []
   },
-  "jobDashboard": [
-    {
-      "title": "QA Automation",
-      "url": "https://www.linkedin.com/jobs/view/4440852959/?eBP=NOT_ELIGIBLE_FOR_CHARGING&refId=34%2FjzV1hozT5CxcElM3%2FCg%3D%3D&trackingId=gDONAUYUDFann3r9uHj4nA%3D%3D&trk=flagship3_search_srp_jobs",
-      "snippet": "",
-      "source": "linkedin",
-      "company": "",
-      "aiSummary": "- QA Automation role at unknown company\n- Location: LATAM (Remote)",
-      "queryAffinity": "Medium",
-      "parameters": [
-        "LATAM",
-        "Remote"
-      ],
-      "applied": true,
-      "appliedAt": "2026-08-11T01:32:30.842Z",
-      "status": "No News",
-      "notes": ""
-    }
-  ]
+  "jobDashboard": []
 }

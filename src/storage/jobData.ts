@@ -25,7 +25,10 @@ export interface ScraperResult {
   appliedAt?: string;
   removed?: boolean;
   status?: 'No News' | 'Interviewing' | 'Offer' | 'Rejected';
+  column?: string;
+  interviewRounds?: number;
   notes?: string;
+  id?: string;
 }
 
 export interface JobData {
@@ -175,6 +178,7 @@ export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'go
     applied: true,
     appliedAt: new Date().toISOString(),
     status: 'No News',
+    column: 'applied',
     notes: '',
   };
   data.jobDashboard.push(dashboardJob);
@@ -198,21 +202,39 @@ export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'go
 
 export async function getJobDashboard(): Promise<ScraperResult[]> {
   const data = await loadJobData();
+  let changed = false;
+  for (const job of data.jobDashboard) {
+    if (!job.id && !job.url) {
+      job.id = 'manual-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      changed = true;
+    }
+    if (!job.column) {
+      job.column = job.status === 'Offer' ? 'offer' : job.status === 'Rejected' ? 'hired' : job.status === 'Interviewing' ? 'screening' : 'applied';
+      changed = true;
+    }
+  }
+  if (changed) {
+    await saveJobData(data);
+  }
   return data.jobDashboard;
 }
 
-export async function updateDashboardJob(url: string, updates: Partial<ScraperResult>): Promise<void> {
+export async function updateDashboardJob(url?: string, updates: Partial<ScraperResult> = {}, id?: string): Promise<void> {
   const data = await loadJobData();
-  const idx = data.jobDashboard.findIndex(r => r.url === url);
+  const idx = data.jobDashboard.findIndex(r => (url ? r.url === url : false) || (id && r.id && r.id === id));
   if (idx >= 0) {
     data.jobDashboard[idx] = { ...data.jobDashboard[idx], ...updates };
     await saveJobData(data);
   }
 }
 
-export async function removeDashboardJob(url: string): Promise<void> {
+export async function removeDashboardJob(url?: string, id?: string): Promise<void> {
   const data = await loadJobData();
-  data.jobDashboard = data.jobDashboard.filter(r => r.url !== url);
+  data.jobDashboard = data.jobDashboard.filter(r => {
+    if (url && r.url === url) return false;
+    if (id && r.id && r.id === id) return false;
+    return true;
+  });
   await saveJobData(data);
 }
 

@@ -16,10 +16,13 @@ const ROOT = path.join(__dirname, '..');
 
 const REQUIRED_PROMPTS = [
   'src/prompts/ats-scan.txt',
-  'src/prompts/resume-generation.txt',
+  'src/prompts/clean-jd.txt',
+  'src/prompts/cover-letter.txt',
   'src/prompts/extraction.txt',
   'src/prompts/polish.txt',
-  'src/prompts/clean-jd.txt',
+  'src/prompts/resume-generation.txt',
+  'src/prompts/scraper-parameters.txt',
+  'src/prompts/scraper-summarize.txt',
 ];
 
 let hasErrors = false;

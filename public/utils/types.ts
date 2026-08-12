@@ -21,7 +21,10 @@ export interface ScraperResult {
   appliedAt?: string;
   removed?: boolean;
   status?: 'No News' | 'Interviewing' | 'Offer' | 'Rejected';
+  column?: string;
+  interviewRounds?: number;
   notes?: string;
+  id?: string;
 }
 
 export interface JobData {
