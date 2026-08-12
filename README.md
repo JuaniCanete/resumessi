@@ -150,7 +150,9 @@ After editing any prompt or frontend code, run `npm run build` before committing
 | `npm run evals` | Run LLM evaluation harness |
 | `npm run typecheck` | Run TypeScript type checks (`tsc --noEmit`) |
 | `npm run lint` | Run ESLint |
-| `npm run test:unit` | Run unit tests |
+| `npm run test:unit` | Run unit tests (`node:test`) |
+| `npm run test:api` | Run API integration tests (using Node `fetch`) |
+| `npm run test:pact` | Run API contract tests (using `pact.io`) |
 | `npm run test:e2e` | Run Playwright E2E tests |
 
 ---
