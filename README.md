@@ -1,6 +1,6 @@
 # resumessi AI
 
-> **resumessi** is a self-contained, AI-powered resume scoring and generation tool. It uses configurable AI models to evaluate your resume against any job description, providing an ATS score, breakdown, feedback, and missing keywords. It can also generate and polish resumes from PDF uploads.
+> **resumessi** is a self-contained, AI-powered resume scoring and generation tool. It uses configurable AI models to evaluate your resume against any job description, providing an ATS score, breakdown, feedback, and missing keywords. It can also generate and polish resumes from PDF uploads. The most important, as this is for trying to find your next job, it's totally free. Free AI models with limited quota but intelligent and on-demand eligibility.
 
 > **Supported AI providers:** Configurable via `AI_INFERENCE_ORDER`. Supported providers: Cohere, Mistral, Gemini, Groq.
 
