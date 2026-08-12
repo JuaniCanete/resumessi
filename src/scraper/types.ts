@@ -9,6 +9,10 @@ export interface ScraperResult {
   aiSummary?: string;
   queryAffinity?: 'High' | 'Medium' | 'Low';
   parameters?: string[];  // AI-extracted job parameters (location, remote, salary, etc.)
+  status?: 'No News' | 'Interviewing' | 'Offer' | 'Rejected';
+  column?: string;
+  interviewRounds?: number;
+  id?: string;
 }
 
 export interface ScraperQuery {

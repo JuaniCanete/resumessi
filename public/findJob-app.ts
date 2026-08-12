@@ -466,17 +466,16 @@ function renderPage(page: number): void {
     const headerActions = document.createElement('div');
     headerActions.className = 'result-card-actions';
 
-    // Check JD button
-    const checkJdBtn = document.createElement('button');
-    checkJdBtn.className = 'result-check-jd-btn';
-    checkJdBtn.textContent = 'Check JD 🔍';
-    checkJdBtn.addEventListener('click', (e: MouseEvent) => {
+    // Action buttons
+    const RunATSBtn = document.createElement('button');
+    RunATSBtn.className = 'card-action-btn runATS';
+    RunATSBtn.textContent = 'Run ATS';
+    RunATSBtn.addEventListener('click', (e: MouseEvent) => {
       e.stopPropagation();
       openJdEditModal(item);
     });
-    headerActions.appendChild(checkJdBtn);
+    headerActions.appendChild(RunATSBtn);
 
-    // Action buttons
     const saveBtn = document.createElement('button');
     saveBtn.className = 'card-action-btn save';
     saveBtn.textContent = item.saved ? 'Saved ✓' : 'Save';
@@ -653,6 +652,12 @@ const DASHBOARD_LISTS = [
 
 type DashboardListId = typeof DASHBOARD_LISTS[number]['id'];
 
+const ROUND_LIST_IDS: Set<DashboardListId> = new Set(['screening', 'tech', 'client', 'offer']);
+
+function isRoundStatus(listId: DashboardListId): boolean {
+  return ROUND_LIST_IDS.has(listId);
+}
+
 const STATUS_TO_LIST: Record<string, DashboardListId> = {
   'No News': 'applied',
   'Interviewing': 'screening',
@@ -669,13 +674,19 @@ const LIST_TO_STATUS: Record<DashboardListId, string> = {
   hired: 'Rejected',
 };
 
+function getColumnForJob(job: ScraperResult): DashboardListId {
+  if (job.column && (DASHBOARD_LISTS as readonly { id: DashboardListId }[]).some(l => l.id === job.column)) {
+    return job.column as DashboardListId;
+  }
+  return STATUS_TO_LIST[job.status || 'No News'] || 'applied';
+}
+
 let draggedCardUrl: string | null = null;
 
 async function renderDashboard(): Promise<void> {
   if (currentTab !== 'dashboard') return;
 
   const board = document.getElementById('dashboard-board');
-  const noResults = document.getElementById('dashboard-no-results');
   if (!board) return;
 
   board.innerHTML = '';
@@ -694,15 +705,9 @@ async function renderDashboard(): Promise<void> {
       statusesElem.textContent = statuses.size > 0 ? Array.from(statuses).join(', ') : 'None';
     }
 
-    if (jobs.length === 0) {
-      if (noResults) noResults.style.display = 'block';
-      return;
-    }
-    if (noResults) noResults.style.display = 'none';
-
     const jobsByList = new Map<DashboardListId, ScraperResult[]>();
     for (const job of jobs) {
-      const listId = STATUS_TO_LIST[job.status || 'No News'] || 'applied';
+      const listId = getColumnForJob(job);
       const list = jobsByList.get(listId) || [];
       list.push(job);
       jobsByList.set(listId, list);
@@ -742,7 +747,7 @@ function createBoardList(listDef: { id: DashboardListId; title: string }, jobs: 
   cardsContainer.dataset.listId = listDef.id;
 
   for (const job of jobs) {
-    const card = createBoardCard(job);
+    const card = createBoardCard(job, listDef.id);
     cardsContainer.appendChild(card);
   }
 
@@ -767,8 +772,8 @@ function createBoardList(listDef: { id: DashboardListId; title: string }, jobs: 
   const textarea = composer.querySelector('textarea') as HTMLTextAreaElement;
   const confirmBtn = composer.querySelector('.board-btn-confirm') as HTMLButtonElement;
   const cancelBtn = composer.querySelector('.board-btn-cancel') as HTMLButtonElement;
-
   confirmBtn.addEventListener('click', async () => {
+
     const text = textarea.value.trim();
     if (!text) return;
 
@@ -779,10 +784,12 @@ function createBoardList(listDef: { id: DashboardListId; title: string }, jobs: 
       source: 'linkedin',
       company: '',
       status: LIST_TO_STATUS[listDef.id] as 'No News' | 'Interviewing' | 'Offer' | 'Rejected',
+      column: listDef.id,
       savedAt: new Date().toISOString(),
       appliedAt: new Date().toISOString(),
       saved: true,
       applied: true,
+      id: 'manual-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
     };
 
     try {
@@ -806,11 +813,90 @@ function createBoardList(listDef: { id: DashboardListId; title: string }, jobs: 
   return list;
 }
 
-function createBoardCard(job: ScraperResult): HTMLElement {
+function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLElement {
   const card = document.createElement('div');
   card.className = 'board-card';
   card.draggable = true;
   card.dataset.url = job.url;
+  if (job.id) {
+    card.dataset.id = job.id;
+  }
+
+  if (isRoundStatus(listId)) {
+    const roundsContainer = document.createElement('div');
+    roundsContainer.className = 'board-card-rounds';
+
+    const roundsToggle = document.createElement('button');
+    roundsToggle.className = 'board-card-rounds-toggle';
+    roundsToggle.textContent = (job.interviewRounds || 0) > 0 ? '+/-' : '+';
+
+    const tooltip = document.createElement('span');
+    tooltip.className = 'board-card-rounds-tooltip';
+    tooltip.textContent = 'Counter control for rounds within current status';
+    roundsToggle.appendChild(tooltip);
+
+    roundsToggle.addEventListener('mouseenter', () => {
+      const rect = roundsToggle.getBoundingClientRect();
+      tooltip.style.left = `${rect.right - 220}px`;
+      tooltip.style.top = `${rect.top - 8}px`;
+      tooltip.style.transform = 'translateY(-100%)';
+    });
+
+    roundsToggle.addEventListener('click', (e: MouseEvent) => {
+      e.stopPropagation();
+      const menu = roundsContainer.querySelector('.board-card-rounds-menu');
+      const allMenus = document.querySelectorAll('.board-card-rounds-menu.show');
+      allMenus.forEach((m) => {
+        if (m !== menu) m.classList.remove('show');
+      });
+      if (menu) {
+        const menuEl = menu as HTMLElement;
+        const rect = roundsToggle.getBoundingClientRect();
+        menuEl.style.left = `${rect.right - 110}px`;
+        menuEl.style.top = `${rect.bottom + 4}px`;
+        menuEl.classList.toggle('show');
+      }
+    });
+
+    const roundsCount = document.createElement('span');
+    roundsCount.className = 'board-card-rounds-count';
+    roundsCount.textContent = String(job.interviewRounds || 0);
+
+    const roundsMenu = document.createElement('div');
+    roundsMenu.className = 'board-card-rounds-menu';
+
+    const incrementItem = document.createElement('button');
+    incrementItem.className = 'board-card-rounds-menu-item';
+    incrementItem.textContent = 'Increment';
+    incrementItem.addEventListener('click', (e: MouseEvent) => {
+      e.stopPropagation();
+      roundsMenu.classList.remove('show');
+      updateInterviewRounds(job, 1);
+    });
+
+    const decrementItem = document.createElement('button');
+    decrementItem.className = 'board-card-rounds-menu-item';
+    if ((job.interviewRounds || 0) === 0) {
+      decrementItem.classList.add('disabled');
+    }
+    decrementItem.textContent = 'Decrement';
+    decrementItem.addEventListener('click', (e: MouseEvent) => {
+      e.stopPropagation();
+      if ((job.interviewRounds || 0) > 0) {
+        roundsMenu.classList.remove('show');
+        updateInterviewRounds(job, -1);
+      }
+    });
+
+    roundsMenu.appendChild(incrementItem);
+    roundsMenu.appendChild(decrementItem);
+
+    roundsContainer.appendChild(roundsToggle);
+    roundsContainer.appendChild(roundsCount);
+    roundsContainer.appendChild(roundsMenu);
+
+    card.appendChild(roundsContainer);
+  }
 
   const title = document.createElement('div');
   title.className = 'board-card-title';
@@ -845,9 +931,17 @@ function createBoardCard(job: ScraperResult): HTMLElement {
   menuBtn.textContent = '⋯';
   menuBtn.addEventListener('click', (e: MouseEvent) => {
     e.stopPropagation();
-    const menu = card.querySelector('.board-card-menu');
-    if (menu) {
-      menu.classList.toggle('show');
+    const currentMenu = card.querySelector('.board-card-menu');
+    const allMenus = document.querySelectorAll('.board-card-menu.show');
+    allMenus.forEach((m) => {
+      if (m !== currentMenu) m.classList.remove('show');
+    });
+    if (currentMenu) {
+      const menuEl = currentMenu as HTMLElement;
+      const rect = menuBtn.getBoundingClientRect();
+      menuEl.style.left = `${rect.right - 140}px`;
+      menuEl.style.top = `${rect.bottom + 4}px`;
+      menuEl.classList.toggle('show');
     }
   });
   footer.appendChild(menuBtn);
@@ -910,15 +1004,21 @@ function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult
     const newTitle = save ? input.value.trim() : currentTitle;
     if (save && newTitle && newTitle !== currentTitle) {
       try {
+        const body: Record<string, string> = { title: newTitle };
+        if (job.url) {
+          body.url = job.url;
+        } else if (job.id) {
+          body.id = job.id;
+        }
         const resp = await fetch('/api/job-data/rename', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: job.url, title: newTitle }),
+          body: JSON.stringify(body),
         });
         if (!resp.ok) throw new Error('Failed to rename job');
         showToast({ message: 'Job renamed', type: 'success' });
       } catch (err: unknown) {
-        showToast({ message: 'Failed to rename job: ' + (err as Error).message, type: 'error' });
+        showToast({ message: 'Error: ' + (err as Error).message, type: 'error' });
       }
     }
 
@@ -938,21 +1038,44 @@ function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult
   });
 }
 
+function updateInterviewRounds(job: ScraperResult, delta: number): void {
+  fetch('/api/job-data/rounds', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: job.url, id: job.id, delta }),
+  }).then((resp) => {
+    if (resp.ok) {
+      renderDashboard();
+    }
+  }).catch(() => {
+    // ignore
+  });
+}
+
 function handleDashboardDelete(job: ScraperResult): void {
   confirmDelete(
     'job',
     async () => {
       try {
+        const body: Record<string, string> = {};
+        if (job.url) {
+          body.url = job.url;
+        } else if (job.id) {
+          body.id = job.id;
+        }
         const resp = await fetch('/api/job-data/dashboard/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: job.url }),
+          body: JSON.stringify(body),
         });
-        if (!resp.ok) throw new Error('Failed to delete job');
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({ error: 'Failed to delete job' }));
+          throw new Error(errData.error || 'Failed to delete job');
+        }
         showToast({ message: 'Job removed from dashboard', type: 'success' });
         renderDashboard();
       } catch (err: unknown) {
-        showToast({ message: 'Failed to delete job: ' + (err as Error).message, type: 'error' });
+        showToast({ message: 'Error: ' + (err as Error).message, type: 'error' });
       }
     },
     { variant: 'danger', message: 'This card will be removed from the board. Do you want to continue?' }
@@ -981,10 +1104,18 @@ function initBoardDragAndDrop(): void {
       const newListId = (container as HTMLElement).dataset.listId as DashboardListId;
       const newStatus = LIST_TO_STATUS[newListId];
       try {
+        const card = document.querySelector(`.board-card[data-url="${draggedCardUrl}"]`) as HTMLElement | null;
+        const jobId = card?.dataset.id;
+        const body: Record<string, string> = { status: newStatus, column: newListId };
+        if (draggedCardUrl) {
+          body.url = draggedCardUrl;
+        } else if (jobId) {
+          body.id = jobId;
+        }
         const resp = await fetch('/api/job-data/update-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: draggedCardUrl, status: newStatus }),
+          body: JSON.stringify(body),
         });
         if (!resp.ok) throw new Error('Failed to update status');
         showToast({ message: 'Status updated', type: 'success' });
@@ -1228,7 +1359,7 @@ function handleRemove(item: ScraperResult, source: 'linkedin' | 'google'): void 
         showRefreshMessage();
         renderScrapingResults();
       } catch (err: unknown) {
-        showToast({ message: 'Failed to remove job: ' + (err as Error).message, type: 'error' });
+        showToast({ message: 'Error: ' + (err as Error).message, type: 'error' });
       }
     }
   );
@@ -1310,6 +1441,129 @@ function closeAtsSidebar(): void {
   const sidebar = document.getElementById('ats-sidebar');
   if (sidebar) sidebar.classList.remove('open');
   document.body.classList.remove('ats-open');
+}
+
+function loadScanResults(): Record<string, unknown> | null {
+  try {
+    const raw = sessionStorage.getItem('ats-scan-results');
+    if (!raw) return null;
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch (e) {
+    console.warn('Could not load scan results:', e);
+    return null;
+  }
+}
+
+// ─── Cover Letter Modal Functions ─────────────────────────────────────
+
+function openCoverLetterModal(): void {
+  const modal = document.getElementById('cover-letter-modal');
+  if (!modal) return;
+
+  document.getElementById('cover-letter-settings')!.style.display = 'flex';
+  document.getElementById('cover-letter-loading')!.style.display = 'none';
+  document.getElementById('cover-letter-error')!.style.display = 'none';
+  document.getElementById('cover-letter-result')!.style.display = 'none';
+  document.getElementById('cover-letter-actions')!.style.display = 'flex';
+  document.getElementById('cover-letter-result-actions')!.style.display = 'none';
+
+  (document.getElementById('cl-tone') as HTMLSelectElement).value = 'Formal';
+  (document.getElementById('cl-english-level') as HTMLSelectElement).value = 'C1';
+  (document.getElementById('cl-focus') as HTMLInputElement).value = '';
+  (document.getElementById('cl-char-limit') as HTMLInputElement).value = '';
+
+  modal.style.display = 'flex';
+}
+
+function closeCoverLetterModal(): void {
+  const modal = document.getElementById('cover-letter-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function generateCoverLetter(): Promise<void> {
+  const jdTextarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement | null;
+  const jd = jdTextarea ? jdTextarea.value.trim() : '';
+  if (!jd) {
+    alert('Please review a Job Description first using the "Check JD" button on a job card.');
+    return;
+  }
+
+  const tone = (document.getElementById('cl-tone') as HTMLSelectElement).value;
+  const englishLevel = (document.getElementById('cl-english-level') as HTMLSelectElement).value;
+  const focusAreas = (document.getElementById('cl-focus') as HTMLInputElement).value.trim();
+  const charLimitInput = (document.getElementById('cl-char-limit') as HTMLInputElement).value.trim();
+  const charLimit = charLimitInput === '' ? undefined : parseInt(charLimitInput, 10);
+
+  document.getElementById('cover-letter-settings')!.style.display = 'none';
+  document.getElementById('cover-letter-actions')!.style.display = 'none';
+  document.getElementById('cover-letter-loading')!.style.display = 'block';
+  document.getElementById('cover-letter-error')!.style.display = 'none';
+
+  const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
+
+  const atsResults = loadScanResults();
+  const atsScore = atsResults ? String(atsResults.overall_score || 'N/A') : 'N/A';
+  const atsTier = atsResults ? String(atsResults.tier || 'N/A') : 'N/A';
+  const atsMissingKeywords = atsResults && Array.isArray(atsResults.missingKeywords)
+    ? (atsResults.missingKeywords as string[]).join(', ') || 'None'
+    : 'None';
+  const atsFeedback = atsResults ? String(atsResults.feedback || 'No feedback available') : 'No ATS scan performed';
+
+  try {
+    const response = await fetch('/api/generate-cover-letter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobDescription: jd,
+        tone,
+        englishLevel,
+        focusAreas,
+        charLimit,
+        provider: selectedProvider,
+        atsScore,
+        atsTier,
+        atsMissingKeywords,
+        atsFeedback,
+      }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({ error: 'Failed to generate cover letter' }));
+      throw new Error(errData.error || errData.suggestion || `HTTP ${response.status}`);
+    }
+
+    const coverLetterText = await response.text();
+
+    document.getElementById('cover-letter-loading')!.style.display = 'none';
+    document.getElementById('cover-letter-result')!.style.display = 'block';
+    document.getElementById('cover-letter-result-actions')!.style.display = 'flex';
+    (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value = coverLetterText;
+  } catch (err: unknown) {
+    document.getElementById('cover-letter-loading')!.style.display = 'none';
+    document.getElementById('cover-letter-error')!.style.display = 'block';
+    document.getElementById('cover-letter-error-text')!.textContent = 'Error: ' + (err as Error).message;
+    document.getElementById('cover-letter-actions')!.style.display = 'flex';
+  }
+}
+
+function copyCoverLetter(): void {
+  const text = (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast({ message: 'Cover letter copied to clipboard', type: 'success' });
+  });
+}
+
+function downloadCoverLetter(): void {
+  const text = (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value;
+  if (!text) return;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cover-letter.txt';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function scoreColor(score: number): string {
@@ -1937,15 +2191,23 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
       closeAtsSidebar();
       return;
     }
+    const coverLetterModal = document.getElementById('cover-letter-modal');
+    if (coverLetterModal && coverLetterModal.style.display === 'flex') {
+      closeCoverLetterModal();
+      return;
+    }
   }
 });
 
 document.addEventListener('click', (e: MouseEvent) => {
   const target = e.target as HTMLElement | null;
   if (!target) return;
-  const insideMenu = target.closest('.board-card-menu') || target.closest('.board-card-menu-btn');
+  const insideMenu = target.closest('.board-card-menu') || target.closest('.board-card-menu-btn') || target.closest('.board-card-rounds-menu') || target.closest('.board-card-rounds-toggle');
   if (!insideMenu) {
     document.querySelectorAll('.board-card-menu.show').forEach((menu) => {
+      menu.classList.remove('show');
+    });
+    document.querySelectorAll('.board-card-rounds-menu.show').forEach((menu) => {
       menu.classList.remove('show');
     });
   }
@@ -1974,6 +2236,11 @@ document.addEventListener('click', (e: MouseEvent) => {
 (window as unknown as Record<string, unknown>).cancelScraping = cancelScraping;
 (window as unknown as Record<string, unknown>).refreshScrapingResultsButton = refreshScrapingResultsButton;
 (window as unknown as Record<string, unknown>).closeJdCollectionModal = closeJdCollectionModal;
+(window as unknown as Record<string, unknown>).openCoverLetterModal = openCoverLetterModal;
+(window as unknown as Record<string, unknown>).closeCoverLetterModal = closeCoverLetterModal;
+(window as unknown as Record<string, unknown>).generateCoverLetter = generateCoverLetter;
+(window as unknown as Record<string, unknown>).copyCoverLetter = copyCoverLetter;
+(window as unknown as Record<string, unknown>).downloadCoverLetter = downloadCoverLetter;
 
 // ─── Init ────────────────────────────────────────────────────────────────
 

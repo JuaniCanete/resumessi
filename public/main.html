@@ -1164,10 +1164,14 @@
                          <span class="actions-option-icon">📸</span>
                          <span class="actions-option-text">Upload Profile Photo</span>
                       </button>
-                    <button class="actions-option" id="btn-providers-dropdown" data-testid="providers-button" role="menuitem" onclick="openProvidersModal()">
-                        <span class="actions-option-icon">🧠</span>
-                        <span class="actions-option-text">AI Providers</span>
-                    </button>
+                     <button class="actions-option" id="btn-cover-letter-dropdown" data-testid="cover-letter-button" role="menuitem" onclick="openCoverLetterModal()" style="display: none;">
+                         <span class="actions-option-icon">✉️</span>
+                         <span class="actions-option-text">Cover Letter</span>
+                     </button>
+                     <button class="actions-option" id="btn-providers-dropdown" data-testid="providers-button" role="menuitem" onclick="openProvidersModal()">
+                         <span class="actions-option-icon">🧠</span>
+                         <span class="actions-option-text">AI Providers</span>
+                     </button>
                 </div>
             </div>
         </div>
@@ -1226,6 +1230,13 @@
             <div>
                 <div class="result-section-title">Missing Keywords</div>
                 <div id="rp-keywords" class="result-body">&mdash;</div>
+            </div>
+
+            <div style="margin-top: 12px;">
+                <button class="p-btn p-btn-secondary" style="width: 100%; padding: 10px; background: var(--static); color: #fff; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; cursor: pointer; margin-bottom: 8px;"
+                    onclick="openCoverLetterModal()">
+                    ✉️ Generate Cover Letter
+                </button>
             </div>
 
         </div>
@@ -1495,6 +1506,73 @@
                 <button id="btn-start-scraping" class="p-btn p-btn-primary" style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700;" onclick="startScraping()">
                     🔎 Start Scraping
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cover Letter Modal -->
+    <div id="cover-letter-modal" data-testid="cover-letter-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 640px; width: 92%; max-height: 88vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(255,255,255,0.12);">
+            <button onclick="closeCoverLetterModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
+                onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
+            <h2 style="color: #fff; margin-bottom: 4px; text-align: center;">✉️ Cover Letter</h2>
+            <p style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 20px; font-family: 'Comfortaa', sans-serif;">Generate a personalized cover letter based on your resume and the job description</p>
+
+            <!-- Settings Form -->
+            <div id="cover-letter-settings" style="display: flex; flex-direction: column; gap: 14px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Tone</label>
+                        <select id="cl-tone" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
+                            <option value="Formal">Formal</option>
+                            <option value="Relaxed">Relaxed</option>
+                            <option value="Cold">Cold</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">English Level</label>
+                        <select id="cl-english-level" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
+                            <option value="C1">C1</option>
+                            <option value="C2">C2</option>
+                            <option value="Native">Native</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Char Limit</label>
+                        <input type="text" id="cl-char-limit" placeholder="Empty uses default = 400" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
+                    </div>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Focus Areas (comma-separated)</label>
+                    <input type="text" id="cl-focus" placeholder="e.g. Automation, Playwright, CI/CD" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="cover-letter-loading" style="display: none; text-align: center; padding: 20px;">
+                <p style="color: var(--accent);" class="dot-anim">Generating cover letter with AI</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="cover-letter-error" style="display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                <p id="cover-letter-error-text" style="color: #fca5a5; font-size: 13px;"></p>
+            </div>
+
+            <!-- Generated Cover Letter -->
+            <div id="cover-letter-result" style="display: none;">
+                <textarea id="cover-letter-text" style="width: 100%; min-height: 300px; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #e2e8f0; font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.5; resize: vertical; outline: none;"></textarea>
+            </div>
+
+            <!-- Modal Actions -->
+            <div id="cover-letter-actions" style="display: flex; gap: 12px; margin-top: 16px;">
+                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="closeCoverLetterModal()">Cancel</button>
+                <button id="btn-generate-cover-letter" class="p-btn p-btn-primary" style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700;" onclick="generateCoverLetter()">
+                    ✨ Generate Cover Letter
+                </button>
+            </div>
+            <div id="cover-letter-result-actions" style="display: none; gap: 12px; margin-top: 16px;">
+                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="copyCoverLetter()">📋 Copy</button>
+                <button class="p-btn p-btn-primary" style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700;" onclick="downloadCoverLetter()">⬇ Download</button>
             </div>
         </div>
     </div>

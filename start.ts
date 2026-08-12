@@ -750,7 +750,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       res.end(JSON.stringify({ success: true }));
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Failed to remove job: ' + (err as Error).message }));
+      res.end(JSON.stringify({ error: 'Error: ' + (err as Error).message }));
     }
     return;
   }
@@ -797,6 +797,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         savedAt: new Date().toISOString(),
         appliedAt: new Date().toISOString(),
         status: (job.status || 'No News') as 'No News' | 'Interviewing' | 'Offer' | 'Rejected',
+        column: job.column || 'applied',
       } as ScraperResult & { saved: boolean; applied: boolean; savedAt: string; appliedAt: string; status: 'No News' | 'Interviewing' | 'Offer' | 'Rejected' };
       data.jobDashboard.push(newJob);
       await saveJobData(data);
@@ -812,13 +813,13 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   if (requestPath === '/api/job-data/update-status' && req.method === 'POST') {
     try {
       const body = await getRequestBody(req);
-      const { url, status } = JSON.parse(body) as { url: string; status: string };
-      if (!url || !status) {
+      const { url, status, column, id } = JSON.parse(body) as { url?: string; status: string; column?: string; id?: string };
+      if ((!url && !id) || !status) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Missing url or status' }));
+        res.end(JSON.stringify({ error: 'Missing url or id, or status' }));
         return;
       }
-      await updateDashboardJob(url, { status: status as 'No News' | 'Interviewing' | 'Offer' | 'Rejected' });
+      await updateDashboardJob(url, { status: status as 'No News' | 'Interviewing' | 'Offer' | 'Rejected', column, interviewRounds: 0 }, id);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
     } catch (err: unknown) {
@@ -828,21 +829,46 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     return;
   }
 
+  if (requestPath === '/api/job-data/rounds' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const { url, id, delta } = JSON.parse(body) as { url?: string; id?: string; delta?: number };
+      if (!url && !id) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing url or id' }));
+        return;
+      }
+      const data = await loadJobData();
+      const idx = data.jobDashboard.findIndex(r => (url ? r.url === url : false) || (id && r.id && r.id === id));
+      if (idx >= 0) {
+        const current = data.jobDashboard[idx].interviewRounds || 0;
+        data.jobDashboard[idx].interviewRounds = Math.max(0, current + (delta || 1));
+        await saveJobData(data);
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, interviewRounds: data.jobDashboard[idx]?.interviewRounds ?? 0 }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to update rounds: ' + (err as Error).message }));
+    }
+    return;
+  }
+
   if (requestPath === '/api/job-data/rename' && req.method === 'POST') {
     try {
       const body = await getRequestBody(req);
-      const { url, title } = JSON.parse(body) as { url: string; title: string };
-      if (!url || !title) {
+      const { url, title, id } = JSON.parse(body) as { url?: string; title: string; id?: string };
+      if ((!url && !id) || !title) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Missing url or title' }));
+        res.end(JSON.stringify({ error: 'Missing url or id, or title' }));
         return;
       }
-      await updateDashboardJob(url, { title });
+      await updateDashboardJob(url, { title }, id);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Failed to rename job: ' + (err as Error).message }));
+      res.end(JSON.stringify({ error: 'Error: ' + (err as Error).message }));
     }
     return;
   }
@@ -850,18 +876,18 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   if (requestPath === '/api/job-data/dashboard/delete' && req.method === 'POST') {
     try {
       const body = await getRequestBody(req);
-      const { url } = JSON.parse(body) as { url: string };
-      if (!url) {
+      const { url, id } = JSON.parse(body) as { url?: string; id?: string };
+      if (!url && !id) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Missing url' }));
+        res.end(JSON.stringify({ error: 'Missing url or id' }));
         return;
       }
-      await removeDashboardJob(url);
+      await removeDashboardJob(url, id);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Failed to delete job: ' + (err as Error).message }));
+      res.end(JSON.stringify({ error: (err as Error).message }));
     }
     return;
   }
@@ -975,6 +1001,135 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Failed to fetch URL: ' + (err as Error).message }));
+    }
+    return;
+  }
+
+  // API: Generate Cover Letter
+  if (requestPath === '/api/generate-cover-letter' && req.method === 'POST') {
+    const rateLimitResult = checkRateLimit(getClientIp(req));
+    if (!rateLimitResult.allowed) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) });
+      res.end(JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }));
+      return;
+    }
+    try {
+      const body = await getRequestBody(req);
+      const { jobDescription, tone, englishLevel, focusAreas, charLimit, atsScore, atsTier, atsMissingKeywords, atsFeedback } = JSON.parse(body) as {
+        jobDescription: string;
+        tone: string;
+        englishLevel: string;
+        focusAreas: string;
+        charLimit?: string;
+        atsScore?: string;
+        atsTier?: string;
+        atsMissingKeywords?: string;
+        atsFeedback?: string;
+      };
+
+      if (!jobDescription || typeof jobDescription !== 'string') {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing or invalid jobDescription' }));
+        return;
+      }
+
+      // Load the resume data
+      const resumeDataPath = path.join(ROOT, 'src', 'resume', 'output', 'resume-data.json');
+      let resumeText = '';
+      if (fs.existsSync(resumeDataPath)) {
+        const resumeData = JSON.parse(fs.readFileSync(resumeDataPath, 'utf-8'));
+        const basics = resumeData.basics || {};
+        const name = basics.name || 'Candidate';
+        const title = basics.title || '';
+        const summary = resumeData.summary || '';
+        const experience = resumeData.experience || [];
+        const skills = resumeData.skills || {};
+        const education = resumeData.education || [];
+
+        let rt = `Name: ${name}\n`;
+        if (title) rt += `Title: ${title}\n`;
+        if (summary) rt += `\nSummary:\n${summary}\n`;
+
+        if (experience.length > 0) {
+          rt += '\nExperience:\n';
+          for (const exp of experience) {
+            rt += `- ${exp.title} at ${exp.company} (${exp.date})\n`;
+            if (exp.bullets) {
+              for (const bullet of exp.bullets) {
+                rt += `  - ${bullet}\n`;
+              }
+            }
+          }
+        }
+
+        if (Object.keys(skills).length > 0) {
+          rt += '\nSkills:\n';
+          for (const [category, skillList] of Object.entries(skills)) {
+            rt += `${category}: ${(skillList as Array<{name: string}>).map((s: {name: string}) => s.name).join(', ')}\n`;
+          }
+        }
+
+        if (education.length > 0) {
+          rt += '\nEducation:\n';
+          for (const edu of education) {
+            rt += `- ${edu.degree} at ${edu.institution} (${edu.year})\n`;
+          }
+        }
+
+        resumeText = rt;
+      } else {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'No resume data found. Please load a resume on the main page first.' }));
+        return;
+      }
+
+      // Load the cover letter prompt template
+      const promptPath = path.join(ROOT, 'src', 'prompts', 'cover-letter.txt');
+      if (!fs.existsSync(promptPath)) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Cover letter prompt template not found' }));
+        return;
+      }
+
+      let basePrompt = fs.readFileSync(promptPath, 'utf-8');
+      basePrompt = basePrompt.replace('{resume_text}', resumeText);
+      basePrompt = basePrompt.replace('{job_description}', jobDescription);
+      basePrompt = basePrompt.replace('{ats_score}', atsScore || 'N/A');
+      basePrompt = basePrompt.replace('{ats_tier}', atsTier || 'N/A');
+      basePrompt = basePrompt.replace('{ats_missing_keywords}', atsMissingKeywords || 'None');
+      basePrompt = basePrompt.replace('{ats_feedback}', atsFeedback || 'No ATS scan performed');
+      basePrompt = basePrompt.replace('{tone}', tone || 'Formal');
+      basePrompt = basePrompt.replace('{english_level}', englishLevel || 'C1');
+      basePrompt = basePrompt.replace('{char_limit}', charLimit || 'unlimited');
+      basePrompt = basePrompt.replace('{focus_areas}', focusAreas || 'None specified');
+
+      const env = getFullConfigFromEnv();
+
+      try {
+        const result = await runInference(
+          'You are a cover letter writing assistant. Output only the cover letter text, no markdown, no explanations.',
+          basePrompt,
+          { temperature: 0.7, max_tokens: 1024, top_p: 0.9 },
+          env,
+          null,
+          null,
+          null,
+          'cover-letter',
+        );
+
+        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end(result.text);
+      } catch (err: unknown) {
+        if ((err as Error).message === 'No providers configured. Set at least one *_API_KEY in .env.') {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: (err as Error).message }));
+          return;
+        }
+        throw err;
+      }
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Cover letter generation error: ' + (err as Error).message }));
     }
     return;
   }
