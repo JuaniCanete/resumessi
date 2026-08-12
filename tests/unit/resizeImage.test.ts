@@ -113,7 +113,19 @@ test('resizeImage rejects when canvas context is unavailable', async () => {
   };
 
   await assert.rejects(
-    async () => resizeImage('data:image/png;base64,abc', 400, 400, 0.7),
+    async () => resizeImage('data:image/jpeg;base64,test', 400, 400, 0.7),
     /Failed to get canvas context/
+  );
+});
+
+test('resizeImage rejects when given a corrupted image data URL', async () => {
+  const FailingImageCtor = createMockImageCtor(false);
+  (global as unknown as Record<string, unknown>).Image = FailingImageCtor;
+  setupCanvasMock('data:image/jpeg;base64,test');
+
+  const corruptedDataUrl = 'data:image/jpeg;base64,tests/assets/photos/corrupted.jpg';
+  await assert.rejects(
+    async () => resizeImage(corruptedDataUrl, 400, 400, 0.7),
+    /Failed to load image for resizing/
   );
 });

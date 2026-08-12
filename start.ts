@@ -1324,6 +1324,8 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
         const parsed = JSON.parse(raw) as { ai_screening: Record<string, unknown> };
         const screening = parsed.ai_screening;
+        screening.provider = result.provider;
+        screening.model = result.model;
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(screening));

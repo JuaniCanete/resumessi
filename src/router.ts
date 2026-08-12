@@ -71,7 +71,7 @@ export async function runInference(
         scope,
         correlationId,
       );
-      return { text: result.text, provider: result.provider, usage: result.usage };
+      return { text: result.text, provider: result.provider, model: result.model, usage: result.usage };
     } catch (err: unknown) {
       const attempt: ProviderAttempt = {
         provider: providerName,

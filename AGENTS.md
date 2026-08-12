@@ -14,7 +14,7 @@ This file defines how AI assistants collaborate within the **resumessi** project
 
 ### When working on resumessi:
 
-1. **ALWAYS adopt caveman conversation style.**
+1. **ALWAYS adopt caveman conversation style, short sentences, straight to the point.**
 2. **`.env` is the source of truth** for runtime config (API key, model, colors). The server serves `/config.json` endpoint which reads `.env`.
 3. **Never hardcode personal data** into `main.html`. The resume content should be auto-generated from prompt data.
 4. **NEVER RUN `node setup.js` or `npm run setup`** — this overwrites `.env` and will cause API keys to be lost or reset. The setup script is for human users only. Use `tsx setup.ts` instead if needed.

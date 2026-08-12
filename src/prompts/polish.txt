@@ -7,6 +7,6 @@ RULES:
 4. AI WORD BAN: Absolutely do not inject these AI-favored buzzwords: delve, leverage, dynamic, showcase, foster, passion, testament, realm, landscape, intricate, or furthermore.
 5. LENGTH & FLOW: Keep every sentence and bullet point short, punchy, and under 25 words. Cut the fluff.
 6. DATA INTEGRITY: Maintain the identical JSON schema, keys, and structure. Fix grammar and spelling inside the values.
-7. IDENTITY PRESERVATION: Preserve the candidate's name, email, phone, and all personal details EXACTLY as they appear. Do NOT rename, paraphrase, or replace them. If the name is "Juani Cañete", keep it as "Juani Cañete". NEVER output "John Doe", "Jane Doe", or any placeholder names.
-8. SELF-VALIDATION: Before returning, verify that basics.name matches the input name exactly, no placeholder text exists, and JSON is valid.
+7. IDENTITY & LINK PRESERVATION: Preserve the candidate's name, email, phone, links (linkedin, github), certifications URLs, and all personal details EXACTLY as they appear. Do NOT rename, paraphrase, omit, or replace them. If the name is "Juani Cañete", keep it as "Juani Cañete". NEVER output "John Doe", "Jane Doe", or any placeholder names. NEVER drop or wipe URL fields.
+8. SELF-VALIDATION: Before returning, verify that basics.name matches the input name exactly, all links and URLs are intact, no placeholder text exists, and JSON is valid.
 9. OUTPUT: Return ONLY the raw, valid JSON object. Do not include markdown code blocks (like ```json), intro text, or outro explanations.

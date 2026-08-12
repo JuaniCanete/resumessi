@@ -146,17 +146,36 @@ function applyScanResultsToUI(screening: Record<string, unknown>): void {
 
   const kwEl = document.getElementById('rp-keywords')!;
   const missingKeywords = screening.missingKeywords as string[] | undefined;
+  const feedbackStr = (screening.feedback as string) || '';
+  const isNoFurtherScoring = feedbackStr.toLowerCase().includes('no further scoring') || screening.overall_score === 0;
+
   if (missingKeywords && missingKeywords.length > 0) {
     kwEl.textContent = '';
+    kwEl.style.color = '';
     for (const k of missingKeywords) {
       const span = document.createElement('span');
       span.className = 'result-keyword';
       span.textContent = k;
       kwEl.appendChild(span);
     }
+  } else if (isNoFurtherScoring) {
+    kwEl.textContent = 'N/A';
+    kwEl.style.color = 'rgba(255,255,255,0.7)';
   } else {
     kwEl.textContent = 'None detected \u2014 great match!';
     kwEl.style.color = '#86efac';
+  }
+
+  const poweredByContainer = document.getElementById('rp-poweredBy');
+  if (poweredByContainer) {
+    const provider = (screening.provider as string) || '';
+    const model = (screening.model as string) || '';
+    const span = poweredByContainer.querySelector('.ai-powered');
+    if (span) {
+      span.textContent = provider && model ? `${provider}/${model}` : provider || model || '\u2014';
+    } else {
+      poweredByContainer.textContent = provider && model ? `${provider}/${model}` : provider || model || '\u2014';
+    }
   }
 
   document.getElementById('scan-again-msg')!.style.display = 'none';

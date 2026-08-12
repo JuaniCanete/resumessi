@@ -8,6 +8,7 @@ export interface RouterOptions {
 export interface RouterResult {
   text: string;
   provider: ProviderName;
+  model?: string;
   usage: {
     prompt_tokens?: number;
     completion_tokens?: number;
