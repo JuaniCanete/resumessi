@@ -3,7 +3,7 @@
  * Extracted from public/main.html inline script
  */
 
-import { buildQueryUrl, resizeImage } from './utils';
+import { buildQueryUrl, resizeImage, showToast } from './utils';
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import { safeJsonParse } from '../src/providers';
 
@@ -1130,11 +1130,11 @@ async function confirmPhotoUpload(): Promise<void> {
       });
 
       if (resizeFailed) {
-        alert('Photo was not optimized. If you experience storage issues, try a smaller image.');
+        showToast({ message: 'Photo was not optimized. If you experience storage issues, try a smaller image.', type: 'warning' });
       }
     } catch (e) {
       console.error('Error updating resume with photo:', e);
-      alert('Failed to save photo. The image may be too large. Please try a smaller image.');
+      showToast({ message: 'Failed to save photo. The image may be too large. Please try a smaller image.', type: 'error' });
     }
   }
 
@@ -1147,12 +1147,52 @@ async function openProvidersModal(): Promise<void> {
   if (!modal) return;
 
   const env = await loadEnv();
+  const availableProviders = (env.availableProviders as string[]) || [];
   const currentSelected = localStorage.getItem('selected-ai-provider') || (env.primaryProvider as string) || null;
   selectedProviderForModal = currentSelected;
-  renderProvidersList((env.availableProviders as string[]) || [], (env.primaryProvider as string) || null);
+
+  const subtitleEl = document.getElementById('providers-modal-subtitle');
+  const listEl = document.getElementById('providers-list');
+  const emptyMsgEl = document.getElementById('providers-empty-message');
+  const actionsEl = document.getElementById('providers-modal-actions');
+  const cancelBtn = document.getElementById('providers-cancel-btn');
+  const confirmBtn = document.getElementById('providers-confirm-btn');
+
+  if (availableProviders.length === 0) {
+    if (subtitleEl) subtitleEl.style.display = 'none';
+    if (listEl) listEl.style.display = 'none';
+    if (emptyMsgEl) emptyMsgEl.style.display = 'block';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (confirmBtn) {
+      confirmBtn.style.display = 'inline-block';
+      confirmBtn.style.flex = '0 0 auto';
+      confirmBtn.style.alignSelf = 'center';
+      confirmBtn.style.width = 'auto';
+    }
+    if (actionsEl) {
+      actionsEl.style.flexDirection = 'row';
+      actionsEl.style.justifyContent = 'center';
+    }
+  } else {
+    if (subtitleEl) subtitleEl.style.display = 'block';
+    if (listEl) listEl.style.display = 'grid';
+    if (emptyMsgEl) emptyMsgEl.style.display = 'none';
+    if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    if (confirmBtn) {
+      confirmBtn.style.display = 'inline-block';
+      confirmBtn.style.flex = '1';
+      confirmBtn.style.alignSelf = '';
+      confirmBtn.style.width = '';
+    }
+    if (actionsEl) {
+      actionsEl.style.flexDirection = 'row';
+      actionsEl.style.justifyContent = 'stretch';
+    }
+    renderProvidersList(availableProviders, (env.primaryProvider as string) || null);
+  }
 
   modal.style.display = 'flex';
-  document.getElementById('providers-modal-actions')!.style.display = 'flex';
+  actionsEl!.style.display = 'flex';
 }
 
 function closeProvidersModal(): void {
@@ -1813,7 +1853,7 @@ function closeCoverLetterModal(): void {
 async function generateCoverLetter(): Promise<void> {
   const jd = (document.getElementById('job-description') as HTMLTextAreaElement).value.trim();
   if (!jd) {
-    alert('Please paste a Job Description first.');
+    alert('Please paste a Job Description in JD  Validation first.');
     return;
   }
 

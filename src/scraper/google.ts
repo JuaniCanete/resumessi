@@ -89,15 +89,17 @@ export async function scrapeGoogle(
       const items = data.organic_results || [];
       console.log(`[Google Scraper] Received ${items.length} items from SerpAPI for page ${page + 1}`);
 
-      // Save SerpAPI response for debugging pagination behavior
-      try {
-        const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
-        if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-        const debugFile = path.join(debugDir, `google-page-${startPage + page}.json`);
-        fs.writeFileSync(debugFile, JSON.stringify(data, null, 2));
-        console.log(`[Google Scraper] Saved debug response to ${debugFile}`);
-      } catch (debugErr: unknown) {
-        console.warn('[Google Scraper] Failed to save debug response:', (debugErr as Error).message);
+      // Save SerpAPI response for debugging pagination behavior (opt-in via SCRAPER_DEBUG=true)
+      if (process.env.SCRAPER_DEBUG === 'true') {
+        try {
+          const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
+          if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+          const debugFile = path.join(debugDir, `google-page-${startPage + page}.json`);
+          fs.writeFileSync(debugFile, JSON.stringify(data, null, 2));
+          console.log(`[Google Scraper] Saved debug response to ${debugFile}`);
+        } catch (debugErr: unknown) {
+          console.warn('[Google Scraper] Failed to save debug response:', (debugErr as Error).message);
+        }
       }
 
       // Only keep results whose hostname is one of the targeted ATS domains
@@ -110,7 +112,8 @@ export async function scrapeGoogle(
       // identifies the result as a listing). We still enforce the domain
       // allowlist above, so this is a permissive second signal only for ATS
       // domains that don't always expose `/jobs/` in the URL path.
-      const JOB_BOARD_HOSTS = new Set([
+      // Configurable via SCRAPER_JOB_BOARD_HOSTS env var (comma-separated).
+      const defaultJobBoardHosts = [
         'jobs.lever.co',
         'jobs.ashbyhq.com',
         'myworkdayjobs.com',
@@ -119,7 +122,14 @@ export async function scrapeGoogle(
         'bamboohr.com',
         'torre.ai',
         'remoterocketship.com',
-      ]);
+      ];
+      const configuredJobBoardHosts = (process.env.SCRAPER_JOB_BOARD_HOSTS || '')
+        .split(',')
+        .map(h => h.trim().toLowerCase())
+        .filter(Boolean);
+      const JOB_BOARD_HOSTS = new Set(
+        configuredJobBoardHosts.length > 0 ? configuredJobBoardHosts : defaultJobBoardHosts
+      );
 
       for (const item of items) {
         const title = item.title || '';

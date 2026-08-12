@@ -1583,11 +1583,14 @@
             <button onclick="closeProvidersModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
                 onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
             <h2 style="color: #fff; margin-bottom: 6px; text-align: center;">🧠 AI Providers</h2>
-            <p style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 18px; font-family: 'Comfortaa', sans-serif;">Select default provider for LLM API calls</p>
+            <p id="providers-modal-subtitle" style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 18px; font-family: 'Comfortaa', sans-serif;">Select default provider for LLM API calls</p>
             <div id="providers-list"></div>
+            <div id="providers-empty-message" style="display: none; color: #fff; font-size: 13px; text-align: center; padding: 24px 16px; font-family: 'Comfortaa', sans-serif;">
+                There are not LLM providers configured. Please, setup them to chose provider and model.
+            </div>
             <div id="providers-modal-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch; margin-top: 16px;">
-                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="cancelProvidersSelection()">Cancel</button>
-                <button class="p-btn p-btn-primary" style="flex: 1; background: var(--accent); color: #fff;" onclick="confirmProvidersSelection()">Confirm</button>
+                <button id="providers-cancel-btn" class="p-btn p-btn-secondary" style="flex: 1;" onclick="cancelProvidersSelection()">Cancel</button>
+                <button id="providers-confirm-btn" class="p-btn p-btn-primary" style="flex: 1; background: var(--accent); color: #fff;" onclick="confirmProvidersSelection()">Confirm</button>
             </div>
         </div>
     </div>

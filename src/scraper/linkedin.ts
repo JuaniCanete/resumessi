@@ -246,16 +246,18 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
         });
         console.log(`[LinkedIn Scraper] Hydrated ${hydrated} job cards on page ${searchUrl}`);
 
-        // Save page HTML for debugging pagination/scroll behavior
-        try {
-          const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
-          if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-          const html = await page.content();
-          const debugFile = path.join(debugDir, `linkedin-page-${startPage + pageIndex}.html`);
-          fs.writeFileSync(debugFile, html);
-          console.log(`[LinkedIn Scraper] Saved debug HTML to ${debugFile}`);
-        } catch (debugErr: unknown) {
-          console.warn('[LinkedIn Scraper] Failed to save debug HTML:', (debugErr as Error).message);
+        // Save page HTML for debugging pagination/scroll behavior (opt-in via SCRAPER_DEBUG=true)
+        if (process.env.SCRAPER_DEBUG === 'true') {
+          try {
+            const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
+            if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+            const html = await page.content();
+            const debugFile = path.join(debugDir, `linkedin-page-${startPage + pageIndex}.html`);
+            fs.writeFileSync(debugFile, html);
+            console.log(`[LinkedIn Scraper] Saved debug HTML to ${debugFile}`);
+          } catch (debugErr: unknown) {
+            console.warn('[LinkedIn Scraper] Failed to save debug HTML:', (debugErr as Error).message);
+          }
         }
 
         // Extract job card postings from LinkedIn with selector strategies and failure diagnostics

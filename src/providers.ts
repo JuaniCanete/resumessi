@@ -316,6 +316,8 @@ function safeJsonParse(text: string): { data: Record<string, unknown> | null; er
     repaired = repaired.replace(/,\s*([}\]])/g, '$1');
     
     // Fix unquoted keys (line-anchored to avoid matching inside string values)
+    // NOTE: repair is line-anchored and may over-match bare identifiers inside
+    // multi-line string values. Safe for typical LLM output; tighten if needed.
     repaired = repaired.replace(/^([\s,{]*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/gm, '$1"$2":');
     
     try {

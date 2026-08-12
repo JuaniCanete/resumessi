@@ -25,8 +25,9 @@ test.describe('Advanced Flows', () => {
 
 		await expect(mainPage.photoUploadConfirm).toBeVisible({ timeout: 5000 });
 		await mainPage.confirmPhotoUpload();
+		await mainPage.profilePhoto.waitFor();
 
-		const uploaded = await  mainPage.page.evaluate(() => localStorage.getItem('uploaded-photo'));
+		const uploaded = await mainPage.page.evaluate(() => localStorage.getItem('uploaded-photo'));
 		expect.soft(uploaded).toBeTruthy();
 		if (uploaded) expect.soft(uploaded.startsWith('data:image/')).toBe(true);
 

@@ -11,7 +11,7 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
-import { getProviderConfig, validateInferenceRequest } from './src/providers';
+import { getProviderConfig, validateInferenceRequest, safeJsonParse } from './src/providers';
 import { runInference, runPolish } from './src/router';
 import { scrapeLinkedIn, validateLinkedInStorageState } from './src/scraper/linkedin';
 import { scrapeGoogle } from './src/scraper/google';
@@ -592,18 +592,15 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
             }
 
             const current = JSON.parse(fs.readFileSync(outputFileCopy, 'utf-8'));
+
+            await extractJobParameters(resultsCopy, envCopy);
+
             current.results = resultsCopy;
             current.summary = summaryText;
             current.provider = inferenceResult.provider;
+            current.metadataExtractionStatus = 'done';
             fs.writeFileSync(outputFileCopy, JSON.stringify(current, null, 2));
-            console.log('[Scraper API] Background summarization completed.');
-
-            await extractJobParameters(resultsCopy, envCopy);
-            const updated = JSON.parse(fs.readFileSync(outputFileCopy, 'utf-8'));
-            updated.results = resultsCopy;
-            updated.metadataExtractionStatus = 'done';
-            fs.writeFileSync(outputFileCopy, JSON.stringify(updated, null, 2));
-            console.log('[Scraper API] Background parameter extraction completed.');
+            console.log('[Scraper API] Background summarization & parameter extraction completed.');
           } catch (err: unknown) {
             console.warn('[Scraper API] Background summarization failed:', (err as Error).message);
           }
@@ -1185,7 +1182,13 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
           raw = jsonMatch[0];
         }
 
-        const parsed = JSON.parse(raw) as { isCollection: boolean; cleanedJD: string; notes: string };
+        const parsedResult = safeJsonParse(raw);
+        if (!parsedResult.data) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Failed to parse cleaned JD: ' + parsedResult.error }));
+          return;
+        }
+        const parsed = parsedResult.data as { isCollection: boolean; cleanedJD: string; notes: string };
 
         if (parsed.isCollection) {
           res.writeHead(409, { 'Content-Type': 'application/json' });
