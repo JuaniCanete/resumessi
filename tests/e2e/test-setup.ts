@@ -1,10 +1,11 @@
 import { test as playwrightTest, expect } from '@playwright/test';
 import { MainPage } from '../pages/MainPage';
+import { FindJobPage } from '../pages/FindJobPage';
 
 // Small delay so UI loading states are visible before mocked responses resolve
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const test = playwrightTest.extend<{ mainPage: MainPage }>({
+const test = playwrightTest.extend<{ mainPage: MainPage; findJobPage: FindJobPage }>({
   mainPage: async ({ page }, use) => {
     let lastProviderSent: string | null = null;
     let bindingRegistered = false;
@@ -67,15 +68,15 @@ const test = playwrightTest.extend<{ mainPage: MainPage }>({
                     education_match: true
                   },
                   feedback: 'Mocked E2E test feedback: The resume matches the requirements.',
-                    missingKeywords: ['Playwright', 'E2E Testing']
-                  }
-                })
+                  missingKeywords: ['Playwright', 'E2E Testing']
+                }
               })
-            });
-          } catch {
-            // Ignore route already handled / aborted requests
-          }
-        });
+            })
+          });
+        } catch {
+          // Ignore route already handled / aborted requests
+        }
+      });
 
       await page.route('**/api/prompts/**', async (route) => {
         await route.fulfill({
@@ -172,6 +173,13 @@ const test = playwrightTest.extend<{ mainPage: MainPage }>({
     await page.unroute('**/api/save-polished');
     await page.unroute('**/api/rollback');
     await page.unroute('**/src/resume/output/resume-data-AI-polished.json');
+  },
+
+  findJobPage: async ({ page }, use) => {
+    const findJobPage = new FindJobPage(page);
+    await findJobPage.goto();
+    await use(findJobPage);
+    await findJobPage.unregisterAllRoutes();
   }
 });
 

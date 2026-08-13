@@ -20,7 +20,6 @@ import { getRequestPath } from './src/scraper/runtime-utils';
 import type { ScraperQuery, ScraperResult } from './src/scraper/types';
 import {
   loadJobData,
-  saveJobData,
   markScrapingResultRemoved,
   saveJobFromScraping,
   unsaveJob,
@@ -29,7 +28,13 @@ import {
   getJobDashboard,
   updateDashboardJob,
   removeDashboardJob,
-} from './src/storage/jobData';
+  getScrapingRun,
+  setScrapingRun,
+  updateScrapingResultSummary,
+  clearScrapingRunCache,
+  initStorage,
+  insertDashboardJob,
+} from './src/storage/jobDataSqlite';
 import * as https from 'https';
 
 // Wrap in try-catch for graceful degradation
@@ -223,6 +228,8 @@ async function extractJobParameters(results: ScraperResult[], env: Record<string
     console.warn('[Scraper API] Parameter extraction warning:', (err as Error).message);
   }
 }
+
+initStorage();
 
 const server = http.createServer(async (req: http.IncomingMessage, res: http.ServerResponse) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -534,11 +541,6 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         rawResults = await scrapeGoogle(query, env);
       }
 
-      const resultsDir = path.join(ROOT, 'data', 'scraper-results');
-      if (!fs.existsSync(resultsDir)) {
-        fs.mkdirSync(resultsDir, { recursive: true });
-      }
-
       const resultPayload = {
         timestamp: new Date().toISOString(),
         source: query.source,
@@ -551,17 +553,21 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         metadataExtractionStatus: 'extracting',
       };
 
-      const outputFile = path.join(resultsDir, `${query.source}.json`);
-      fs.writeFileSync(outputFile, JSON.stringify(resultPayload, null, 2));
+      await setScrapingRun(query.source as 'linkedin' | 'google', {
+        timestamp: resultPayload.timestamp,
+        query: query as unknown as Record<string, string>,
+        results: rawResults.map(r => ({ ...r })),
+        runId: resultPayload.runId,
+      });
 
       // Run AI summarization in the background so the response is not
       // delayed by a slow/failing AI call. When it completes, the results
       // file is updated in place with the summary and per-result aiSummary.
       if (rawResults.length > 0) {
         const resultsCopy = rawResults.map(r => ({ ...r }));
-        const outputFileCopy = outputFile;
         const envCopy = env;
         const queryCopy = query;
+        const sourceCopy = query.source as 'linkedin' | 'google';
         void (async () => {
           try {
             const promptPath = path.join(ROOT, 'src', 'prompts', 'scraper-summarize.txt');
@@ -591,15 +597,15 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
               console.warn('[Scraper API] Failed to parse per-result summaries:', (parseErr as Error).message);
             }
 
-            const current = JSON.parse(fs.readFileSync(outputFileCopy, 'utf-8'));
+            const current = await getScrapingRun(sourceCopy);
 
             await extractJobParameters(resultsCopy, envCopy);
 
-            current.results = resultsCopy;
-            current.summary = summaryText;
-            current.provider = inferenceResult.provider;
-            current.metadataExtractionStatus = 'done';
-            fs.writeFileSync(outputFileCopy, JSON.stringify(current, null, 2));
+            await updateScrapingResultSummary(
+              sourceCopy,
+              { summary: summaryText, provider: inferenceResult.provider, metadataExtractionStatus: 'done' },
+              resultsCopy.map(r => ({ ...r, source: sourceCopy, removed: current?.results.find(x => x.url === r.url)?.removed }) as ScraperResult)
+            );
             console.log('[Scraper API] Background summarization & parameter extraction completed.');
           } catch (err: unknown) {
             console.warn('[Scraper API] Background summarization failed:', (err as Error).message);
@@ -649,12 +655,10 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         res.end(JSON.stringify({ error: "Invalid source. Must be 'linkedin' or 'google'." }));
         return;
       }
-      const resultsFile = path.join(ROOT, 'data', 'scraper-results', `${source}.json`);
-
-      if (fs.existsSync(resultsFile)) {
-        const content = fs.readFileSync(resultsFile, 'utf-8');
+      const run = await getScrapingRun(source as 'linkedin' | 'google');
+      if (run) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(content);
+        res.end(JSON.stringify(run));
       } else {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ timestamp: null, source, totalResults: 0, results: [] }));
@@ -786,20 +790,15 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         res.end(JSON.stringify({ error: 'Missing job title' }));
         return;
       }
-      const data = await loadJobData();
       const newJob = {
         ...job,
-        saved: true,
-        applied: true,
-        savedAt: new Date().toISOString(),
-        appliedAt: new Date().toISOString(),
-        status: (job.status || 'No News') as 'No News' | 'Interviewing' | 'Offer' | 'Rejected',
-        column: job.column || 'applied',
-      } as ScraperResult & { saved: boolean; applied: boolean; savedAt: string; appliedAt: string; status: 'No News' | 'Interviewing' | 'Offer' | 'Rejected' };
-      data.jobDashboard.push(newJob);
-      await saveJobData(data);
+        savedAt: job.savedAt || new Date().toISOString(),
+        appliedAt: job.appliedAt || new Date().toISOString(),
+      };
+      const result = await insertDashboardJob(newJob);
+      clearScrapingRunCache();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true }));
+      res.end(JSON.stringify({ success: true, job: result }));
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Failed to add job: ' + (err as Error).message }));
@@ -836,14 +835,18 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         return;
       }
       const data = await loadJobData();
-      const idx = data.jobDashboard.findIndex(r => (url ? r.url === url : false) || (id && r.id && r.id === id));
+      const dashboard = data.jobDashboard;
+      const idx = dashboard.findIndex(r => (url ? r.url === url : false) || (id && r.id && r.id === id));
       if (idx >= 0) {
-        const current = data.jobDashboard[idx].interviewRounds || 0;
-        data.jobDashboard[idx].interviewRounds = Math.max(0, current + (delta || 1));
-        await saveJobData(data);
+        const current = dashboard[idx].interviewRounds || 0;
+        const newRounds = Math.max(0, current + (delta || 1));
+        await updateDashboardJob(url, { interviewRounds: newRounds }, id);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, interviewRounds: newRounds }));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Job not found' }));
       }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, interviewRounds: data.jobDashboard[idx]?.interviewRounds ?? 0 }));
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Failed to update rounds: ' + (err as Error).message }));

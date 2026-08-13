@@ -202,13 +202,13 @@ function handleScanButtonClick(): void {
 async function runAtsScan(): Promise<void> {
   const jd = (document.getElementById('job-description') as HTMLTextAreaElement).value.trim();
 
-  if (!jd) return alert('Please paste a Job Description.');
+  if (!jd) return showToast({ message: 'Please paste a Job Description.', type: 'error' });
 
   const resumeEl = document.getElementById('resume-content');
   let resumeText = resumeEl ? resumeEl.innerText || resumeEl.textContent : '';
   resumeText = resumeText.replace(/\s+/g, ' ').trim();
   if (!resumeText) {
-    return alert('No resume content found. Please load a resume first.');
+    return showToast({ message: 'No resume content found. Please load a resume first.', type: 'error' });
   }
 
   scanController = new AbortController();
@@ -233,7 +233,7 @@ async function runAtsScan(): Promise<void> {
     const promptResp = await fetch('/api/prompts/ats-scan.txt');
     basePrompt = await promptResp.text();
   } catch (e) {
-    alert('Failed to load ATS prompt. Please refresh the page.');
+    showToast({ message: 'Failed to load ATS prompt. Please refresh the page.', type: 'error' });
     throw e;
   }
 
@@ -701,7 +701,7 @@ async function polishResume(): Promise<void> {
       console.log('Polish cancelled by user.');
     } else {
       document.getElementById('polish-overlay')!.style.display = 'none';
-      alert('Polish failed: ' + (err as Error).message);
+      showToast({ message: 'Polish failed: ' + (err as Error).message, type: 'error' });
     }
     updatePolishButton();
     const dropdownBtnAfter = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
@@ -732,7 +732,7 @@ async function rollbackPolish(): Promise<void> {
       await loadResumeData();
     }, 1000);
   } catch (err: unknown) {
-    alert('Rollback failed: ' + (err as Error).message);
+    showToast({ message: 'Rollback failed: ' + (err as Error).message, type: 'error' });
   }
 }
 
@@ -945,7 +945,7 @@ async function confirmGeneration(): Promise<void> {
     const promptResp = await fetch('/api/prompts/extraction.txt');
     extractionPrompt = await promptResp.text();
   } catch (e) {
-    alert('Failed to load extraction prompt. Please refresh the page.');
+    showToast({ message: 'Failed to load extraction prompt. Please refresh the page.', type: 'error' });
     throw e;
   }
   extractionPrompt = extractionPrompt.replace('{extracted_text}', currentPDFText);
@@ -997,7 +997,7 @@ async function confirmGeneration(): Promise<void> {
       if (isHallucinated) {
         const errMsg = 'AI returned hallucinated name "' + outputNameRaw + '". Generation aborted.';
         console.error(errMsg);
-        alert(errMsg);
+        showToast({ message: errMsg, type: 'error' });
         closeAIModal();
         return;
       }
@@ -1013,7 +1013,7 @@ async function confirmGeneration(): Promise<void> {
           if (!hasOverlap) {
             const errMsg = 'AI generated resume for wrong person: "' + outputNameRaw + '" instead of "' + expectedName + '". Generation aborted.';
             console.error(errMsg);
-            alert(errMsg);
+            showToast({ message: errMsg, type: 'error' });
             closeAIModal();
             return;
           }
@@ -1045,7 +1045,7 @@ async function confirmGeneration(): Promise<void> {
     if ((err as Error).name === 'AbortError') {
       console.log('Generation cancelled by user.');
     } else {
-      alert('Error generating resume: ' + (err as Error).message);
+      showToast({ message: 'Error generating resume: ' + (err as Error).message, type: 'error' });
       console.error(err);
     }
     closeAIModal();
@@ -1716,7 +1716,7 @@ async function startScraping(): Promise<void> {
       if (scraperResultsWindow && !scraperResultsWindow.closed) {
         scraperResultsWindow.postMessage({ type: 'scrapeFailed', error: errMsg }, window.location.origin);
       }
-      alert(`Scraper error: ${errMsg}`);
+      showToast({ message: 'Scraper error: ' + errMsg, type: 'error' });
       return;
     }
 
@@ -1746,7 +1746,7 @@ async function startScraping(): Promise<void> {
       if (scraperResultsWindow && !scraperResultsWindow.closed) {
         scraperResultsWindow.postMessage({ type: 'scrapeFailed', error: errMsg }, window.location.origin);
       }
-      alert(`Scraping error: ${errMsg}`);
+      showToast({ message: 'Scraping error: ' + errMsg, type: 'error' });
     }
   }
 }
@@ -1872,7 +1872,7 @@ function closeCoverLetterModal(): void {
 async function generateCoverLetter(): Promise<void> {
   const jd = (document.getElementById('job-description') as HTMLTextAreaElement).value.trim();
   if (!jd) {
-    alert('Please paste a Job Description in JD  Validation first.');
+    showToast({ message: 'Please paste a Job Description in JD Validation first.', type: 'error' });
     return;
   }
 
@@ -1942,9 +1942,9 @@ function copyCoverLetter(): void {
   if (!text) return;
 
   navigator.clipboard.writeText(text).then(() => {
-    alert('Cover letter copied to clipboard!');
+    showToast({ message: 'Cover letter copied to clipboard!', type: 'success' });
   }).catch(() => {
-    alert('Failed to copy. Please select and copy manually.');
+      showToast({ message: 'Failed to copy. Please select and copy manually.', type: 'error' });
   });
 }
 
