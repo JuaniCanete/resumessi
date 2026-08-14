@@ -334,6 +334,59 @@
             display: flex !important;
         }
 
+        #btn-refresh-resume {
+            position: absolute;
+            top: 5%;
+            right: 20%;
+            width: 36px;
+            height: 36px;
+            background: var(--accent);
+            border: none;
+            border-radius: 50%;
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transition: color 0.2s, background 0.2s;
+            z-index: 601;
+        }
+
+        #btn-refresh-resume:hover {
+            color: var(--accent);
+            background: #1e293b;
+        }
+
+        .btn-refresh-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 150%;
+            right: 0;
+            background: #0a0a0a;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'Comfortaa', sans-serif;
+            white-space: normal;
+            width: 220px;
+            line-height: 1.4;
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            transition: opacity 0.2s, visibility 0.2s;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        #btn-refresh-resume:hover .btn-refresh-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
         #right-open-stub {
             position: fixed;
             top: 50%;
@@ -1179,6 +1232,11 @@
         <div class="resume-container" id="resume-content" data-testid="resume-content">
             <!-- Resume rendered dynamically by renderResume() -->
         </div>
+        <button id="btn-refresh-resume" data-testid="btn-refresh-resume" class="no-print" onclick="handleRefreshResume()" aria-label="Refresh resume">
+            <span style="line-height: 1;">⟳<span>
+            <div class="btn-refresh-tooltip">Refresh resume to apply manual changes from JSON files.</div>
+        </button>
+    </div>
     </div>
 
     <div id="right-panel" data-testid="right-panel" class="panel no-print">

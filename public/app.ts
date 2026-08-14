@@ -539,15 +539,13 @@ async function loadResumeData(): Promise<void> {
     '/demo/resume-demo-data.json',
   ];
 
-  const hasGeneratedResume = localStorage.getItem('resume-data') !== null;
-
   for (const filePath of priorities) {
     try {
       const resp = await fetch(filePath);
       if (resp.ok) {
         const data = await resp.json() as Record<string, unknown>;
         renderResume(data);
-        currentDataSource = (hasGeneratedResume && !filePath.includes('demo-data')) ? 'generated' : 'demo';
+        currentDataSource = filePath.includes('demo-data') ? 'demo' : 'generated';
         updatePolishButton();
         return;
       }
@@ -1413,36 +1411,20 @@ if (photoModal) {
   const env = await loadEnv();
   applyColors(env);
 
-  const storedData = localStorage.getItem('resume-data');
-  if (storedData) {
-    try {
-      const data = JSON.parse(storedData) as Record<string, unknown>;
-      const basics = data.basics as Record<string, unknown> | undefined;
-      // Check if localStorage data is stale (missing linkedin/github fields)
-      const hasRequiredFields = basics && typeof basics.linkedin === 'string' && typeof basics.github === 'string';
-      if (hasRequiredFields) {
-        renderResume(data);
-        currentDataSource = 'generated';
-        updatePolishButton();
-      } else {
-        // Stale data - load fresh from JSON file
-        await loadResumeData();
-      }
-    } catch {
-      await loadResumeData();
-    }
-  } else {
-    await loadResumeData();
-  }
+  await loadResumeData();
 
   const savedScan = loadScanResults();
   if (savedScan) {
     applyScanResultsToUI(savedScan);
   }
 
-  // Initial update of button visibility
   updatePolishButton();
 })();
+
+async function handleRefreshResume(): Promise<void> {
+  await loadResumeData();
+  showRefreshMessage();
+}
 
 // ─── Job Scraper UI Logic ───────────────────────────────────────────
 async function openJobScraperModal(): Promise<void> {
@@ -2070,6 +2052,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 (window as unknown as Record<string, unknown>).cancelProvidersSelection = cancelProvidersSelection;
 (window as unknown as Record<string, unknown>).renderResume = renderResume;
 (window as unknown as Record<string, unknown>).loadResumeData = loadResumeData;
+(window as unknown as Record<string, unknown>).handleRefreshResume = handleRefreshResume;
 (window as unknown as Record<string, unknown>).updatePolishButton = updatePolishButton;
 (window as unknown as Record<string, unknown>).openJobScraperModal = openJobScraperModal;
 (window as unknown as Record<string, unknown>).closeJobScraperModal = closeJobScraperModal;

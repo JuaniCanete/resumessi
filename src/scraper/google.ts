@@ -56,8 +56,8 @@ export async function scrapeGoogle(
   }
 
   const results: ScraperResult[] = [];
-  const MAX_GOOGLE_PAGES = 5;
-  const pageCount = Math.min(query.pageCount ?? 3, MAX_GOOGLE_PAGES);
+  const MAX_GOOGLE_PAGES = 10;
+  const pageCount = Math.min(query.pageCount ?? 10, MAX_GOOGLE_PAGES);
   const startPage = query.startPage ?? 1;
 
   console.log(`[Google Scraper] Scraping up to ${pageCount} page(s) starting from page ${startPage} of SerpAPI for query: "${searchQuery}"`);

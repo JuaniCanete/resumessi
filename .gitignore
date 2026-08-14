@@ -59,10 +59,12 @@ data/storage-state/
 data/scraper-results/
 data/job-data.json
 data/test/
+data/
 
 # SQLite database
 data/jobdata.db
 data/jobdata.db-wal
 data/jobdata.db-shm
+tests/data/
 
 

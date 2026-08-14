@@ -57,7 +57,6 @@ export interface JobData {
 
 const DATA_DIR = join(process.cwd(), 'data');
 const DB_PATH = process.env.JOB_DATA_DB_PATH || join(DATA_DIR, 'jobdata.db');
-const LEGACY_JSON_FILE = join(DATA_DIR, 'job-data.json');
 
 // In-memory cache for scraper run payloads
 let cachedRuns: Record<string, ScraperRunPayload> = {};
@@ -81,6 +80,12 @@ function getDb(): Database.Database {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   initSchema(db);
+  // Migration: add extractionDone column if missing
+  try {
+    db.exec('ALTER TABLE scraping_results ADD COLUMN extractionDone INTEGER DEFAULT 0');
+  } catch {
+    // Column already exists
+  }
   return db;
 }
 
@@ -108,6 +113,7 @@ function initSchema(database: Database.Database): void {
       interviewRounds INTEGER,
       notes TEXT,
       jobId TEXT,
+      extractionDone INTEGER DEFAULT 0,
       PRIMARY KEY (url, source)
     );
 
@@ -165,61 +171,6 @@ function initSchema(database: Database.Database): void {
   `);
 }
 
-// --- Migration from legacy JSON ---
-
-function tryMigrateLegacyJson(): void {
-  if (!existsSync(LEGACY_JSON_FILE)) return;
-  const database = getDb();
-  const dbTransaction = database.transaction(() => {
-    const content = readFileSync(LEGACY_JSON_FILE, 'utf-8');
-    const data: JobData = JSON.parse(content);
-
-    const insertScraping = database.prepare(`
-      INSERT OR IGNORE INTO scraping_results
-        (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId)
-      VALUES
-        (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
-         @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column, @interviewRounds, @notes, @id)
-    `);
-
-    const insertSaved = database.prepare(`
-      INSERT OR IGNORE INTO saved_jobs
-        (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         savedAt, applied, appliedAt, status, column, interviewRounds, notes, jobId)
-      VALUES
-        (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
-         @parameters, @savedAt, @applied, @appliedAt, @status, @column, @interviewRounds, @notes, @id)
-    `);
-
-    const insertDashboard = database.prepare(`
-      INSERT OR IGNORE INTO job_dashboard
-        (url, jobId, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         source, status, column, interviewRounds, notes, savedAt, appliedAt)
-      VALUES
-        (@url, @jobId, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
-         @parameters, @source, @status, @column, @interviewRounds, @notes, @savedAt, @appliedAt)
-    `);
-
-    for (const item of data.scrapingResults.linkedin) {
-      insertScraping.run(formatRowForSqlite(item, 'linkedin'));
-    }
-    for (const item of data.scrapingResults.google) {
-      insertScraping.run(formatRowForSqlite(item, 'google'));
-    }
-    for (const item of data.savedJobs.linkedin) {
-      insertSaved.run(formatRowForSqlite(item, 'linkedin'));
-    }
-    for (const item of data.savedJobs.google) {
-      insertSaved.run(formatRowForSqlite(item, 'google'));
-    }
-    for (const item of data.jobDashboard) {
-      insertDashboard.run(formatDashboardRowForSqlite(item));
-    }
-  });
-  dbTransaction();
-}
-
 function formatRowForSqlite(row: ScraperResult, source: 'linkedin' | 'google'): Record<string, unknown> {
   return {
     url: row.url || null,
@@ -241,6 +192,7 @@ function formatRowForSqlite(row: ScraperResult, source: 'linkedin' | 'google'): 
     interviewRounds: row.interviewRounds || null,
     notes: row.notes || null,
     id: row.id || null,
+    extractionDone: 0,
   };
 }
 
@@ -314,7 +266,6 @@ function parseDashboardRowFromSqlite(row: Record<string, unknown>): ScraperResul
 // --- Initialization ---
 
 export function initStorage(): void {
-  tryMigrateLegacyJson();
 }
 
 // --- Scraping Results (Scraper) ---
@@ -335,7 +286,7 @@ export async function getScrapingRun(source: 'linkedin' | 'google'): Promise<Scr
     timestamp: runRow.timestamp ? (runRow.timestamp as string) : null,
     source: source,
     query: runRow.query ? JSON.parse(runRow.query as string) : {},
-    totalResults: runRow.totalResults as number,
+    totalResults: results.length,
     results: results,
     summary: runRow.summary as string | undefined,
     runId: runRow.runId as string | undefined,
@@ -363,6 +314,8 @@ export async function setScrapingRun(
       VALUES
         (@source, @timestamp, @query, @totalResults, @summary, @runId, @provider, @metadataExtractionStatus)
     `);
+    // If 0 results, mark as idle (no extraction needed), else extracting
+    const extractionStatus = run.results.length === 0 ? 'idle' : 'extracting';
     insertRun.run({
       source: source,
       timestamp: run.timestamp,
@@ -371,21 +324,21 @@ export async function setScrapingRun(
       summary: '',
       runId: run.runId,
       provider: '',
-      metadataExtractionStatus: 'extracting',
+      metadataExtractionStatus: extractionStatus,
     });
 
     // UPSERT each result, preserving removed/saved/applied flags from existing rows
     const checkExisting = database.prepare(
-      'SELECT removed, saved, savedAt, applied, appliedAt, status, column, interviewRounds, notes FROM scraping_results WHERE url = ? AND source = ?'
+      'SELECT removed, saved, savedAt, applied, appliedAt, status, column, interviewRounds, notes, extractionDone FROM scraping_results WHERE url = ? AND source = ?'
     );
     const upsertResult = database.prepare(`
       INSERT INTO scraping_results
         (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp)
+         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, extractionDone)
       VALUES
         (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
          @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
-         @interviewRounds, @notes, @jobId, @runId, @timestamp)
+         @interviewRounds, @notes, @jobId, @runId, @timestamp, @extractionDone)
       ON CONFLICT(url, source) DO UPDATE SET
         title = excluded.title,
         snippet = excluded.snippet,
@@ -405,7 +358,8 @@ export async function setScrapingRun(
         notes = excluded.notes,
         jobId = excluded.jobId,
         runId = excluded.runId,
-        timestamp = excluded.timestamp
+        timestamp = excluded.timestamp,
+        extractionDone = excluded.extractionDone
     `);
 
     for (const result of run.results) {
@@ -423,6 +377,7 @@ export async function setScrapingRun(
         column: existing ? (existing.column as string) : base.column,
         interviewRounds: existing ? (existing.interviewRounds as number) : base.interviewRounds,
         notes: existing ? (existing.notes as string) : base.notes,
+        extractionDone: existing ? (existing.extractionDone as number) : 0,
         runId: run.runId,
         timestamp: run.timestamp,
       };
@@ -461,22 +416,25 @@ export async function updateScrapingResultSummary(
     });
 
     const updateResult = database.prepare(`
-      UPDATE scraping_results SET aiSummary = @aiSummary, queryAffinity = @queryAffinity, parameters = @parameters
+      UPDATE scraping_results SET aiSummary = @aiSummary, queryAffinity = @queryAffinity, parameters = @parameters, extractionDone = @extractionDone
       WHERE url = @url AND source = @source
     `);
     const upsertResult = database.prepare(`
       INSERT INTO scraping_results
         (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp)
+         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, extractionDone)
       VALUES
         (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
          @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
-         @interviewRounds, @notes, @jobId, @runId, @timestamp)
+         @interviewRounds, @notes, @jobId, @runId, @timestamp, @extractionDone)
       ON CONFLICT(url, source) DO UPDATE SET
         aiSummary = excluded.aiSummary,
         queryAffinity = excluded.queryAffinity,
-        parameters = excluded.parameters
+        parameters = excluded.parameters,
+        extractionDone = excluded.extractionDone
     `);
+
+    const extractionDone = updates.metadataExtractionStatus === 'done' ? 1 : 0;
 
     for (const result of results) {
       const existing = database.prepare(
@@ -488,6 +446,7 @@ export async function updateScrapingResultSummary(
           aiSummary: result.aiSummary || null,
           queryAffinity: result.queryAffinity || null,
           parameters: result.parameters ? JSON.stringify(result.parameters) : null,
+          extractionDone,
           url: result.url,
           source: source,
         });
@@ -497,6 +456,7 @@ export async function updateScrapingResultSummary(
           removed: 0,
           runId: '',
           timestamp: new Date().toISOString(),
+          extractionDone,
         });
       }
     }
@@ -569,8 +529,6 @@ export function loadSidebarState(): SidebarState | null {
     return null;
   }
 }
-
-// --- Job Data API (compatible with original jobData.ts exports) ---
 
 export async function loadJobData(): Promise<JobData> {
   const database = getDb();

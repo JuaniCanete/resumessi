@@ -1,14 +1,13 @@
 import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { rmSync, mkdirSync, existsSync, writeFileSync } from 'node:fs';
+import { rmSync, mkdirSync, existsSync } from 'node:fs';
 import type { ScraperResult, JobData } from '../../src/storage/jobDataSqlite';
 
 const TEST_DATA_DIR = join(process.cwd(), 'data-test-sqlite');
 // The module computes DATA_DIR = join(process.cwd(), 'data'), so when we
 // chdir into TEST_DATA_DIR, the DB path becomes TEST_DATA_DIR/data/jobdata.db
 const TEST_DB_PATH = join(TEST_DATA_DIR, 'data', 'jobdata.db');
-const LEGACY_JSON = join(TEST_DATA_DIR, 'data', 'job-data.json');
 
 const originalCwd = process.cwd();
 
@@ -25,143 +24,17 @@ before(async () => {
 	const internalDataDir = join(TEST_DATA_DIR, 'data');
 	mkdirSync(internalDataDir, { recursive: true });
 
-	// Write legacy JSON BEFORE importing the module, so initStorage() will migrate it
-	const legacyData = {
-		scrapingResults: {
-			linkedin: [
-				{
-					title: 'Legacy LinkedIn Job 1',
-					url: 'https://example.com/legacy1',
-					snippet: 'Legacy snippet 1',
-					source: 'linkedin',
-					company: 'Legacy Corp 1',
-					saved: true,
-					savedAt: '2025-01-01T00:00:00Z',
-					applied: false,
-					appliedAt: null,
-					removed: false,
-					status: 'No News',
-					column: 'applied',
-				},
-				{
-					title: 'Legacy LinkedIn Job 2',
-					url: 'https://example.com/legacy2',
-					snippet: 'Legacy snippet 2',
-					source: 'linkedin',
-					company: 'Legacy Corp 2',
-					saved: false,
-					applied: false,
-					removed: false,
-					status: 'No News',
-					column: 'applied',
-				},
-			],
-			google: [],
-		},
-		savedJobs: {
-			linkedin: [
-				{
-					title: 'Legacy Saved Job',
-					url: 'https://example.com/saved-legacy',
-					snippet: 'Saved snippet',
-					source: 'linkedin',
-					company: 'Saved Corp',
-					saved: true,
-					savedAt: '2025-01-01T00:00:00Z',
-					applied: false,
-					status: 'No News',
-					column: 'applied',
-				},
-			],
-			google: [],
-		},
-		jobDashboard: [
-			{
-				title: 'Legacy Dashboard Job 1',
-				url: 'https://example.com/dash1',
-				snippet: 'Dashboard snippet',
-				source: 'linkedin',
-				company: 'Dash Corp',
-				status: 'No News',
-				column: 'applied',
-				saved: true,
-				savedAt: '2025-01-01T00:00:00Z',
-				applied: false,
-			},
-			{
-				title: 'Legacy Dashboard Job 2',
-				url: '',
-				id: 'manual-legacy-1',
-				snippet: '',
-				source: 'linkedin',
-				status: 'No News',
-				column: 'screening',
-				saved: true,
-				savedAt: '2025-01-01T00:00:00Z',
-				applied: false,
-			},
-			{
-				title: 'Legacy Dashboard Job 3',
-				url: '',
-				id: 'manual-legacy-2',
-				snippet: '',
-				source: 'linkedin',
-				status: 'Interviewing',
-				column: 'screening',
-				saved: true,
-				savedAt: '2025-01-01T00:00:00Z',
-				applied: true,
-				appliedAt: '2025-01-02T00:00:00Z',
-			},
-		],
-	};
-	writeFileSync(LEGACY_JSON, JSON.stringify(legacyData));
-
-	// Change to test dir BEFORE importing module so DB_PATH and LEGACY_JSON_FILE
-	// resolve relative to the test data dir
+	// Change cwd to TEST_DATA_DIR so the module uses our test DB
 	process.chdir(TEST_DATA_DIR);
-
-	// Dynamic import so process.cwd() is captured in the test dir
 	storage = await import('../../src/storage/jobDataSqlite');
-	storage.initStorage();
 });
 
 after(() => {
-	storage.closeStorage();
 	process.chdir(originalCwd);
-	if (existsSync(TEST_DATA_DIR)) {
-		try {
-			rmSync(TEST_DATA_DIR, { recursive: true, force: true });
-		} catch {
-			// Directory may still be in use by SQLite WAL — ignore cleanup error
-		}
-	}
 });
 
 beforeEach(() => {
 	storage.clearScrapingRunCache();
-});
-
-// ─── Migration ────────────────────────────────────────────────────────────
-// Must run BEFORE tests that modify the scraping_results table
-
-test('initStorage migrates legacy job-data.json into SQLite tables', async () => {
-	assert.ok(existsSync(TEST_DB_PATH), 'SQLite database should be created');
-
-	const data = await storage.loadJobData() as JobData;
-
-	// Verify specific legacy records were migrated (more robust than count checks)
-	assert.ok(data.scrapingResults.linkedin.some(j => j.url === 'https://example.com/legacy1'), 'Legacy LinkedIn job 1 should be migrated');
-	assert.ok(data.scrapingResults.linkedin.some(j => j.url === 'https://example.com/legacy2'), 'Legacy LinkedIn job 2 should be migrated');
-	assert.equal(data.scrapingResults.google.length, 0, 'Should have 0 google scraping results');
-
-	assert.ok(data.savedJobs.linkedin.some(j => j.url === 'https://example.com/saved-legacy'), 'Legacy saved job should be migrated');
-	assert.equal(data.savedJobs.google.length, 0, 'Should have 0 google saved jobs');
-
-	assert.equal(data.jobDashboard.length, 3, 'Should have 3 dashboard jobs');
-	assert.ok(data.jobDashboard.some(j => j.url === 'https://example.com/dash1'), 'Dashboard job with URL should be migrated');
-	assert.ok(data.jobDashboard.some(j => j.id === 'manual-legacy-1'), 'Dashboard job with manual ID should be migrated');
-	assert.ok(data.jobDashboard.some(j => j.id === 'manual-legacy-2'), 'Second dashboard job with manual ID should be migrated');
 });
 
 // ─── setScrapingRun UPSERT preserves flags ──────────────────────────────
