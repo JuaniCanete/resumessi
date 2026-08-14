@@ -76,12 +76,14 @@ async function extractLinkedInCards(
     } catch {
       // ignore diagnostics errors
     }
-    const screenshotPath = path.join(process.cwd(), 'data', 'scraper-results', 'linkedin-debug.png');
-    try {
-      await page.screenshot({ path: screenshotPath, fullPage: true });
-      console.log('[LinkedIn Scraper] Saved debug screenshot to:', screenshotPath);
-    } catch {
-      // ignore screenshot errors
+    if (process.env.SCRAPER_DEBUG === 'true') {
+      const screenshotPath = path.join(process.cwd(), 'data', 'scraper-results', 'linkedin-debug.png');
+      try {
+        await page.screenshot({ path: screenshotPath, fullPage: true });
+        console.log('[LinkedIn Scraper] Saved debug screenshot to:', screenshotPath);
+      } catch {
+        // ignore screenshot errors
+      }
     }
     return;
   }
