@@ -34,6 +34,7 @@ export class MainPage {
   readonly leftSidebar: Locator;
   readonly leftOpenStub: Locator;
   readonly collapseSidebarBtn: Locator;
+  readonly btnRefreshResume: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -69,6 +70,7 @@ export class MainPage {
     this.leftSidebar = page.locator('#left-sidebar');
     this.leftOpenStub = page.locator('#left-open-stub');
     this.collapseSidebarBtn = page.locator('[aria-label="Collapse sidebar"]');
+    this.btnRefreshResume = page.getByTestId('btn-refresh-resume');
   }
 
   async goto(): Promise<void> {
@@ -186,6 +188,10 @@ export class MainPage {
   async getRefreshMessageText(): Promise<string | null> {
     await this.refreshMessage.waitFor({ state: 'visible' });
     return await this.refreshMessage.textContent();
+  }
+
+  async clickRefresh(): Promise<void> {
+    await this.btnRefreshResume.click({ force: true });
   }
 
   // ─── AI Providers Modal ─────────────────────────────────────────
