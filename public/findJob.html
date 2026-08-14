@@ -1253,7 +1253,33 @@
             min-height: 80px;
         }
 
+        .board-container::-webkit-scrollbar,
+        .board-cards-container::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+
+        .board-container::-webkit-scrollbar-track,
+        .board-cards-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .board-container::-webkit-scrollbar-thumb,
+        .board-cards-container::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 3px;
+        }
+
+        .board-container,
+        .board-cards-container {
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent) rgba(255, 255, 255, 0.05);
+        }
+
         .board-card {
+            display: flex;
+            flex-direction: column;
             background: #161920;
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 10px;
@@ -1265,6 +1291,7 @@
             word-wrap: break-word;
             user-select: none;
             transition: background 0.2s, border-color 0.2s;
+            min-height: 100px;
         }
 
         .board-card:hover {
@@ -1302,6 +1329,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 8px;
+            margin-top: auto;
         }
 
         .board-card-rounds {
