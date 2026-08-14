@@ -68,7 +68,6 @@ resumessi/
 │   │   └── types.ts            # Scraper types
 │   ├── storage/
 │   │   ├── jobDataSqlite.ts    # SQLite-backed job data storage (active)
-│   │   └── jobData.ts          # Legacy file-based storage (deprecated)
 │   ├── providers.ts            # AI provider configuration & API logic
 │   └── router.ts               # Inference router for multi-provider fallback
 ├── demo/

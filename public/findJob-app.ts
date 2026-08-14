@@ -34,9 +34,19 @@ const extractionStatus: Record<'linkedin' | 'google', 'idle' | 'extracting' | 'd
   google: 'idle',
 };
 
+// Track expanded card URL per source to preserve on re-render
+const expandedCardUrl: Record<'linkedin' | 'google', string | null> = {
+  linkedin: null,
+  google: null,
+};
+
 // Scraper state
 let scraperController: AbortController | null = null;
 let currentScraperPlatform: 'linkedin' | 'google' = 'linkedin';
+
+// Providers modal state
+let selectedProviderForModal: string | null = null;
+let cachedConfig: Record<string, unknown> | null = null;
 
 // DANGEROUS_TAGS for sanitization
 const DANGEROUS_TAGS = new Set([
@@ -417,11 +427,6 @@ function renderScrapingResults(): void {
     queryLinkWrapper.style.display = 'inline';
   }
 
-  const providerElem = document.getElementById('meta-provider');
-  if (providerElem) {
-    providerElem.textContent = activePayload.provider || 'N/A';
-  }
-
   renderPage(currentPage);
 }
 
@@ -460,6 +465,12 @@ function renderPage(page: number): void {
         }
       });
       card.classList.toggle('expanded');
+      // Track expanded card URL for preservation across re-renders
+      if (card.classList.contains('expanded')) {
+        expandedCardUrl[currentSource] = item.url;
+      } else {
+        expandedCardUrl[currentSource] = null;
+      }
     });
 
     // Header: title + actions
@@ -590,6 +601,15 @@ function renderPage(page: number): void {
 
     card.appendChild(body);
     container.appendChild(card);
+  }
+
+  // Restore expanded card if it's on the current page
+  const savedUrl = expandedCardUrl[currentSource];
+  if (savedUrl) {
+    const savedCard = container.querySelector(`.result-card[data-url="${savedUrl}"]`);
+    if (savedCard) {
+      savedCard.classList.add('expanded');
+    }
   }
 
   const pagination = document.getElementById('pagination');
@@ -2116,6 +2136,15 @@ async function startScraping(): Promise<void> {
       currentRunId = data.runId;
     }
     payloadsBySource[currentScraperPlatform] = data;
+    
+    // If no results returned, show toast and don't start polling
+    if (!data.results || data.results.length === 0) {
+      if (overlay) overlay.style.display = 'none';
+      showToast({ message: 'No results found for this search.', type: 'warning' });
+      renderScrapingResults();
+      return;
+    }
+    
     extractionStatus[currentScraperPlatform] = 'extracting';
     sessionStorage.setItem('scraper-results', JSON.stringify(data));
     localStorage.setItem(getScraperResultsStorageKey(currentScraperPlatform), JSON.stringify(data));
@@ -2258,6 +2287,206 @@ document.addEventListener('click', (e: MouseEvent) => {
   }
 });
 
+// ─── AI Providers Modal Functions ───────────────────────────────────
+
+async function loadEnv(): Promise<Record<string, unknown>> {
+  if (cachedConfig) return cachedConfig;
+  try {
+    const resp = await fetch('/config.json');
+    if (resp.ok) {
+      cachedConfig = await resp.json() as Record<string, unknown>;
+      return cachedConfig;
+    }
+  } catch (e) {
+    console.warn('Could not load config.json, using defaults', e);
+  }
+  cachedConfig = {};
+  return cachedConfig;
+}
+
+async function openProvidersModal(): Promise<void> {
+  const modal = document.getElementById('providers-modal');
+  if (!modal) return;
+
+  const env = await loadEnv();
+  const availableProviders = (env.availableProviders as string[]) || [];
+  const currentSelected = localStorage.getItem('selected-ai-provider') || (env.primaryProvider as string) || null;
+  selectedProviderForModal = currentSelected;
+
+  const subtitleEl = document.getElementById('providers-modal-subtitle');
+  const listEl = document.getElementById('providers-list');
+  const emptyMsgEl = document.getElementById('providers-empty-message');
+  const actionsEl = document.getElementById('providers-modal-actions');
+  const cancelBtn = document.getElementById('providers-cancel-btn');
+  const confirmBtn = document.getElementById('providers-confirm-btn');
+
+  if (availableProviders.length === 0) {
+    if (subtitleEl) subtitleEl.style.display = 'none';
+    if (listEl) listEl.style.display = 'none';
+    if (emptyMsgEl) emptyMsgEl.style.display = 'block';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (confirmBtn) {
+      confirmBtn.style.display = 'inline-block';
+      confirmBtn.style.flex = '0 0 auto';
+      confirmBtn.style.alignSelf = 'center';
+      confirmBtn.style.width = 'auto';
+    }
+    if (actionsEl) {
+      actionsEl.style.flexDirection = 'row';
+      actionsEl.style.justifyContent = 'center';
+    }
+  } else {
+    if (subtitleEl) subtitleEl.style.display = 'block';
+    if (listEl) listEl.style.display = 'grid';
+    if (emptyMsgEl) emptyMsgEl.style.display = 'none';
+    if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    if (confirmBtn) {
+      confirmBtn.style.display = 'inline-block';
+      confirmBtn.style.flex = '1';
+      confirmBtn.style.alignSelf = '';
+      confirmBtn.style.width = '';
+    }
+    if (actionsEl) {
+      actionsEl.style.flexDirection = 'row';
+      actionsEl.style.justifyContent = 'stretch';
+    }
+    renderProvidersList(availableProviders, (env.primaryProvider as string) || null);
+  }
+
+  modal.style.display = 'flex';
+  actionsEl!.style.display = 'flex';
+}
+
+function closeProvidersModal(): void {
+  const modal = document.getElementById('providers-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+function renderProvidersList(providers: string[], selectedProvider: string | null): void {
+  const listEl = document.getElementById('providers-list');
+  if (!listEl) return;
+
+  const providerIcons: Record<string, string> = {
+    cohere: '/public/assets/cohere_icon.png',
+    mistral: '/public/assets/mistral_icon.png',
+    gemini: '/public/assets/gemini_icon.png',
+    groq: '/public/assets/groq_icon.png',
+    default: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ctext y="1em" font-size="20"%3E🤖%3C/text%3E%3C/svg%3E',
+  };
+
+  const providerModels: Record<string, string> = {
+    cohere: 'command-a-reasoning-08-2025-08-2024',
+    mistral: 'codestral-2508',
+    gemini: 'gemini-3.6-flash',
+    groq: 'openai/gpt-oss-120b',
+    default: 'Unknown model',
+  };
+
+  const providerDescriptions: Record<string, string> = {
+    cohere: 'Balanced performance, strong for general tasks',
+    mistral: 'Fast, multilingual, great for reasoning',
+    gemini: 'Google\'s latest model, vision capable',
+    groq: 'Ultra-fast inference, Llama architecture',
+    default: 'AI provider for resume generation',
+  };
+
+  const currentSelected = localStorage.getItem('selected-ai-provider') || selectedProvider;
+
+  listEl.textContent = '';
+
+  for (const provider of providers) {
+    const isSelected = provider === currentSelected;
+    const icon = providerIcons[provider] || providerIcons.default;
+    const model = providerModels[provider] || providerModels.default;
+    const desc = providerDescriptions[provider] || providerDescriptions.default;
+    const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
+
+    const item = document.createElement('div');
+    item.className = 'provider-item';
+    item.dataset.provider = provider;
+    item.addEventListener('click', () => selectProviderInModal(provider));
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'provider-checkbox';
+    checkbox.checked = isSelected;
+    checkbox.addEventListener('click', (event: Event) => {
+      event.stopPropagation();
+      selectProviderInModal(provider);
+    });
+
+    const header = document.createElement('div');
+    header.className = 'provider-header';
+
+    const img = document.createElement('img');
+    img.src = icon;
+    img.alt = provider;
+    img.className = 'provider-img';
+    img.addEventListener('error', () => { img.style.display = 'none'; });
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'provider-name';
+    nameSpan.textContent = displayName;
+
+    header.appendChild(img);
+    header.appendChild(nameSpan);
+
+    const modelDiv = document.createElement('div');
+    modelDiv.className = 'provider-model';
+    modelDiv.textContent = model;
+
+    const descDiv = document.createElement('div');
+    descDiv.className = 'provider-description';
+    descDiv.textContent = desc;
+
+    item.appendChild(checkbox);
+    item.appendChild(header);
+    item.appendChild(modelDiv);
+    item.appendChild(descDiv);
+
+    listEl.appendChild(item);
+  }
+
+  setTimeout(() => {
+    document.querySelectorAll('.provider-item').forEach(item => {
+      if ((item as HTMLElement).dataset.provider === currentSelected) {
+        item.classList.add('selected');
+      }
+    });
+  }, 0);
+}
+
+function selectProviderInModal(provider: string): void {
+  selectedProviderForModal = provider;
+  const items = document.querySelectorAll('.provider-item');
+  items.forEach(item => {
+    item.classList.remove('selected');
+    const checkbox = item.querySelector('.provider-checkbox') as HTMLInputElement;
+    if (checkbox) checkbox.checked = false;
+  });
+  document.querySelectorAll('.provider-item').forEach(item => {
+    const el = item as HTMLElement;
+    if (el.dataset.provider === provider) {
+      el.classList.add('selected');
+      const checkbox = el.querySelector('.provider-checkbox') as HTMLInputElement;
+      if (checkbox) checkbox.checked = true;
+    }
+  });
+}
+
+function confirmProvidersSelection(): void {
+  if (selectedProviderForModal) {
+    localStorage.setItem('selected-ai-provider', selectedProviderForModal);
+  }
+  closeProvidersModal();
+}
+
+function cancelProvidersSelection(): void {
+  closeProvidersModal();
+}
+
 // ─── Global Exports ──────────────────────────────────────────────────────
 
 (window as unknown as Record<string, unknown>).prevPage = prevPage;
@@ -2286,6 +2515,10 @@ document.addEventListener('click', (e: MouseEvent) => {
 (window as unknown as Record<string, unknown>).generateCoverLetter = generateCoverLetter;
 (window as unknown as Record<string, unknown>).copyCoverLetter = copyCoverLetter;
 (window as unknown as Record<string, unknown>).downloadCoverLetter = downloadCoverLetter;
+(window as unknown as Record<string, unknown>).openProvidersModal = openProvidersModal;
+(window as unknown as Record<string, unknown>).closeProvidersModal = closeProvidersModal;
+(window as unknown as Record<string, unknown>).cancelProvidersSelection = cancelProvidersSelection;
+(window as unknown as Record<string, unknown>).confirmProvidersSelection = confirmProvidersSelection;
 
 // ─── Init ────────────────────────────────────────────────────────────────
 
