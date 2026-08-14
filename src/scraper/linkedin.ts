@@ -196,6 +196,34 @@ async function extractLinkedInJobDescription(
   }
 }
 
+/**
+ * Strip session-bearing data from authenticated page HTML before it is
+ * written to disk by SCRAPER_DEBUG. LinkedIn embeds csrfToken, sessionId,
+ * and full profile data in the DOM — never persist it unredacted.
+ */
+function redactDebugHtml(html: string): string {
+  let redacted = html;
+
+  // Remove <script> blocks that reference session tokens or user data.
+  redacted = redacted.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, match => {
+    if (/(csrfToken|csrf-token|sessionId|li_at|JSESSIONID|bscookie|voyagerIdentity)/i.test(match)) {
+      return '<!-- [redacted] script block containing session data -->';
+    }
+    return match;
+  });
+
+  // Remove hidden inputs that carry CSRF tokens.
+  redacted = redacted.replace(/<input[^>]*name=["'][^"']*csrf[^"']*["'][^>]*>/gi, '<!-- [redacted] csrf input -->');
+
+  // Redact known session-token values inside the serialized page state.
+  redacted = redacted
+    .replace(/("csrfToken"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2')
+    .replace(/("sessionId"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2')
+    .replace(/("li_at"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2');
+
+  return redacted;
+}
+
 export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult[]> {
   // Precondition: check state validity
   let isValid = await validateLinkedInStorageState();
@@ -216,55 +244,56 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
   const searchUrls = buildScraperSearchUrls(baseUrl, 'linkedin', pageCount, startPage);
   console.log(`[LinkedIn Scraper] Scraping ${searchUrls.length} page(s) starting from page ${startPage}: ${searchUrls.join(', ')}`);
 
-  const page = await context.newPage();
+const page = await context.newPage();
   const results: ScraperResult[] = [];
 
-    try {
-      for (let pageIndex = 0; pageIndex < searchUrls.length; pageIndex++) {
-        const searchUrl = searchUrls[pageIndex];
-        await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await randomDelay(2000, 4000);
+  try {
+    for (let pageIndex = 0; pageIndex < searchUrls.length; pageIndex++) {
+      const searchUrl = searchUrls[pageIndex];
+      await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await randomDelay(2000, 4000);
 
-        // Lazy-load all job cards. LinkedIn renders the first ~7 cards and
-        // keeps the remaining result slots as empty skeleton <li> placeholders
-        // that only hydrate when individually scrolled into view (their
-        // IntersectionObserver fires on per-element intersection, not on
-        // container scrollTop). The container-scroll approach below plateaus
-        // at ~7; the per-card scrollIntoView + focus approach hydrates all 25.
-        const hydrated = await page.evaluate(async () => {
-          const cards = document.querySelectorAll(
-            'li[id*="ember"][class*="ember-view"][data-occludable-job-id]'
-          );
-          for (let i = 0; i < cards.length; i++) {
-            const card = cards[i] as HTMLElement;
-            card.scrollIntoView({ block: 'center', inline: 'center' });
-            card.focus();
-            // Yield to the event loop so IntersectionObserver callbacks flush
-            await new Promise(r => setTimeout(r, 550));
-          }
-          return document.querySelectorAll('.job-card-container').length;
-        });
-        console.log(`[LinkedIn Scraper] Hydrated ${hydrated} job cards on page ${searchUrl}`);
-
-        // Save page HTML for debugging pagination/scroll behavior (opt-in via SCRAPER_DEBUG=true)
-        if (process.env.SCRAPER_DEBUG === 'true') {
-          try {
-            const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
-            if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-            const html = await page.content();
-            const debugFile = path.join(debugDir, `linkedin-page-${startPage + pageIndex}.html`);
-            fs.writeFileSync(debugFile, html);
-            console.log(`[LinkedIn Scraper] Saved debug HTML to ${debugFile}`);
-          } catch (debugErr: unknown) {
-            console.warn('[LinkedIn Scraper] Failed to save debug HTML:', (debugErr as Error).message);
-          }
+      // Lazy-load all job cards. LinkedIn renders the first ~7 cards and
+      // keeps the remaining result slots as empty skeleton <li> placeholders
+      // that only hydrate when individually scrolled into view (their
+      // IntersectionObserver fires on per-element intersection, not on
+      // container scrollTop). The container-scroll approach below plateaus
+      // at ~7; the per-card scrollIntoView + focus approach hydrates all 25.
+      const hydrated = await page.evaluate(async () => {
+        const cards = document.querySelectorAll(
+          'li[id*="ember"][class*="ember-view"][data-occludable-job-id]'
+        );
+        for (let i = 0; i < cards.length; i++) {
+          const card = cards[i] as HTMLElement;
+          card.scrollIntoView({ block: 'center', inline: 'center' });
+          card.focus();
+          // Yield to the event loop so IntersectionObserver callbacks flush
+          await new Promise(r => setTimeout(r, 550));
         }
+        return document.querySelectorAll('.job-card-container').length;
+      });
+      console.log(`[LinkedIn Scraper] Hydrated ${hydrated} job cards on page ${searchUrl}`);
 
-        // Extract job card postings from LinkedIn with selector strategies and failure diagnostics
-        await extractLinkedInCards(page, results);
-
-        console.log(`[LinkedIn Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
+      // Save page HTML for debugging pagination/scroll behavior (opt-in via SCRAPER_DEBUG=true).
+      // The HTML is redacted first to strip session tokens and profile data from disk.
+      if (process.env.SCRAPER_DEBUG === 'true') {
+        try {
+          const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
+          if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+          const html = redactDebugHtml(await page.content());
+          const debugFile = path.join(debugDir, `linkedin-page-${startPage + pageIndex}.html`);
+          fs.writeFileSync(debugFile, html);
+          console.log(`[LinkedIn Scraper] Saved redacted debug HTML to ${debugFile}`);
+        } catch (debugErr: unknown) {
+          console.warn('[LinkedIn Scraper] Failed to save debug HTML:', (debugErr as Error).message);
+        }
       }
+
+      // Extract job card postings from LinkedIn with selector strategies and failure diagnostics
+      await extractLinkedInCards(page, results);
+
+      console.log(`[LinkedIn Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
+    }
 
     // Visit individual job pages to extract the full JD
     if (results.length > 0) {

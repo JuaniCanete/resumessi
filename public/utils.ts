@@ -113,7 +113,10 @@ export function resizeImage(dataUrl: string, maxWidth: number, maxHeight: number
         return;
       }
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', quality));
+
+      const mimeMatch = dataUrl.match(/^data:(image\/[^;]+);base64,/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      resolve(canvas.toDataURL(mimeType, quality));
     };
     img.onerror = function () {
       reject(new Error('Failed to load image for resizing'));

@@ -233,6 +233,9 @@ function startPolling(source: 'linkedin' | 'google'): void {
           const prevStatus = extractionStatus[source];
           if (data.metadataExtractionStatus) {
             extractionStatus[source] = data.metadataExtractionStatus;
+          } else {
+            // No extraction status in response means extraction is not running (idle/done)
+            extractionStatus[source] = 'idle';
           }
 
           // Only re-render if we're viewing this source's tab
@@ -328,8 +331,12 @@ async function loadDataAndRender(sourceParam: 'linkedin' | 'google'): Promise<vo
         const data = await resp.json() as ScraperRunPayload;
         payloadsBySource[sourceParam] = data;
         localStorage.setItem(`scraper-results:${sourceParam}`, JSON.stringify(data));
+        // Always update extraction status based on server response
+        // If no metadataExtractionStatus in response, default to 'idle' (no extraction running)
         if (data.metadataExtractionStatus) {
           extractionStatus[sourceParam] = data.metadataExtractionStatus;
+        } else {
+          extractionStatus[sourceParam] = 'idle';
         }
       }
     } catch (err: unknown) {

@@ -56,7 +56,7 @@ export interface JobData {
 }
 
 const DATA_DIR = join(process.cwd(), 'data');
-const DB_PATH = join(DATA_DIR, 'jobdata.db');
+const DB_PATH = process.env.JOB_DATA_DB_PATH || join(DATA_DIR, 'jobdata.db');
 const LEGACY_JSON_FILE = join(DATA_DIR, 'job-data.json');
 
 // In-memory cache for scraper run payloads
@@ -848,10 +848,21 @@ export async function getSavedJobs(source?: 'linkedin' | 'google'): Promise<Scra
 export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'google', customTitle?: string): Promise<void> {
   const database = getDb();
   const title = customTitle?.trim() || result.title || 'Untitled Job';
-  const titleLower = title.toLowerCase();
-  const existing = database.prepare('SELECT COUNT(*) as count FROM job_dashboard WHERE LOWER(title) = ?').get(titleLower) as { count: number };
-  if (existing.count > 0) {
-    throw new Error('DUPLICATE_TITLE');
+
+  // Duplicate check is URL-based: the dashboard is keyed by (url, jobId), so
+  // two distinct jobs at different companies may share the same role title.
+  // Only fall back to a title check for URL-less manual entries.
+  if (result.url) {
+    const urlExisting = database.prepare('SELECT COUNT(*) as count FROM job_dashboard WHERE url = ?').get(result.url) as { count: number };
+    if (urlExisting.count > 0) {
+      throw new Error('DUPLICATE_URL');
+    }
+  } else {
+    const titleLower = title.toLowerCase();
+    const titleExisting = database.prepare('SELECT COUNT(*) as count FROM job_dashboard WHERE LOWER(title) = ?').get(titleLower) as { count: number };
+    if (titleExisting.count > 0) {
+      throw new Error('DUPLICATE_TITLE');
+    }
   }
 
   const dbTransaction = database.transaction(() => {
@@ -891,7 +902,7 @@ export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'go
 
 export async function getJobDashboard(): Promise<ScraperResult[]> {
   const database = getDb();
-  const rows = database.prepare('SELECT * FROM job_dashboard').all() as Record<string, unknown>[];
+  const rows = database.prepare('SELECT rowid, * FROM job_dashboard').all() as (Record<string, unknown> & { rowid: number })[];
   let changed = false;
   const results: ScraperResult[] = [];
 
@@ -911,18 +922,29 @@ export async function getJobDashboard(): Promise<ScraperResult[]> {
       ...parseDashboardRowFromSqlite(row),
       id: jobId,
       column: column,
-    });
+      _rowid: row.rowid,
+    } as ScraperResult & { _rowid: number });
   }
 
   if (changed) {
     const dbTransaction = database.transaction(() => {
       for (const result of results) {
-        database.prepare(
-          'UPDATE job_dashboard SET jobId = ? WHERE url = ? AND (jobId IS NULL OR jobId = \'\')'
-        ).run(result.id, result.url);
-        database.prepare(
-          'UPDATE job_dashboard SET column = ? WHERE url = ? AND (column IS NULL OR column = \'\')'
-        ).run(result.column, result.url);
+        const rowid = (result as ScraperResult & { _rowid?: number })._rowid;
+        if (result.url) {
+          database.prepare(
+            'UPDATE job_dashboard SET jobId = ? WHERE url = ? AND (jobId IS NULL OR jobId = \'\')'
+          ).run(result.id, result.url);
+          database.prepare(
+            'UPDATE job_dashboard SET column = ? WHERE url = ? AND (column IS NULL OR column = \'\')'
+          ).run(result.column, result.url);
+        } else if (rowid) {
+          database.prepare(
+            'UPDATE job_dashboard SET jobId = ? WHERE rowid = ? AND (jobId IS NULL OR jobId = \'\')'
+          ).run(result.id, rowid);
+          database.prepare(
+            'UPDATE job_dashboard SET column = ? WHERE rowid = ? AND (column IS NULL OR column = \'\')'
+          ).run(result.column, rowid);
+        }
       }
     });
     dbTransaction();
@@ -947,22 +969,24 @@ export async function updateDashboardJob(url?: string, updates: Partial<ScraperR
 
   if (setParts.length === 0) return;
 
-  const whereParts: string[] = [];
-  const whereValues: unknown[] = [];
-  if (url) {
-    whereParts.push('url = ?');
-    whereValues.push(url);
+  // AND is used when both url and jobId are present so a mismatched pair
+  // never updates two different rows. jobId alone is the authoritative key.
+  if (url && id) {
+    const stmt = database.prepare(
+      `UPDATE job_dashboard SET ${setParts.join(', ')} WHERE url = ? AND jobId = ?`
+    );
+    stmt.run(...values, url, id);
+  } else if (url) {
+    const stmt = database.prepare(
+      `UPDATE job_dashboard SET ${setParts.join(', ')} WHERE url = ?`
+    );
+    stmt.run(...values, url);
+  } else if (id) {
+    const stmt = database.prepare(
+      `UPDATE job_dashboard SET ${setParts.join(', ')} WHERE jobId = ?`
+    );
+    stmt.run(...values, id);
   }
-  if (id) {
-    whereParts.push('jobId = ?');
-    whereValues.push(id);
-  }
-  if (whereParts.length === 0) return;
-
-  const stmt = database.prepare(
-    `UPDATE job_dashboard SET ${setParts.join(', ')} WHERE ${whereParts.join(' OR ')}`
-  );
-  stmt.run(...values, ...whereValues);
 }
 
 export async function insertDashboardJob(job: ScraperResult): Promise<ScraperResult> {

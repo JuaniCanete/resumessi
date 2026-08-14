@@ -770,7 +770,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       res.end(JSON.stringify({ success: true }));
     } catch (err: unknown) {
       const message = (err as Error).message;
-      if (message === 'DUPLICATE_TITLE') {
+      if (message === 'DUPLICATE_TITLE' || message === 'DUPLICATE_URL') {
         res.writeHead(409, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Card is already on board' }));
       } else {

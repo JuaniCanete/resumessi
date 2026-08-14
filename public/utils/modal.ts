@@ -414,6 +414,7 @@ export function showApplyModal(options: ApplyModalOptions): void {
   const input = modal.querySelector('.apply-name-input') as HTMLInputElement;
 
   const close = () => {
+    document.removeEventListener('keydown', handleKeydown);
     container.style.display = 'none';
     modal.remove();
   };
