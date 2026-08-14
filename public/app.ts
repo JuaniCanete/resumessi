@@ -528,7 +528,11 @@ function renderResume(data?: Record<string, unknown>): void {
   html += '</aside>';
   html += '</div>';
 
+  const refreshBtn = container.querySelector('#btn-refresh-resume');
   container.innerHTML = html;
+  if (refreshBtn) {
+    container.appendChild(refreshBtn);
+  }
 }
 
 // ─── Resume Data Loading ────────────────────────────────────────────
