@@ -7,7 +7,6 @@ import type { ScraperResult, JobData } from '../../src/storage/jobDataSqlite';
 const TEST_DATA_DIR = join(process.cwd(), 'data-test-sqlite');
 // The module computes DATA_DIR = join(process.cwd(), 'data'), so when we
 // chdir into TEST_DATA_DIR, the DB path becomes TEST_DATA_DIR/data/jobdata.db
-const TEST_DB_PATH = join(TEST_DATA_DIR, 'data', 'jobdata.db');
 
 const originalCwd = process.cwd();
 

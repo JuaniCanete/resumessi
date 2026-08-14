@@ -6,7 +6,7 @@
 
 import Database from 'better-sqlite3';
 import { join } from 'node:path';
-import { readFileSync, mkdirSync, existsSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 
 export interface ScraperResult {
   title: string;

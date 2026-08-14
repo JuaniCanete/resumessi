@@ -156,8 +156,9 @@
             visibility: hidden;
             opacity: 0;
             position: absolute;
-            bottom: 150%;
-            left: 0;
+            top: 150%;
+            left: 50%;
+            transform: translateX(-50%);
             background: #0a0a0a;
             color: #fff;
             padding: 10px 14px;
@@ -336,8 +337,8 @@
 
         #btn-refresh-resume {
             position: absolute;
-            top: 5%;
-            right: 20%;
+            top: 2px;
+            right: 1%;
             width: 36px;
             height: 36px;
             background: var(--accent);
@@ -363,8 +364,9 @@
             visibility: hidden;
             opacity: 0;
             position: absolute;
-            bottom: 150%;
-            right: 0;
+            top: 150%;
+            left: 50%;
+            transform: translateX(-50%);
             background: #0a0a0a;
             color: #fff;
             padding: 10px 14px;
@@ -1230,13 +1232,12 @@
         </div>
 
         <div class="resume-container" id="resume-content" data-testid="resume-content">
+            <button id="btn-refresh-resume" data-testid="btn-refresh-resume" class="no-print" onclick="handleRefreshResume()" aria-label="Refresh resume">
+                <span style="line-height: 1;">↻</span>
+                <span class="btn-refresh-tooltip">Refresh resume to apply manual changes from JSON files.</span>
+            </button>
             <!-- Resume rendered dynamically by renderResume() -->
         </div>
-        <button id="btn-refresh-resume" data-testid="btn-refresh-resume" class="no-print" onclick="handleRefreshResume()" aria-label="Refresh resume">
-            <span style="line-height: 1;">⟳<span>
-            <div class="btn-refresh-tooltip">Refresh resume to apply manual changes from JSON files.</div>
-        </button>
-    </div>
     </div>
 
     <div id="right-panel" data-testid="right-panel" class="panel no-print">
