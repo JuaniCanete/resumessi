@@ -16,6 +16,7 @@ let cachedConfig: Record<string, unknown> | null = null;
 let generationController: AbortController | null = null;
 let polishController: AbortController | null = null;
 let currentDataSource: string = 'none';
+let currentResumeData: Record<string, unknown> | null = null;
 let currentPhotoDataURL: string | null = null;
 let currentPDFText = '';
 let currentPDFFileName = '';
@@ -316,10 +317,15 @@ function getPhotoPath(resumeData: { basics?: { photo?: string } }): string {
     return uploadedPhoto;
   }
   if (resumeData.basics && resumeData.basics.photo) {
-    if (resumeData.basics.photo.includes('/')) {
-      return resumeData.basics.photo;
+    const photo = resumeData.basics.photo;
+    if (photo.includes('/')) {
+      return photo;
     }
-    return `public/assets/photos/${resumeData.basics.photo}`;
+    // If loading from demo/JSON file and photo is the default placeholder, use demo image
+    if (currentDataSource === 'demo' && photo === 'photo.jpg') {
+      return '/demo/goat.jpg';
+    }
+    return `public/assets/photos/${photo}`;
   }
   return '/demo/goat.jpg';
 }
@@ -373,6 +379,7 @@ const PLACEHOLDER_DATA: Record<string, unknown> = {
 function renderResume(data?: Record<string, unknown>): void {
   const container = document.getElementById('resume-content')!;
   const d = data || PLACEHOLDER_DATA;
+  currentResumeData = d;
   const b = d.basics as Record<string, string> || {};
 
   let html = '';
@@ -1119,42 +1126,49 @@ function handlePhotoUpload(input: HTMLInputElement): void {
 async function confirmPhotoUpload(): Promise<void> {
   if (!currentPhotoDataURL) return;
 
+  // Use localStorage data if available, otherwise fall back to currentResumeData (loaded from JSON)
   const resumeDataStr = localStorage.getItem('resume-data');
+  let resumeData: Record<string, unknown>;
+  
   if (resumeDataStr) {
     try {
-      const resumeData = JSON.parse(resumeDataStr) as Record<string, unknown>;
-      if (!resumeData.basics) resumeData.basics = {};
-
-      // Resize/compress photo to avoid localStorage quota issues
-      let photoToStore = currentPhotoDataURL;
-      let resizeFailed = false;
-      try {
-        photoToStore = await resizeImage(currentPhotoDataURL, 400, 400, 0.7);
-      } catch (resizeErr) {
-        resizeFailed = true;
-        console.warn('Failed to resize photo, using original:', resizeErr);
-      }
-
-      (resumeData.basics as Record<string, unknown>).photo = photoToStore;
-      localStorage.setItem('resume-data', JSON.stringify(resumeData));
-      localStorage.setItem('uploaded-photo', photoToStore);
-      renderResume(resumeData);
-
-      fetch('/api/save-resume-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(resumeData),
-      }).catch(saveErr => {
-        console.warn('Could not save resume to server:', saveErr);
-      });
-
-      if (resizeFailed) {
-        showToast({ message: 'Photo was not optimized. If you experience storage issues, try a smaller image.', type: 'warning' });
-      }
-    } catch (e) {
-      console.error('Error updating resume with photo:', e);
-      showToast({ message: 'Failed to save photo. The image may be too large. Please try a smaller image.', type: 'error' });
+      resumeData = JSON.parse(resumeDataStr) as Record<string, unknown>;
+    } catch {
+      resumeData = currentResumeData || {};
     }
+  } else if (currentResumeData) {
+    resumeData = { ...currentResumeData }; // Clone to avoid mutating the original
+  } else {
+    resumeData = {};
+  }
+
+  if (!resumeData.basics) resumeData.basics = {};
+
+  // Resize/compress photo to avoid localStorage quota issues
+  let photoToStore = currentPhotoDataURL;
+  let resizeFailed = false;
+  try {
+    photoToStore = await resizeImage(currentPhotoDataURL, 400, 400, 0.7);
+  } catch (resizeErr) {
+    resizeFailed = true;
+    console.warn('Failed to resize photo, using original:', resizeErr);
+  }
+
+  (resumeData.basics as Record<string, unknown>).photo = photoToStore;
+  localStorage.setItem('resume-data', JSON.stringify(resumeData));
+  localStorage.setItem('uploaded-photo', photoToStore);
+  renderResume(resumeData);
+
+  fetch('/api/save-resume-data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(resumeData),
+  }).catch(saveErr => {
+    console.warn('Could not save resume to server:', saveErr);
+  });
+
+  if (resizeFailed) {
+    showToast({ message: 'Photo was not optimized. If you experience storage issues, try a smaller image.', type: 'warning' });
   }
 
   closePhotoUploadModal();
@@ -1403,9 +1417,17 @@ if (photoModal) {
   if (storedData) {
     try {
       const data = JSON.parse(storedData) as Record<string, unknown>;
-      renderResume(data);
-      currentDataSource = 'generated';
-      updatePolishButton();
+      const basics = data.basics as Record<string, unknown> | undefined;
+      // Check if localStorage data is stale (missing linkedin/github fields)
+      const hasRequiredFields = basics && typeof basics.linkedin === 'string' && typeof basics.github === 'string';
+      if (hasRequiredFields) {
+        renderResume(data);
+        currentDataSource = 'generated';
+        updatePolishButton();
+      } else {
+        // Stale data - load fresh from JSON file
+        await loadResumeData();
+      }
     } catch {
       await loadResumeData();
     }

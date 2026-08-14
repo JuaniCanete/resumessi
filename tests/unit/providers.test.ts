@@ -259,7 +259,7 @@ test('extractJsonFromText uses non-greedy match for multiple objects', () => {
   assert.equal(result, '{"id": 1}');
 });
 
-test('extractJsonFromText returns empty string when no JSON found', () => {
+test('extractJsonFromText returns input unchanged when no JSON found', () => {
   const input = 'No JSON here, just text';
   assert.equal(extractJsonFromText(input), 'No JSON here, just text');
 });

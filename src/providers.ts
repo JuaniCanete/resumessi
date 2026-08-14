@@ -300,6 +300,73 @@ function extractJsonFromText(text: string): string {
   return cleaned.slice(startIndex);
 }
 
+/**
+ * Repair unquoted JSON keys (e.g. `{name: "test"}`) without ever touching
+ * bare identifiers followed by ':' inside string values. Tracks inString /
+ * escape state iteratively, mirroring extractJsonFromText.
+ */
+function repairUnquotedJsonKeys(text: string): string {
+  let result = '';
+  let inString = false;
+  let escape = false;
+  let i = 0;
+
+  while (i < text.length) {
+    const char = text[i];
+
+    if (escape) {
+      result += char;
+      escape = false;
+      i++;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      result += char;
+      escape = true;
+      i++;
+      continue;
+    }
+
+    if (char === '"') {
+      result += char;
+      inString = !inString;
+      i++;
+      continue;
+    }
+
+    // Inside a string value — copy verbatim, never repair.
+    if (inString) {
+      result += char;
+      i++;
+      continue;
+    }
+
+    // Outside a string: detect an unquoted key `identifier :` and quote it.
+    if (/[a-zA-Z_]/.test(char)) {
+      let j = i;
+      while (j < text.length && /[a-zA-Z0-9_]/.test(text[j])) {
+        j++;
+      }
+      // Skip whitespace between the identifier and the ':'.
+      let k = j;
+      while (k < text.length && /\s/.test(text[k])) {
+        k++;
+      }
+      if (k < text.length && text[k] === ':') {
+        result += '"' + text.slice(i, j) + '"' + text.slice(j, k + 1);
+        i = k + 1;
+        continue;
+      }
+    }
+
+    result += char;
+    i++;
+  }
+
+  return result;
+}
+
 function safeJsonParse(text: string): { data: Record<string, unknown> | null; error: string | null } {
   const cleaned = extractJsonFromText(text);
   
@@ -315,10 +382,10 @@ function safeJsonParse(text: string): { data: Record<string, unknown> | null; er
     // Remove trailing commas
     repaired = repaired.replace(/,\s*([}\]])/g, '$1');
     
-    // Fix unquoted keys (line-anchored to avoid matching inside string values)
-    // NOTE: repair is line-anchored and may over-match bare identifiers inside
-    // multi-line string values. Safe for typical LLM output; tighten if needed.
-    repaired = repaired.replace(/^([\s,{]*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/gm, '$1"$2":');
+    // Fix unquoted keys by scanning character-by-character so bare identifiers
+    // followed by ':' inside string values are never touched. This mirrors the
+    // inString/escape tracking used by extractJsonFromText.
+    repaired = repairUnquotedJsonKeys(repaired);
     
     try {
       const parsed = JSON.parse(repaired) as Record<string, unknown>;

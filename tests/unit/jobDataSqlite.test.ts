@@ -297,7 +297,7 @@ test('updateDashboardJob matches by id (jobId) when only id is provided', async 
 	assert.equal(updated.title, 'Updated via ID');
 });
 
-test('updateDashboardJob uses OR clause when both url and id provided', async () => {
+test('updateDashboardJob uses AND clause when both url and id provided - requires both to match', async () => {
 	const job: ScraperResult = {
 		title: 'Dual Key Job',
 		url: 'https://example.com/dual',
@@ -313,12 +313,21 @@ test('updateDashboardJob uses OR clause when both url and id provided', async ()
 	};
 	await storage.insertDashboardJob(job);
 
+	// Provide mismatched id - should NOT update because AND requires both to match
 	await storage.updateDashboardJob('https://example.com/dual', { status: 'Interviewing' }, 'some-other-id');
 
-	const dashboard = await storage.getJobDashboard();
-	const updated = dashboard.find(j => j.url === 'https://example.com/dual');
+	let dashboard = await storage.getJobDashboard();
+	let updated = dashboard.find(j => j.url === 'https://example.com/dual');
 	assert.ok(updated, 'Job should exist');
-	assert.equal(updated.status, 'Interviewing');
+	assert.equal(updated.status, 'No News', 'Status should not change when id mismatches');
+
+	// Now provide correct id - should update
+	await storage.updateDashboardJob('https://example.com/dual', { status: 'Interviewing' }, 'dual-id-456');
+
+	dashboard = await storage.getJobDashboard();
+	updated = dashboard.find(j => j.url === 'https://example.com/dual');
+	assert.ok(updated, 'Job should exist');
+	assert.equal(updated.status, 'Interviewing', 'Status should update when both url and id match');
 });
 
 // ─── removeDashboardJob ──────────────────────────────────────────────────
