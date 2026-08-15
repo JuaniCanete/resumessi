@@ -5,7 +5,7 @@ import { buildScraperSearchUrls, buildScraperSearchUrl } from './pagination';
 import type { ScraperQuery, ScraperResult } from './types';
 import { generateLinkedInStorageState } from '../../scripts/linkedin-auth';
 
-const STORAGE_FILE = path.join(process.cwd(), 'data', 'storage-state', 'linkedin.json');
+const STORAGE_FILE = process.env.LINKEDIN_STORAGE_FILE || path.join(process.cwd(), 'data', 'storage-state', 'linkedin.json');
 
 // Markers that delimit the job description on a LinkedIn job posting page.
 // The content between these two markers is the actual JD text.
@@ -25,6 +25,61 @@ const LINKEDIN_RESULT_SELECTOR_STRATEGIES: string[] = [
   'li[data-occludable-job-id]',
   'article.job-card, div.job-card',
 ];
+
+/**
+ * Typed error thrown when the LinkedIn session (data/storage-state/linkedin.json)
+ * is missing, expired, or redirected to login. The server surfaces this to the
+ * user instead of silently falling back to an unauthenticated fetch (which would
+ * re-fetch the login page and recreate the collection misclassification).
+ */
+export class LinkedInSessionExpiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'LinkedInSessionExpiredError';
+  }
+}
+
+/**
+ * Normalize a LinkedIn wrapper URL (collections/search + currentJobId) to the
+ * canonical single-job form `https://www.linkedin.com/jobs/view/{id}/`.
+ *
+ * Returns:
+ *  - the canonical URL when the input is a LinkedIn job wrapper or a canonical
+ *    `/jobs/view/{id}` URL,
+ *  - `null` for non-job LinkedIn pages or non-LinkedIn hosts (caller falls back),
+ *  - throws on a non-digit `currentJobId` to prevent path/host injection when
+ *    rebuilding the URL.
+ */
+export function normalizeLinkedInJobUrl(rawUrl: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+
+  if (!parsed.hostname.endsWith('linkedin.com')) return null;
+
+  const pathname = parsed.pathname;
+
+  // Already canonical: /jobs/view/{id}/
+  const viewMatch = pathname.match(/^\/jobs\/view\/(\d+)\/?$/);
+  if (viewMatch) {
+    return `https://www.linkedin.com/jobs/view/${viewMatch[1]}/`;
+  }
+
+  // Wrapper: /collections/... or /search/... with a currentJobId param
+  const isWrapper = pathname.includes('/collections/') || pathname.includes('/search/');
+  const currentJobId = parsed.searchParams.get('currentJobId');
+  if (isWrapper && currentJobId) {
+    if (!/^\d+$/.test(currentJobId)) {
+      throw new Error(`Invalid LinkedIn currentJobId: ${currentJobId}`);
+    }
+    return `https://www.linkedin.com/jobs/view/${currentJobId}/`;
+  }
+
+  return null;
+}
 
 /**
  * Extract LinkedIn job card blocks from the current page.
@@ -116,9 +171,17 @@ async function extractLinkedInCards(
       // ignore company extraction errors
     }
 
+    const rawUrl = url.startsWith('http') ? url : `https://www.linkedin.com${url}`;
+    let canonicalUrl = rawUrl;
+    try {
+      canonicalUrl = normalizeLinkedInJobUrl(rawUrl) ?? rawUrl;
+    } catch {
+      // keep raw URL if normalization fails (e.g. non-digit currentJobId)
+    }
+
     results.push({
       title,
-      url: url.startsWith('http') ? url : `https://www.linkedin.com${url}`,
+      url: canonicalUrl,
       snippet: company ? `Company: ${company}` : '',
       source: 'linkedin',
       company,
@@ -152,6 +215,26 @@ export function buildLinkedInSearchUrl(query: ScraperQuery): string {
 }
 
 /**
+ * Extract the job description text from a LinkedIn page body, between the
+ * "About the job" and "Set alert for similar jobs" markers. Returns '' when
+ * the start marker is not found. Shared by the scraper and the authenticated
+ * Check-JD fetch.
+ */
+export function extractJdTextFromBody(bodyText: string): string {
+  if (!bodyText) return '';
+
+  const startIdx = bodyText.indexOf(JD_START_MARKER);
+  if (startIdx === -1) return '';
+
+  const searchStart = startIdx + JD_START_MARKER.length;
+  const endIdx = bodyText.indexOf(JD_END_MARKER, searchStart);
+  const contentStart = startIdx + JD_START_MARKER.length;
+  const contentEnd = endIdx === -1 ? bodyText.length : endIdx;
+
+  return bodyText.substring(contentStart, contentEnd).trim();
+}
+
+/**
  * Navigate to an individual LinkedIn job posting page and extract the job
  * description text between the "About the job" and "Set alert for similar
  * jobs" markers.
@@ -175,26 +258,78 @@ async function extractLinkedInJobDescription(
       return '';
     }
 
-    const startIdx = bodyText.indexOf(JD_START_MARKER);
-    const searchStart = startIdx >= 0 ? startIdx + JD_START_MARKER.length : 0;
-    const endIdx = bodyText.indexOf(JD_END_MARKER, searchStart);
-
+    const jdText = extractJdTextFromBody(bodyText);
     console.log(
       `[LinkedIn Scraper] JD markers for ${jobUrl}: ` +
-      `JD_START_MARKER="${JD_START_MARKER}" ${startIdx >= 0 ? 'FOUND' : 'NOT FOUND'}, ` +
-      `JD_END_MARKER="${JD_END_MARKER}" ${endIdx >= 0 ? 'FOUND' : 'NOT FOUND'}`,
+      `JD_START_MARKER="${JD_START_MARKER}" ${bodyText.includes(JD_START_MARKER) ? 'FOUND' : 'NOT FOUND'}, ` +
+      `JD_END_MARKER="${JD_END_MARKER}" ${bodyText.includes(JD_END_MARKER) ? 'FOUND' : 'NOT FOUND'}`,
     );
-
-    if (startIdx === -1) return '';
-
-    const contentStart = startIdx + JD_START_MARKER.length;
-    const contentEnd = endIdx === -1 ? bodyText.length : endIdx;
-
-    const jdText = bodyText.substring(contentStart, contentEnd).trim();
     return jdText;
   } catch (err: unknown) {
     console.warn(`[LinkedIn Scraper] JD extraction failed for ${jobUrl}:`, (err as Error).message);
     return '';
+  }
+}
+
+/**
+ * Session-validated JD extraction. Pure helper shared by the browser path and
+ * unit tests: if the final page URL indicates a login/checkpoint redirect, the
+ * session is invalid and a LinkedInSessionExpiredError is thrown (so the caller
+ * never falls through to an unauthenticated fetch). Otherwise the JD markers
+ * are extracted from the page body.
+ */
+export function extractLinkedInJdFromPage(pageUrl: string, bodyText: string): string {
+  if (pageUrl.includes('/login') || pageUrl.includes('/checkpoint')) {
+    throw new LinkedInSessionExpiredError(
+      'LinkedIn session expired. Run: tsx scripts/linkedin-auth.ts',
+    );
+  }
+  return extractJdTextFromBody(bodyText);
+}
+
+/**
+ * Fetch a single LinkedIn job description via the authenticated Playwright
+ * path (uses data/storage-state/linkedin.json). Normalizes wrapper URLs to the
+ * canonical jobs/view form, validates the session inline (single browser
+ * launch), and extracts the JD between the standard markers.
+ *
+ * Returns the JD text, or '' when the URL is not a LinkedIn job page or the
+ * markers are not found. Throws LinkedInSessionExpiredError when the session
+ * is missing/expired so the caller can surface it — never silently fall back
+ * to an unauthenticated fetch (that would re-fetch the login page and recreate
+ * the collection misclassification).
+ */
+export async function fetchLinkedInJobDescription(rawUrl: string): Promise<string> {
+  const jobUrl = normalizeLinkedInJobUrl(rawUrl);
+  if (!jobUrl) return '';
+
+  const { browser, context } = await launchStealthBrowser({
+    headless: true,
+    storageStatePath: STORAGE_FILE,
+  });
+
+  try {
+    const page = await context.newPage();
+    await page.goto(jobUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+
+    // Wait for the JD to render (LinkedIn renders it client-side) instead of a
+    // blind delay. Timeout is non-fatal: extraction below returns '' if absent.
+    await page.waitForFunction(
+      () => document.body && document.body.innerText.includes('About the job'),
+      { timeout: 15000 },
+    ).catch(() => {});
+
+    const bodyText = await page.evaluate(() => {
+      const body = document.body;
+      return body ? body.innerText : '';
+    });
+
+    // Inline session validation: if redirected to login/checkpoint, the stored
+    // session is invalid. Throws so the caller surfaces it instead of falling
+    // back to an unauthenticated fetch.
+    return extractLinkedInJdFromPage(page.url(), bodyText);
+  } finally {
+    await browser.close();
   }
 }
 

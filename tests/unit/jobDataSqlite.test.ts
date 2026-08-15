@@ -4,9 +4,9 @@ import { join } from 'node:path';
 import { rmSync, mkdirSync, existsSync } from 'node:fs';
 import type { ScraperResult, JobData } from '../../src/storage/jobDataSqlite';
 
-const TEST_DATA_DIR = join(process.cwd(), 'data-test-sqlite');
+const TEST_DATA_DIR = join(process.cwd(), 'data', 'test', 'sqlite-unit');
 // The module computes DATA_DIR = join(process.cwd(), 'data'), so when we
-// chdir into TEST_DATA_DIR, the DB path becomes TEST_DATA_DIR/data/jobdata.db
+// chdir into TEST_DATA_DIR, the DB path becomes TEST_DATA_DIR/jobdata.db
 
 const originalCwd = process.cwd();
 
@@ -15,21 +15,32 @@ const originalCwd = process.cwd();
 let storage: typeof import('../../src/storage/jobDataSqlite');
 
 before(async () => {
-	if (existsSync(TEST_DATA_DIR)) {
-		rmSync(TEST_DATA_DIR, { recursive: true, force: true });
-	}
-	// Create the data/ subdirectory inside TEST_DATA_DIR — the module's
-	// getDb() will call ensureDataDir() which creates DATA_DIR = cwd/data
-	const internalDataDir = join(TEST_DATA_DIR, 'data');
-	mkdirSync(internalDataDir, { recursive: true });
+  // Clean up any previous test artifacts
+  if (existsSync(TEST_DATA_DIR)) {
+    rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+  }
+  mkdirSync(TEST_DATA_DIR, { recursive: true });
 
-	// Change cwd to TEST_DATA_DIR so the module uses our test DB
-	process.chdir(TEST_DATA_DIR);
-	storage = await import('../../src/storage/jobDataSqlite');
+  // Change cwd to TEST_DATA_DIR so the module uses our test DB
+  process.chdir(TEST_DATA_DIR);
+  storage = await import('../../src/storage/jobDataSqlite');
 });
 
 after(() => {
-	process.chdir(originalCwd);
+  process.chdir(originalCwd);
+  // Clean up test database files after tests complete
+  try {
+    storage.closeStorage();
+  } catch {
+    // Ignore close errors
+  }
+  if (existsSync(TEST_DATA_DIR)) {
+    try {
+      rmSync(TEST_DATA_DIR, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
+    } catch {
+      // Ignore - file may be locked by OS on Windows after close
+    }
+  }
 });
 
 beforeEach(() => {

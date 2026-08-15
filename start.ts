@@ -13,7 +13,12 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { getProviderConfig, validateInferenceRequest, safeJsonParse } from './src/providers';
 import { runInference, runPolish } from './src/router';
-import { scrapeLinkedIn, validateLinkedInStorageState } from './src/scraper/linkedin';
+import {
+  scrapeLinkedIn,
+  validateLinkedInStorageState,
+  fetchLinkedInJobDescription,
+  LinkedInSessionExpiredError,
+} from './src/scraper/linkedin';
 import { scrapeGoogle } from './src/scraper/google';
 import { generateLinkedInStorageState } from './scripts/linkedin-auth';
 import { getRequestPath } from './src/scraper/runtime-utils';
@@ -34,6 +39,7 @@ import {
   clearScrapingRunCache,
   initStorage,
   insertDashboardJob,
+  clearTestDashboardData,
 } from './src/storage/jobDataSqlite';
 import * as https from 'https';
 
@@ -124,11 +130,12 @@ function getConfigFromEnv(): Record<string, string | string[] | null | undefined
     clientSafe[key] = value;
   }
 
-   const providerConfig = getProviderConfig(env);
+  const providerConfig = getProviderConfig(env);
 
-   clientSafe.AI_INFERENCE_ORDER = env.AI_INFERENCE_ORDER || 'cohere,mistral,gemini,groq';
-   clientSafe.availableProviders = providerConfig.configured;
-   clientSafe.primaryProvider = providerConfig.configured[0] || null;
+  clientSafe.AI_INFERENCE_ORDER = env.AI_INFERENCE_ORDER || 'cohere,mistral,gemini,groq';
+  clientSafe.availableProviders = providerConfig.configured;
+  clientSafe.primaryProvider = providerConfig.configured[0] || null;
+  clientSafe.NODE_ENV = process.env.NODE_ENV || 'production';
 
   return clientSafe;
 }
@@ -892,6 +899,24 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     return;
   }
 
+  if (requestPath === '/api/job-data/dashboard/clear-test' && req.method === 'POST') {
+    try {
+      // Only allow in test mode
+      if (process.env.NODE_ENV !== 'test') {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Forbidden: only available in test mode' }));
+        return;
+      }
+      await clearTestDashboardData();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (err as Error).message }));
+    }
+    return;
+  }
+
   if (requestPath === '/api/rollback' && req.method === 'POST') {
     const filePath = path.join(ROOT, 'src', 'resume', 'output', 'resume-data-AI-polished.json');
 
@@ -940,7 +965,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         if (!ALLOWED_HOSTS.has(parsed.hostname)) throw new Error('Host not allowed');
         return parsed;
       };
-      validateUrl(url);
+      const parsedUrl = validateUrl(url);
 
       // Fetch the URL content (follows redirects, sets realistic User-Agent)
       const fetchUrl = (urlStr: string, maxRedirects = 5): Promise<string> => {
@@ -981,7 +1006,29 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         });
       };
 
-      const html = await fetchUrl(url);
+      let html: string;
+      if (parsedUrl.hostname.endsWith('linkedin.com')) {
+        // Authenticated Playwright fetch for LinkedIn: normalizes wrapper URLs
+        // and uses the stored session. A session-expiry must surface to the user
+        // (503), never fall through to the unauthenticated https.get (which would
+        // re-fetch the login page and recreate the collection misclassification).
+        try {
+          const linkedInText = await fetchLinkedInJobDescription(url);
+          html = linkedInText || '';
+        } catch (err: unknown) {
+          if (err instanceof LinkedInSessionExpiredError) {
+            res.writeHead(503, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'LINKEDIN_SESSION_EXPIRED', message: err.message }));
+            return;
+          }
+          // Other Playwright errors → surface error to user, no unauthenticated fallback
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Failed to fetch LinkedIn job description: ' + (err as Error).message }));
+          return;
+        }
+      } else {
+        html = await fetchUrl(url);
+      }
 
       // Simple HTML to text extraction
       const text = html
@@ -1230,7 +1277,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     }
     try {
       const body = await getRequestBody(req);
-      const { jobDescription } = JSON.parse(body);
+      const { jobDescription, provider } = JSON.parse(body) as { jobDescription?: string; provider?: string };
 
       if (!jobDescription || typeof jobDescription !== 'string') {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1310,7 +1357,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
           basePrompt,
           { temperature: 0, max_tokens: 2048, top_p: 0.1 },
           env,
-          null,
+          provider || null,
           null,
           null,
           'ats',

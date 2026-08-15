@@ -5,7 +5,7 @@
  */
 
 import Database from 'better-sqlite3';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
 
 export interface ScraperResult {
@@ -66,6 +66,12 @@ let cachedRuns: Record<string, ScraperRunPayload> = {};
 function ensureDataDir(): void {
   try {
     mkdirSync(DATA_DIR, { recursive: true });
+    // Also ensure the parent directory of the actual DB path exists
+    // (handles custom JOB_DATA_DB_PATH in subdirectories like data/test/)
+    const dbDir = dirname(DB_PATH);
+    if (dbDir !== DATA_DIR) {
+      mkdirSync(dbDir, { recursive: true });
+    }
   } catch {
     // Directory exists
   }
@@ -76,6 +82,10 @@ let db: Database.Database | null = null;
 function getDb(): Database.Database {
   if (db) return db;
   ensureDataDir();
+  // Warn if a test DB path is used in production (non-test) mode
+  if (process.env.NODE_ENV !== 'test' && (DB_PATH.includes('-test') || DB_PATH.includes('/test/'))) {
+    console.warn(`[Storage] WARNING: Using test database path: ${DB_PATH}. Set NODE_ENV=test to suppress this warning.`);
+  }
   db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
@@ -983,6 +993,12 @@ export async function removeDashboardJob(url?: string, id?: string): Promise<voi
   } else if (id) {
     database.prepare('DELETE FROM job_dashboard WHERE jobId = ?').run(id);
   }
+}
+
+export async function clearTestDashboardData(): Promise<void> {
+  const database = getDb();
+  database.prepare('DELETE FROM job_dashboard').run();
+  cachedRuns = {};
 }
 
 // --- Close ---

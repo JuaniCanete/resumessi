@@ -67,4 +67,8 @@ data/jobdata.db-wal
 data/jobdata.db-shm
 tests/data/
 
+# Test database files
+data/test/
+data-test-sqlite/
+
 

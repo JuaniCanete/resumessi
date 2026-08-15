@@ -60,12 +60,12 @@ function toggleLeft(): void {
   document.body.classList.toggle('left-collapsed');
 }
 
-function openRight(): void {
+function openAtsSidebar(): void {
   document.getElementById('right-panel')!.classList.add('open');
   document.body.classList.add('right-open');
 }
 
-function closeRight(): void {
+function closeAtsSidebar(): void {
   const panel = document.getElementById('right-panel')!;
   panel.classList.remove('open', 'expanded');
   document.getElementById('rp-expand-btn')!.classList.remove('active');
@@ -182,7 +182,7 @@ function applyScanResultsToUI(screening: Record<string, unknown>): void {
   document.getElementById('scan-again-msg')!.style.display = 'none';
   document.getElementById('rp-breakdown-section')!.style.display = 'block';
 
-  openRight();
+  openAtsSidebar();
 }
 
 // ─── JD Validation ──────────────────────────────────────────────────
@@ -287,7 +287,7 @@ async function runAtsScan(): Promise<void> {
     } else {
       modelErrorMsg.textContent = 'API response: ' + (err as Error).message + '.';
       modelErrorMsg.style.color = 'var(--error)';
-      openRight();
+      openAtsSidebar();
       console.error(err);
     }
   } finally {
@@ -2031,8 +2031,8 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 
 // Expose functions globally for inline onclick handlers in main.html
 (window as unknown as Record<string, unknown>).toggleLeft = toggleLeft;
-(window as unknown as Record<string, unknown>).openRight = openRight;
-(window as unknown as Record<string, unknown>).closeRight = closeRight;
+(window as unknown as Record<string, unknown>).openAtsSidebar = openAtsSidebar;
+(window as unknown as Record<string, unknown>).closeAtsSidebar = closeAtsSidebar;
 (window as unknown as Record<string, unknown>).expandRight = expandRight;
 (window as unknown as Record<string, unknown>).validateJDInput = validateJDInput;
 (window as unknown as Record<string, unknown>).handleScanButtonClick = handleScanButtonClick;

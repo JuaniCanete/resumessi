@@ -682,6 +682,36 @@
             background: #1e293b;
         }
 
+        /* ── ATS Sidebar Open Stub ─────────────────────────── */
+        #ats-open-stub {
+            position: fixed;
+            top: 14px;
+            right: 0;
+            z-index: 300;
+            width: 26px;
+            height: 44px;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px 0 0 8px;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: -3px 0 8px rgba(0, 0, 0, 0.3);
+            transition: color 0.2s, background 0.2s;
+        }
+
+        #ats-open-stub:hover {
+            color: var(--accent);
+            background: #1e293b;
+        }
+
+        body.ats-open #ats-open-stub {
+            display: none !important;
+        }
+
         /* ── Action buttons on cards ───────────────────── */
         .result-card-actions {
             display: flex;
@@ -1621,6 +1651,9 @@
 
 <body>
 
+    <!-- ATS Sidebar Open Stub -->
+    <button id="ats-open-stub" onclick="openAtsSidebar()" title="ATS Results" aria-label="ATS Results">&#9776;</button>
+
     <!-- Sidebar Open Stub -->
     <button id="sidebar-open-stub" onclick="toggleSidebar()" title="Open sidebar" aria-label="Open sidebar">&#9776;</button>
 
@@ -1646,7 +1679,7 @@
                     Saved Jobs
                 </button>
                 <button class="sidebar-tab" data-tab="dashboard" onclick="switchTab('dashboard')">
-                    <span class="tab-icon">📊</span>
+                    <span class="tab-icon">🗃️</span>
                     Job Dashboard
                 </button>
                 <button class="sidebar-tab" data-tab="start-scraping" onclick="openJobScraperModal()">
@@ -1749,6 +1782,10 @@
                         <div class="title">Job Dashboard</div>
                     </div>
                     <p style="font-size: 13px; color: #94a3b8; margin-bottom: 12px;">Mark jobs as "Applied?" from Scraping Results or Saved Jobs pages to track them here or create jobs manually using "+ Add a card".</p>
+                    <div id="test-data-warning" style="display: none; padding: 10px 14px; margin-bottom: 12px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; font-size: 12px; color: #fbbf24; align-items: center; gap: 10px;">
+                        <span>⚠ Test mode active — dashboard may show test data</span>
+                        <button id="clear-test-data-btn" class="p-btn p-btn-secondary" style="margin-top: 0; padding: 6px 12px; font-size: 11px;" onclick="clearTestData()">Clear Test Data</button>
+                    </div>
                     <div class="meta-row">
                         <div class="meta-item">Total Applications: <span id="dashboard-meta-total">0</span></div>
                         <div class="meta-item">Statuses: <span id="dashboard-meta-statuses">None</span></div>
@@ -1758,6 +1795,10 @@
             </div>
         </div>
     </div>
+
+    <!-- ATS Sidevbar Open Stub -->
+    <button id="ats-sidebar-open-stub" onclick="openAtsSidebar()" title="Open ATS sidebar" aria-label="Open ATS sidebar">&#9776;</button>
+
 
     <!-- ATS Sidebar -->
     <div id="ats-sidebar">
