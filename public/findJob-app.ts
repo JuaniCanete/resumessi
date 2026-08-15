@@ -1619,6 +1619,14 @@ function scoreColor(score: number): string {
 }
 
 function applyAtsResultsToUI(screening: Record<string, unknown>): void {
+  // Persist the scan under a findJob-specific key so it survives navigation
+  // without overwriting the main page's scan (which uses 'ats-scan-results').
+  try {
+    sessionStorage.setItem('ats-scan-results-findjob', JSON.stringify(screening));
+  } catch {
+    // ignore storage errors
+  }
+
   const circle = document.getElementById('ats-score-circle')!;
   circle.textContent = String(screening.overall_score);
 
@@ -1745,7 +1753,14 @@ function openJdEditModal(item: ScraperResult): void {
       scanBtn.disabled = false;
       if (loading) loading.classList.remove('show');
     })
-    .catch(() => {
+    .catch((err) => {
+      // Session-expired: surface the message instead of silently running
+      // clean-jd on the fallback content (which would recreate the bug).
+      if (err instanceof Error && err.message.includes('LinkedIn session expired')) {
+        closeJdEditModal();
+        showJdCollectionModal(err.message);
+        return;
+      }
       textarea.value = fallbackContent;
       textarea.disabled = false;
       scanBtn.disabled = false;
@@ -1776,8 +1791,19 @@ async function fetchJobDescription(url: string): Promise<string> {
       const data = await resp.json() as { text: string };
       return data.text;
     }
-  } catch {
-    // Fallback
+    // Surface a LinkedIn session-expiry so the caller can tell the user to
+    // regenerate the session, instead of silently falling back to the login page.
+    if (resp.status === 503) {
+      const errData = await resp.json() as { error?: string; message?: string };
+      if (errData.error === 'LINKEDIN_SESSION_EXPIRED') {
+        throw new Error(errData.message || 'LinkedIn session expired. Run: tsx scripts/linkedin-auth.ts');
+      }
+    }
+  } catch (err) {
+    // Re-throw the session-expired error; swallow all other errors (fallback).
+    if (err instanceof Error && err.message.includes('LinkedIn session expired')) {
+      throw err;
+    }
   }
   return '';
 }
@@ -1802,10 +1828,11 @@ async function runAtsScanFromResults(): Promise<void> {
   openAtsSidebar();
 
   try {
+    const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
     const resp = await fetch('/api/ats/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobDescription: jdText }),
+      body: JSON.stringify({ jobDescription: jdText, provider: selectedProvider }),
     });
 
     if (!resp.ok) {
@@ -2515,10 +2542,13 @@ function cancelProvidersSelection(): void {
 (window as unknown as Record<string, unknown>).generateCoverLetter = generateCoverLetter;
 (window as unknown as Record<string, unknown>).copyCoverLetter = copyCoverLetter;
 (window as unknown as Record<string, unknown>).downloadCoverLetter = downloadCoverLetter;
+(window as unknown as Record<string, unknown>).openAtsSidebar = openAtsSidebar;
+(window as unknown as Record<string, unknown>).openAtsSidebar = openAtsSidebar;
 (window as unknown as Record<string, unknown>).openProvidersModal = openProvidersModal;
 (window as unknown as Record<string, unknown>).closeProvidersModal = closeProvidersModal;
 (window as unknown as Record<string, unknown>).cancelProvidersSelection = cancelProvidersSelection;
 (window as unknown as Record<string, unknown>).confirmProvidersSelection = confirmProvidersSelection;
+(window as unknown as Record<string, unknown>).clearTestData = clearTestData;
 
 // ─── Init ────────────────────────────────────────────────────────────────
 
@@ -2548,4 +2578,48 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   switchResultsTab(sourceParam);
+
+  // Restore the latest findJob ATS scan (if any) so the sidebar shows it
+  // after navigating back to this page.
+  try {
+    const raw = sessionStorage.getItem('ats-scan-results-findjob');
+    if (raw) {
+      const saved = JSON.parse(raw) as Record<string, unknown>;
+      applyAtsResultsToUI(saved);
+      openAtsSidebar();
+    }
+  } catch {
+    // ignore malformed saved scan
+  }
+
+  // Check for test mode and show warning banner
+  fetch('/config.json')
+    .then(r => r.json())
+    .then(config => {
+      const isTestMode = config.NODE_ENV === 'test';
+      const warning = document.getElementById('test-data-warning');
+      const clearBtn = document.getElementById('clear-test-data-btn');
+      if (warning && isTestMode) {
+        warning.style.display = 'flex';
+      }
+      if (clearBtn && isTestMode) {
+        clearBtn.style.display = 'inline-flex';
+      }
+    })
+    .catch(() => {
+      // Ignore config fetch errors
+    });
 });
+
+async function clearTestData(): Promise<void> {
+  if (!confirm('This will delete ALL dashboard cards. Are you sure?')) return;
+
+  try {
+    const resp = await fetch('/api/job-data/dashboard/clear-test', { method: 'POST' });
+    if (!resp.ok) throw new Error('Failed to clear test data');
+    showToast({ message: 'Test data cleared', type: 'success' });
+    renderDashboard();
+  } catch (err: unknown) {
+    showToast({ message: 'Failed to clear test data: ' + (err as Error).message, type: 'error' });
+  }
+}

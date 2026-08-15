@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 import { join } from 'node:path';
 
-const TEST_DB_PATH = join(__dirname, '..', 'data', 'jobdata-test.db');
+const TEST_DB_PATH = join(__dirname, '..', 'data', 'test', 'jobdata-test.db');
 
 export default defineConfig({
   timeout: 15000,
@@ -19,7 +19,7 @@ export default defineConfig({
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
   webServer: {
-    command: `cmd.exe /c "set PORT=3001&& set JOB_DATA_DB_PATH=${TEST_DB_PATH}&& npx tsx ..\\start.ts --no-open"`,
+    command: `cmd.exe /c "set PORT=3001&& set NODE_ENV=test&& set JOB_DATA_DB_PATH=${TEST_DB_PATH}&& npx tsx ..\\start.ts --no-open"`,
     url: 'http://localhost:3001/public/main.html',
     reuseExistingServer: false,
     timeout: 60000,

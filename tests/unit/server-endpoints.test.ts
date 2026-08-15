@@ -7,7 +7,7 @@ import { rmSync } from 'node:fs';
 
 const TEST_PORT = 3447;
 const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
-const TEST_DB = join(__dirname, '..', '..', 'data', 'jobdata-unit-test.db');
+const TEST_DB = join(__dirname, '..', '..', 'data', 'test', 'jobdata-unit-test.db');
 let serverProcess: ChildProcess | null = null;
 
 interface HttpResponse {
@@ -16,8 +16,12 @@ interface HttpResponse {
 }
 
 function httpJson(method: string, path: string, body?: unknown): Promise<HttpResponse> {
+  return httpJsonWithBase(BASE_URL, method, path, body);
+}
+
+function httpJsonWithBase(baseUrl: string, method: string, path: string, body?: unknown): Promise<HttpResponse> {
   return new Promise((resolve, reject) => {
-    const url = new URL(path, BASE_URL);
+    const url = new URL(path, baseUrl);
     const payload = body === undefined ? null : JSON.stringify(body);
     const req = http.request(
       url,
@@ -94,7 +98,7 @@ before(async () => {
 after(() => {
   stopServer();
   [TEST_DB, TEST_DB + '-wal', TEST_DB + '-shm'].forEach(f => {
-    try { rmSync(f, { force: true }); } catch { /* ignore missing files */ }
+    try { rmSync(f, { force: true, retryDelay: 200, maxRetries: 5 }); } catch { /* ignore missing files */ }
   });
 });
 
@@ -217,6 +221,60 @@ test('POST /api/fetch-url rejects non-allowlisted host (SSRF)', async () => {
   assert.equal(res.status, 500);
   const data = res.data as { error: string };
   assert.ok(data.error.includes('Host not allowed'));
+});
+
+// Spawn an isolated server instance with a forced LinkedIn storage path so the
+// /api/fetch-url LinkedIn branching can be tested deterministically without
+// touching the developer's real session.
+function startIsolatedServer(port: number, linkedInStorageFile: string): Promise<{ baseUrl: string; child: ChildProcess }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['--import', 'tsx', 'start.ts', '--no-open'], {
+      env: {
+        ...process.env,
+        PORT: String(port),
+        NODE_ENV: 'test',
+        JOB_DATA_DB_PATH: TEST_DB,
+        LINKEDIN_STORAGE_FILE: linkedInStorageFile,
+      },
+      stdio: 'ignore',
+      detached: true,
+    });
+    const baseUrl = `http://127.0.0.1:${port}`;
+    waitForServer(`${baseUrl}/config.json`)
+      .then(() => resolve({ baseUrl, child }))
+      .catch((err: unknown) => {
+        killChild(child);
+        reject(err);
+      });
+  });
+}
+
+function killChild(child: ChildProcess): void {
+  if (!child.pid) return;
+  if (process.platform === 'win32') {
+    try { execSync(`taskkill /pid ${child.pid} /T /F`, { stdio: 'ignore' }); } catch { /* ignore */ }
+  } else {
+    try { process.kill(-child.pid, 'SIGTERM'); } catch { /* ignore */ }
+  }
+}
+
+test('POST /api/fetch-url routes LinkedIn job URLs through the normalized path and returns a string body', async () => {
+  // Canonical LinkedIn /jobs/view pages are public and do NOT redirect to login,
+  // so the missing-session file still yields a 200 with page text (no crash, no
+  // fallthrough to the login page). The 503 LINKEDIN_SESSION_EXPIRED behavior is
+  // covered deterministically at unit level via extractLinkedInJdFromPage.
+  const missingStorage = join(__dirname, '..', '..', 'data', 'storage-state', 'linkedin-does-not-exist.json');
+  const { baseUrl, child } = await startIsolatedServer(3448, missingStorage);
+  try {
+    const res = await httpJsonWithBase(baseUrl, 'POST', '/api/fetch-url', {
+      url: 'https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4440070396',
+    });
+    assert.equal(res.status, 200);
+    const data = res.data as { text?: string };
+    assert.equal(typeof data.text, 'string');
+  } finally {
+    killChild(child);
+  }
 });
 
 // ─── Rate limiting ───────────────────────────────────────────────────
