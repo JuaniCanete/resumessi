@@ -58,22 +58,65 @@ export interface JobData {
 const DATA_DIR = join(process.cwd(), 'data');
 const DB_PATH = process.env.JOB_DATA_DB_PATH || join(DATA_DIR, 'jobdata.db');
 
-// In-memory cache for scraper run payloads
-let cachedRuns: Record<string, ScraperRunPayload> = {};
+// In-memory cache for scraper run payloads with TTL and size limit
+interface CacheEntry {
+  payload: ScraperRunPayload;
+  timestamp: number;
+}
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_MAX_SIZE = 100;
+const cachedRuns: Record<string, CacheEntry> = {};
+
+function getCachedRun(source: 'linkedin' | 'google'): ScraperRunPayload | null {
+  const entry = cachedRuns[source];
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    delete cachedRuns[source];
+    return null;
+  }
+  return entry.payload;
+}
+
+function setCachedRun(source: 'linkedin' | 'google', payload: ScraperRunPayload): void {
+  // Enforce max size by removing oldest entry
+  if (Object.keys(cachedRuns).length >= CACHE_MAX_SIZE) {
+    const oldestKey = Object.keys(cachedRuns).reduce((a, b) =>
+      cachedRuns[a].timestamp < cachedRuns[b].timestamp ? a : b
+    );
+    delete cachedRuns[oldestKey];
+  }
+  cachedRuns[source] = { payload, timestamp: Date.now() };
+}
+
+function clearCachedRun(source?: 'linkedin' | 'google'): void {
+  if (source) {
+    delete cachedRuns[source];
+  } else {
+    Object.keys(cachedRuns).forEach(key => delete cachedRuns[key]);
+  }
+}
 
 // --- Database initialization ---
 
-function ensureDataDir(): void {
+/**
+ * Ensures a directory exists, creating it if necessary.
+ * Silently ignores errors (e.g., directory already exists).
+ */
+function ensureDirectory(dirPath: string): void {
   try {
-    mkdirSync(DATA_DIR, { recursive: true });
-    // Also ensure the parent directory of the actual DB path exists
-    // (handles custom JOB_DATA_DB_PATH in subdirectories like data/test/)
-    const dbDir = dirname(DB_PATH);
-    if (dbDir !== DATA_DIR) {
-      mkdirSync(dbDir, { recursive: true });
-    }
+    mkdirSync(dirPath, { recursive: true });
   } catch {
-    // Directory exists
+    // Directory exists or permission error - ignore
+  }
+}
+
+function ensureDataDir(): void {
+  ensureDirectory(DATA_DIR);
+  // Also ensure the parent directory of the actual DB path exists
+  // (handles custom JOB_DATA_DB_PATH in subdirectories like data/test/)
+  const dbDir = dirname(DB_PATH);
+  if (dbDir !== DATA_DIR) {
+    ensureDirectory(dbDir);
   }
 }
 
@@ -281,7 +324,8 @@ export function initStorage(): void {
 // --- Scraping Results (Scraper) ---
 
 export async function getScrapingRun(source: 'linkedin' | 'google'): Promise<ScraperRunPayload | null> {
-  if (cachedRuns[source]) return cachedRuns[source];
+  const cached = getCachedRun(source);
+  if (cached) return cached;
   const database = getDb();
   const runRow = database.prepare('SELECT * FROM scraper_runs WHERE source = ?').get(source) as Record<string, unknown> | undefined;
   if (!runRow) return null;
@@ -303,7 +347,7 @@ export async function getScrapingRun(source: 'linkedin' | 'google'): Promise<Scr
     provider: runRow.provider as string | undefined,
     metadataExtractionStatus: runRow.metadataExtractionStatus as 'extracting' | 'done' | undefined,
   };
-  cachedRuns[source] = payload;
+  setCachedRun(source, payload);
   return payload;
 }
 
@@ -395,7 +439,7 @@ export async function setScrapingRun(
     }
   });
   dbTransaction();
-  cachedRuns[source] = {
+  setCachedRun(source, {
     timestamp: run.timestamp,
     source: source,
     query: run.query,
@@ -403,7 +447,7 @@ export async function setScrapingRun(
     results: run.results,
     runId: run.runId,
     metadataExtractionStatus: 'extracting',
-  };
+  });
 }
 
 export async function updateScrapingResultSummary(
@@ -474,29 +518,27 @@ export async function updateScrapingResultSummary(
   dbTransaction();
 
   // Update cache
-  if (cachedRuns[source]) {
-    cachedRuns[source].summary = updates.summary || cachedRuns[source].summary;
-    cachedRuns[source].provider = updates.provider || cachedRuns[source].provider;
-    cachedRuns[source].metadataExtractionStatus = updates.metadataExtractionStatus || cachedRuns[source].metadataExtractionStatus;
+  const cached = getCachedRun(source);
+  if (cached) {
+    cached.summary = updates.summary || cached.summary;
+    cached.provider = updates.provider || cached.provider;
+    cached.metadataExtractionStatus = updates.metadataExtractionStatus || cached.metadataExtractionStatus;
     if (results.length > 0) {
       for (const result of results) {
-        const cached = cachedRuns[source].results.find(r => r.url === result.url);
-        if (cached) {
-          cached.aiSummary = result.aiSummary;
-          cached.queryAffinity = result.queryAffinity;
-          cached.parameters = result.parameters;
+        const cachedResult = cached.results.find(r => r.url === result.url);
+        if (cachedResult) {
+          cachedResult.aiSummary = result.aiSummary;
+          cachedResult.queryAffinity = result.queryAffinity;
+          cachedResult.parameters = result.parameters;
         }
       }
     }
+    setCachedRun(source, cached);
   }
 }
 
 export function clearScrapingRunCache(source?: 'linkedin' | 'google'): void {
-  if (source) {
-    delete cachedRuns[source];
-  } else {
-    cachedRuns = {};
-  }
+  clearCachedRun(source);
 }
 
 // --- Legacy compatible functions ---
@@ -640,7 +682,7 @@ export async function saveJobData(data: JobData): Promise<void> {
     }
   });
   dbTransaction();
-  cachedRuns = {};
+  clearCachedRun();
 }
 
 function formatSavedRowForSqlite(row: ScraperResult, source: 'linkedin' | 'google'): Record<string, unknown> {
@@ -736,7 +778,7 @@ export async function setScrapingResults(source: 'linkedin' | 'google', results:
     }
   });
   dbTransaction();
-  cachedRuns = {};
+  clearCachedRun();
 }
 
 export async function markScrapingResultRemoved(source: 'linkedin' | 'google', url: string): Promise<void> {
@@ -745,7 +787,7 @@ export async function markScrapingResultRemoved(source: 'linkedin' | 'google', u
     'UPDATE scraping_results SET removed = 1 WHERE url = ? AND source = ?'
   );
   updateStmt.run(url, source);
-  delete cachedRuns[source];
+  clearCachedRun(source);
 }
 
 export async function saveJobFromScraping(result: ScraperResult, source: 'linkedin' | 'google'): Promise<void> {
@@ -781,12 +823,13 @@ export async function saveJobFromScraping(result: ScraperResult, source: 'linked
   const existing = db.prepare('SELECT * FROM saved_jobs WHERE url = ? AND source = ?').get(result.url, source) as Record<string, unknown> | undefined;
   if (existing) {
     const row = parseSavedRowFromSqlite(existing);
-    if (!cachedRuns[source]) {
-      cachedRuns[source] = { timestamp: null, source, query: {}, totalResults: 0, results: [] };
-    }
-    const idx = cachedRuns[source].results.findIndex(r => r.url === result.url);
-    if (idx >= 0) {
-      cachedRuns[source].results[idx] = row;
+    const cached = getCachedRun(source);
+    if (cached) {
+      const idx = cached.results.findIndex(r => r.url === result.url);
+      if (idx >= 0) {
+        cached.results[idx] = row;
+        setCachedRun(source, cached);
+      }
     }
   }
 }
@@ -796,9 +839,9 @@ export async function unsaveJob(source: 'linkedin' | 'google', url: string): Pro
   const dbTransaction = database.transaction(() => {
     database.prepare('DELETE FROM saved_jobs WHERE url = ? AND source = ?').run(url, source);
     database.prepare('UPDATE scraping_results SET saved = 0, savedAt = NULL WHERE url = ? AND source = ?').run(url, source);
-  });
+});
   dbTransaction();
-  delete cachedRuns[source];
+  clearCachedRun();
 }
 
 export async function getSavedJobs(source?: 'linkedin' | 'google'): Promise<ScraperResult[]> {
@@ -865,7 +908,7 @@ export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'go
     }
   });
   dbTransaction();
-  cachedRuns = {};
+  clearCachedRun();
 }
 
 export async function getJobDashboard(): Promise<ScraperResult[]> {
@@ -998,7 +1041,7 @@ export async function removeDashboardJob(url?: string, id?: string): Promise<voi
 export async function clearTestDashboardData(): Promise<void> {
   const database = getDb();
   database.prepare('DELETE FROM job_dashboard').run();
-  cachedRuns = {};
+  clearCachedRun();
 }
 
 // --- Close ---

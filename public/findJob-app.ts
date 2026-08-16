@@ -574,12 +574,23 @@ function renderPage(page: number): void {
     if (item.aiSummary) {
       const aiSummary = document.createElement('div');
       aiSummary.className = 'result-ai-summary';
+      // Limit AI summary length to prevent DOM DoS
+      const MAX_AI_SUMMARY_LENGTH = 5000;
+      const summaryText = item.aiSummary.length > MAX_AI_SUMMARY_LENGTH
+        ? item.aiSummary.substring(0, MAX_AI_SUMMARY_LENGTH) + '...'
+        : item.aiSummary;
       const marked = (window as unknown as Record<string, unknown>).marked;
       if (marked && typeof marked === 'object' && 'parse' in marked) {
-        const rendered = (marked as { parse: (s: string) => string }).parse(item.aiSummary);
-        aiSummary.innerHTML = sanitizeHtml(rendered);
+        const rendered = (marked as { parse: (s: string) => string }).parse(summaryText);
+        // Use DOMPurify if available, otherwise fall back to sanitizeHtml
+        const DOMPurify = (window as unknown as Record<string, unknown>).DOMPurify;
+        if (DOMPurify && typeof DOMPurify === 'object' && 'sanitize' in DOMPurify) {
+          aiSummary.innerHTML = (DOMPurify as { sanitize: (s: string) => string }).sanitize(rendered);
+        } else {
+          aiSummary.innerHTML = sanitizeHtml(rendered);
+        }
       } else {
-        aiSummary.textContent = item.aiSummary;
+        aiSummary.textContent = summaryText;
       }
       body.appendChild(aiSummary);
     }
@@ -1343,12 +1354,23 @@ function createJobCard(item: ScraperResult, view: 'scraping' | 'saved' | 'dashbo
   if (item.aiSummary) {
     const aiSummary = document.createElement('div');
     aiSummary.className = 'result-ai-summary';
+    // Limit AI summary length to prevent DOM DoS
+    const MAX_AI_SUMMARY_LENGTH = 5000;
+    const summaryText = item.aiSummary.length > MAX_AI_SUMMARY_LENGTH
+      ? item.aiSummary.substring(0, MAX_AI_SUMMARY_LENGTH) + '...'
+      : item.aiSummary;
     const marked = (window as unknown as Record<string, unknown>).marked;
     if (marked && typeof marked === 'object' && 'parse' in marked) {
-      const rendered = (marked as { parse: (s: string) => string }).parse(item.aiSummary);
-      aiSummary.innerHTML = sanitizeHtml(rendered);
+      const rendered = (marked as { parse: (s: string) => string }).parse(summaryText);
+      // Use DOMPurify if available, otherwise fall back to sanitizeHtml
+      const DOMPurify = (window as unknown as Record<string, unknown>).DOMPurify;
+      if (DOMPurify && typeof DOMPurify === 'object' && 'sanitize' in DOMPurify) {
+        aiSummary.innerHTML = (DOMPurify as { sanitize: (s: string) => string }).sanitize(rendered);
+      } else {
+        aiSummary.innerHTML = sanitizeHtml(rendered);
+      }
     } else {
-      aiSummary.textContent = item.aiSummary;
+      aiSummary.textContent = summaryText;
     }
     body.appendChild(aiSummary);
   }
@@ -2542,7 +2564,6 @@ function cancelProvidersSelection(): void {
 (window as unknown as Record<string, unknown>).generateCoverLetter = generateCoverLetter;
 (window as unknown as Record<string, unknown>).copyCoverLetter = copyCoverLetter;
 (window as unknown as Record<string, unknown>).downloadCoverLetter = downloadCoverLetter;
-(window as unknown as Record<string, unknown>).openAtsSidebar = openAtsSidebar;
 (window as unknown as Record<string, unknown>).openAtsSidebar = openAtsSidebar;
 (window as unknown as Record<string, unknown>).openProvidersModal = openProvidersModal;
 (window as unknown as Record<string, unknown>).closeProvidersModal = closeProvidersModal;

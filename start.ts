@@ -104,11 +104,23 @@ function parseEnvFile(): Record<string, string | undefined> {
       if (line.startsWith('#') || !line.includes('=')) return;
       const eqIndex = line.indexOf('=');
       const key = line.substring(0, eqIndex).trim();
+      // Validate key: only alphanumeric, underscore, dash
+      if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(key)) {
+        console.warn(`[parseEnvFile] Invalid key format: ${key}`);
+        return;
+      }
       let value = line.substring(eqIndex + 1).trim();
+      // Validate value: no control characters, reasonable length
+      const hasControlChars = value.split('').some(ch => ch.charCodeAt(0) <= 0x1f || ch.charCodeAt(0) === 0x7f);
+      if (value.length > 4096 || hasControlChars) {
+        console.warn(`[parseEnvFile] Invalid value for key: ${key}`);
+        return;
+      }
       if ((value.startsWith('"') && value.endsWith('"')) ||
         (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
+      // Only allow keys from the predefined allowlist
       if (Object.prototype.hasOwnProperty.call(env, key) || key.includes('COLOR') || key === 'AI_INFERENCE_ORDER' || key.startsWith('LINKEDIN_') || key === 'CHROME_PATH') {
         env[key] = value;
       }
@@ -177,8 +189,13 @@ function pruneRateLimitBuckets(): void {
   }
 }
 
+// Periodic cleanup to prevent memory leaks in long-running processes
+const RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+setInterval(pruneRateLimitBuckets, RATE_LIMIT_CLEANUP_INTERVAL_MS).unref();
+
 function checkRateLimit(ip: string): { allowed: boolean; retryAfterMs: number } {
-  if (rateLimitBuckets.size > 1000) {
+  // Proactive cleanup to prevent unbounded growth
+  if (rateLimitBuckets.size > 500) {
     pruneRateLimitBuckets();
   }
   const now = Date.now();
@@ -968,8 +985,24 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       const parsedUrl = validateUrl(url);
 
       // Fetch the URL content (follows redirects, sets realistic User-Agent)
-      const fetchUrl = (urlStr: string, maxRedirects = 5): Promise<string> => {
+      const MAX_REDIRECTS = 10;
+      const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+      // Fetch the URL content (follows redirects, sets realistic User-Agent)
+      const fetchUrl = (urlStr: string, maxRedirects = MAX_REDIRECTS, visitedUrls: Set<string> = new Set()): Promise<string> => {
         return new Promise((resolve, reject) => {
+          // Detect redirect loops
+          if (visitedUrls.has(urlStr)) {
+            reject(new Error('Redirect loop detected'));
+            return;
+          }
+          visitedUrls.add(urlStr);
+          
+          if (maxRedirects <= 0) {
+            reject(new Error('Too many redirects'));
+            return;
+          }
+          
           const client = urlStr.startsWith('https') ? https : http;
           const req = client.get(urlStr, {
             headers: {
@@ -980,10 +1013,6 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
           }, (response) => {
             // Follow redirects (301, 302, 303, 307, 308)
             if (response.statusCode && [301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
-              if (maxRedirects <= 0) {
-                reject(new Error('Too many redirects'));
-                return;
-              }
               const redirectUrl = response.headers.location;
               // Handle relative redirects
               const nextUrl = redirectUrl.startsWith('http') ? redirectUrl : new URL(redirectUrl, urlStr).href;
@@ -994,15 +1023,29 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
                 reject(new Error(`Redirect blocked: ${(err as Error).message}`));
                 return;
               }
-              fetchUrl(nextUrl, maxRedirects - 1).then(resolve).catch(reject);
+              fetchUrl(nextUrl, maxRedirects - 1, visitedUrls).then(resolve).catch(reject);
               return;
             }
             let data = '';
-            response.on('data', (chunk: string) => data += chunk);
+            let dataLength = 0;
+            response.on('data', (chunk: string) => {
+              dataLength += chunk.length;
+              if (dataLength > MAX_RESPONSE_SIZE) {
+                reject(new Error('Response size limit exceeded'));
+                req.destroy();
+                return;
+              }
+              data += chunk;
+            });
             response.on('end', () => resolve(data));
             response.on('error', reject);
           });
           req.on('error', reject);
+          // Add timeout to prevent hanging connections
+          req.setTimeout(10000, () => {
+            req.destroy();
+            reject(new Error('Request timeout'));
+          });
         });
       };
 

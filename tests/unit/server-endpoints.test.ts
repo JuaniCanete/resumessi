@@ -67,9 +67,21 @@ function stopServer(): void {
   if (!serverProcess?.pid) return;
   if (process.platform === 'win32') {
     try {
-      execSync(`taskkill /pid ${serverProcess.pid} /T /F`, { stdio: 'ignore' });
+      // First try graceful termination
+      execSync(`taskkill /pid ${serverProcess.pid} /T`, { stdio: 'ignore', timeout: 2000 });
     } catch {
-      // process already gone
+      // Force kill if graceful fails
+      try {
+        execSync(`taskkill /pid ${serverProcess.pid} /T /F`, { stdio: 'ignore', timeout: 2000 });
+      } catch {
+        // Process already gone
+      }
+    }
+    // Additional cleanup: find and kill any remaining Node.js child processes
+    try {
+      execSync(`taskkill /f /im node.exe /fi "PPID eq ${serverProcess.pid}"`, { stdio: 'ignore', timeout: 2000 });
+    } catch {
+      // Ignore
     }
   } else {
     try {
@@ -88,7 +100,33 @@ function stopServer(): void {
 before(async () => {
   // Spawn node directly with the tsx loader to avoid .cmd spawn issues on Windows
   serverProcess = spawn(process.execPath, ['--import', 'tsx', 'start.ts', '--no-open'], {
-    env: { ...process.env, PORT: String(TEST_PORT), NODE_ENV: 'test', JOB_DATA_DB_PATH: TEST_DB },
+    env: {
+      PORT: String(TEST_PORT),
+      NODE_ENV: 'test',
+      JOB_DATA_DB_PATH: TEST_DB,
+      // Only pass necessary env vars, avoid leaking sensitive keys
+      AI_INFERENCE_ORDER: process.env.AI_INFERENCE_ORDER,
+      COHERE_API_KEY: process.env.COHERE_API_KEY,
+      COHERE_MODEL: process.env.COHERE_MODEL,
+      MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
+      MISTRAL_MODEL: process.env.MISTRAL_MODEL,
+      GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+      GEMINI_MODEL: process.env.GEMINI_MODEL,
+      GROQ_API_KEY: process.env.GROQ_API_KEY,
+      GROQ_MODEL: process.env.GROQ_MODEL,
+      PRIMARY_COLOR: process.env.PRIMARY_COLOR,
+      SECONDARY_COLOR: process.env.SECONDARY_COLOR,
+      ACCENT_COLOR: process.env.ACCENT_COLOR,
+      TEXT_COLOR: process.env.TEXT_COLOR,
+      TEXT_LIGHT_COLOR: process.env.TEXT_LIGHT_COLOR,
+      BG_BADGE_COLOR: process.env.BG_BADGE_COLOR,
+      SUCCESS_COLOR: process.env.SUCCESS_COLOR,
+      CHROME_PATH: process.env.CHROME_PATH,
+      GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
+      LINKEDIN_EMAIL: process.env.LINKEDIN_EMAIL,
+      LINKEDIN_PASSWORD: process.env.LINKEDIN_PASSWORD,
+      LINKEDIN_2FA_SECRET: process.env.LINKEDIN_2FA_SECRET,
+    },
     stdio: 'ignore',
     detached: true,
   });
@@ -230,11 +268,32 @@ function startIsolatedServer(port: number, linkedInStorageFile: string): Promise
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['--import', 'tsx', 'start.ts', '--no-open'], {
       env: {
-        ...process.env,
         PORT: String(port),
         NODE_ENV: 'test',
         JOB_DATA_DB_PATH: TEST_DB,
         LINKEDIN_STORAGE_FILE: linkedInStorageFile,
+        // Only pass necessary env vars
+        AI_INFERENCE_ORDER: process.env.AI_INFERENCE_ORDER,
+        COHERE_API_KEY: process.env.COHERE_API_KEY,
+        COHERE_MODEL: process.env.COHERE_MODEL,
+        MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
+        MISTRAL_MODEL: process.env.MISTRAL_MODEL,
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+        GEMINI_MODEL: process.env.GEMINI_MODEL,
+        GROQ_API_KEY: process.env.GROQ_API_KEY,
+        GROQ_MODEL: process.env.GROQ_MODEL,
+        PRIMARY_COLOR: process.env.PRIMARY_COLOR,
+        SECONDARY_COLOR: process.env.SECONDARY_COLOR,
+        ACCENT_COLOR: process.env.ACCENT_COLOR,
+        TEXT_COLOR: process.env.TEXT_COLOR,
+        TEXT_LIGHT_COLOR: process.env.TEXT_LIGHT_COLOR,
+        BG_BADGE_COLOR: process.env.BG_BADGE_COLOR,
+        SUCCESS_COLOR: process.env.SUCCESS_COLOR,
+        CHROME_PATH: process.env.CHROME_PATH,
+        GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
+        LINKEDIN_EMAIL: process.env.LINKEDIN_EMAIL,
+        LINKEDIN_PASSWORD: process.env.LINKEDIN_PASSWORD,
+        LINKEDIN_2FA_SECRET: process.env.LINKEDIN_2FA_SECRET,
       },
       stdio: 'ignore',
       detached: true,
@@ -252,9 +311,29 @@ function startIsolatedServer(port: number, linkedInStorageFile: string): Promise
 function killChild(child: ChildProcess): void {
   if (!child.pid) return;
   if (process.platform === 'win32') {
-    try { execSync(`taskkill /pid ${child.pid} /T /F`, { stdio: 'ignore' }); } catch { /* ignore */ }
+    try {
+      // First try graceful termination
+      execSync(`taskkill /pid ${child.pid} /T`, { stdio: 'ignore', timeout: 2000 });
+    } catch {
+      // Force kill if graceful fails
+      try {
+        execSync(`taskkill /pid ${child.pid} /T /F`, { stdio: 'ignore', timeout: 2000 });
+      } catch {
+        // Process already gone
+      }
+    }
+    // Additional cleanup: find and kill any remaining Node.js child processes
+    try {
+      execSync(`taskkill /f /im node.exe /fi "PPID eq ${child.pid}"`, { stdio: 'ignore', timeout: 2000 });
+    } catch {
+      // Ignore
+    }
   } else {
-    try { process.kill(-child.pid, 'SIGTERM'); } catch { /* ignore */ }
+    try {
+      process.kill(-child.pid, 'SIGTERM');
+    } catch {
+      // ignore
+    }
   }
 }
 
