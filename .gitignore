@@ -58,5 +58,11 @@ playwright-report/
 data/storage-state/
 data/scraper-results/
 data/job-data.json
+data/test/
+
+# SQLite database
+data/jobdata.db
+data/jobdata.db-wal
+data/jobdata.db-shm
 
 

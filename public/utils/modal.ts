@@ -172,12 +172,26 @@ export function showConfirmModal(options: ModalOptions): void {
   const cancelBtn = modal.querySelector('.btn-cancel') as HTMLButtonElement;
   const confirmBtn = modal.querySelector('.btn-confirm') as HTMLButtonElement;
 
+  let activeModalHandler: ((e: KeyboardEvent) => void) | null = null;
+  let isHandlingConfirm = false;
+
+  const cleanup = () => {
+    if (activeModalHandler) {
+      document.removeEventListener('keydown', activeModalHandler);
+      activeModalHandler = null;
+    }
+    isHandlingConfirm = false;
+  };
+
   const close = () => {
+    cleanup();
     container.style.display = 'none';
     modal.remove();
   };
 
   const handleConfirm = async () => {
+    if (isHandlingConfirm) return;
+    isHandlingConfirm = true;
     closeBtn.disabled = true;
     cancelBtn.disabled = true;
     confirmBtn.disabled = true;
@@ -198,14 +212,16 @@ export function showConfirmModal(options: ModalOptions): void {
   cancelBtn.addEventListener('click', handleCancel);
   confirmBtn.addEventListener('click', handleConfirm);
 
-  // Escape key to close
-  const handleKeydown = (e: KeyboardEvent) => {
+  activeModalHandler = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
+      e.preventDefault();
       handleCancel();
-      document.removeEventListener('keydown', handleKeydown);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      handleConfirm();
     }
   };
-  document.addEventListener('keydown', handleKeydown);
+  document.addEventListener('keydown', activeModalHandler);
 
   container.appendChild(modal);
   container.style.display = 'flex';
@@ -402,11 +418,16 @@ export function showApplyModal(options: ApplyModalOptions): void {
     modal.remove();
   };
 
+  let isHandlingConfirm = false;
+
   const handleConfirm = async () => {
+    if (isHandlingConfirm) return;
+    isHandlingConfirm = true;
     const name = input.value.trim();
     if (!name) {
       input.style.borderColor = 'rgba(239, 68, 68, 0.8)';
       input.focus();
+      isHandlingConfirm = false;
       return;
     }
     closeBtn.disabled = true;

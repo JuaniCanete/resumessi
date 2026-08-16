@@ -681,7 +681,9 @@ function getColumnForJob(job: ScraperResult): DashboardListId {
   return STATUS_TO_LIST[job.status || 'No News'] || 'applied';
 }
 
-let draggedCardUrl: string | null = null;
+  let draggedCardUrl: string | null = null;
+  let draggedCardId: string | null = null;
+  let draggedCardSourceListId: DashboardListId | null = null;
 
 async function renderDashboard(): Promise<void> {
   if (currentTab !== 'dashboard') return;
@@ -975,6 +977,10 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
 
   card.addEventListener('dragstart', (e: DragEvent) => {
     draggedCardUrl = job.url;
+    draggedCardId = job.id || null;
+    // Capture source column at drag start (before card might move during dragover)
+    const sourceContainer = card.closest('.board-cards-container') as HTMLElement | null;
+    draggedCardSourceListId = (sourceContainer?.dataset.listId as DashboardListId) || null;
     setTimeout(() => card.classList.add('dragging'), 0);
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = 'move';
@@ -984,6 +990,8 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
   card.addEventListener('dragend', () => {
     card.classList.remove('dragging');
     draggedCardUrl = null;
+    draggedCardId = null;
+    draggedCardSourceListId = null;
   });
 
   return card;
@@ -991,18 +999,20 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
 
 function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult): void {
   const currentTitle = job.title || '';
+  const currentTitleEl = card.querySelector('.board-card-title') || titleEl;
   const input = document.createElement('input');
   input.type = 'text';
   input.value = currentTitle;
   input.style.cssText = 'width: 100%; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 6px 8px; color: #e2e8f0; font-family: Comfortaa, sans-serif; font-size: 13px; outline: none;';
 
-  titleEl.replaceWith(input);
+  currentTitleEl.replaceWith(input);
   input.focus();
   input.select();
 
   const finish = async (save: boolean) => {
     const newTitle = save ? input.value.trim() : currentTitle;
-    if (save && newTitle && newTitle !== currentTitle) {
+    const titleChanged = save && newTitle && newTitle !== currentTitle;
+    if (titleChanged) {
       try {
         const body: Record<string, string> = { title: newTitle };
         if (job.url) {
@@ -1020,6 +1030,9 @@ function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult
       } catch (err: unknown) {
         showToast({ message: 'Error: ' + (err as Error).message, type: 'error' });
       }
+    } else if (save) {
+      // Save without changes - acknowledge but don't call API
+      showToast({ message: 'No changes made', type: 'info' });
     }
 
     const newTitleEl = document.createElement('div');
@@ -1087,9 +1100,11 @@ function initBoardDragAndDrop(): void {
   containers.forEach(container => {
     container.addEventListener('dragover', (e: Event) => {
       e.preventDefault();
-      if (!draggedCardUrl) return;
+      if (!draggedCardUrl && !draggedCardId) return;
       const afterElement = getDragAfterElement(container, (e as DragEvent).clientY);
-      const card = document.querySelector(`.board-card[data-url="${draggedCardUrl}"]`);
+      const card = draggedCardUrl
+        ? document.querySelector(`.board-card[data-url="${draggedCardUrl}"]`) as HTMLElement | null
+        : document.querySelector(`.board-card[data-id="${draggedCardId}"]`) as HTMLElement | null;
       if (!card) return;
       if (afterElement == null) {
         container.appendChild(card);
@@ -1100,17 +1115,21 @@ function initBoardDragAndDrop(): void {
 
     container.addEventListener('drop', async (e: Event) => {
       e.preventDefault();
-      if (!draggedCardUrl) return;
+      if (!draggedCardUrl && !draggedCardId) return;
       const newListId = (container as HTMLElement).dataset.listId as DashboardListId;
+      // Use the source column captured at dragstart (before dragover moves the card)
+      const currentListId = draggedCardSourceListId;
+      if (currentListId && newListId && currentListId === newListId) {
+        showToast({ message: 'Already in this column', type: 'info' });
+        return;
+      }
       const newStatus = LIST_TO_STATUS[newListId];
       try {
-        const card = document.querySelector(`.board-card[data-url="${draggedCardUrl}"]`) as HTMLElement | null;
-        const jobId = card?.dataset.id;
         const body: Record<string, string> = { status: newStatus, column: newListId };
         if (draggedCardUrl) {
           body.url = draggedCardUrl;
-        } else if (jobId) {
-          body.id = jobId;
+        } else if (draggedCardId) {
+          body.id = draggedCardId;
         }
         const resp = await fetch('/api/job-data/update-status', {
           method: 'POST',
@@ -1484,7 +1503,7 @@ async function generateCoverLetter(): Promise<void> {
   const jdTextarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement | null;
   const jd = jdTextarea ? jdTextarea.value.trim() : '';
   if (!jd) {
-    alert('Please review a Job Description first using the "Check JD" button on a job card.');
+    showToast({ message: 'Please review a Job Description first using the "Check JD" button on a job card.', type: 'error' });
     return;
   }
 
@@ -1745,7 +1764,7 @@ async function runAtsScanFromResults(): Promise<void> {
   const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
   const jdText = textarea.value.trim();
   if (!jdText) {
-    alert('Please enter a job description text.');
+    showToast({ message: 'Please enter a job description text.', type: 'error' });
     return;
   }
 
@@ -2079,7 +2098,7 @@ async function startScraping(): Promise<void> {
       if (overlay) overlay.style.display = 'none';
       const err = await resp.json();
       const errMsg = err.error || 'Failed to execute scraper';
-      alert(`Scraper error: ${errMsg}`);
+      showToast({ message: 'Scraper error: ' + errMsg, type: 'error' });
       return;
     }
 
@@ -2102,7 +2121,7 @@ async function startScraping(): Promise<void> {
   } catch (err: unknown) {
     if (overlay) overlay.style.display = 'none';
     if ((err as Error).name !== 'AbortError') {
-      alert(`Scraping error: ${(err as Error).message}`);
+      showToast({ message: 'Scraping error: ' + (err as Error).message, type: 'error' });
     }
   }
 }

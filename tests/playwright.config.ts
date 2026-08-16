@@ -20,5 +20,6 @@ export default defineConfig({
     url: 'http://localhost:3001/public/main.html',
     reuseExistingServer: false,
     timeout: 60000,
+    cwd: '..',
   },
 });

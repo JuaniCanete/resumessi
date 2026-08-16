@@ -7,6 +7,9 @@ This file defines how AI assistants collaborate within the **resumessi** project
 **resumessi** is a public-facing, self-contained HTML tool for:
 1. **ATS Resume Scoring** — using LLM models to evaluate resumes against job descriptions.
 2. **Resume Generation** — structured prompts + AI to auto-generate resume content.
+3. **Job Finder & Scraping** — LinkedIn (Playwright) and Google (SerpAPI) job scraping with pagination.
+4. **Job Dashboard** — Kanban board to track application status, interview rounds, and notes.
+5. **Cover Letter Generation** — AI-generated cover letters from a job description.
 
 ---
 
@@ -53,8 +56,8 @@ This file defines how AI assistants collaborate within the **resumessi** project
 | `public/utils/modal.ts` | Shared modal/toast utilities | ✅ Yes — add helpers |
 | `public/utils/storage.ts` | Client-side localStorage helpers | ✅ Yes — add helpers |
 | `public/utils/types.ts` | Shared client-side types | ✅ Yes — add helpers |
-| `src/storage/jobData.ts` | Unified job data storage module | ✅ Yes — add storage logic |
-| `Dockerfile.scraper` | CI Dockerfile for Playwright Chrome | ✅ Yes — maintain container setup |
+| `src/storage/jobDataSqlite.ts` | SQLite-backed job data storage (active) | ✅ Yes — add storage logic |
+| `src/storage/jobData.ts` | Legacy file-based storage (deprecated) | ✅ Yes — remove after migration |
 | `data/storage-state/` | Saved LinkedIn session cookies | ❌ No — auto-generated (gitignored) |
 | `data/scraper-results/` | Saved scraper output (linkedin.json, google.json) | ❌ No — auto-generated (gitignored) |
 | `README.md` | Project docs | ✅ Yes — keep updated |
