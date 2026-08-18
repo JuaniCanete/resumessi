@@ -1,4 +1,0 @@
-# Add directories or file patterns to ignore during indexing
-node_modules/
-package-lock.json
-.env

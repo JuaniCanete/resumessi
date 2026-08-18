@@ -150,12 +150,7 @@ function getConfigFromEnv(): Record<string, string | string[] | null | undefined
   }
 
   const providerConfig = getProviderConfig(env);
-  const providerConfig = getProviderConfig(env);
 
-  clientSafe.AI_INFERENCE_ORDER = env.AI_INFERENCE_ORDER || 'cohere,mistral,gemini,groq';
-  clientSafe.availableProviders = providerConfig.configured;
-  clientSafe.primaryProvider = providerConfig.configured[0] || null;
-  clientSafe.NODE_ENV = process.env.NODE_ENV || 'production';
   clientSafe.AI_INFERENCE_ORDER = env.AI_INFERENCE_ORDER || 'cohere,mistral,gemini,groq';
   clientSafe.availableProviders = providerConfig.configured;
   clientSafe.primaryProvider = providerConfig.configured[0] || null;
@@ -264,8 +259,6 @@ async function extractJobParameters(results: ScraperResult[], env: Record<string
     console.warn('[Scraper API] Parameter extraction warning:', (err as Error).message);
   }
 }
-
-initStorage();
 
 initStorage();
 
@@ -638,15 +631,9 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
             }
 
             const current = await getScrapingRun(sourceCopy);
-            const current = await getScrapingRun(sourceCopy);
 
             await extractJobParameters(resultsCopy, envCopy);
 
-            await updateScrapingResultSummary(
-              sourceCopy,
-              { summary: summaryText, provider: inferenceResult.provider, metadataExtractionStatus: 'done' },
-              resultsCopy.map(r => ({ ...r, source: sourceCopy, removed: current?.results.find(x => x.url === r.url)?.removed }) as ScraperResult)
-            );
             await updateScrapingResultSummary(
               sourceCopy,
               { summary: summaryText, provider: inferenceResult.provider, metadataExtractionStatus: 'done' },
@@ -703,10 +690,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       }
       const run = await getScrapingRun(source as 'linkedin' | 'google');
       if (run) {
-      const run = await getScrapingRun(source as 'linkedin' | 'google');
-      if (run) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(run));
         res.end(JSON.stringify(run));
       } else {
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -876,7 +860,6 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     } catch (err: unknown) {
       const message = (err as Error).message;
       if (message === 'DUPLICATE_TITLE' || message === 'DUPLICATE_URL') {
-      if (message === 'DUPLICATE_TITLE' || message === 'DUPLICATE_URL') {
         res.writeHead(409, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Card is already on board' }));
       } else {
@@ -903,13 +886,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       };
       const result = await insertDashboardJob(newJob);
       clearScrapingRunCache();
-        savedAt: job.savedAt || new Date().toISOString(),
-        appliedAt: job.appliedAt || new Date().toISOString(),
-      };
-      const result = await insertDashboardJob(newJob);
-      clearScrapingRunCache();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, job: result }));
       res.end(JSON.stringify({ success: true, job: result }));
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -949,18 +926,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       const data = await loadJobData();
       const dashboard = data.jobDashboard;
       const idx = dashboard.findIndex(r => (url ? r.url === url : false) || (id && r.id && r.id === id));
-      const dashboard = data.jobDashboard;
-      const idx = dashboard.findIndex(r => (url ? r.url === url : false) || (id && r.id && r.id === id));
       if (idx >= 0) {
-        const current = dashboard[idx].interviewRounds || 0;
-        const newRounds = Math.max(0, current + (delta || 1));
-        await updateDashboardJob(url, { interviewRounds: newRounds }, id);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, interviewRounds: newRounds }));
-      } else {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Job not found' }));
-      }
         const current = dashboard[idx].interviewRounds || 0;
         const newRounds = Math.max(0, current + (delta || 1));
         await updateDashboardJob(url, { interviewRounds: newRounds }, id);
@@ -1006,24 +972,6 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         return;
       }
       await removeDashboardJob(url, id);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true }));
-    } catch (err: unknown) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: (err as Error).message }));
-    }
-    return;
-  }
-
-  if (requestPath === '/api/job-data/dashboard/clear-test' && req.method === 'POST') {
-    try {
-      // Only allow in test mode
-      if (process.env.NODE_ENV !== 'test') {
-        res.writeHead(403, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Forbidden: only available in test mode' }));
-        return;
-      }
-      await clearTestDashboardData();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
     } catch (err: unknown) {
@@ -1176,29 +1124,6 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         });
       };
 
-      let html: string;
-      if (parsedUrl.hostname.endsWith('linkedin.com')) {
-        // Authenticated Playwright fetch for LinkedIn: normalizes wrapper URLs
-        // and uses the stored session. A session-expiry must surface to the user
-        // (503), never fall through to the unauthenticated https.get (which would
-        // re-fetch the login page and recreate the collection misclassification).
-        try {
-          const linkedInText = await fetchLinkedInJobDescription(url);
-          html = linkedInText || '';
-        } catch (err: unknown) {
-          if (err instanceof LinkedInSessionExpiredError) {
-            res.writeHead(503, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'LINKEDIN_SESSION_EXPIRED', message: err.message }));
-            return;
-          }
-          // Other Playwright errors → surface error to user, no unauthenticated fallback
-          res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Failed to fetch LinkedIn job description: ' + (err as Error).message }));
-          return;
-        }
-      } else {
-        html = await fetchUrl(url);
-      }
       let html: string;
       if (parsedUrl.hostname.endsWith('linkedin.com')) {
         // Authenticated Playwright fetch for LinkedIn: normalizes wrapper URLs
@@ -1550,7 +1475,6 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
           basePrompt,
           { temperature: 0, max_tokens: 2048, top_p: 0.1 },
           env,
-          provider || null,
           provider || null,
           null,
           null,

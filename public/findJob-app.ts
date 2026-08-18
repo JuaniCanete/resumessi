@@ -256,9 +256,6 @@ function startPolling(source: 'linkedin' | 'google' | 'remoterocketship'): void 
           } else {
             // No extraction status in response means extraction is not running (idle/done)
             extractionStatus[source] = 'idle';
-          } else {
-            // No extraction status in response means extraction is not running (idle/done)
-            extractionStatus[source] = 'idle';
           }
 
           // Only re-render if we're viewing this source's tab
@@ -356,12 +353,8 @@ async function loadDataAndRender(sourceParam: 'linkedin' | 'google' | 'remoteroc
         localStorage.setItem(`scraper-results:${sourceParam}`, JSON.stringify(data));
         // Always update extraction status based on server response
         // If no metadataExtractionStatus in response, default to 'idle' (no extraction running)
-        // Always update extraction status based on server response
-        // If no metadataExtractionStatus in response, default to 'idle' (no extraction running)
         if (data.metadataExtractionStatus) {
           extractionStatus[sourceParam] = data.metadataExtractionStatus;
-        } else {
-          extractionStatus[sourceParam] = 'idle';
         } else {
           extractionStatus[sourceParam] = 'idle';
         }
@@ -482,12 +475,6 @@ function renderPage(page: number): void {
         }
       });
       card.classList.toggle('expanded');
-      // Track expanded card URL for preservation across re-renders
-      if (card.classList.contains('expanded')) {
-        expandedCardUrl[currentSource] = item.url;
-      } else {
-        expandedCardUrl[currentSource] = null;
-      }
       // Track expanded card URL for preservation across re-renders
       if (card.classList.contains('expanded')) {
         expandedCardUrl[currentSource] = item.url;
@@ -670,15 +657,6 @@ function renderPage(page: number): void {
     }
   }
 
-  // Restore expanded card if it's on the current page
-  const savedUrl = expandedCardUrl[currentSource];
-  if (savedUrl) {
-    const savedCard = container.querySelector(`.result-card[data-url="${savedUrl}"]`);
-    if (savedCard) {
-      savedCard.classList.add('expanded');
-    }
-  }
-
   const pagination = document.getElementById('pagination');
   if (pagination) pagination.style.display = 'flex';
 
@@ -772,15 +750,12 @@ function getColumnForJob(job: ScraperResult): DashboardListId {
   if (job.column && (DASHBOARD_LISTS as readonly { id: DashboardListId }[]).some(l => l.id === job.column)) {
     return job.column as DashboardListId;
   }
-  return STATUS_TO_LIST[job.status || 'No News'] || 'applied';
+return STATUS_TO_LIST[job.status || 'No News'] || 'applied';
 }
 
-  let draggedCardUrl: string | null = null;
-  let draggedCardId: string | null = null;
-  let draggedCardSourceListId: DashboardListId | null = null;
-  let draggedCardUrl: string | null = null;
-  let draggedCardId: string | null = null;
-  let draggedCardSourceListId: DashboardListId | null = null;
+let draggedCardUrl: string | null = null;
+let draggedCardId: string | null = null;
+let draggedCardSourceListId: DashboardListId | null = null;
 
 async function renderDashboard(): Promise<void> {
   if (currentTab !== 'dashboard') return;
@@ -1078,10 +1053,6 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
     // Capture source column at drag start (before card might move during dragover)
     const sourceContainer = card.closest('.board-cards-container') as HTMLElement | null;
     draggedCardSourceListId = (sourceContainer?.dataset.listId as DashboardListId) || null;
-    draggedCardId = job.id || null;
-    // Capture source column at drag start (before card might move during dragover)
-    const sourceContainer = card.closest('.board-cards-container') as HTMLElement | null;
-    draggedCardSourceListId = (sourceContainer?.dataset.listId as DashboardListId) || null;
     setTimeout(() => card.classList.add('dragging'), 0);
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = 'move';
@@ -1093,8 +1064,6 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
     draggedCardUrl = null;
     draggedCardId = null;
     draggedCardSourceListId = null;
-    draggedCardId = null;
-    draggedCardSourceListId = null;
   });
 
   return card;
@@ -1103,21 +1072,17 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
 function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult): void {
   const currentTitle = job.title || '';
   const currentTitleEl = card.querySelector('.board-card-title') || titleEl;
-  const currentTitleEl = card.querySelector('.board-card-title') || titleEl;
   const input = document.createElement('input');
   input.type = 'text';
   input.value = currentTitle;
   input.style.cssText = 'width: 100%; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 6px 8px; color: #e2e8f0; font-family: Comfortaa, sans-serif; font-size: 13px; outline: none;';
 
   currentTitleEl.replaceWith(input);
-  currentTitleEl.replaceWith(input);
   input.focus();
   input.select();
 
   const finish = async (save: boolean) => {
     const newTitle = save ? input.value.trim() : currentTitle;
-    const titleChanged = save && newTitle && newTitle !== currentTitle;
-    if (titleChanged) {
     const titleChanged = save && newTitle && newTitle !== currentTitle;
     if (titleChanged) {
       try {
@@ -1137,9 +1102,6 @@ function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult
       } catch (err: unknown) {
         showToast({ message: 'Error: ' + (err as Error).message, type: 'error' });
       }
-    } else if (save) {
-      // Save without changes - acknowledge but don't call API
-      showToast({ message: 'No changes made', type: 'info' });
     } else if (save) {
       // Save without changes - acknowledge but don't call API
       showToast({ message: 'No changes made', type: 'info' });
@@ -1211,11 +1173,7 @@ function initBoardDragAndDrop(): void {
     container.addEventListener('dragover', (e: Event) => {
       e.preventDefault();
       if (!draggedCardUrl && !draggedCardId) return;
-      if (!draggedCardUrl && !draggedCardId) return;
       const afterElement = getDragAfterElement(container, (e as DragEvent).clientY);
-      const card = draggedCardUrl
-        ? document.querySelector(`.board-card[data-url="${draggedCardUrl}"]`) as HTMLElement | null
-        : document.querySelector(`.board-card[data-id="${draggedCardId}"]`) as HTMLElement | null;
       const card = draggedCardUrl
         ? document.querySelector(`.board-card[data-url="${draggedCardUrl}"]`) as HTMLElement | null
         : document.querySelector(`.board-card[data-id="${draggedCardId}"]`) as HTMLElement | null;
@@ -1230,14 +1188,7 @@ function initBoardDragAndDrop(): void {
     container.addEventListener('drop', async (e: Event) => {
       e.preventDefault();
       if (!draggedCardUrl && !draggedCardId) return;
-      if (!draggedCardUrl && !draggedCardId) return;
       const newListId = (container as HTMLElement).dataset.listId as DashboardListId;
-      // Use the source column captured at dragstart (before dragover moves the card)
-      const currentListId = draggedCardSourceListId;
-      if (currentListId && newListId && currentListId === newListId) {
-        showToast({ message: 'Already in this column', type: 'info' });
-        return;
-      }
       // Use the source column captured at dragstart (before dragover moves the card)
       const currentListId = draggedCardSourceListId;
       if (currentListId && newListId && currentListId === newListId) {
@@ -1249,8 +1200,6 @@ function initBoardDragAndDrop(): void {
         const body: Record<string, string> = { status: newStatus, column: newListId };
         if (draggedCardUrl) {
           body.url = draggedCardUrl;
-        } else if (draggedCardId) {
-          body.id = draggedCardId;
         } else if (draggedCardId) {
           body.id = draggedCardId;
         }
@@ -2847,52 +2796,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   switchResultsTab(sourceParam);
-
-  // Restore the latest findJob ATS scan (if any) so the sidebar shows it
-  // after navigating back to this page.
-  try {
-    const raw = sessionStorage.getItem('ats-scan-results-findjob');
-    if (raw) {
-      const saved = JSON.parse(raw) as Record<string, unknown>;
-      applyAtsResultsToUI(saved);
-      openAtsSidebar();
-    }
-  } catch {
-    // ignore malformed saved scan
-  }
-
-  // Check for test mode and show warning banner
-  fetch('/config.json')
-    .then(r => r.json())
-    .then(config => {
-      const isTestMode = config.NODE_ENV === 'test';
-      const warning = document.getElementById('test-data-warning');
-      const clearBtn = document.getElementById('clear-test-data-btn');
-      if (warning && isTestMode) {
-        warning.style.display = 'flex';
-      }
-      if (clearBtn && isTestMode) {
-        clearBtn.style.display = 'inline-flex';
-      }
-    })
-    .catch(() => {
-      // Ignore config fetch errors
-    });
-});
-
-async function clearTestData(): Promise<void> {
-  if (!confirm('This will delete ALL dashboard cards. Are you sure?')) return;
-
-  try {
-    const resp = await fetch('/api/job-data/dashboard/clear-test', { method: 'POST' });
-    if (!resp.ok) throw new Error('Failed to clear test data');
-    showToast({ message: 'Test data cleared', type: 'success' });
-    renderDashboard();
-  } catch (err: unknown) {
-    showToast({ message: 'Failed to clear test data: ' + (err as Error).message, type: 'error' });
-  }
-}
-
 
   // Restore the latest findJob ATS scan (if any) so the sidebar shows it
   // after navigating back to this page.

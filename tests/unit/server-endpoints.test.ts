@@ -4,12 +4,9 @@ import { spawn, execSync, type ChildProcess } from 'node:child_process';
 import * as http from 'node:http';
 import { join } from 'node:path';
 import { rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { rmSync } from 'node:fs';
 
 const TEST_PORT = 3447;
 const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
-const TEST_DB = join(__dirname, '..', '..', 'data', 'test', 'jobdata-unit-test.db');
 const TEST_DB = join(__dirname, '..', '..', 'data', 'test', 'jobdata-unit-test.db');
 let serverProcess: ChildProcess | null = null;
 
@@ -23,12 +20,7 @@ function httpJson(method: string, path: string, body?: unknown): Promise<HttpRes
 }
 
 function httpJsonWithBase(baseUrl: string, method: string, path: string, body?: unknown): Promise<HttpResponse> {
-  return httpJsonWithBase(BASE_URL, method, path, body);
-}
-
-function httpJsonWithBase(baseUrl: string, method: string, path: string, body?: unknown): Promise<HttpResponse> {
   return new Promise((resolve, reject) => {
-    const url = new URL(path, baseUrl);
     const url = new URL(path, baseUrl);
     const payload = body === undefined ? null : JSON.stringify(body);
     const req = http.request(
@@ -436,165 +428,6 @@ test('rate limiter returns 429 after exceeding request budget', async () => {
     }
   }
   assert.ok(saw429, 'Expected a 429 rate-limit response within 25 requests');
-});
-
-// ─── Dashboard API endpoints ─────────────────────────────────────────
-
-function uniqueId(label: string): string {
-  return `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-async function waitForDashboardJob(url: string, timeoutMs = 5000): Promise<unknown | null> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const res = await httpJson('GET', '/api/job-data/dashboard');
-    const jobs = res.data as Array<{ url: string }>;
-    const found = jobs.find(j => j.url === url);
-    if (found) return found;
-    await new Promise(r => setTimeout(r, 300));
-  }
-  return null;
-}
-
-test('GET /api/job-data/dashboard returns 200 with array', async () => {
-  const res = await httpJson('GET', '/api/job-data/dashboard');
-  assert.equal(res.status, 200);
-  assert.ok(Array.isArray(res.data));
-});
-
-test('POST /api/job-data/dashboard/add creates a new dashboard job', async () => {
-  const testId = uniqueId('integ');
-  const job = {
-    title: 'Integration Test Job',
-    url: `https://example.com/${testId}`,
-    snippet: 'Integration test snippet',
-    source: 'linkedin',
-  };
-  const res = await httpJson('POST', '/api/job-data/dashboard/add', job);
-  assert.equal(res.status, 200);
-  const data = res.data as { success: boolean; job: { title: string } };
-  assert.equal(data.success, true);
-  assert.equal(data.job.title, 'Integration Test Job');
-
-  // Verify the job was persisted
-  const found = await waitForDashboardJob(job.url);
-  assert.ok(found, 'Job should be findable in dashboard');
-});
-
-test('POST /api/job-data/update-status updates status by url', async () => {
-  const testId = uniqueId('status');
-  const url = `https://example.com/${testId}`;
-  await httpJson('POST', '/api/job-data/dashboard/add', {
-    title: 'Status Test Job',
-    url,
-    snippet: '',
-    source: 'linkedin',
-  });
-
-  const res = await httpJson('POST', '/api/job-data/update-status', {
-    url,
-    status: 'Interviewing',
-    column: 'screening',
-  });
-  assert.equal(res.status, 200);
-  const data = res.data as { success: boolean };
-  assert.equal(data.success, true);
-
-  // Verify the update persisted
-  const updated = await waitForDashboardJob(url) as { status?: string; column?: string };
-  assert.ok(updated, 'Updated job should be in dashboard');
-  assert.equal(updated.status, 'Interviewing');
-  assert.equal(updated.column, 'screening');
-});
-
-test('POST /api/job-data/update-status rejects missing url and id', async () => {
-  const res = await httpJson('POST', '/api/job-data/update-status', {
-    status: 'Interviewing',
-  });
-  assert.equal(res.status, 400);
-  assert.ok((res.data as { error: string }).error.includes('Missing'));
-});
-
-test('POST /api/job-data/rounds increments rounds by delta', async () => {
-  const testId = uniqueId('rounds');
-  const url = `https://example.com/${testId}`;
-  await httpJson('POST', '/api/job-data/dashboard/add', {
-    title: 'Rounds Test Job',
-    url,
-    snippet: '',
-    source: 'linkedin',
-  });
-
-  const res = await httpJson('POST', '/api/job-data/rounds', {
-    url,
-    delta: 2,
-  });
-  assert.equal(res.status, 200);
-  const data = res.data as { success: boolean; interviewRounds: number };
-  assert.equal(data.success, true);
-  assert.equal(data.interviewRounds, 2);
-});
-
-test('POST /api/job-data/rename updates title by url', async () => {
-  const testId = uniqueId('rename');
-  const url = `https://example.com/${testId}`;
-  await httpJson('POST', '/api/job-data/dashboard/add', {
-    title: 'Original Title',
-    url,
-    snippet: '',
-    source: 'linkedin',
-  });
-
-  const res = await httpJson('POST', '/api/job-data/rename', {
-    url,
-    title: 'Renamed Title',
-  });
-  assert.equal(res.status, 200);
-  const data = res.data as { success: boolean };
-  assert.equal(data.success, true);
-
-  // Verify the rename persisted
-  const updated = await waitForDashboardJob(url) as { title: string };
-  assert.ok(updated, 'Renamed job should be in dashboard');
-  assert.equal(updated.title, 'Renamed Title');
-});
-
-test('POST /api/job-data/rename rejects missing url and id', async () => {
-  const res = await httpJson('POST', '/api/job-data/rename', {
-    title: 'Some Title',
-  });
-  assert.equal(res.status, 400);
-  assert.ok((res.data as { error: string }).error.includes('Missing'));
-});
-
-test('POST /api/job-data/dashboard/delete removes job by url', async () => {
-  const testId = uniqueId('delete');
-  const url = `https://example.com/${testId}`;
-  await httpJson('POST', '/api/job-data/dashboard/add', {
-    title: 'Delete Me',
-    url,
-    snippet: '',
-    source: 'linkedin',
-  });
-
-  const res = await httpJson('POST', '/api/job-data/dashboard/delete', {
-    url,
-  });
-  assert.equal(res.status, 200);
-  const data = res.data as { success: boolean };
-  assert.equal(data.success, true);
-
-  // Verify the job was deleted
-  await new Promise(r => setTimeout(r, 500));
-  const dashboardRes = await httpJson('GET', '/api/job-data/dashboard');
-  const jobs = dashboardRes.data as Array<{ url: string }>;
-  assert.ok(!jobs.some(j => j.url === url), 'Deleted job should not be in dashboard');
-});
-
-test('POST /api/job-data/dashboard/delete rejects missing url and id', async () => {
-  const res = await httpJson('POST', '/api/job-data/dashboard/delete', {});
-  assert.equal(res.status, 400);
-  assert.ok((res.data as { error: string }).error.includes('Missing'));
 });
 
 // ─── Dashboard API endpoints ─────────────────────────────────────────
