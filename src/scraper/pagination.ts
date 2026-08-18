@@ -38,7 +38,7 @@ const LINKEDIN_WORK_TYPE_MAP: Record<string, string> = {
  * Single source of truth for query composition (role, keywords,
  * employment type, country, region, currency, domain selection).
  */
-export function buildScraperSearchUrl(source: 'linkedin' | 'google', query: ScraperQuery): string {
+export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoterocketship', query: ScraperQuery): string {
     const parts: string[] = [];
 
     if (source === 'linkedin') {
@@ -77,6 +77,22 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google', query: Scra
         }
 
         return url.toString();
+    }
+
+    if (source === 'remoterocketship') {
+        // Build Remote Rocketship search URL - uses query params similar to pagination
+        if (query.country) parts.push(`country=${query.country}`);
+        if (query.keywords) parts.push(`keyword=${query.keywords}`);
+        if (query.seniority) parts.push(`seniority=${query.seniority}`);
+        if (query.employmentType) parts.push(`employment_type=${query.employmentType}`);
+        if (query.region) parts.push(`region=${query.region}`);
+        if (query.customDomains && query.customDomains.length > 0) {
+            parts.push(`locations=${query.customDomains.join(',')}`);
+        }
+        if (query.role) parts.push(`job_title=${query.role}`);
+        parts.push(`sort=${query.datePosted === 'last24h' ? 'DateAdded' : 'Relevance'}`);
+        parts.push('page=1');
+        return `https://remoterocketship.com/jobs?${parts.join('&')}`;
     }
 
     // Quote role and keywords as separate terms (not one combined phrase)
@@ -118,7 +134,7 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google', query: Scra
     return `https://www.google.com/search?q=${encodeURIComponent(fullQuery)}`;
 }
 
-export function buildScraperSearchUrls(baseUrl: string, source: 'linkedin' | 'google', pageCount: number, startPage: number = 1): string[] {
+export function buildScraperSearchUrls(baseUrl: string, source: 'linkedin' | 'google' | 'remoterocketship', pageCount: number, startPage: number = 1): string[] {
     const urls: string[] = [];
 
     if (source === 'linkedin') {
@@ -128,6 +144,19 @@ export function buildScraperSearchUrls(baseUrl: string, source: 'linkedin' | 'go
             } else {
                 const url = new URL(baseUrl);
                 url.searchParams.set('start', String((page - 1) * 25));
+                urls.push(url.toString());
+            }
+        }
+        return urls;
+    }
+
+    if (source === 'remoterocketship') {
+        for (let page = startPage; page < startPage + pageCount; page += 1) {
+            if (page === startPage) {
+                urls.push(baseUrl);
+            } else {
+                const url = new URL(baseUrl);
+                url.searchParams.set('page', String(page));
                 urls.push(url.toString());
             }
         }

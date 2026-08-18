@@ -12,7 +12,7 @@ export interface ScraperResult {
   title: string;
   url: string;
   snippet: string;
-  source: 'linkedin' | 'google';
+  source: 'linkedin' | 'google' | 'remoterocketship';
   author?: string;
   company?: string;
   postedDate?: string;
@@ -24,16 +24,19 @@ export interface ScraperResult {
   applied?: boolean;
   appliedAt?: string;
   removed?: boolean;
-  status?: 'No News' | 'Interviewing' | 'Offer' | 'Rejected';
+  status?: 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | 'Hired';
   column?: string;
   interviewRounds?: number;
   notes?: string;
   id?: string;
+  site?: string;
+  jobDescription?: string;
+  isCollectionUrl?: boolean;
 }
 
 export interface ScraperRunPayload {
   timestamp: string | null;
-  source: 'linkedin' | 'google';
+  source: 'linkedin' | 'google' | 'remoterocketship';
   query: Record<string, string>;
   totalResults: number;
   results: ScraperResult[];
@@ -67,7 +70,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const CACHE_MAX_SIZE = 100;
 const cachedRuns: Record<string, CacheEntry> = {};
 
-function getCachedRun(source: 'linkedin' | 'google'): ScraperRunPayload | null {
+function getCachedRun(source: 'linkedin' | 'google' | 'remoterocketship'): ScraperRunPayload | null {
   const entry = cachedRuns[source];
   if (!entry) return null;
   if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
@@ -77,7 +80,7 @@ function getCachedRun(source: 'linkedin' | 'google'): ScraperRunPayload | null {
   return entry.payload;
 }
 
-function setCachedRun(source: 'linkedin' | 'google', payload: ScraperRunPayload): void {
+function setCachedRun(source: 'linkedin' | 'google' | 'remoterocketship', payload: ScraperRunPayload): void {
   // Enforce max size by removing oldest entry
   if (Object.keys(cachedRuns).length >= CACHE_MAX_SIZE) {
     const oldestKey = Object.keys(cachedRuns).reduce((a, b) =>
@@ -88,7 +91,7 @@ function setCachedRun(source: 'linkedin' | 'google', payload: ScraperRunPayload)
   cachedRuns[source] = { payload, timestamp: Date.now() };
 }
 
-function clearCachedRun(source?: 'linkedin' | 'google'): void {
+function clearCachedRun(source?: 'linkedin' | 'google' | 'remoterocketship'): void {
   if (source) {
     delete cachedRuns[source];
   } else {
@@ -122,7 +125,7 @@ function ensureDataDir(): void {
 
 let db: Database.Database | null = null;
 
-function getDb(): Database.Database {
+export function getDb(): Database.Database {
   if (db) return db;
   ensureDataDir();
   // Warn if a test DB path is used in production (non-test) mode
@@ -139,8 +142,42 @@ function getDb(): Database.Database {
   } catch {
     // Column already exists
   }
+  // Migration: add site, jobDescription, isCollectionUrl columns if missing
+  for (const table of ['scraping_results', 'saved_jobs', 'job_dashboard']) {
+    try {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN site TEXT`);
+    } catch {
+      // Column already exists
+    }
+    try {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN jobDescription TEXT`);
+    } catch {
+      // Column already exists
+    }
+  }
+  try {
+    db.exec('ALTER TABLE scraping_results ADD COLUMN isCollectionUrl INTEGER DEFAULT 0');
+  } catch {
+    // Column already exists
+  }
+  try {
+    db.exec('ALTER TABLE saved_jobs ADD COLUMN isCollectionUrl INTEGER DEFAULT 0');
+  } catch {
+    // Column already exists
+  }
   return db;
 }
+
+// Status <-> Dashboard column mapping
+const STATUS_TO_LIST: Record<string, string> = {
+  'No News': 'applied',
+  'Interviewing': 'screening',
+  'Rejected': 'rejected',
+  'Offer': 'offer',
+  'Hired': 'hired',
+};
+
+const DASHBOARD_COLUMN_ORDER = ['applied', 'screening', 'rejected', 'offer', 'hired'] as const;
 
 function initSchema(database: Database.Database): void {
   database.exec(`
@@ -167,6 +204,9 @@ function initSchema(database: Database.Database): void {
       notes TEXT,
       jobId TEXT,
       extractionDone INTEGER DEFAULT 0,
+      site TEXT,
+      jobDescription TEXT,
+      isCollectionUrl INTEGER DEFAULT 0,
       PRIMARY KEY (url, source)
     );
 
@@ -199,6 +239,9 @@ function initSchema(database: Database.Database): void {
       interviewRounds INTEGER,
       notes TEXT,
       jobId TEXT,
+      site TEXT,
+      jobDescription TEXT,
+      isCollectionUrl INTEGER DEFAULT 0,
       PRIMARY KEY (url, source)
     );
 
@@ -219,12 +262,14 @@ function initSchema(database: Database.Database): void {
       notes TEXT,
       savedAt TEXT,
       appliedAt TEXT,
+      site TEXT,
+      jobDescription TEXT,
       PRIMARY KEY (url, jobId)
     );
   `);
 }
 
-function formatRowForSqlite(row: ScraperResult, source: 'linkedin' | 'google'): Record<string, unknown> {
+function formatRowForSqlite(row: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship'): Record<string, unknown> {
   return {
     url: row.url || null,
     source: source,
@@ -246,6 +291,9 @@ function formatRowForSqlite(row: ScraperResult, source: 'linkedin' | 'google'): 
     notes: row.notes || null,
     id: row.id || null,
     extractionDone: 0,
+    site: row.site || null,
+    jobDescription: row.jobDescription || null,
+    isCollectionUrl: row.isCollectionUrl ? 1 : 0,
   };
 }
 
@@ -267,6 +315,8 @@ function formatDashboardRowForSqlite(row: ScraperResult): Record<string, unknown
     notes: row.notes || null,
     savedAt: row.savedAt || null,
     appliedAt: row.appliedAt || null,
+    site: row.site || null,
+    jobDescription: row.jobDescription || null,
   };
 }
 
@@ -275,7 +325,7 @@ function parseRowFromSqlite(row: Record<string, unknown>): ScraperResult {
     title: (row.title as string) || '',
     url: (row.url as string) || '',
     snippet: (row.snippet as string) || '',
-    source: (row.source as 'linkedin' | 'google') || 'linkedin',
+    source: (row.source as 'linkedin' | 'google' | 'remoterocketship') || 'linkedin',
     author: row.author as string | undefined,
     company: row.company as string | undefined,
     postedDate: row.postedDate as string | undefined,
@@ -287,11 +337,14 @@ function parseRowFromSqlite(row: Record<string, unknown>): ScraperResult {
     applied: (row.applied as number) ? true : false,
     appliedAt: row.appliedAt as string | undefined,
     removed: (row.removed as number) ? true : false,
-    status: row.status as 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | undefined,
+    status: row.status as 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | 'Hired' | undefined,
     column: row.column as string | undefined,
     interviewRounds: row.interviewRounds as number | undefined,
     notes: row.notes as string | undefined,
     id: row.id as string | undefined,
+    site: row.site as string | undefined,
+    jobDescription: row.jobDescription as string | undefined,
+    isCollectionUrl: (row.isCollectionUrl as number) ? true : false,
   };
 }
 
@@ -300,19 +353,21 @@ function parseDashboardRowFromSqlite(row: Record<string, unknown>): ScraperResul
     title: (row.title as string) || '',
     url: (row.url as string) || '',
     snippet: (row.snippet as string) || '',
-    source: (row.source as 'linkedin' | 'google') || 'linkedin',
+    source: (row.source as 'linkedin' | 'google' | 'remoterocketship') || 'linkedin',
     company: row.company as string | undefined,
     postedDate: row.postedDate as string | undefined,
     aiSummary: row.aiSummary as string | undefined,
     queryAffinity: (row.queryAffinity as 'High' | 'Medium' | 'Low') || undefined,
     parameters: row.parameters ? JSON.parse(row.parameters as string) : undefined,
-    status: row.status as 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | undefined,
+    status: row.status as 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | 'Hired' | undefined,
     column: row.column as string | undefined,
     interviewRounds: row.interviewRounds as number | undefined,
     notes: row.notes as string | undefined,
     id: (row.jobId as string) || undefined,
     savedAt: row.savedAt as string | undefined,
     appliedAt: row.appliedAt as string | undefined,
+    site: row.site as string | undefined,
+    jobDescription: row.jobDescription as string | undefined,
   };
 }
 
@@ -323,7 +378,7 @@ export function initStorage(): void {
 
 // --- Scraping Results (Scraper) ---
 
-export async function getScrapingRun(source: 'linkedin' | 'google'): Promise<ScraperRunPayload | null> {
+export async function getScrapingRun(source: 'linkedin' | 'google' | 'remoterocketship'): Promise<ScraperRunPayload | null> {
   const cached = getCachedRun(source);
   if (cached) return cached;
   const database = getDb();
@@ -352,7 +407,7 @@ export async function getScrapingRun(source: 'linkedin' | 'google'): Promise<Scr
 }
 
 export async function setScrapingRun(
-  source: 'linkedin' | 'google',
+  source: 'linkedin' | 'google' | 'remoterocketship',
   run: {
     timestamp: string;
     query: Record<string, string>;
@@ -383,16 +438,16 @@ export async function setScrapingRun(
 
     // UPSERT each result, preserving removed/saved/applied flags from existing rows
     const checkExisting = database.prepare(
-      'SELECT removed, saved, savedAt, applied, appliedAt, status, column, interviewRounds, notes, extractionDone FROM scraping_results WHERE url = ? AND source = ?'
+      'SELECT removed, saved, savedAt, applied, appliedAt, status, column, interviewRounds, notes, extractionDone, site, jobDescription, isCollectionUrl FROM scraping_results WHERE url = ? AND source = ?'
     );
     const upsertResult = database.prepare(`
       INSERT INTO scraping_results
         (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, extractionDone)
+         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, extractionDone, site, jobDescription, isCollectionUrl)
       VALUES
         (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
          @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
-         @interviewRounds, @notes, @jobId, @runId, @timestamp, @extractionDone)
+         @interviewRounds, @notes, @jobId, @runId, @timestamp, @extractionDone, @site, @jobDescription, @isCollectionUrl)
       ON CONFLICT(url, source) DO UPDATE SET
         title = excluded.title,
         snippet = excluded.snippet,
@@ -413,7 +468,10 @@ export async function setScrapingRun(
         jobId = excluded.jobId,
         runId = excluded.runId,
         timestamp = excluded.timestamp,
-        extractionDone = excluded.extractionDone
+        extractionDone = excluded.extractionDone,
+        site = excluded.site,
+        jobDescription = excluded.jobDescription,
+        isCollectionUrl = excluded.isCollectionUrl
     `);
 
     for (const result of run.results) {
@@ -451,7 +509,7 @@ export async function setScrapingRun(
 }
 
 export async function updateScrapingResultSummary(
-  source: 'linkedin' | 'google',
+  source: 'linkedin' | 'google' | 'remoterocketship',
   updates: { summary?: string; provider?: string; metadataExtractionStatus?: 'done' },
   results: ScraperResult[]
 ): Promise<void> {
@@ -476,16 +534,19 @@ export async function updateScrapingResultSummary(
     const upsertResult = database.prepare(`
       INSERT INTO scraping_results
         (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, extractionDone)
+         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, extractionDone, site, jobDescription, isCollectionUrl)
       VALUES
         (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
          @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
-         @interviewRounds, @notes, @jobId, @runId, @timestamp, @extractionDone)
+         @interviewRounds, @notes, @jobId, @runId, @timestamp, @extractionDone, @site, @jobDescription, @isCollectionUrl)
       ON CONFLICT(url, source) DO UPDATE SET
         aiSummary = excluded.aiSummary,
         queryAffinity = excluded.queryAffinity,
         parameters = excluded.parameters,
-        extractionDone = excluded.extractionDone
+        extractionDone = excluded.extractionDone,
+        site = excluded.site,
+        jobDescription = excluded.jobDescription,
+        isCollectionUrl = excluded.isCollectionUrl
     `);
 
     const extractionDone = updates.metadataExtractionStatus === 'done' ? 1 : 0;
@@ -616,7 +677,7 @@ function parseSavedRowFromSqlite(row: Record<string, unknown>): ScraperResult {
     title: (row.title as string) || '',
     url: (row.url as string) || '',
     snippet: (row.snippet as string) || '',
-    source: (row.source as 'linkedin' | 'google') || 'linkedin',
+    source: (row.source as 'linkedin' | 'google' | 'remoterocketship') || 'linkedin',
     company: row.company as string | undefined,
     postedDate: row.postedDate as string | undefined,
     aiSummary: row.aiSummary as string | undefined,
@@ -626,11 +687,14 @@ function parseSavedRowFromSqlite(row: Record<string, unknown>): ScraperResult {
     savedAt: row.savedAt as string | undefined,
     applied: row.applied ? true : false,
     appliedAt: row.appliedAt as string | undefined,
-    status: row.status as 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | undefined,
+    status: row.status as 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | 'Hired' | undefined,
     column: row.column as string | undefined,
     interviewRounds: row.interviewRounds as number | undefined,
     notes: row.notes as string | undefined,
     id: row.id as string | undefined,
+    site: row.site as string | undefined,
+    jobDescription: row.jobDescription as string | undefined,
+    isCollectionUrl: (row.isCollectionUrl as number) ? true : false,
   };
 }
 
@@ -640,27 +704,27 @@ export async function saveJobData(data: JobData): Promise<void> {
     const insertScraping = database.prepare(`
       INSERT OR REPLACE INTO scraping_results
         (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp)
+         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, site, jobDescription, isCollectionUrl)
       VALUES
         (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
          @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
-         @interviewRounds, @notes, @id, @runId, @timestamp)
+         @interviewRounds, @notes, @id, @runId, @timestamp, @site, @jobDescription, @isCollectionUrl)
     `);
     const insertSaved = database.prepare(`
       INSERT OR REPLACE INTO saved_jobs
         (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         savedAt, applied, appliedAt, status, column, interviewRounds, notes, jobId)
+         savedAt, applied, appliedAt, status, column, interviewRounds, notes, jobId, site, jobDescription, isCollectionUrl)
       VALUES
         (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
-         @parameters, @savedAt, @applied, @appliedAt, @status, @column, @interviewRounds, @notes, @id)
+         @parameters, @savedAt, @applied, @appliedAt, @status, @column, @interviewRounds, @notes, @id, @site, @jobDescription, @isCollectionUrl)
     `);
     const insertDashboard = database.prepare(`
       INSERT OR REPLACE INTO job_dashboard
         (url, jobId, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         source, status, column, interviewRounds, notes, savedAt, appliedAt)
+         source, status, column, interviewRounds, notes, savedAt, appliedAt, site, jobDescription)
       VALUES
         (@url, @jobId, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
-         @parameters, @source, @status, @column, @interviewRounds, @notes, @savedAt, @appliedAt)
+         @parameters, @source, @status, @column, @interviewRounds, @notes, @savedAt, @appliedAt, @site, @jobDescription)
     `);
 
     for (const item of data.scrapingResults.linkedin) {
@@ -685,7 +749,7 @@ export async function saveJobData(data: JobData): Promise<void> {
   clearCachedRun();
 }
 
-function formatSavedRowForSqlite(row: ScraperResult, source: 'linkedin' | 'google'): Record<string, unknown> {
+function formatSavedRowForSqlite(row: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship'): Record<string, unknown> {
   return {
     url: row.url || null,
     source: source,
@@ -704,10 +768,13 @@ function formatSavedRowForSqlite(row: ScraperResult, source: 'linkedin' | 'googl
     interviewRounds: row.interviewRounds || null,
     notes: row.notes || null,
     id: row.id || null,
+    site: row.site || null,
+    jobDescription: row.jobDescription || null,
+    isCollectionUrl: row.isCollectionUrl ? 1 : 0,
   };
 }
 
-export async function getScrapingResults(source: 'linkedin' | 'google'): Promise<ScraperResult[]> {
+export async function getScrapingResults(source: 'linkedin' | 'google' | 'remoterocketship'): Promise<ScraperResult[]> {
   const database = getDb();
   const rows = database.prepare(
     'SELECT * FROM scraping_results WHERE source = ? AND removed = 0'
@@ -723,20 +790,20 @@ export async function getAllScrapingResults(): Promise<ScraperResult[]> {
   return rows.map(parseRowFromSqlite);
 }
 
-export async function setScrapingResults(source: 'linkedin' | 'google', results: ScraperResult[]): Promise<void> {
+export async function setScrapingResults(source: 'linkedin' | 'google' | 'remoterocketship', results: ScraperResult[]): Promise<void> {
   const database = getDb();
   const dbTransaction = database.transaction(() => {
     const checkExisting = database.prepare(
-      'SELECT removed, saved, savedAt, applied, appliedAt, status, column, interviewRounds, notes, runId, timestamp FROM scraping_results WHERE url = ? AND source = ?'
+      'SELECT removed, saved, savedAt, applied, appliedAt, status, column, interviewRounds, notes, runId, timestamp, site, jobDescription, isCollectionUrl FROM scraping_results WHERE url = ? AND source = ?'
     );
     const upsertResult = database.prepare(`
       INSERT INTO scraping_results
         (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp)
+         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, site, jobDescription, isCollectionUrl)
       VALUES
         (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
          @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
-         @interviewRounds, @notes, @id, @runId, @timestamp)
+         @interviewRounds, @notes, @id, @runId, @timestamp, @site, @jobDescription, @isCollectionUrl)
       ON CONFLICT(url, source) DO UPDATE SET
         title = excluded.title,
         snippet = excluded.snippet,
@@ -756,7 +823,10 @@ export async function setScrapingResults(source: 'linkedin' | 'google', results:
         notes = excluded.notes,
         jobId = excluded.jobId,
         runId = excluded.runId,
-        timestamp = excluded.timestamp
+        timestamp = excluded.timestamp,
+        site = excluded.site,
+        jobDescription = excluded.jobDescription,
+        isCollectionUrl = excluded.isCollectionUrl
     `);
 
     for (const result of results) {
@@ -890,10 +960,10 @@ export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'go
     const insertDashboard = database.prepare(`
       INSERT INTO job_dashboard
         (url, jobId, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         source, status, column, interviewRounds, notes, savedAt, appliedAt)
+         source, status, column, interviewRounds, notes, savedAt, appliedAt, site, jobDescription)
       VALUES
         (@url, @jobId, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
-         @parameters, @source, @status, @column, @interviewRounds, @notes, @savedAt, @appliedAt)
+         @parameters, @source, @status, @column, @interviewRounds, @notes, @savedAt, @appliedAt, @site, @jobDescription)
     `);
     insertDashboard.run(formatDashboardRowForSqlite(dashboardJob));
 
@@ -911,11 +981,18 @@ export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'go
   clearCachedRun();
 }
 
-export async function getJobDashboard(): Promise<ScraperResult[]> {
+export async function getJobDashboard(): Promise<{ results: ScraperResult[]; statusCounts: Record<string, number> }> {
   const database = getDb();
   const rows = database.prepare('SELECT rowid, * FROM job_dashboard').all() as (Record<string, unknown> & { rowid: number })[];
   let changed = false;
   const results: ScraperResult[] = [];
+  const statusCounts: Record<string, number> = {
+    'No News': 0,
+    'Interviewing': 0,
+    'Rejected': 0,
+    'Offer': 0,
+    'Hired': 0,
+  };
 
   for (const row of rows) {
     let jobId = row.jobId as string | undefined;
@@ -926,8 +1003,12 @@ export async function getJobDashboard(): Promise<ScraperResult[]> {
     }
     if (!column) {
       const status = row.status as string;
-      column = status === 'Offer' ? 'offer' : status === 'Rejected' ? 'hired' : status === 'Interviewing' ? 'screening' : 'applied';
+      column = STATUS_TO_LIST[status] || 'applied';
       changed = true;
+    }
+    const status = row.status as string;
+    if (status && statusCounts[status] !== undefined) {
+      statusCounts[status]++;
     }
     results.push({
       ...parseDashboardRowFromSqlite(row),
@@ -936,6 +1017,13 @@ export async function getJobDashboard(): Promise<ScraperResult[]> {
       _rowid: row.rowid,
     } as ScraperResult & { _rowid: number });
   }
+
+  // Enforce column order: applied → screening → rejected → offer → hired
+  results.sort((a, b) => {
+    const orderA = DASHBOARD_COLUMN_ORDER.indexOf(a.column as (typeof DASHBOARD_COLUMN_ORDER)[number]);
+    const orderB = DASHBOARD_COLUMN_ORDER.indexOf(b.column as (typeof DASHBOARD_COLUMN_ORDER)[number]);
+    return (orderA === -1 ? 99 : orderA) - (orderB === -1 ? 99 : orderB);
+  });
 
   if (changed) {
     const dbTransaction = database.transaction(() => {
@@ -961,7 +1049,7 @@ export async function getJobDashboard(): Promise<ScraperResult[]> {
     dbTransaction();
   }
 
-  return results;
+  return { results, statusCounts };
 }
 
 export async function updateDashboardJob(url?: string, updates: Partial<ScraperResult> = {}, id?: string): Promise<void> {
@@ -1002,14 +1090,15 @@ export async function updateDashboardJob(url?: string, updates: Partial<ScraperR
 
 export async function insertDashboardJob(job: ScraperResult): Promise<ScraperResult> {
   const database = getDb();
+  const status = (job.status || 'No News') as 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | 'Hired';
   const dashboardJob: ScraperResult = {
     ...job,
     saved: true,
     applied: true,
     savedAt: job.savedAt || new Date().toISOString(),
     appliedAt: job.appliedAt || new Date().toISOString(),
-    status: (job.status || 'No News') as 'No News' | 'Interviewing' | 'Offer' | 'Rejected',
-    column: job.column || 'applied',
+    status,
+    column: job.column || STATUS_TO_LIST[status] || 'applied',
     notes: job.notes || '',
   };
 
@@ -1041,6 +1130,23 @@ export async function removeDashboardJob(url?: string, id?: string): Promise<voi
 export async function clearTestDashboardData(): Promise<void> {
   const database = getDb();
   database.prepare('DELETE FROM job_dashboard').run();
+  clearCachedRun();
+}
+
+export async function updateJobDescription(url: string, jobDescription: string): Promise<void> {
+  const database = getDb();
+  const dbTransaction = database.transaction(() => {
+    database.prepare(
+      'UPDATE scraping_results SET jobDescription = ? WHERE url = ?'
+    ).run(jobDescription, url);
+    database.prepare(
+      'UPDATE saved_jobs SET jobDescription = ? WHERE url = ?'
+    ).run(jobDescription, url);
+    database.prepare(
+      'UPDATE job_dashboard SET jobDescription = ? WHERE url = ?'
+    ).run(jobDescription, url);
+  });
+  dbTransaction();
   clearCachedRun();
 }
 

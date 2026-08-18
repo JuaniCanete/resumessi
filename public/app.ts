@@ -1250,7 +1250,7 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
   };
 
   const providerModels: Record<string, string> = {
-    cohere: 'command-a-reasoning-08-2025-08-2024',
+    cohere: 'command-a-reasoning-08-2025',
     mistral: 'codestral-2508',
     gemini: 'gemini-3.6-flash',
     groq: 'openai/gpt-oss-120b',

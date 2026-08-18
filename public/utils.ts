@@ -11,6 +11,30 @@ export function escHtml(value: string | null | undefined): string {
   return String(value).replace(/[&<>"']/g, (c) => '&#' + m[c] + ';');
 }
 
+// Detect a LinkedIn collection/search page (multiple jobs, no single JD).
+// Scoped to linkedin.com hosts to avoid misclassifying non-LinkedIn URLs.
+export function isCollectionUrl(url: unknown): boolean {
+  if (url == null || typeof url !== 'string') return false;
+  try {
+    let normalizedPath = '';
+    let hostname = '';
+    if (url.startsWith('http')) {
+      const parsed = new URL(url);
+      normalizedPath = parsed.pathname;
+      hostname = parsed.hostname;
+    } else {
+      const parsed = new URL(url, 'http://localhost');
+      normalizedPath = parsed.pathname;
+      hostname = parsed.hostname;
+    }
+    // Only treat as collection on LinkedIn hosts
+    if (!hostname.endsWith('linkedin.com')) return false;
+    return normalizedPath.startsWith('/jobs/collections/') || normalizedPath === '/jobs/search' || normalizedPath.startsWith('/jobs/search/');
+  } catch {
+    return false;
+  }
+}
+
 export function validateJDInput(jd: string): { valid: boolean; reason?: string } {
   if (!jd || typeof jd !== 'string') {
     return { valid: false, reason: 'Job description is required' };
@@ -83,7 +107,7 @@ export function stripMarkdown(text: string): string {
 
 // Build a search URL for LinkedIn or Google from a scraper query.
 // Delegates to the shared builder in src/scraper/pagination.ts (single source of truth).
-export function buildQueryUrl(source: 'linkedin' | 'google', query: ScraperQuery): string {
+export function buildQueryUrl(source: 'linkedin' | 'google' | 'remoterocketship', query: ScraperQuery): string {
   return buildScraperSearchUrl(source, query);
 }
 

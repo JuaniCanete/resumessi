@@ -4,6 +4,7 @@ import { launchStealthBrowser, randomDelay } from './browser';
 import { buildScraperSearchUrls, buildScraperSearchUrl } from './pagination';
 import type { ScraperQuery, ScraperResult } from './types';
 import { generateLinkedInStorageState } from '../../scripts/linkedin-auth';
+import { updateJobDescription } from '../storage/jobDataSqlite';
 
 const STORAGE_FILE = process.env.LINKEDIN_STORAGE_FILE || path.join(process.cwd(), 'data', 'storage-state', 'linkedin.json');
 
@@ -327,7 +328,16 @@ export async function fetchLinkedInJobDescription(rawUrl: string): Promise<strin
     // Inline session validation: if redirected to login/checkpoint, the stored
     // session is invalid. Throws so the caller surfaces it instead of falling
     // back to an unauthenticated fetch.
-    return extractLinkedInJdFromPage(page.url(), bodyText);
+    const jd = extractLinkedInJdFromPage(page.url(), bodyText);
+
+    // Persist JD to SQLite so retries don't re-fetch
+    if (jd) {
+      await updateJobDescription(jobUrl, jd).catch(err => {
+        console.warn('[LinkedIn Scraper] Failed to save JD to DB:', (err as Error).message);
+      });
+    }
+
+    return jd;
   } finally {
     await browser.close();
   }

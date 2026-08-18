@@ -346,11 +346,26 @@ test('POST /api/fetch-url routes LinkedIn job URLs through the normalized path a
   const { baseUrl, child } = await startIsolatedServer(3448, missingStorage);
   try {
     const res = await httpJsonWithBase(baseUrl, 'POST', '/api/fetch-url', {
-      url: 'https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4440070396',
+      url: 'https://www.linkedin.com/jobs/view/4440070396/',
     });
     assert.equal(res.status, 200);
     const data = res.data as { text?: string };
     assert.equal(typeof data.text, 'string');
+  } finally {
+    killChild(child);
+  }
+});
+
+test('POST /api/fetch-url returns 400 COLLECTION_URL for collection pages', async () => {
+  const missingStorage = join(__dirname, '..', '..', 'data', 'storage-state', 'linkedin-does-not-exist.json');
+  const { baseUrl, child } = await startIsolatedServer(3449, missingStorage);
+  try {
+    const res = await httpJsonWithBase(baseUrl, 'POST', '/api/fetch-url', {
+      url: 'https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4440070396',
+    });
+    assert.equal(res.status, 400);
+    const data = res.data as { error?: string; message?: string };
+    assert.equal(data.error, 'COLLECTION_URL');
   } finally {
     killChild(child);
   }

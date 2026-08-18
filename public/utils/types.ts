@@ -7,7 +7,7 @@ export interface ScraperResult {
   title: string;
   url: string;
   snippet: string;
-  source: 'linkedin' | 'google';
+  source: 'linkedin' | 'google' | 'remoterocketship';
   author?: string;
   company?: string;
   postedDate?: string;
@@ -20,11 +20,14 @@ export interface ScraperResult {
   applied?: boolean;
   appliedAt?: string;
   removed?: boolean;
-  status?: 'No News' | 'Interviewing' | 'Offer' | 'Rejected';
+  status?: 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | 'Hired';
   column?: string;
   interviewRounds?: number;
   notes?: string;
   id?: string;
+  site?: string;
+  jobDescription?: string;
+  isCollectionUrl?: boolean;
 }
 
 export interface JobData {

@@ -3,6 +3,22 @@ export function getRequestPath(requestUrl: string): string {
   return url.pathname;
 }
 
-export function getScraperResultsStorageKey(source: 'linkedin' | 'google'): string {
+export function isCollectionUrl(url: unknown): boolean {
+  if (url == null || typeof url !== 'string') return false;
+
+  try {
+    let normalizedPath = '';
+    if (url.startsWith('http')) {
+      normalizedPath = new URL(url).pathname;
+    } else {
+      normalizedPath = new URL(url, 'http://localhost').pathname;
+    }
+    return normalizedPath.startsWith('/jobs/collections/') || normalizedPath === '/jobs/search' || normalizedPath.startsWith('/jobs/search/');
+  } catch {
+    return false;
+  }
+}
+
+export function getScraperResultsStorageKey(source: 'linkedin' | 'google' | 'remoterocketship'): string {
   return `scraper-results:${source}`;
 }

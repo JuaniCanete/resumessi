@@ -25,6 +25,9 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+*.bak
+*.bak.bak
+tmp-*
 
 # Logs
 *.log
@@ -34,10 +37,13 @@ data/scraper-debug/
 
 # AI agent personal configs
 AGENTS_LOCAL.md
-.agents/rules/workflow.md
-.cursor/rules/agents-workflow.mdc
+.agents/
+.cursor/
 .kilo/
 .roo/
+.devin/
+.github/copilot-instructions.md
+.cursorignore
 
 # AI artifacts
 code-review/

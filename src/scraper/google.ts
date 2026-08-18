@@ -173,6 +173,7 @@ export async function scrapeGoogle(
           url,
           snippet: snippet || title,
           source: 'google',
+          site: bareHost,
         });
       }
 

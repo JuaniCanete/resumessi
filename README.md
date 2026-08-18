@@ -105,7 +105,7 @@ Edit `.env` (created by `npm run setup`):
 AI_INFERENCE_ORDER=cohere,mistral,gemini,groq
 
 COHERE_API_KEY=your_cohere_key_here
-COHERE_MODEL=command-a-reasoning-08-2025-08-2024
+COHERE_MODEL=command-a-reasoning-08-2025
 
 MISTRAL_API_KEY=your_mistral_key_here
 MISTRAL_MODEL=codestral-2508

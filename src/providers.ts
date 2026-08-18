@@ -405,7 +405,7 @@ function getProviderConfig(env: Record<string, string | undefined>): ProviderCon
   const providerMap: ProviderMap = {};
 
   const cohereKey = env.COHERE_API_KEY || '';
-  const cohereModel = env.COHERE_MODEL || 'command-a-reasoning-08-2025-08-2024';
+  const cohereModel = env.COHERE_MODEL || 'command-a-reasoning-08-2025';
   if (cohereKey) {
     providerMap.cohere = { key: cohereKey, model: cohereModel };
   }

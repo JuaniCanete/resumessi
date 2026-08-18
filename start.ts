@@ -17,11 +17,13 @@ import {
   scrapeLinkedIn,
   validateLinkedInStorageState,
   fetchLinkedInJobDescription,
+  normalizeLinkedInJobUrl,
   LinkedInSessionExpiredError,
 } from './src/scraper/linkedin';
 import { scrapeGoogle } from './src/scraper/google';
+import { scrapeRemoteRocketship } from './src/scraper/remoterocketship';
 import { generateLinkedInStorageState } from './scripts/linkedin-auth';
-import { getRequestPath } from './src/scraper/runtime-utils';
+import { getRequestPath, isCollectionUrl } from './src/scraper/runtime-utils';
 import type { ScraperQuery, ScraperResult } from './src/scraper/types';
 import {
   loadJobData,
@@ -40,6 +42,7 @@ import {
   initStorage,
   insertDashboardJob,
   clearTestDashboardData,
+  getDb,
 } from './src/storage/jobDataSqlite';
 import * as https from 'https';
 
@@ -78,7 +81,7 @@ function parseEnvFile(): Record<string, string | undefined> {
   const env: Record<string, string | undefined> = {
     AI_INFERENCE_ORDER: 'cohere,mistral,gemini,groq',
     COHERE_API_KEY: '',
-    COHERE_MODEL: 'command-a-reasoning-08-2025-08-2024',
+    COHERE_MODEL: 'command-a-reasoning-08-2025',
     MISTRAL_API_KEY: '',
     MISTRAL_MODEL: 'codestral-2508',
     GEMINI_API_KEY: '',
@@ -94,6 +97,10 @@ function parseEnvFile(): Record<string, string | undefined> {
     SUCCESS_COLOR: '#0ea5e9',
     CHROME_PATH: '',
     GOOGLE_API_KEY: '',
+    COLLECTION_WARNING_ENABLED: 'true',
+    REMOTEROCKETSHIP_BROWSER_PATH: '',
+    REMOTEROCKETSHIP_TIMEOUT_MS: '30000',
+    REMOTEROCKETSHIP_RATE_LIMIT_MS: '2000',
   };
 
   const envPath = path.join(ROOT, '.env');
@@ -121,7 +128,7 @@ function parseEnvFile(): Record<string, string | undefined> {
         value = value.slice(1, -1);
       }
       // Only allow keys from the predefined allowlist
-      if (Object.prototype.hasOwnProperty.call(env, key) || key.includes('COLOR') || key === 'AI_INFERENCE_ORDER' || key.startsWith('LINKEDIN_') || key === 'CHROME_PATH') {
+      if (Object.prototype.hasOwnProperty.call(env, key) || key.includes('COLOR') || key === 'AI_INFERENCE_ORDER' || key === 'COLLECTION_WARNING_ENABLED' || key === 'REMOTEROCKETSHIP_BROWSER_PATH' || key === 'REMOTEROCKETSHIP_TIMEOUT_MS' || key === 'REMOTEROCKETSHIP_RATE_LIMIT_MS' || key.startsWith('LINKEDIN_') || key === 'CHROME_PATH') {
         env[key] = value;
       }
     });
@@ -550,9 +557,9 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       const body = await getRequestBody(req);
       const query: ScraperQuery = JSON.parse(body);
 
-      if (!query.source || !['linkedin', 'google'].includes(query.source)) {
+      if (!query.source || !['linkedin', 'google', 'remoterocketship'].includes(query.source)) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: "Invalid request: 'source' must be 'linkedin' or 'google'" }));
+        res.end(JSON.stringify({ error: "Invalid request: 'source' must be 'linkedin', 'google', or 'remoterocketship'" }));
         return;
       }
 
@@ -561,8 +568,10 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
       if (query.source === 'linkedin') {
         rawResults = await scrapeLinkedIn(query);
-      } else {
+      } else if (query.source === 'google') {
         rawResults = await scrapeGoogle(query, env);
+      } else {
+        rawResults = await scrapeRemoteRocketship(query, env);
       }
 
       const resultPayload = {
@@ -577,7 +586,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         metadataExtractionStatus: 'extracting',
       };
 
-      await setScrapingRun(query.source as 'linkedin' | 'google', {
+      await setScrapingRun(query.source as 'linkedin' | 'google' | 'remoterocketship', {
         timestamp: resultPayload.timestamp,
         query: query as unknown as Record<string, string>,
         results: rawResults.map(r => ({ ...r })),
@@ -591,7 +600,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         const resultsCopy = rawResults.map(r => ({ ...r }));
         const envCopy = env;
         const queryCopy = query;
-        const sourceCopy = query.source as 'linkedin' | 'google';
+        const sourceCopy = query.source as 'linkedin' | 'google' | 'remoterocketship';
         void (async () => {
           try {
             const promptPath = path.join(ROOT, 'src', 'prompts', 'scraper-summarize.txt');
@@ -694,6 +703,61 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     return;
   }
 
+  // API: Get saved Job Description (for ATS retry without re-fetch)
+  if (requestPath === '/api/scraper/jd' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const { url } = JSON.parse(body) as { url?: string };
+
+      if (!url || typeof url !== 'string') {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing or invalid URL' }));
+        return;
+      }
+
+      // Normalize LinkedIn URLs to canonical form
+      const normalizedUrl = normalizeLinkedInJobUrl(url);
+      if (!normalizedUrl) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Not a valid LinkedIn job URL' }));
+        return;
+      }
+
+      const database = getDb();
+      // Check scraping_results first
+      let row = database.prepare(
+        'SELECT jobDescription FROM scraping_results WHERE url = ?'
+      ).get(normalizedUrl) as { jobDescription?: string } | undefined;
+
+      // Check saved_jobs
+      if (!row?.jobDescription) {
+        row = database.prepare(
+          'SELECT jobDescription FROM saved_jobs WHERE url = ?'
+        ).get(normalizedUrl) as { jobDescription?: string } | undefined;
+      }
+
+      // Check job_dashboard
+      if (!row?.jobDescription) {
+        row = database.prepare(
+          'SELECT jobDescription FROM job_dashboard WHERE url = ?'
+        ).get(normalizedUrl) as { jobDescription?: string } | undefined;
+      }
+
+      if (!row?.jobDescription) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Job description not found' }));
+        return;
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ jobDescription: row.jobDescription }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (err as Error).message }));
+    }
+    return;
+  }
+
   // API: Job Data - Saved Jobs
   if (requestPath === '/api/job-data/saved' && req.method === 'GET') {
     try {
@@ -714,7 +778,8 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     try {
       const dashboard = await getJobDashboard();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(dashboard));
+      // Return just the results array for backwards compatibility
+      res.end(JSON.stringify(dashboard.results));
       return;
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -984,11 +1049,21 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       };
       const parsedUrl = validateUrl(url);
 
+      // Collection URL check — prevents wasteful JD fetches on LinkedIn collection/search pages
+      const collectionWarningEnabled = getFullConfigFromEnv().COLLECTION_WARNING_ENABLED !== 'false';
+      if (collectionWarningEnabled && isCollectionUrl(url)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          error: 'COLLECTION_URL',
+          message: 'This is a collection page. JD cannot be auto-fetched. Please open an individual job listing.',
+        }));
+        return;
+      }
+
       // Fetch the URL content (follows redirects, sets realistic User-Agent)
       const MAX_REDIRECTS = 10;
       const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-      // Fetch the URL content (follows redirects, sets realistic User-Agent)
       const fetchUrl = (urlStr: string, maxRedirects = MAX_REDIRECTS, visitedUrls: Set<string> = new Set()): Promise<string> => {
         return new Promise((resolve, reject) => {
           // Detect redirect loops
@@ -1320,7 +1395,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     }
     try {
       const body = await getRequestBody(req);
-      const { jobDescription, provider } = JSON.parse(body) as { jobDescription?: string; provider?: string };
+      const { jobDescription, provider, jobTitle } = JSON.parse(body) as { jobDescription?: string; provider?: string; jobTitle?: string };
 
       if (!jobDescription || typeof jobDescription !== 'string') {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1419,6 +1494,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         const screening = parsed.ai_screening;
         screening.provider = result.provider;
         screening.model = result.model;
+        if (jobTitle) screening.jobTitle = jobTitle;
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(screening));

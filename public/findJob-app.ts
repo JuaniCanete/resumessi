@@ -1,4 +1,4 @@
-import { stripMarkdown, buildQueryUrl, confirmDelete, confirmUnsave, showToast, showApplyModal } from './utils';
+import { stripMarkdown, buildQueryUrl, confirmDelete, confirmUnsave, showToast, showApplyModal, isCollectionUrl } from './utils';
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import type { ScraperResult } from './utils';
 
@@ -18,31 +18,35 @@ interface ScraperRunPayload {
 
 // ─── State ───────────────────────────────────────────────────────────────
 
-const payloadsBySource: Record<'linkedin' | 'google', ScraperRunPayload | null> = {
+const payloadsBySource: Record<'linkedin' | 'google' | 'remoterocketship', ScraperRunPayload | null> = {
   linkedin: null,
   google: null,
+  remoterocketship: null,
 };
 let currentPage = 1;
 const RESULTS_PER_PAGE = 10;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let currentRunId: string | null = null;
-let currentSource: 'linkedin' | 'google' = 'linkedin';
+let currentSource: 'linkedin' | 'google' | 'remoterocketship' = 'linkedin';
 let currentTab: 'scraping' | 'saved' | 'dashboard' | 'resume' = 'scraping';
 let isLoadingResults = false;
-const extractionStatus: Record<'linkedin' | 'google', 'idle' | 'extracting' | 'done'> = {
+let currentJdItem: ScraperResult | null = null;
+const extractionStatus: Record<'linkedin' | 'google' | 'remoterocketship', 'idle' | 'extracting' | 'done'> = {
   linkedin: 'idle',
   google: 'idle',
+  remoterocketship: 'idle',
 };
 
 // Track expanded card URL per source to preserve on re-render
-const expandedCardUrl: Record<'linkedin' | 'google', string | null> = {
+const expandedCardUrl: Record<'linkedin' | 'google' | 'remoterocketship', string | null> = {
   linkedin: null,
   google: null,
+  remoterocketship: null,
 };
 
 // Scraper state
 let scraperController: AbortController | null = null;
-let currentScraperPlatform: 'linkedin' | 'google' = 'linkedin';
+let currentScraperPlatform: 'linkedin' | 'google' | 'remoterocketship' = 'linkedin';
 
 // Providers modal state
 let selectedProviderForModal: string | null = null;
@@ -152,15 +156,16 @@ function loadSidebarState(): void {
 
 // ─── Scraping Results Tab ────────────────────────────────────────────────
 
-function switchResultsTab(source: 'linkedin' | 'google'): void {
+function switchResultsTab(source: 'linkedin' | 'google' | 'remoterocketship'): void {
   currentSource = source;
   updateResultsTabs(source);
   loadDataAndRender(source);
 }
 
-function updateResultsTabs(source: 'linkedin' | 'google'): void {
+function updateResultsTabs(source: 'linkedin' | 'google' | 'remoterocketship'): void {
   const linkedinTab = document.getElementById('tab-linkedin');
   const googleTab = document.getElementById('tab-google');
+  const remoterocketshipTab = document.getElementById('tab-remoterocketship');
   if (linkedinTab) {
     linkedinTab.className = source === 'linkedin' ? 'result-tab-btn active' : 'result-tab-btn';
     linkedinTab.style.background = source === 'linkedin' ? 'var(--accent)' : 'transparent';
@@ -171,10 +176,15 @@ function updateResultsTabs(source: 'linkedin' | 'google'): void {
     googleTab.style.background = source === 'google' ? 'var(--accent)' : 'transparent';
     googleTab.style.color = source === 'google' ? '#fff' : 'rgba(255,255,255,0.7)';
   }
+  if (remoterocketshipTab) {
+    remoterocketshipTab.className = source === 'remoterocketship' ? 'result-tab-btn active' : 'result-tab-btn';
+    remoterocketshipTab.style.background = source === 'remoterocketship' ? 'var(--accent)' : 'transparent';
+    remoterocketshipTab.style.color = source === 'remoterocketship' ? '#fff' : 'rgba(255,255,255,0.7)';
+  }
 
   const badge = document.getElementById('source-badge');
   if (badge) {
-    badge.textContent = source === 'linkedin' ? 'LinkedIn' : 'Google';
+    badge.textContent = source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship';
     badge.className = `source-badge ${source}`;
   }
 }
@@ -216,7 +226,7 @@ function showRefreshMessage(): void {
   }
 }
 
-function startPolling(source: 'linkedin' | 'google'): void {
+function startPolling(source: 'linkedin' | 'google' | 'remoterocketship'): void {
   if (pollInterval) clearInterval(pollInterval);
 
   // Safety: stop polling after 3 minutes no matter what, and always hide overlay.
@@ -316,7 +326,7 @@ function handleScrapeFailure(errorMessage: string): void {
   if (pagination) pagination.style.display = 'none';
 }
 
-async function loadDataAndRender(sourceParam: 'linkedin' | 'google'): Promise<void> {
+async function loadDataAndRender(sourceParam: 'linkedin' | 'google' | 'remoterocketship'): Promise<void> {
   currentSource = sourceParam;
 
   const rawSession = sessionStorage.getItem('scraper-results');
@@ -488,11 +498,26 @@ function renderPage(page: number): void {
     const RunATSBtn = document.createElement('button');
     RunATSBtn.className = 'card-action-btn runATS';
     RunATSBtn.textContent = 'Run ATS';
+    const isCollection = isCollectionUrl(item.url);
+    if (isCollection) {
+      RunATSBtn.disabled = true;
+      RunATSBtn.title = 'Cannot run ATS on a collection page';
+      RunATSBtn.classList.add('card-action-btn--disabled');
+    }
     RunATSBtn.addEventListener('click', (e: MouseEvent) => {
       e.stopPropagation();
       openJdEditModal(item);
     });
     headerActions.appendChild(RunATSBtn);
+
+    const showJdBtn = document.createElement('button');
+    showJdBtn.className = 'card-action-btn showJD';
+    showJdBtn.textContent = 'Show JD';
+    showJdBtn.addEventListener('click', (e: MouseEvent) => {
+      e.stopPropagation();
+      showJdForItem(item);
+    });
+    headerActions.appendChild(showJdBtn);
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'card-action-btn save';
@@ -544,6 +569,15 @@ function renderPage(page: number): void {
       date.className = 'result-posted-date';
       date.textContent = item.postedDate;
       footerLeft.appendChild(date);
+    }
+
+    // Site label (Feature 4) — only for Google/Remote Rocketship sources
+    if (item.site && item.source !== 'linkedin') {
+      const siteEl = document.createElement('span');
+      siteEl.className = 'result-site-label';
+      siteEl.textContent = item.site;
+      siteEl.title = item.site;
+      footerLeft.appendChild(siteEl);
     }
 
     const applyLinkBtn = document.createElement('a');
@@ -1388,7 +1422,7 @@ function createJobCard(item: ScraperResult, view: 'scraping' | 'saved' | 'dashbo
 
 // ─── Card Actions ────────────────────────────────────────────────────────
 
-async function handleSave(item: ScraperResult, source: 'linkedin' | 'google'): Promise<void> {
+async function handleSave(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship'): Promise<void> {
   try {
     const resp = await fetch('/api/job-data/save', {
       method: 'POST',
@@ -1403,7 +1437,7 @@ async function handleSave(item: ScraperResult, source: 'linkedin' | 'google'): P
   }
 }
 
-function handleRemove(item: ScraperResult, source: 'linkedin' | 'google'): void {
+function handleRemove(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship'): void {
   confirmDelete(
     'job',
     async () => {
@@ -1433,7 +1467,7 @@ function handleRemove(item: ScraperResult, source: 'linkedin' | 'google'): void 
   );
 }
 
-async function handleApply(item: ScraperResult, source: 'linkedin' | 'google'): Promise<void> {
+async function handleApply(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship'): Promise<void> {
   showApplyModal({
     item,
     onConfirm: async (name: string) => {
@@ -1458,7 +1492,7 @@ async function handleApply(item: ScraperResult, source: 'linkedin' | 'google'): 
   });
 }
 
-function handleUnsave(item: ScraperResult, source: 'linkedin' | 'google'): void {
+function handleUnsave(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship'): void {
   confirmUnsave(
     'job',
     async () => {
@@ -1659,8 +1693,20 @@ function applyAtsResultsToUI(screening: Record<string, unknown>): void {
 
   document.getElementById('ats-score-text')!.textContent = screening.tier as string;
   const feedbackEl = document.getElementById('ats-feedback')!;
-  feedbackEl.textContent = (screening.feedback as string) || '\u2014';
+  feedbackEl.textContent = (screening.feedback as string) || '—';
   feedbackEl.style.color = '';
+
+  // Feature 2: Render job title above score in ATS sidebar
+  const jobTitleEl = document.getElementById('ats-job-title');
+  if (jobTitleEl) {
+    const title = (screening.jobTitle as string) || currentJdItem?.title || '';
+    if (title) {
+      jobTitleEl.textContent = title;
+      jobTitleEl.style.display = 'block';
+    } else {
+      jobTitleEl.style.display = 'none';
+    }
+  }
 
   const breakdown = screening.breakdown as Record<string, unknown>;
   const elSkills = document.getElementById('ats-br-skills')!;
@@ -1718,13 +1764,15 @@ function applyAtsResultsToUI(screening: Record<string, unknown>): void {
 
 // ─── JD Edit Modal ───────────────────────────────────────────────────────
 
-function openJdEditModal(item: ScraperResult): void {
+async function openJdEditModal(item: ScraperResult): Promise<void> {
   const modal = document.getElementById('jd-edit-modal');
   const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
   const loading = document.getElementById('jd-fetch-loading');
   const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
 
   if (!modal) return;
+
+  currentJdItem = item;
 
   const fallbackParts: string[] = [];
   if (item.title) fallbackParts.push(item.title);
@@ -1739,6 +1787,35 @@ function openJdEditModal(item: ScraperResult): void {
   if (loading) loading.classList.add('show');
 
   modal.classList.add('show');
+
+  // Feature 1: Check for saved JD first (from SQLite) before fetching fresh
+  let savedJd = '';
+  try {
+    const jdResp = await fetch('/api/scraper/jd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: item.url }),
+    });
+    if (jdResp.ok) {
+      const jdData = await jdResp.json() as { jobDescription?: string };
+      if (jdData.jobDescription) {
+        savedJd = jdData.jobDescription;
+      }
+    }
+  } catch {
+    // ignore — fall through to fresh fetch
+  }
+
+  if (savedJd) {
+    // Use saved JD directly — no network fetch needed
+    textarea.value = savedJd;
+    textarea.disabled = false;
+    scanBtn.disabled = false;
+    if (loading) loading.classList.remove('show');
+    const savedIndicator = document.getElementById('jd-saved-indicator');
+    if (savedIndicator) savedIndicator.style.display = 'flex';
+    return;
+  }
 
   fetchJobDescription(item.url)
     .then(async (rawText) => {
@@ -1776,9 +1853,9 @@ function openJdEditModal(item: ScraperResult): void {
       if (loading) loading.classList.remove('show');
     })
     .catch((err) => {
-      // Session-expired: surface the message instead of silently running
-      // clean-jd on the fallback content (which would recreate the bug).
-      if (err instanceof Error && err.message.includes('LinkedIn session expired')) {
+      // Session-expired or collection: surface the message instead of silently
+      // running clean-jd on the fallback content (which would recreate the bug).
+      if (err instanceof Error && (err.message.includes('LinkedIn session expired') || err.message.includes('collection'))) {
         closeJdEditModal();
         showJdCollectionModal(err.message);
         return;
@@ -1802,6 +1879,96 @@ function closeJdCollectionModal(): void {
   if (modal) modal.style.display = 'none';
 }
 
+function closeJdViewModal(): void {
+  const modal = document.getElementById('jd-view-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+// Feature 1: Refresh JD — fetch fresh from LinkedIn (bypass cache)
+async function refreshJd(): Promise<void> {
+  const modal = document.getElementById('jd-edit-modal');
+  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+  const loading = document.getElementById('jd-fetch-loading');
+  const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+  const savedIndicator = document.getElementById('jd-saved-indicator');
+
+  if (!modal || !currentJdItem) return;
+
+  // Hide saved indicator, show loading
+  if (savedIndicator) savedIndicator.style.display = 'none';
+  if (loading) loading.classList.add('show');
+  textarea.disabled = true;
+  const scanBtnEl = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+  if (scanBtnEl) scanBtnEl.disabled = true;
+
+  try {
+    const resp = await fetch('/api/scraper/jd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: currentJdItem.url, refresh: true }),
+    });
+
+    if (resp.ok) {
+      const data = await resp.json() as { jobDescription?: string };
+      if (data.jobDescription) {
+        textarea.value = data.jobDescription;
+      } else {
+        throw new Error('No job description returned');
+      }
+    } else {
+      const errData = await resp.json().catch(() => ({ error: 'Failed to refresh JD' }));
+      throw new Error(errData.error || 'Failed to refresh JD');
+    }
+  } catch (err: unknown) {
+    showToast({ message: 'Failed to refresh JD: ' + (err as Error).message, type: 'error' });
+  } finally {
+    if (loading) loading.classList.remove('show');
+    textarea.disabled = false;
+    const scanBtnEl = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+    if (scanBtnEl) scanBtnEl.disabled = false;
+  }
+}
+
+// Feature 1: "Show JD" button — fetch saved JD from SQLite via new API
+async function showJdForItem(item: ScraperResult): Promise<void> {
+  const modal = document.getElementById('jd-view-modal');
+  const titleEl = document.getElementById('jd-view-title');
+  const bodyEl = document.getElementById('jd-view-body');
+  const loadingEl = document.getElementById('jd-view-loading');
+
+  if (!modal || !bodyEl) return;
+
+  if (titleEl) titleEl.textContent = item.title || 'Job Description';
+  bodyEl.textContent = '';
+  if (loadingEl) loadingEl.style.display = 'block';
+  modal.style.display = 'flex';
+
+  try {
+    const resp = await fetch('/api/scraper/jd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: item.url }),
+    });
+
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    if (resp.status === 404) {
+      bodyEl.textContent = 'No saved job description found. Run ATS on this job to fetch and save the JD.';
+      return;
+    }
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({ error: 'Failed to fetch JD' }));
+      bodyEl.textContent = errData.error || 'Failed to fetch JD.';
+      return;
+    }
+    const data = await resp.json() as { jobDescription?: string };
+    bodyEl.textContent = data.jobDescription || 'No job description available.';
+  } catch (err: unknown) {
+    if (loadingEl) loadingEl.style.display = 'none';
+    bodyEl.textContent = 'Error loading job description: ' + (err as Error).message;
+  }
+}
+
 async function fetchJobDescription(url: string): Promise<string> {
   try {
     const resp = await fetch('/api/fetch-url', {
@@ -1813,6 +1980,13 @@ async function fetchJobDescription(url: string): Promise<string> {
       const data = await resp.json() as { text: string };
       return data.text;
     }
+    // Collection pages cannot be auto-fetched; route to modal, skip AI call.
+    if (resp.status === 400) {
+      const errData = await resp.json() as { error?: string; message?: string };
+      if (errData.error === 'COLLECTION_URL') {
+        throw new Error(errData.message || 'This is a collection page. JD cannot be auto-fetched.');
+      }
+    }
     // Surface a LinkedIn session-expiry so the caller can tell the user to
     // regenerate the session, instead of silently falling back to the login page.
     if (resp.status === 503) {
@@ -1822,8 +1996,8 @@ async function fetchJobDescription(url: string): Promise<string> {
       }
     }
   } catch (err) {
-    // Re-throw the session-expired error; swallow all other errors (fallback).
-    if (err instanceof Error && err.message.includes('LinkedIn session expired')) {
+    // Re-throw the session-expired/collection errors; swallow all other errors (fallback).
+    if (err instanceof Error && (err.message.includes('LinkedIn session expired') || err.message.includes('collection'))) {
       throw err;
     }
   }
@@ -1851,10 +2025,11 @@ async function runAtsScanFromResults(): Promise<void> {
 
   try {
     const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
+    const jobTitle = currentJdItem?.title || undefined;
     const resp = await fetch('/api/ats/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobDescription: jdText, provider: selectedProvider }),
+      body: JSON.stringify({ jobDescription: jdText, provider: selectedProvider, jobTitle }),
     });
 
     if (!resp.ok) {
@@ -2426,7 +2601,7 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
   };
 
   const providerModels: Record<string, string> = {
-    cohere: 'command-a-reasoning-08-2025-08-2024',
+    cohere: 'command-a-reasoning-08-2025',
     mistral: 'codestral-2508',
     gemini: 'gemini-3.6-flash',
     groq: 'openai/gpt-oss-120b',
@@ -2559,6 +2734,7 @@ function cancelProvidersSelection(): void {
 (window as unknown as Record<string, unknown>).cancelScraping = cancelScraping;
 (window as unknown as Record<string, unknown>).refreshScrapingResultsButton = refreshScrapingResultsButton;
 (window as unknown as Record<string, unknown>).closeJdCollectionModal = closeJdCollectionModal;
+(window as unknown as Record<string, unknown>).closeJdViewModal = closeJdViewModal;
 (window as unknown as Record<string, unknown>).openCoverLetterModal = openCoverLetterModal;
 (window as unknown as Record<string, unknown>).closeCoverLetterModal = closeCoverLetterModal;
 (window as unknown as Record<string, unknown>).generateCoverLetter = generateCoverLetter;

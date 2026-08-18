@@ -2,21 +2,24 @@ export interface ScraperResult {
   title: string;
   url: string;
   snippet: string;
-  source: 'linkedin' | 'google';
+  source: 'linkedin' | 'google' | 'remoterocketship';
   author?: string;
   company?: string;
   postedDate?: string;
   aiSummary?: string;
   queryAffinity?: 'High' | 'Medium' | 'Low';
   parameters?: string[];  // AI-extracted job parameters (location, remote, salary, etc.)
-  status?: 'No News' | 'Interviewing' | 'Offer' | 'Rejected';
+  status?: 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | 'Hired';
   column?: string;
   interviewRounds?: number;
   id?: string;
+  site?: string;
+  jobDescription?: string;
+  isCollectionUrl?: boolean;
 }
 
 export interface ScraperQuery {
-  source?: 'linkedin' | 'google';
+  source?: 'linkedin' | 'google' | 'remoterocketship';
   keywords?: string;
   role?: string;
   seniority?: string;          // e.g. 'Senior' | 'Lead' | 'Junior'
@@ -33,7 +36,7 @@ export interface ScraperQuery {
 
 export interface ScraperRunMeta {
   timestamp: string;
-  source: 'linkedin' | 'google';
+  source: 'linkedin' | 'google' | 'remoterocketship';
   query: ScraperQuery;
   totalResults: number;
   results: ScraperResult[];

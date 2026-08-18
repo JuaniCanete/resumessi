@@ -26,11 +26,11 @@ import {
 // ── buildRequest ──────────────────────────────────────────────────────────────
 
 test('buildRequest creates valid Cohere request', () => {
-   const result = buildRequest('cohere', 'You are helpful.', 'Hello', 'command-a-reasoning-08-2025-08-2024', 'key-123', { temperature: 0.5 });
+   const result = buildRequest('cohere', 'You are helpful.', 'Hello', 'command-a-reasoning-08-2025', 'key-123', { temperature: 0.5 });
    assert.equal(result.url, 'https://api.cohere.com/v2/chat');
    assert.equal(result.headers['Authorization'], 'Bearer key-123');
    assert.equal(result.headers['Content-Type'], 'application/json');
-   assert.equal(result.body.model, 'command-a-reasoning-08-2025-08-2024');
+   assert.equal(result.body.model, 'command-a-reasoning-08-2025');
    const msgs = result.body.messages as Array<{ role: string; content: string }>;
    assert.equal(msgs.length, 2);
    assert.equal(msgs[0].role, 'system');
@@ -42,7 +42,7 @@ test('buildRequest creates valid Cohere request', () => {
 });
 
 test('buildRequest creates valid Cohere request without system', () => {
-   const result = buildRequest('cohere', '', 'Hello', 'command-a-reasoning-08-2025-08-2024', 'key-123');
+   const result = buildRequest('cohere', '', 'Hello', 'command-a-reasoning-08-2025', 'key-123');
    const msgs = result.body.messages as Array<{ role: string; content?: string }>;
    assert.equal(msgs.length, 1);
    assert.equal(msgs[0].role, 'user');
