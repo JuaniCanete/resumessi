@@ -8,11 +8,18 @@ export function isCollectionUrl(url: unknown): boolean {
 
   try {
     let normalizedPath = '';
+    let hostname = '';
     if (url.startsWith('http')) {
-      normalizedPath = new URL(url).pathname;
+      const parsed = new URL(url);
+      normalizedPath = parsed.pathname;
+      hostname = parsed.hostname;
     } else {
-      normalizedPath = new URL(url, 'http://localhost').pathname;
+      const parsed = new URL(url, 'http://localhost');
+      normalizedPath = parsed.pathname;
+      hostname = parsed.hostname;
     }
+    // Only treat as collection on LinkedIn hosts
+    if (!hostname.endsWith('linkedin.com')) return false;
     return normalizedPath.startsWith('/jobs/collections/') || normalizedPath === '/jobs/search' || normalizedPath.startsWith('/jobs/search/');
   } catch {
     return false;

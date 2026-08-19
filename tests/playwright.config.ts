@@ -19,7 +19,7 @@ export default defineConfig({
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
   webServer: {
-    command: `cmd.exe /c "set PORT=3001&& set NODE_ENV=test&& set JOB_DATA_DB_PATH=${TEST_DB_PATH}&& npx tsx ..\\start.ts --no-open"`,
+    command: `cmd.exe /c "set PORT=3001&& set NODE_ENV=test&& set JOB_DATA_DB_PATH=${TEST_DB_PATH}&& npx tsx start.ts --no-open"`,
     url: 'http://localhost:3001/public/main.html',
     reuseExistingServer: false,
     timeout: 60000,

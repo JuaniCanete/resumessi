@@ -42,6 +42,7 @@ import {
   initStorage,
   insertDashboardJob,
   clearTestDashboardData,
+  clearScraperResultsBySource,
   getDb,
 } from './src/storage/jobDataSqlite';
 import * as https from 'https';
@@ -683,12 +684,12 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     try {
       const urlObj = new URL(req.url || '/', `http://localhost:${PORT}`);
       const source = urlObj.searchParams.get('source') || 'linkedin';
-      if (!['linkedin', 'google'].includes(source)) {
+      if (!['linkedin', 'google', 'remoterocketship'].includes(source)) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: "Invalid source. Must be 'linkedin' or 'google'." }));
+        res.end(JSON.stringify({ error: "Invalid source. Must be 'linkedin', 'google', or 'remoterocketship'." }));
         return;
       }
-      const run = await getScrapingRun(source as 'linkedin' | 'google');
+      const run = await getScrapingRun(source as 'linkedin' | 'google' | 'remoterocketship');
       if (run) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(run));
@@ -992,6 +993,28 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       await clearTestDashboardData();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (err as Error).message }));
+    }
+    return;
+  }
+
+  if (requestPath === '/api/scraper/clear-source' && req.method === 'POST') {
+    try {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        const { source } = JSON.parse(body);
+        if (!source || !['linkedin', 'google', 'remoterocketship'].includes(source)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid source' }));
+          return;
+        }
+        await clearScraperResultsBySource(source);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      });
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: (err as Error).message }));

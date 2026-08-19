@@ -1,7 +1,6 @@
 import type { ScraperQuery } from './types';
 
 export const DEFAULT_TARGET_DOMAINS = [
-    'remoterocketship.com',
     'myworkdayjobs.com',
     'jobs.ashbyhq.com',
     'teamtailor.com',
@@ -80,19 +79,33 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
     }
 
     if (source === 'remoterocketship') {
-        // Build Remote Rocketship search URL - uses query params similar to pagination
-        if (query.country) parts.push(`country=${query.country}`);
-        if (query.keywords) parts.push(`keyword=${query.keywords}`);
-        if (query.seniority) parts.push(`seniority=${query.seniority}`);
-        if (query.employmentType) parts.push(`employment_type=${query.employmentType}`);
-        if (query.region) parts.push(`region=${query.region}`);
-        if (query.customDomains && query.customDomains.length > 0) {
-            parts.push(`locations=${query.customDomains.join(',')}`);
+        // Build Remote Rocketship search URL
+        // New URL pattern: https://www.remoterocketship.com/jobs/full-time/?jobsInput=full-time&page=1&sort=DateAdded&employmentType=full-time&jobTitle=...&keywords=...&locations=...&seniority=...
+        
+        const params = new URLSearchParams();
+        params.set('jobsInput', 'full-time');
+        params.set('page', '1');
+        params.set('sort', 'DateAdded');
+        params.set('employmentType', 'full-time');
+
+        if (query.role) {
+            params.set('jobTitle', query.role);
         }
-        if (query.role) parts.push(`job_title=${query.role}`);
-        parts.push(`sort=${query.datePosted === 'last24h' ? 'DateAdded' : 'Relevance'}`);
-        parts.push('page=1');
-        return `https://remoterocketship.com/jobs?${parts.join('&')}`;
+
+        if (query.keywords) {
+            params.set('keywords', query.keywords);
+        }
+
+        const location = query.country || query.region;
+        if (location) {
+            params.set('locations', location);
+        }
+
+        if (query.seniority) {
+            params.set('seniority', query.seniority); // entry-level, junior, mid, senior, expert
+        }
+
+        return `https://www.remoterocketship.com/jobs/full-time/?${params.toString()}`;
     }
 
     // Quote role and keywords as separate terms (not one combined phrase)

@@ -105,6 +105,46 @@ function toggleSidebar(): void {
   localStorage.setItem('findJob.sidebarOpen', String(!isCollapsed));
 }
 
+function toggleFindJobActions(): void {
+  const dropdown = document.getElementById('findjob-actions-dropdown');
+  const trigger = document.getElementById('findjob-actions-trigger');
+  if (!dropdown || !trigger) return;
+
+  const isHidden = dropdown.classList.contains('hidden');
+  if (isHidden) {
+    dropdown.classList.remove('hidden');
+    trigger.setAttribute('aria-expanded', 'true');
+    const label = trigger.querySelector('.actions-label');
+    if (label) label.textContent = 'Scraping sources \u25B4';
+    updateSourceOptionsActiveState();
+  } else {
+    dropdown.classList.add('hidden');
+    trigger.setAttribute('aria-expanded', 'false');
+    const label = trigger.querySelector('.actions-label');
+    if (label) label.textContent = 'Scraping sources \u25BE';
+}
+  }
+
+function updateSourceOptionsActiveState(): void {
+  const options = document.querySelectorAll('#findjob-actions-dropdown .actions-option');
+  options.forEach(option => {
+    const onclick = option.getAttribute('onclick') || '';
+    const isActive = onclick.includes(`switchResultsTab('${currentSource}')`);
+    option.classList.toggle('active', isActive);
+  });
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e: MouseEvent) => {
+  const dropdown = document.getElementById('findjob-actions-dropdown');
+  const trigger = document.getElementById('findjob-actions-trigger');
+  if (!dropdown || !trigger) return;
+  if (!dropdown.contains(e.target as Node) && !trigger.contains(e.target as Node)) {
+    dropdown.classList.add('hidden');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+});
+
 function switchTab(tab: 'scraping' | 'saved' | 'dashboard' | 'resume'): void {
   currentTab = tab;
 
@@ -157,43 +197,37 @@ function loadSidebarState(): void {
 // ─── Scraping Results Tab ────────────────────────────────────────────────
 
 function switchResultsTab(source: 'linkedin' | 'google' | 'remoterocketship'): void {
+  if (source === 'remoterocketship') {
+    showRemoteRocketshipConfirm(() => {
+      currentSource = source;
+      updateResultsTabs(source);
+      updateUrlSourceParam(source);
+      loadDataAndRender(source);
+    });
+    return;
+  }
   currentSource = source;
   updateResultsTabs(source);
+  updateUrlSourceParam(source);
   loadDataAndRender(source);
 }
 
-function updateResultsTabs(source: 'linkedin' | 'google' | 'remoterocketship'): void {
-  const linkedinTab = document.getElementById('tab-linkedin');
-  const googleTab = document.getElementById('tab-google');
-  const remoterocketshipTab = document.getElementById('tab-remoterocketship');
-  if (linkedinTab) {
-    linkedinTab.className = source === 'linkedin' ? 'result-tab-btn active' : 'result-tab-btn';
-    linkedinTab.style.background = source === 'linkedin' ? 'var(--accent)' : 'transparent';
-    linkedinTab.style.color = source === 'linkedin' ? '#fff' : 'rgba(255,255,255,0.7)';
-  }
-  if (googleTab) {
-    googleTab.className = source === 'google' ? 'result-tab-btn active' : 'result-tab-btn';
-    googleTab.style.background = source === 'google' ? 'var(--accent)' : 'transparent';
-    googleTab.style.color = source === 'google' ? '#fff' : 'rgba(255,255,255,0.7)';
-  }
-  if (remoterocketshipTab) {
-    remoterocketshipTab.className = source === 'remoterocketship' ? 'result-tab-btn active' : 'result-tab-btn';
-    remoterocketshipTab.style.background = source === 'remoterocketship' ? 'var(--accent)' : 'transparent';
-    remoterocketshipTab.style.color = source === 'remoterocketship' ? '#fff' : 'rgba(255,255,255,0.7)';
-  }
-
-  const badge = document.getElementById('source-badge');
-  if (badge) {
-    badge.textContent = source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship';
-    badge.className = `source-badge ${source}`;
-  }
+function updateUrlSourceParam(source: 'linkedin' | 'google' | 'remoterocketship'): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set('source', source);
+  window.history.replaceState({}, '', url);
 }
 
-function showLoadingUI(source: 'linkedin' | 'google'): void {
+function updateResultsTabs(_source: 'linkedin' | 'google' | 'remoterocketship'): void {
+  updateSourceOptionsActiveState();
+}
+
+function showLoadingUI(source: 'linkedin' | 'google' | 'remoterocketship'): void {
   isLoadingResults = true;
   const badge = document.getElementById('source-badge');
   if (badge) {
-    badge.textContent = source === 'linkedin' ? 'LinkedIn' : 'Google';
+    const sourceLabel = source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship';
+    badge.textContent = sourceLabel;
     badge.className = `source-badge ${source}`;
   }
 
@@ -202,7 +236,7 @@ function showLoadingUI(source: 'linkedin' | 'google'): void {
     list.innerHTML = `
       <div style="text-align: center; padding: 60px 20px; background: #161920; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
         <h3 style="font-family: 'Comfortaa', sans-serif; font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 12px;">
-          🔎 Scraping ${source === 'linkedin' ? 'LinkedIn' : 'Google'}...
+          🔎 Scraping ${source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship'}...
         </h3>
         <p style="font-size: 13.5px; color: #94a3b8; max-width: 500px; margin: 0 auto 20px auto; line-height: 1.6;">
           Extracting job listings, parsing company information, and generating AI relevance summaries ...
@@ -376,7 +410,8 @@ function renderScrapingResults(): void {
 
   const badge = document.getElementById('source-badge');
   if (badge && activePayload) {
-    badge.textContent = activePayload.source === 'linkedin' ? 'LinkedIn' : 'Google';
+    const sourceLabel = activePayload.source === 'linkedin' ? 'LinkedIn' : activePayload.source === 'google' ? 'Google' : 'Remote Rocketship';
+    badge.textContent = sourceLabel;
     badge.className = `source-badge ${activePayload.source}`;
   }
 
@@ -934,7 +969,7 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
 
     const roundsCount = document.createElement('span');
     roundsCount.className = 'board-card-rounds-count';
-    roundsCount.textContent = String(job.interviewRounds || 0);
+    roundsCount.textContent = String(job.interviewRounds || 1);
 
     const roundsMenu = document.createElement('div');
     roundsMenu.className = 'board-card-rounds-menu';
@@ -950,13 +985,13 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
 
     const decrementItem = document.createElement('button');
     decrementItem.className = 'board-card-rounds-menu-item';
-    if ((job.interviewRounds || 0) === 0) {
+    if ((job.interviewRounds || 1) === 1) {
       decrementItem.classList.add('disabled');
     }
     decrementItem.textContent = 'Decrement';
     decrementItem.addEventListener('click', (e: MouseEvent) => {
       e.stopPropagation();
-      if ((job.interviewRounds || 0) > 0) {
+      if ((job.interviewRounds || 1) > 1) {
         roundsMenu.classList.remove('show');
         updateInterviewRounds(job, -1);
       }
@@ -1777,11 +1812,32 @@ async function openJdEditModal(item: ScraperResult): Promise<void> {
   const modal = document.getElementById('jd-edit-modal');
   const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
   const loading = document.getElementById('jd-fetch-loading');
+  const scanBtnDefault = document.getElementById('btn-scan-jd-default') as HTMLButtonElement;
   const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+  const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
+  const rrActions = document.getElementById('jd-actions-rr');
 
   if (!modal) return;
 
   currentJdItem = item;
+
+  const isRemoteRocketship = item.source === 'remoterocketship';
+
+  // Show/hide appropriate action buttons
+  if (isRemoteRocketship) {
+    if (rrActions) rrActions.style.display = 'flex';
+    if (scanBtnDefault) scanBtnDefault.style.display = 'none';
+    if (fetchBtn) fetchBtn.style.display = 'inline-flex';
+    if (scanBtn) scanBtn.style.display = 'inline-flex';
+    // For RR, textarea should be enabled for manual paste
+    textarea.disabled = false;
+  } else {
+    if (rrActions) rrActions.style.display = 'none';
+    if (scanBtnDefault) scanBtnDefault.style.display = 'inline-flex';
+    if (fetchBtn) fetchBtn.style.display = 'none';
+    if (scanBtn) scanBtn.style.display = 'none';
+    textarea.disabled = true;
+  }
 
   const fallbackParts: string[] = [];
   if (item.title) fallbackParts.push(item.title);
@@ -1791,8 +1847,6 @@ async function openJdEditModal(item: ScraperResult): Promise<void> {
   const fallbackContent = fallbackParts.join('\n\n');
 
   textarea.value = fallbackContent;
-  textarea.disabled = true;
-  scanBtn.disabled = true;
   if (loading) loading.classList.add('show');
 
   modal.classList.add('show');
@@ -1819,10 +1873,18 @@ async function openJdEditModal(item: ScraperResult): Promise<void> {
     // Use saved JD directly — no network fetch needed
     textarea.value = savedJd;
     textarea.disabled = false;
-    scanBtn.disabled = false;
+    if (scanBtnDefault) scanBtnDefault.disabled = false;
+    if (scanBtn) scanBtn.disabled = false;
+    if (fetchBtn) fetchBtn.disabled = false;
     if (loading) loading.classList.remove('show');
     const savedIndicator = document.getElementById('jd-saved-indicator');
     if (savedIndicator) savedIndicator.style.display = 'flex';
+    return;
+  }
+
+  // For Remote Rocketship, don't auto-fetch - let user click Fetch JD or paste manually
+  if (isRemoteRocketship) {
+    if (loading) loading.classList.remove('show');
     return;
   }
 
@@ -1858,7 +1920,9 @@ async function openJdEditModal(item: ScraperResult): Promise<void> {
       }
 
       textarea.disabled = false;
-      scanBtn.disabled = false;
+      if (scanBtnDefault) scanBtnDefault.disabled = false;
+      if (scanBtn) scanBtn.disabled = false;
+      if (fetchBtn) fetchBtn.disabled = false;
       if (loading) loading.classList.remove('show');
     })
     .catch((err) => {
@@ -1871,16 +1935,74 @@ async function openJdEditModal(item: ScraperResult): Promise<void> {
       }
       textarea.value = fallbackContent;
       textarea.disabled = false;
-      scanBtn.disabled = false;
+      if (scanBtnDefault) scanBtnDefault.disabled = false;
+      if (scanBtn) scanBtn.disabled = false;
+      if (fetchBtn) fetchBtn.disabled = false;
       if (loading) loading.classList.remove('show');
     });
+}
+
+// Fetch JD for ATS - used by Remote Rocketship Fetch JD button
+async function fetchJdForAts(): Promise<void> {
+  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+  const loading = document.getElementById('jd-fetch-loading');
+  const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
+  const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+
+  if (!currentJdItem) return;
+
+  // Show loading state
+  if (loading) loading.classList.add('show');
+  if (fetchBtn) {
+    fetchBtn.disabled = true;
+    fetchBtn.textContent = '⏳ Fetching...';
+  }
+  if (scanBtn) scanBtn.disabled = true;
+
+  try {
+    // Call the same endpoint that refreshJd uses but with refresh=true
+    const resp = await fetch('/api/scraper/jd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: currentJdItem.url, refresh: true }),
+    });
+
+    if (!resp.ok) {
+      const errData = await resp.json() as { error?: string };
+      throw new Error(errData.error || `HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json() as { jobDescription?: string };
+    if (data.jobDescription) {
+      textarea.value = data.jobDescription;
+      showToast({ message: 'Job description fetched successfully', type: 'success' });
+    } else {
+      throw new Error('No job description returned');
+    }
+  } catch (err: unknown) {
+    showToast({ message: 'Failed to fetch JD: ' + (err as Error).message, type: 'error' });
+  } finally {
+    if (loading) loading.classList.remove('show');
+    if (fetchBtn) {
+      fetchBtn.disabled = false;
+      fetchBtn.textContent = '🔄 Fetch JD';
+    }
+    if (scanBtn) scanBtn.disabled = false;
+  }
 }
 
 function showJdCollectionModal(message: string): void {
   const modal = document.getElementById('jd-collection-modal');
   const msgEl = document.getElementById('jd-collection-message');
   if (modal) modal.style.display = 'flex';
-  if (msgEl) msgEl.textContent = message;
+  if (msgEl) {
+    // For Remote Rocketship, show custom message about manual JD copy
+    if (currentJdItem?.source === 'remoterocketship') {
+      msgEl.textContent = 'Job description should be copied manually as per limitations on site structure, we cannot gather the information. Copy the JD and paste into the JD field to run the ATS.';
+    } else {
+      msgEl.textContent = message;
+    }
+  }
 }
 
 function closeJdCollectionModal(): void {
@@ -1898,7 +2020,7 @@ async function refreshJd(): Promise<void> {
   const modal = document.getElementById('jd-edit-modal');
   const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
   const loading = document.getElementById('jd-fetch-loading');
-  const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+  const scanBtnEl = document.getElementById('btn-scan-jd') as HTMLButtonElement;
   const savedIndicator = document.getElementById('jd-saved-indicator');
 
   if (!modal || !currentJdItem) return;
@@ -1907,7 +2029,6 @@ async function refreshJd(): Promise<void> {
   if (savedIndicator) savedIndicator.style.display = 'none';
   if (loading) loading.classList.add('show');
   textarea.disabled = true;
-  const scanBtnEl = document.getElementById('btn-scan-jd') as HTMLButtonElement;
   if (scanBtnEl) scanBtnEl.disabled = true;
 
   try {
@@ -2140,10 +2261,11 @@ function clearRoleError(): void {
   if (roleInput) roleInput.style.border = '1px solid rgba(255,255,255,0.15)';
 }
 
-function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
+function switchScraperPlatform(platform: 'linkedin' | 'google' | 'remoterocketship'): void {
   currentScraperPlatform = platform;
   const btnLinkedin = document.getElementById('toggle-platform-linkedin');
   const btnGoogle = document.getElementById('toggle-platform-google');
+  const btnRemoteRocketship = document.getElementById('toggle-platform-remoterocketship');
   const linkedinRow1 = document.getElementById('scraper-row-linkedin-1');
   const linkedinRow2 = document.getElementById('scraper-row-linkedin-2');
   const googleSeniorityField = document.getElementById('scraper-field-seniority-google');
@@ -2152,15 +2274,32 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
   const countryField = document.getElementById('scraper-field-country');
   const regionField = document.getElementById('scraper-field-region');
   const currencyField = document.getElementById('scraper-field-currency');
+  const rrFields = document.getElementById('remoterocketship-fields');
+
+  // Reset all buttons
+  const buttons = [btnLinkedin, btnGoogle, btnRemoteRocketship];
+  buttons.forEach(btn => {
+    if (btn) {
+      btn.style.background = 'transparent';
+      btn.style.color = 'rgba(255,255,255,0.7)';
+    }
+  });
+
+  // Hide all platform-specific fields by default
+  if (linkedinRow1) linkedinRow1.style.display = 'none';
+  if (linkedinRow2) linkedinRow2.style.display = 'none';
+  if (googleSeniorityField) googleSeniorityField.style.display = 'none';
+  if (googleEmploymentField) googleEmploymentField.style.display = 'none';
+  if (googleSection) googleSection.style.display = 'none';
+  if (rrFields) rrFields.style.display = 'none';
+  if (countryField) countryField.style.display = 'none';
+  if (regionField) regionField.style.display = 'none';
+  if (currencyField) currencyField.style.display = 'none';
 
   if (platform === 'linkedin') {
     if (btnLinkedin) {
       btnLinkedin.style.background = 'var(--accent)';
       btnLinkedin.style.color = '#fff';
-    }
-    if (btnGoogle) {
-      btnGoogle.style.background = 'transparent';
-      btnGoogle.style.color = 'rgba(255,255,255,0.7)';
     }
     // LinkedIn: show LinkedIn rows (seniority, date posted, work type, employment, country, region, currency); hide Google fields
     if (linkedinRow1) linkedinRow1.style.display = 'grid';
@@ -2168,45 +2307,104 @@ function switchScraperPlatform(platform: 'linkedin' | 'google'): void {
     if (countryField) countryField.style.display = 'block';
     if (regionField) regionField.style.display = 'block';
     if (currencyField) currencyField.style.display = 'block';
-    if (googleSeniorityField) googleSeniorityField.style.display = 'none';
-    if (googleEmploymentField) googleEmploymentField.style.display = 'none';
-    if (googleSection) googleSection.style.display = 'none';
-  } else {
+  } else if (platform === 'google') {
     if (btnGoogle) {
       btnGoogle.style.background = 'var(--accent)';
       btnGoogle.style.color = '#fff';
     }
-    if (btnLinkedin) {
-      btnLinkedin.style.background = 'transparent';
-      btnLinkedin.style.color = 'rgba(255,255,255,0.7)';
-    }
     // Google: show Google fields (seniority, employment, country, region, currency, domains); hide LinkedIn rows
-    if (linkedinRow1) linkedinRow1.style.display = 'none';
-    if (linkedinRow2) linkedinRow2.style.display = 'none';
     if (countryField) countryField.style.display = 'block';
     if (regionField) regionField.style.display = 'block';
     if (currencyField) currencyField.style.display = 'block';
     if (googleSeniorityField) googleSeniorityField.style.display = 'block';
     if (googleEmploymentField) googleEmploymentField.style.display = 'block';
     if (googleSection) googleSection.style.display = 'block';
+  } else if (platform === 'remoterocketship') {
+    if (btnRemoteRocketship) {
+      btnRemoteRocketship.style.background = 'var(--accent)';
+      btnRemoteRocketship.style.color = '#fff';
+    }
+    // Remote Rocketship: show RR-specific fields (country, sort, seniority, job titles, locations, page)
+    if (rrFields) rrFields.style.display = 'block';
   }
 
   updateQueryPreview();
+}
+
+// Remote Rocketship Confirm Modal
+function showRemoteRocketshipConfirm(onConfirm: () => void): void {
+  const modal = document.getElementById('remoterocketship-confirm-modal');
+  if (!modal) return;
+
+  // Check if user already dismissed this
+  const dismissed = localStorage.getItem('rr-confirm-dismissed');
+  if (dismissed === 'true') {
+    onConfirm();
+    return;
+  }
+
+  modal.style.display = 'flex';
+
+  // Store the callback to call when confirmed
+  (window as unknown as Record<string, unknown>)._rrConfirmCallback = onConfirm;
+
+  // Add Escape key handler
+  const escapeHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      closeRemoteRocketshipConfirm();
+    }
+  };
+  document.addEventListener('keydown', escapeHandler);
+  (modal as HTMLDivElement & { _escapeHandler?: typeof escapeHandler })._escapeHandler = escapeHandler;
+}
+
+function closeRemoteRocketshipConfirm(): void {
+  const modal = document.getElementById('remoterocketship-confirm-modal');
+  if (modal) {
+    modal.style.display = 'none';
+    // Remove Escape key handler
+    const handler = (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
+    if (handler) {
+      document.removeEventListener('keydown', handler);
+      delete (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
+    }
+  }
+}
+
+function confirmRemoteRocketship(): void {
+  const modal = document.getElementById('remoterocketship-confirm-modal');
+  const checkbox = document.getElementById('rr-dont-show-again') as HTMLInputElement;
+  
+  if (checkbox?.checked) {
+    localStorage.setItem('rr-confirm-dismissed', 'true');
+  }
+  
+  if (modal) modal.style.display = 'none';
+  
+  const callback = (window as unknown as Record<string, unknown>)._rrConfirmCallback as (() => void) | undefined;
+  if (callback) {
+    callback();
+    delete (window as unknown as Record<string, unknown>)._rrConfirmCallback;
+  }
 }
 
 function updateQueryPreview(): string {
   const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
   const seniority = currentScraperPlatform === 'google'
     ? (document.getElementById('scraper-seniority-google') as HTMLInputElement)?.value.trim() || ''
-    : (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
+    : currentScraperPlatform === 'remoterocketship'
+      ? (document.getElementById('scraper-seniority-rr') as HTMLSelectElement)?.value || ''
+      : (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
   const employmentType = currentScraperPlatform === 'google'
     ? (document.getElementById('scraper-employment-google') as HTMLInputElement)?.value.trim() || ''
     : (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
-  const country = (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
+  const country = currentScraperPlatform === 'remoterocketship'
+    ? (document.getElementById('scraper-country-rr') as HTMLInputElement)?.value.trim() || ''
+    : (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
   const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
   const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
   const datePosted = (document.getElementById('scraper-date-posted') as HTMLSelectElement)?.value || '';
-  const workType = (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
+  const workType = currentScraperPlatform === 'remoterocketship' ? '' : (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
   const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
 
   const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')) as HTMLInputElement[];
@@ -2305,15 +2503,19 @@ async function startScraping(): Promise<void> {
 
   const seniority = currentScraperPlatform === 'google'
     ? (document.getElementById('scraper-seniority-google') as HTMLInputElement)?.value.trim() || ''
-    : (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
+    : currentScraperPlatform === 'remoterocketship'
+      ? (document.getElementById('scraper-seniority-rr') as HTMLSelectElement)?.value || ''
+      : (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
   const employmentType = currentScraperPlatform === 'google'
     ? (document.getElementById('scraper-employment-google') as HTMLInputElement)?.value.trim() || ''
     : (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
-  const country = (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
+  const country = currentScraperPlatform === 'remoterocketship'
+    ? (document.getElementById('scraper-country-rr') as HTMLInputElement)?.value.trim() || ''
+    : (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
   const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
   const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
   const datePosted = (document.getElementById('scraper-date-posted') as HTMLSelectElement)?.value || '';
-  const workType = (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
+  const workType = currentScraperPlatform === 'remoterocketship' ? '' : (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
   const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
 
   const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')) as HTMLInputElement[];
@@ -2338,7 +2540,7 @@ async function startScraping(): Promise<void> {
   const overlay = document.getElementById('scraper-overlay');
   const label = document.getElementById('scraper-source-label');
   const fallbackBtn = document.getElementById('btn-open-results-fallback');
-  if (label) label.textContent = currentScraperPlatform === 'linkedin' ? 'LinkedIn' : 'Google';
+  if (label) label.textContent = currentScraperPlatform === 'linkedin' ? 'LinkedIn' : currentScraperPlatform === 'google' ? 'Google' : 'Remote Rocketship';
   if (fallbackBtn) fallbackBtn.style.display = 'none';
   if (overlay) overlay.style.display = 'flex';
 
@@ -2483,6 +2685,11 @@ function cancelScraping(): void {
 
 document.addEventListener('keydown', (e: KeyboardEvent) => {
   if (e.key === 'Escape') {
+    const providersModal = document.getElementById('providers-modal');
+    if (providersModal && providersModal.style.display === 'flex') {
+      closeProvidersModal();
+      return;
+    }
     const scraperModal = document.getElementById('job-scraper-modal');
     if (scraperModal && scraperModal.style.display !== 'none') {
       closeJobScraperModal();
@@ -2742,6 +2949,7 @@ function cancelProvidersSelection(): void {
 (window as unknown as Record<string, unknown>).switchResultsTab = switchResultsTab;
 (window as unknown as Record<string, unknown>).switchTab = switchTab;
 (window as unknown as Record<string, unknown>).toggleSidebar = toggleSidebar;
+(window as unknown as Record<string, unknown>).toggleFindJobActions = toggleFindJobActions;
 (window as unknown as Record<string, unknown>).openJobScraperModal = openJobScraperModal;
 (window as unknown as Record<string, unknown>).closeJobScraperModal = closeJobScraperModal;
 (window as unknown as Record<string, unknown>).switchScraperPlatform = switchScraperPlatform;
@@ -2767,6 +2975,11 @@ function cancelProvidersSelection(): void {
 (window as unknown as Record<string, unknown>).cancelProvidersSelection = cancelProvidersSelection;
 (window as unknown as Record<string, unknown>).confirmProvidersSelection = confirmProvidersSelection;
 (window as unknown as Record<string, unknown>).clearTestData = clearTestData;
+(window as unknown as Record<string, unknown>).clearScraperSource = clearScraperSource;
+(window as unknown as Record<string, unknown>).refreshJd = refreshJd;
+(window as unknown as Record<string, unknown>).fetchJdForAts = fetchJdForAts;
+(window as unknown as Record<string, unknown>).closeRemoteRocketshipConfirm = closeRemoteRocketshipConfirm;
+(window as unknown as Record<string, unknown>).confirmRemoteRocketship = confirmRemoteRocketship;
 
 // ─── Init ────────────────────────────────────────────────────────────────
 
@@ -2780,7 +2993,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadSidebarState();
 
-  const sourceParam = (urlParams.get('source') || 'linkedin').toLowerCase() as 'linkedin' | 'google';
+  const sourceParam = (urlParams.get('source') || 'linkedin').toLowerCase() as 'linkedin' | 'google' | 'remoterocketship';
   const runIdParam = urlParams.get('runId');
 
   if (runIdParam) {
@@ -2839,5 +3052,25 @@ async function clearTestData(): Promise<void> {
     renderDashboard();
   } catch (err: unknown) {
     showToast({ message: 'Failed to clear test data: ' + (err as Error).message, type: 'error' });
+  }
+}
+
+async function clearScraperSource(source: 'linkedin' | 'google' | 'remoterocketship'): Promise<void> {
+  if (!confirm(`This will delete ALL ${source} scraper results. Are you sure?`)) return;
+
+  try {
+    const resp = await fetch('/api/scraper/clear-source', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source }),
+    });
+    if (!resp.ok) throw new Error('Failed to clear scraper source');
+    showToast({ message: `${source} scraper results cleared`, type: 'success' });
+    // Reload the current source data
+    if (source === currentSource) {
+      loadDataAndRender(source);
+    }
+  } catch (err: unknown) {
+    showToast({ message: 'Failed to clear scraper source: ' + (err as Error).message, type: 'error' });
   }
 }

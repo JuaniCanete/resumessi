@@ -70,7 +70,6 @@ test('extractGoogleResultUrl returns empty string for empty input', () => {
 
 test('DEFAULT_TARGET_DOMAINS contains the expected job board domains', () => {
   assert.deepEqual(DEFAULT_TARGET_DOMAINS, [
-    'remoterocketship.com',
     'myworkdayjobs.com',
     'jobs.ashbyhq.com',
     'teamtailor.com',

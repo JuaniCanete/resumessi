@@ -32,6 +32,9 @@ export interface ScraperQuery {
   startPage?: number;         // first page to scrape (1-indexed, default 1)
   datePosted?: string;         // LinkedIn f_TP parameter mapping
   workType?: string;           // LinkedIn f_WT parameter mapping
+  jobTitle?: string;          // Remote Rocketship: job titles (comma-separated)
+  locations?: string;         // Remote Rocketship: locations (comma-separated)
+  page?: number;              // Remote Rocketship: page number
 }
 
 export interface ScraperRunMeta {

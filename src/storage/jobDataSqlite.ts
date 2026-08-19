@@ -1133,6 +1133,13 @@ export async function clearTestDashboardData(): Promise<void> {
   clearCachedRun();
 }
 
+export async function clearScraperResultsBySource(source: string): Promise<void> {
+  const database = getDb();
+  database.prepare('DELETE FROM scraper_runs WHERE source = ?').run(source);
+  database.prepare('DELETE FROM scraping_results WHERE source = ?').run(source);
+  clearCachedRun();
+}
+
 export async function updateJobDescription(url: string, jobDescription: string): Promise<void> {
   const database = getDb();
   const dbTransaction = database.transaction(() => {

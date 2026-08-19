@@ -1319,13 +1319,15 @@
         }
 
         .board-container::-webkit-scrollbar-thumb,
-        .board-cards-container::-webkit-scrollbar-thumb {
+        .board-cards-container::-webkit-scrollbar-thumb,
+        #job-scraper-content::-webkit-scrollbar-thumb {
             background: var(--accent);
             border-radius: 3px;
         }
 
         .board-container,
-        .board-cards-container {
+        .board-cards-container,
+        #job-scraper-content {
             scrollbar-width: thin;
             scrollbar-color: var(--accent) rgba(255, 255, 255, 0.05);
         }
@@ -1669,6 +1671,104 @@
             color: var(--accent);
             text-decoration: underline;
         }
+
+        /* Actions Dropdown (mirrored from main.html) */
+        .actions-btn-wrapper {
+            position: relative;
+            display: inline-block;
+            pointer-events: auto;
+        }
+
+        .actions-dropdown-trigger {
+            padding: 10px 14px;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 6px;
+            background: #0a0a0a;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .actions-dropdown-trigger:hover {
+            background: var(--accent);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .actions-dropdown-trigger:active {
+            transform: scale(0.98);
+        }
+
+        .actions-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 599;
+            background: var(--secondary);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+            min-width: 220px;
+            padding: 8px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .actions-dropdown.hidden {
+            display: none;
+        }
+
+        .actions-option {
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Comfortaa', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+
+        .actions-option:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .actions-option.active {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .actions-option-icon {
+            display: inline-block;
+            width: 26px;
+            height: 20px;
+            text-align: center;
+            line-height: 20px;
+            opacity: 0.85;
+            font-size: 14px;
+            vertical-align: middle;
+            margin-right: 12px;
+        }
+
+        .actions-option-text {
+            font-size: 13px;
+            font-weight: 500;
+            vertical-align: middle;
+        }
     </style>
 </head>
 
@@ -1742,9 +1842,24 @@
                             Scraping Results
                         </div>
                         <div class="source-tabs">
-                            <button id="tab-linkedin" onclick="switchResultsTab('linkedin')" class="result-tab-btn active" style="padding: 6px 14px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.15); background: var(--accent); color: #fff; font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 12px; cursor: pointer;">LinkedIn</button>
-                            <button id="tab-google" onclick="switchResultsTab('google')" class="result-tab-btn" style="padding: 6px 14px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.7); font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 12px; cursor: pointer;">Google</button>
-                            <button id="tab-remoterocketship" onclick="switchResultsTab('remoterocketship')" class="result-tab-btn" style="padding: 6px 14px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.7); font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 12px; cursor: pointer;">Remote Rocketship</button>
+                            <div class="actions-btn-wrapper">
+                                <button id="findjob-actions-trigger" data-testid="findjob-actions-trigger" class="actions-dropdown-trigger" onclick="toggleFindJobActions()"
+                                    aria-expanded="false" aria-haspopup="true" title="Actions"><span class="actions-label">Scraping sources ▾</span></button>
+                                <div id="findjob-actions-dropdown" data-testid="findjob-actions-dropdown" class="actions-dropdown hidden" role="menu">
+                                    <button class="actions-option" onclick="switchResultsTab('linkedin')" role="menuitem">
+                                        <span class="actions-option-icon">🔗</span>
+                                        <span class="actions-option-text">LinkedIn</span>
+                                    </button>
+                                    <button class="actions-option" onclick="switchResultsTab('google')" role="menuitem">
+                                        <span class="actions-option-icon">🔍</span>
+                                        <span class="actions-option-text">Google</span>
+                                    </button>
+                                    <button class="actions-option" onclick="switchResultsTab('remoterocketship')" role="menuitem">
+                                        <span class="actions-option-icon">🚀</span>
+                                        <span class="actions-option-text">Remote Rocketship</span>
+                                    </button>
+                                </div>
+                            </div>
                             <span id="source-badge" class="source-badge linkedin" style="display: none;">LinkedIn</span>
                         </div>
                     </div>
@@ -1820,10 +1935,6 @@
         </div>
     </div>
 
-    <!-- ATS Sidevbar Open Stub -->
-    <button id="ats-sidebar-open-stub" onclick="openAtsSidebar()" title="Open ATS sidebar" aria-label="Open ATS sidebar">&#9776;</button>
-
-
     <!-- ATS Sidebar -->
     <div id="ats-sidebar">
         <div class="panel-inner">
@@ -1894,7 +2005,7 @@
     </div>
 
     <!-- Cover Letter Modal -->
-    <div id="cover-letter-modal" data-testid="cover-letter-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div id="cover-letter-modal" data-testid="cover-letter-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(146, 178, 219, 0.129); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
         <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 640px; width: 92%; max-height: 88vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(255,255,255,0.12);">
             <button onclick="closeCoverLetterModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
                 onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
@@ -1961,11 +2072,11 @@
     </div>
 
     <!-- JD View Modal (Feature 1: Show JD) -->
-    <div id="jd-view-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div id="jd-view-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(146, 178, 219, 0.129); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
         <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 640px; width: 92%; max-height: 80vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(37, 99, 235, 0.4);">
             <button onclick="closeJdViewModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
                 onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            <h2 id="jd-view-title" style="color: #fff; margin-bottom: 12px; font-family: 'Comfortaa', sans-serif;"></h2>
+            <h2 id="jd-view-title" style="color: #fff; margin-bottom: 12px; font-family: 'Comfortaa', sans-serif;">Job Description</h2>
             <div id="jd-view-loading" style="display: none; color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 12px;">
                 <span class="dot-anim">Loading job description...</span>
             </div>
@@ -1974,7 +2085,7 @@
     </div>
 
     <!-- JD Collection Error Modal -->
-    <div id="jd-collection-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div id="jd-collection-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(146, 178, 219, 0.129); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
         <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 480px; width: 92%; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(245, 158, 11, 0.5); text-align: center;">
             <button onclick="closeJdCollectionModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
                 onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
@@ -1993,9 +2104,6 @@
             <button class="modal-close" onclick="closeJdEditModal()">×</button>
             <h2>Review Job Description</h2>
             <p class="desc">Edit the fetched JD text below to remove unrelated content (benefits, navigation, etc.), then scan with ATS.</p>
-            <div class="jd-fetch-loading" id="jd-fetch-loading">
-                <span class="dot-anim">Fetching job description...</span>
-            </div>
             <div id="jd-saved-indicator" style="display: none; padding: 8px 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #10b981; font-size: 12px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
                 <span>✓ Using saved JD from database</span>
                 <button id="jd-refresh-btn" onclick="refreshJd()" style="padding: 4px 10px; background: var(--accent); color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">🔄 Refresh</button>
@@ -2006,14 +2114,20 @@
             <textarea id="jd-edit-textarea" placeholder="Job description text will appear here after fetching..."></textarea>
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="closeJdEditModal()">Cancel</button>
-                <button class="btn-scan" id="btn-scan-jd" onclick="runAtsScanFromResults()">🔍 Validate with ATS</button>
+                <!-- For Remote Rocketship: show Fetch JD and Run ATS buttons -->
+                <div id="jd-actions-rr" style="display: none;">
+                    <button class="btn-scan" id="jd-fetch-btn" onclick="fetchJdForAts()">🔄 Fetch JD</button>
+                    <button class="btn-scan" id="btn-scan-jd" onclick="runAtsScanFromResults()">🔍 Validate with ATS</button>
+                </div>
+                <!-- For other sources: show single Run ATS button -->
+                <button class="btn-scan" id="btn-scan-jd-default" onclick="runAtsScanFromResults()">🔍 Validate with ATS</button>
             </div>
         </div>
     </div>
 
     <!-- Scraper Overlay -->
     <div id="scraper-overlay" data-testid="scraper-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-         background: rgba(0,0,0,0.65); backdrop-filter: blur(10px); z-index: 9998; align-items: center; justify-content: center; flex-direction: column; gap: 16px;">
+         background: rgba(146, 178, 219, 0.129); backdrop-filter: blur(10px); z-index: 9998; align-items: center; justify-content: center; flex-direction: column; gap: 16px;">
         <p style="color: #fff; font-size: 18px; font-weight: 700; font-family: 'Comfortaa', sans-serif; text-align: center;">
             🔎 Scraping <span id="scraper-source-label">LinkedIn</span> <span class="dot-anim"></span>
         </p>
@@ -2021,13 +2135,13 @@
             onmouseenter="this.style.background='#ef4444'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">Cancel</button>
     </div>
 
-    <!-- Job Scraper Modal -->
-    <div id="job-scraper-modal" data-testid="job-scraper-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 580px; width: 92%; max-height: 88vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(255,255,255,0.12);">
+<!-- Job Scraper Modal -->
+    <div id="job-scraper-modal" data-testid="job-scraper-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(22, 22, 26, 0.8); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div id="job-scraper-content" style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 580px; width: 92%; max-height: 88vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(255,255,255,0.12);">
             <button onclick="closeJobScraperModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
                 onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
             <h2 style="color: #fff; margin-bottom: 4px; text-align: center;">🔎 Find a Job</h2>
-            <p style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 20px; font-family: 'Comfortaa', sans-serif;">Search LinkedIn & Google job postings using AI query builder</p>
+            <p style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 20px; font-family: 'Comfortaa', sans-serif;">Start scraping sites using AI query builder</p>
 
             <!-- Platform Toggle -->
             <div style="display: flex; gap: 10px; margin-bottom: 20px; background: rgba(0,0,0,0.25); padding: 5px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.08);">
@@ -2036,6 +2150,9 @@
                 </button>
                 <button id="toggle-platform-google" onclick="switchScraperPlatform('google')" style="flex: 1; padding: 10px; border-radius: 7px; border: none; background: transparent; color: rgba(255,255,255,0.7); font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
                     🔍 Google
+                </button>
+                <button id="toggle-platform-remoterocketship" onclick="switchScraperPlatform('remoterocketship')" style="flex: 1; padding: 10px; border-radius: 7px; border: none; background: transparent; color: rgba(255,255,255,0.7); font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
+                    🚀 Remote Rocketship
                 </button>
             </div>
 
@@ -2096,15 +2213,24 @@
                     </div>
                 </div>
 
-                <!-- Google fields (Google view only) -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div id="scraper-field-seniority-google" style="display: none;">
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Seniority</label>
-                        <input type="text" id="scraper-seniority-google" oninput="updateQueryPreview()" placeholder="e.g. Senior, Lead, Staff" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
-                    </div>
-                    <div id="scraper-field-employment-google" style="display: none;">
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Employment</label>
-                        <input type="text" id="scraper-employment-google" oninput="updateQueryPreview()" placeholder="e.g. Full-time, Contract" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
+                <!-- Remote Rocketship fields (Remote Rocketship view only) -->
+                <div id="remoterocketship-fields" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div id="scraper-field-country-rr">
+                            <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Country / Locations</label>
+                            <input type="text" id="scraper-country-rr" placeholder="e.g. Argentina" oninput="updateQueryPreview()" style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12.5px; outline: none;">
+                        </div>
+                        <div id="scraper-field-seniority-rr">
+                            <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Seniority</label>
+                            <select id="scraper-seniority-rr" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
+                                <option value="">Any</option>
+                                <option value="entry-level">Entry-level (0 years)</option>
+                                <option value="junior">Junior (1-2 years)</option>
+                                <option value="mid">Mid-level (3-6 years)</option>
+                                <option value="senior">Senior (7+ years)</option>
+                                <option value="expert">Leadership positions</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -2122,7 +2248,6 @@
                         </label>
                     </div>
                     <div id="domains-checklist" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 96px; overflow-y: auto; margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="remoterocketship.com" onchange="updateQueryPreview()"> remoterocketship.com</label>
                         <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="myworkdayjobs.com" onchange="updateQueryPreview()"> myworkdayjobs.com</label>
                         <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="jobs.ashbyhq.com" onchange="updateQueryPreview()"> ashbyhq.com</label>
                         <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="teamtailor.com" onchange="updateQueryPreview()"> teamtailor.com</label>
@@ -2182,8 +2307,40 @@
         </div>
     </div>
 
+    <!-- Remote Rocketship Confirm Modal -->
+    <div id="remoterocketship-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(22, 22, 26, 0.8); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div class="modal-content" style="max-width: 520px; width: 92%; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; background: var(--secondary); border-radius: 14px; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 12px 48px rgba(0,0,0,0.6);">
+            <!-- Top bar with close X -->
+            <div style="display: flex; justify-content: flex-end; padding: 12px 16px 0 16px;">
+                <button onclick="closeRemoteRocketshipConfirm()" aria-label="Close" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
+                    onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
+            </div>
+            
+            <!-- Message -->
+            <div style="flex: 1; padding: 0 24px 24px 24px; display: flex; flex-direction: column; justify-content: center;">
+                <p style="color: rgba(255, 255, 255, 0.85); font-size: 14px; text-align: center; line-height: 1.7; font-family: 'Comfortaa', sans-serif; margin: 0;">
+                    Remote Rocketship jobs will not show an option to apply unless you have a valid subscription. You will need to find the company by clicking the Website button on the scraping result page, and then find the company careers page (usually at the footer section of their home pages) and there find the opening and follow the usual application process.
+                </p>
+                
+                <!-- Don't show again checkbox -->
+                <label style="display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 24px; cursor: pointer; font-family: 'Comfortaa', sans-serif; font-size: 13px; color: rgba(255,255,255,0.7);">
+                    <input type="checkbox" id="rr-dont-show-again" style="width: 18px; height: 18px; accent-color: var(--accent);">
+                    <span>Don't show this again</span>
+                </label>
+            </div>
+            
+            <!-- Confirm button at bottom -->
+            <div style="padding: 0 24px 24px 24px; display: flex; justify-content: center;">
+                <button onclick="confirmRemoteRocketship()" class="p-btn p-btn-primary" style="min-width: 160px; background: var(--accent); color: #fff; padding: 14px 32px; border-radius: 8px; font-family: 'Comfortaa', sans-serif; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: background 0.2s;"
+                    onmouseenter="this.style.background='#1d4ed8'" onmouseleave="this.style.background='var(--accent)'">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- AI Providers Modal -->
-    <div id="providers-modal" data-testid="providers-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;">
+    <div id="providers-modal" data-testid="providers-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(146, 178, 219, 0.129); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
         <div style="background: var(--secondary); padding: 30px; border-radius: 12px; max-width: 520px; width: 92%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); position: relative;">
             <button onclick="closeProvidersModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
                 onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
