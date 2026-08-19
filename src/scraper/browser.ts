@@ -56,8 +56,9 @@ export function findChromePath(customPath?: string): string | undefined {
 export async function launchStealthBrowser(options: {
   headless?: boolean;
   storageStatePath?: string;
+  executablePath?: string;
 } = {}): Promise<{ browser: Browser; context: BrowserContext }> {
-  const executablePath = findChromePath();
+  const executablePath = options.executablePath ?? findChromePath();
   const headless = options.headless ?? true;
 
   const launchOptions: Record<string, unknown> = {

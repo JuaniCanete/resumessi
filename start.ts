@@ -708,7 +708,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   if (requestPath === '/api/scraper/jd' && req.method === 'POST') {
     try {
       const body = await getRequestBody(req);
-      const { url } = JSON.parse(body) as { url?: string };
+      const { url, refresh } = JSON.parse(body) as { url?: string; refresh?: boolean };
 
       if (!url || typeof url !== 'string') {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -716,15 +716,97 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         return;
       }
 
-      // Normalize LinkedIn URLs to canonical form
-      const normalizedUrl = normalizeLinkedInJobUrl(url);
+      // Determine URL type and normalize accordingly
+      let normalizedUrl: string | null = null;
+      let isLinkedIn = false;
+      let isRemoteRocketship = false;
+
+      if (url.includes('linkedin.com')) {
+        normalizedUrl = normalizeLinkedInJobUrl(url);
+        isLinkedIn = !!normalizedUrl;
+      } else if (url.includes('remoterocketship.com')) {
+        normalizedUrl = url; // RR URLs don't need normalization
+        isRemoteRocketship = true;
+      }
+
       if (!normalizedUrl) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Not a valid LinkedIn job URL' }));
+        res.end(JSON.stringify({ error: 'Not a valid LinkedIn or Remote Rocketship job URL' }));
         return;
       }
 
       const database = getDb();
+
+      // If refresh requested, fetch fresh JD
+      if (refresh) {
+        let freshJd = '';
+        if (isLinkedIn) {
+          freshJd = await fetchLinkedInJobDescription(normalizedUrl) || '';
+        } else if (isRemoteRocketship) {
+          // Use generic fetch for RR (via /api/fetch-url logic)
+          try {
+            const MAX_RESPONSE_SIZE = 10 * 1024 * 1024;
+            const fetchUrl = (urlStr: string): Promise<string> => {
+              return new Promise((resolve, reject) => {
+                const client = https;
+                const req = client.get(urlStr, {
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                  },
+                }, (response) => {
+                  let data = '';
+                  let dataLength = 0;
+                  response.on('data', (chunk: string) => {
+                    dataLength += chunk.length;
+                    if (dataLength > MAX_RESPONSE_SIZE) {
+                      reject(new Error('Response size limit exceeded'));
+                      req.destroy();
+                      return;
+                    }
+                    data += chunk;
+                  });
+                  response.on('end', () => resolve(data));
+                  response.on('error', reject);
+                });
+                req.on('error', reject);
+                req.setTimeout(10000, () => {
+                  req.destroy();
+                  reject(new Error('Request timeout'));
+                });
+              });
+            };
+            const html = await fetchUrl(normalizedUrl);
+            freshJd = html
+              .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+              .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+              .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+              .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+              .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/&nbsp;/g, ' ')
+              .replace(/'/g, "'")
+              .replace(/\s+/g, ' ')
+              .trim()
+              .substring(0, 15000);
+          } catch {
+            freshJd = '';
+          }
+        }
+
+        if (freshJd) {
+          // Persist to all relevant tables
+          database.prepare('UPDATE scraping_results SET jobDescription = ? WHERE url = ?').run(freshJd, normalizedUrl);
+          database.prepare('UPDATE saved_jobs SET jobDescription = ? WHERE url = ?').run(freshJd, normalizedUrl);
+          database.prepare('UPDATE job_dashboard SET jobDescription = ? WHERE url = ?').run(freshJd, normalizedUrl);
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ jobDescription: freshJd }));
+          return;
+        }
+      }
+
       // Check scraping_results first
       let row = database.prepare(
         'SELECT jobDescription FROM scraping_results WHERE url = ?'
@@ -779,8 +861,8 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     try {
       const dashboard = await getJobDashboard();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      // Return just the results array for backwards compatibility
-      res.end(JSON.stringify(dashboard.results));
+      // Return the results array
+      res.end(JSON.stringify(dashboard));
       return;
     } catch (err: unknown) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -1063,6 +1145,8 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         'linkedin.com',
         'www.google.com',
         'google.com',
+        'www.remoterocketship.com',
+        'remoterocketship.com',
       ]);
       const validateUrl = (urlStr: string): URL => {
         const parsed = new URL(urlStr);

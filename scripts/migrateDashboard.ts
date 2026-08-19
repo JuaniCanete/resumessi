@@ -8,6 +8,7 @@
 import Database from 'better-sqlite3';
 import { join, dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
+import { STATUS_TO_LIST } from '../src/storage/jobDataSqlite';
 
 const DATA_DIR = join(process.cwd(), 'data');
 const DB_PATH = process.env.JOB_DATA_DB_PATH || join(DATA_DIR, 'jobdata.db');
@@ -74,14 +75,6 @@ function main(): void {
     status: string | null;
     column: string | null;
   }>;
-
-  const STATUS_TO_LIST: Record<string, string> = {
-    'No News': 'applied',
-    'Interviewing': 'screening',
-    'Rejected': 'rejected',
-    'Offer': 'offer',
-    'Hired': 'hired',
-  };
 
   const updateStmt = db.prepare('UPDATE job_dashboard SET status = ?, column = ? WHERE rowid = ?');
   let updated = 0;

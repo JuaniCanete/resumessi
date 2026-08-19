@@ -4,35 +4,14 @@
 
 import { buildScraperSearchUrl } from '../src/scraper/pagination';
 import type { ScraperQuery } from '../src/scraper/types';
+import { isCollectionUrl } from '../src/scraper/runtime-utils';
+
+export { isCollectionUrl };
 
 export function escHtml(value: string | null | undefined): string {
   if (!value) return '';
   const m: Record<string, number> = { '&': 38, '<': 60, '>': 62, '"': 34, "'": 39 };
   return String(value).replace(/[&<>"']/g, (c) => '&#' + m[c] + ';');
-}
-
-// Detect a LinkedIn collection/search page (multiple jobs, no single JD).
-// Scoped to linkedin.com hosts to avoid misclassifying non-LinkedIn URLs.
-export function isCollectionUrl(url: unknown): boolean {
-  if (url == null || typeof url !== 'string') return false;
-  try {
-    let normalizedPath = '';
-    let hostname = '';
-    if (url.startsWith('http')) {
-      const parsed = new URL(url);
-      normalizedPath = parsed.pathname;
-      hostname = parsed.hostname;
-    } else {
-      const parsed = new URL(url, 'http://localhost');
-      normalizedPath = parsed.pathname;
-      hostname = parsed.hostname;
-    }
-    // Only treat as collection on LinkedIn hosts
-    if (!hostname.endsWith('linkedin.com')) return false;
-    return normalizedPath.startsWith('/jobs/collections/') || normalizedPath === '/jobs/search' || normalizedPath.startsWith('/jobs/search/');
-  } catch {
-    return false;
-  }
 }
 
 export function validateJDInput(jd: string): { valid: boolean; reason?: string } {

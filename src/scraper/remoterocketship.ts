@@ -2,12 +2,45 @@ import { launchStealthBrowser, randomDelay } from './browser';
 import { buildScraperSearchUrl, buildScraperSearchUrls } from './pagination';
 import type { ScraperQuery, ScraperResult } from './types';
 
+export class RemoteRocketshipError extends Error {
+  constructor(message: string, public readonly code: string, public readonly cause?: Error) {
+    super(message);
+    this.name = 'RemoteRocketshipError';
+  }
+}
+
+export class RemoteRocketshipNetworkError extends RemoteRocketshipError {
+  constructor(message: string, cause?: Error) {
+    super(message, 'NETWORK_ERROR', cause);
+    this.name = 'RemoteRocketshipNetworkError';
+  }
+}
+
+export class RemoteRocketshipParsingError extends RemoteRocketshipError {
+  constructor(message: string, cause?: Error) {
+    super(message, 'PARSING_ERROR', cause);
+    this.name = 'RemoteRocketshipParsingError';
+  }
+}
+
+export class RemoteRocketshipTimeoutError extends RemoteRocketshipError {
+  constructor(message: string, cause?: Error) {
+    super(message, 'TIMEOUT_ERROR', cause);
+    this.name = 'RemoteRocketshipTimeoutError';
+  }
+}
+
 /**
  * Scrape Remote Rocketship job listings.
  */
-export async function scrapeRemoteRocketship(query: ScraperQuery, _env?: Record<string, string | undefined>): Promise<ScraperResult[]> {
+export async function scrapeRemoteRocketship(query: ScraperQuery, env?: Record<string, string | undefined>): Promise<ScraperResult[]> {
+  const browserPath = env?.REMOTEROCKETSHIP_BROWSER_PATH || undefined;
+  const timeoutMs = Number(env?.REMOTEROCKETSHIP_TIMEOUT_MS) || 30000;
+  const rateLimitMs = Number(env?.REMOTEROCKETSHIP_RATE_LIMIT_MS) || 2000;
+
   const { browser, context } = await launchStealthBrowser({
     headless: true,
+    executablePath: browserPath,
   });
 
   const baseUrl = buildScraperSearchUrl('remoterocketship', query);
@@ -23,8 +56,15 @@ export async function scrapeRemoteRocketship(query: ScraperQuery, _env?: Record<
   try {
     for (let pageIndex = 0; pageIndex < searchUrls.length; pageIndex++) {
       const searchUrl = searchUrls[pageIndex];
-      await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await randomDelay(2000, 4000);
+      try {
+        await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
+      } catch (err) {
+        if ((err as Error).name === 'TimeoutError' || (err as Error).message?.includes('timeout')) {
+          throw new RemoteRocketshipTimeoutError(`Page load timeout: ${searchUrl}`, err as Error);
+        }
+        throw new RemoteRocketshipNetworkError(`Failed to navigate to ${searchUrl}`, err as Error);
+      }
+      await randomDelay(rateLimitMs, rateLimitMs * 2);
 
       // Extract job cards using the card container selector
       const cards = await extractJobCards(page);
@@ -40,7 +80,11 @@ export async function scrapeRemoteRocketship(query: ScraperQuery, _env?: Record<
       console.log(`[RemoteRocketship Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
     }
   } catch (err: unknown) {
+    if (err instanceof RemoteRocketshipError) {
+      throw err;
+    }
     console.error('[RemoteRocketship Scraper] Error during scraping:', (err as Error).message);
+    throw new RemoteRocketshipError('Unknown scraping error', 'UNKNOWN_ERROR', err as Error);
   } finally {
     await browser.close();
   }
@@ -48,7 +92,7 @@ export async function scrapeRemoteRocketship(query: ScraperQuery, _env?: Record<
   return results;
 }
 
-async function extractJobCards(page: import('playwright').Page): Promise<import('playwright').ElementHandle[]> {
+export async function extractJobCards(page: import('playwright').Page): Promise<import('playwright').ElementHandle[]> {
   // Card container: div[role="button"] with the job content
   // The View Job link is inside the hover area but href is always in DOM
   const selectors = [
@@ -73,7 +117,7 @@ async function extractJobCards(page: import('playwright').Page): Promise<import(
   return [];
 }
 
-async function extractJobFromCard(page: import('playwright').Page, card: import('playwright').ElementHandle): Promise<ScraperResult | null> {
+export async function extractJobFromCard(page: import('playwright').Page, card: import('playwright').ElementHandle): Promise<ScraperResult | null> {
   try {
     // Extract title from h3 a[href*="/publicjobs/"]
     const titleEl = await card.$('h3 a[href*="/publicjobs/"]');

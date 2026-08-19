@@ -3,32 +3,9 @@
  * Used by both client and server
  */
 
-export interface ScraperResult {
-  title: string;
-  url: string;
-  snippet: string;
-  source: 'linkedin' | 'google' | 'remoterocketship';
-  author?: string;
-  company?: string;
-  postedDate?: string;
-  aiSummary?: string;
-  queryAffinity?: 'High' | 'Medium' | 'Low';
-  parameters?: string[];
-  // New fields for tracking
-  saved?: boolean;
-  savedAt?: string;
-  applied?: boolean;
-  appliedAt?: string;
-  removed?: boolean;
-  status?: 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | 'Hired';
-  column?: string;
-  interviewRounds?: number;
-  notes?: string;
-  id?: string;
-  site?: string;
-  jobDescription?: string;
-  isCollectionUrl?: boolean;
-}
+import { ScraperResult } from '../../src/types/scraper';
+
+export type { ScraperResult };
 
 export interface JobData {
   scrapingResults: {

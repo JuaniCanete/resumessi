@@ -2,6 +2,12 @@ import { stripMarkdown, buildQueryUrl, confirmDelete, confirmUnsave, showToast, 
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import type { ScraperResult } from './utils';
 
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+function getSourceDisplayName(source: 'linkedin' | 'google' | 'remoterocketship'): string {
+  return source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship';
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────
 
 interface ScraperRunPayload {
@@ -117,13 +123,13 @@ function toggleFindJobActions(): void {
     const label = trigger.querySelector('.actions-label');
     if (label) label.textContent = 'Scraping sources \u25B4';
     updateSourceOptionsActiveState();
-  } else {
+} else {
     dropdown.classList.add('hidden');
     trigger.setAttribute('aria-expanded', 'false');
     const label = trigger.querySelector('.actions-label');
     if (label) label.textContent = 'Scraping sources \u25BE';
-}
   }
+}
 
 function updateSourceOptionsActiveState(): void {
   const options = document.querySelectorAll('#findjob-actions-dropdown .actions-option');
@@ -200,14 +206,14 @@ function switchResultsTab(source: 'linkedin' | 'google' | 'remoterocketship'): v
   if (source === 'remoterocketship') {
     showRemoteRocketshipConfirm(() => {
       currentSource = source;
-      updateResultsTabs(source);
+      updateResultsTabs();
       updateUrlSourceParam(source);
       loadDataAndRender(source);
     });
     return;
   }
   currentSource = source;
-  updateResultsTabs(source);
+  updateResultsTabs();
   updateUrlSourceParam(source);
   loadDataAndRender(source);
 }
@@ -218,7 +224,7 @@ function updateUrlSourceParam(source: 'linkedin' | 'google' | 'remoterocketship'
   window.history.replaceState({}, '', url);
 }
 
-function updateResultsTabs(_source: 'linkedin' | 'google' | 'remoterocketship'): void {
+function updateResultsTabs(): void {
   updateSourceOptionsActiveState();
 }
 
@@ -226,7 +232,7 @@ function showLoadingUI(source: 'linkedin' | 'google' | 'remoterocketship'): void
   isLoadingResults = true;
   const badge = document.getElementById('source-badge');
   if (badge) {
-    const sourceLabel = source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship';
+    const sourceLabel = getSourceDisplayName(source);
     badge.textContent = sourceLabel;
     badge.className = `source-badge ${source}`;
   }
@@ -236,7 +242,7 @@ function showLoadingUI(source: 'linkedin' | 'google' | 'remoterocketship'): void
     list.innerHTML = `
       <div style="text-align: center; padding: 60px 20px; background: #161920; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
         <h3 style="font-family: 'Comfortaa', sans-serif; font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 12px;">
-          🔎 Scraping ${source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship'}...
+          🔎 Scraping ${getSourceDisplayName(source)}...
         </h3>
         <p style="font-size: 13.5px; color: #94a3b8; max-width: 500px; margin: 0 auto 20px auto; line-height: 1.6;">
           Extracting job listings, parsing company information, and generating AI relevance summaries ...
@@ -410,7 +416,7 @@ function renderScrapingResults(): void {
 
   const badge = document.getElementById('source-badge');
   if (badge && activePayload) {
-    const sourceLabel = activePayload.source === 'linkedin' ? 'LinkedIn' : activePayload.source === 'google' ? 'Google' : 'Remote Rocketship';
+    const sourceLabel = getSourceDisplayName(activePayload.source);
     badge.textContent = sourceLabel;
     badge.className = `source-badge ${activePayload.source}`;
   }
@@ -785,7 +791,7 @@ function getColumnForJob(job: ScraperResult): DashboardListId {
   if (job.column && (DASHBOARD_LISTS as readonly { id: DashboardListId }[]).some(l => l.id === job.column)) {
     return job.column as DashboardListId;
   }
-return STATUS_TO_LIST[job.status || 'No News'] || 'applied';
+  return STATUS_TO_LIST[job.status || 'No News'] || 'applied';
 }
 
 let draggedCardUrl: string | null = null;
@@ -1622,7 +1628,6 @@ async function generateCoverLetter(): Promise<void> {
   const jd = jdTextarea ? jdTextarea.value.trim() : '';
   if (!jd) {
     showToast({ message: 'Please review a Job Description first using the "Check JD" button on a job card.', type: 'error' });
-    showToast({ message: 'Please review a Job Description first using the "Check JD" button on a job card.', type: 'error' });
     return;
   }
 
@@ -2144,7 +2149,6 @@ async function runAtsScanFromResults(): Promise<void> {
   const jdText = textarea.value.trim();
   if (!jdText) {
     showToast({ message: 'Please enter a job description text.', type: 'error' });
-    showToast({ message: 'Please enter a job description text.', type: 'error' });
     return;
   }
 
@@ -2562,7 +2566,6 @@ async function startScraping(): Promise<void> {
       const err = await resp.json();
       const errMsg = err.error || 'Failed to execute scraper';
       showToast({ message: 'Scraper error: ' + errMsg, type: 'error' });
-      showToast({ message: 'Scraper error: ' + errMsg, type: 'error' });
       return;
     }
 
@@ -2581,16 +2584,7 @@ async function startScraping(): Promise<void> {
       renderScrapingResults();
       return;
     }
-    
-    
-    // If no results returned, show toast and don't start polling
-    if (!data.results || data.results.length === 0) {
-      if (overlay) overlay.style.display = 'none';
-      showToast({ message: 'No results found for this search.', type: 'warning' });
-      renderScrapingResults();
-      return;
-    }
-    
+
     extractionStatus[currentScraperPlatform] = 'extracting';
     sessionStorage.setItem('scraper-results', JSON.stringify(data));
     localStorage.setItem(getScraperResultsStorageKey(currentScraperPlatform), JSON.stringify(data));
@@ -2603,7 +2597,6 @@ async function startScraping(): Promise<void> {
   } catch (err: unknown) {
     if (overlay) overlay.style.display = 'none';
     if ((err as Error).name !== 'AbortError') {
-      showToast({ message: 'Scraping error: ' + (err as Error).message, type: 'error' });
       showToast({ message: 'Scraping error: ' + (err as Error).message, type: 'error' });
     }
   }
@@ -3003,7 +2996,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (isLoadingParam) {
     showLoadingUI(sourceParam);
     currentSource = sourceParam;
-    updateResultsTabs(sourceParam);
+    updateResultsTabs();
     startPolling(sourceParam);
     return;
   }

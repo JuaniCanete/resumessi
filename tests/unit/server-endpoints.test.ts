@@ -138,9 +138,6 @@ after(() => {
   [TEST_DB, TEST_DB + '-wal', TEST_DB + '-shm'].forEach(f => {
     try { rmSync(f, { force: true, retryDelay: 200, maxRetries: 5 }); } catch { /* ignore missing files */ }
   });
-  [TEST_DB, TEST_DB + '-wal', TEST_DB + '-shm'].forEach(f => {
-    try { rmSync(f, { force: true, retryDelay: 200, maxRetries: 5 }); } catch { /* ignore missing files */ }
-  });
 });
 
 // ─── /config.json ─────────────────────────────────────────────────────

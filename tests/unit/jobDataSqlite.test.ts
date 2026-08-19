@@ -148,12 +148,12 @@ test('updateDashboardJob matches by url when only url is provided', async () => 
 	};
 	await storage.insertDashboardJob(job);
 
-	await storage.updateDashboardJob('https://example.com/url-match', { title: 'Updated via URL' });
+await storage.updateDashboardJob('https://example.com/url-match', { title: 'Updated via URL' });
 
-	const dashboard = await storage.getJobDashboard();
-	const updated = dashboard.results.find((j: ScraperResult) => j.url === 'https://example.com/url-match');
-	assert.ok(updated, 'Job should exist');
-	assert.equal(updated.title, 'Updated via URL');
+  const dashboard = await storage.getJobDashboard();
+  const updated = dashboard.find((j: ScraperResult) => j.url === 'https://example.com/url-match');
+  assert.ok(updated, 'Job should exist');
+  assert.equal(updated.title, 'Updated via URL');
 });
 
 test('updateDashboardJob matches by id (jobId) when only id is provided', async () => {
@@ -172,12 +172,12 @@ test('updateDashboardJob matches by id (jobId) when only id is provided', async 
 	};
 	await storage.insertDashboardJob(job);
 
-	await storage.updateDashboardJob(undefined, { title: 'Updated via ID' }, 'manual-123');
+await storage.updateDashboardJob(undefined, { title: 'Updated via ID' }, 'manual-123');
 
-	const dashboard = await storage.getJobDashboard();
-	const updated = dashboard.results.find((j: ScraperResult) => j.id === 'manual-123');
-	assert.ok(updated, 'Job should exist');
-	assert.equal(updated.title, 'Updated via ID');
+  const dashboard = await storage.getJobDashboard();
+  const updated = dashboard.find((j: ScraperResult) => j.id === 'manual-123');
+  assert.ok(updated, 'Job should exist');
+  assert.equal(updated.title, 'Updated via ID');
 });
 
 test('updateDashboardJob uses AND clause when both url and id provided - requires both to match', async () => {
@@ -196,21 +196,21 @@ test('updateDashboardJob uses AND clause when both url and id provided - require
 	};
 	await storage.insertDashboardJob(job);
 
-	// Provide mismatched id - should NOT update because AND requires both to match
-	await storage.updateDashboardJob('https://example.com/dual', { status: 'Interviewing' }, 'some-other-id');
+// Provide mismatched id - should NOT update because AND requires both to match
+  await storage.updateDashboardJob('https://example.com/dual', { status: 'Interviewing' }, 'some-other-id');
 
-	let dashboard = await storage.getJobDashboard();
-	let updated = dashboard.results.find((j: ScraperResult) => j.url === 'https://example.com/dual');
-	assert.ok(updated, 'Job should exist');
-	assert.equal(updated.status, 'No News', 'Status should not change when id mismatches');
+  let dashboard = await storage.getJobDashboard();
+  let updated = dashboard.find((j: ScraperResult) => j.url === 'https://example.com/dual');
+  assert.ok(updated, 'Job should exist');
+  assert.equal(updated.status, 'No News', 'Status should not change when id mismatches');
 
-	// Now provide correct id - should update
-	await storage.updateDashboardJob('https://example.com/dual', { status: 'Interviewing' }, 'dual-id-456');
+  // Now provide correct id - should update
+  await storage.updateDashboardJob('https://example.com/dual', { status: 'Interviewing' }, 'dual-id-456');
 
-	dashboard = await storage.getJobDashboard();
-	updated = dashboard.results.find((j: ScraperResult) => j.url === 'https://example.com/dual');
-	assert.ok(updated, 'Job should exist');
-	assert.equal(updated.status, 'Interviewing', 'Status should update when both url and id match');
+  dashboard = await storage.getJobDashboard();
+  updated = dashboard.find((j: ScraperResult) => j.url === 'https://example.com/dual');
+  assert.ok(updated, 'Job should exist');
+  assert.equal(updated.status, 'Interviewing', 'Status should update when both url and id match');
 });
 
 // ─── removeDashboardJob ──────────────────────────────────────────────────
@@ -230,13 +230,13 @@ test('removeDashboardJob deletes by url', async () => {
 	};
 	await storage.insertDashboardJob(job);
 
-	let dashboard = await storage.getJobDashboard();
-	assert.ok(dashboard.results.some((j: ScraperResult) => j.url === 'https://example.com/delete-url'));
+let dashboard = await storage.getJobDashboard();
+  assert.ok(dashboard.some((j: ScraperResult) => j.url === 'https://example.com/delete-url'));
 
-	await storage.removeDashboardJob('https://example.com/delete-url');
+  await storage.removeDashboardJob('https://example.com/delete-url');
 
-	dashboard = await storage.getJobDashboard();
-	assert.ok(!dashboard.results.some((j: ScraperResult) => j.url === 'https://example.com/delete-url'));
+  dashboard = await storage.getJobDashboard();
+  assert.ok(!dashboard.some((j: ScraperResult) => j.url === 'https://example.com/delete-url'));
 });
 
 test('removeDashboardJob deletes by id (jobId)', async () => {
@@ -255,13 +255,13 @@ test('removeDashboardJob deletes by id (jobId)', async () => {
 	};
 	await storage.insertDashboardJob(job);
 
-	let dashboard = await storage.getJobDashboard();
-	assert.ok(dashboard.results.some((j: ScraperResult) => j.id === 'manual-delete-789'));
+let dashboard = await storage.getJobDashboard();
+  assert.ok(dashboard.some((j: ScraperResult) => j.id === 'manual-delete-789'));
 
-	await storage.removeDashboardJob(undefined, 'manual-delete-789');
+  await storage.removeDashboardJob(undefined, 'manual-delete-789');
 
-	dashboard = await storage.getJobDashboard();
-	assert.ok(!dashboard.results.some((j: ScraperResult) => j.id === 'manual-delete-789'));
+  dashboard = await storage.getJobDashboard();
+  assert.ok(!dashboard.some((j: ScraperResult) => j.id === 'manual-delete-789'));
 });
 
 // ─── getJobDashboard generates IDs for rows without them ──────────────────
@@ -281,9 +281,9 @@ test('getJobDashboard generates manual IDs for rows missing jobId and url', asyn
 	};
 	await storage.insertDashboardJob(job);
 
-	const dashboard = await storage.getJobDashboard();
-	const found = dashboard.results.find((j: ScraperResult) => j.title === 'No ID No URL Job');
-	assert.ok(found, 'Job should exist');
-	assert.ok(found.id, 'Should have a generated ID');
-	assert.ok(found.id.startsWith('manual-'), 'Generated ID should match pattern manual-<timestamp>-<random>');
+const dashboard = await storage.getJobDashboard();
+  const found = dashboard.find((j: ScraperResult) => j.title === 'No ID No URL Job');
+  assert.ok(found, 'Job should exist');
+  assert.ok(found.id, 'Should have a generated ID');
+  assert.ok(found.id.startsWith('manual-'), 'Generated ID should match pattern manual-<timestamp>-<random>');
 });

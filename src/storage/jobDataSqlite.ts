@@ -7,32 +7,9 @@
 import Database from 'better-sqlite3';
 import { join, dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
+import { ScraperResult } from '../types/scraper';
 
-export interface ScraperResult {
-  title: string;
-  url: string;
-  snippet: string;
-  source: 'linkedin' | 'google' | 'remoterocketship';
-  author?: string;
-  company?: string;
-  postedDate?: string;
-  aiSummary?: string;
-  queryAffinity?: 'High' | 'Medium' | 'Low';
-  parameters?: string[];
-  saved?: boolean;
-  savedAt?: string;
-  applied?: boolean;
-  appliedAt?: string;
-  removed?: boolean;
-  status?: 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | 'Hired';
-  column?: string;
-  interviewRounds?: number;
-  notes?: string;
-  id?: string;
-  site?: string;
-  jobDescription?: string;
-  isCollectionUrl?: boolean;
-}
+export type { ScraperResult };
 
 export interface ScraperRunPayload {
   timestamp: string | null;
@@ -169,7 +146,7 @@ export function getDb(): Database.Database {
 }
 
 // Status <-> Dashboard column mapping
-const STATUS_TO_LIST: Record<string, string> = {
+export const STATUS_TO_LIST: Record<string, string> = {
   'No News': 'applied',
   'Interviewing': 'screening',
   'Rejected': 'rejected',
@@ -611,15 +588,6 @@ export const LOCALSTORAGE_KEYS = {
   sidebarState: 'findJob:sidebarState',
 } as const;
 
-export function syncToLocalStorage(_data: JobData): void {
-  // No-op: localStorage mirror no longer needed with SQLite
-}
-
-export function loadFromLocalStorage(): Partial<JobData> | null {
-  // No-op: data comes from SQLite
-  return null;
-}
-
 // Sidebar state persistence (kept as localStorage since it's pure client state)
 export interface SidebarState {
   open: boolean;
@@ -782,14 +750,6 @@ export async function getScrapingResults(source: 'linkedin' | 'google' | 'remote
   return rows.map(parseRowFromSqlite);
 }
 
-export async function getAllScrapingResults(): Promise<ScraperResult[]> {
-  const database = getDb();
-  const rows = database.prepare(
-    'SELECT * FROM scraping_results WHERE removed = 0'
-  ).all() as Record<string, unknown>[];
-  return rows.map(parseRowFromSqlite);
-}
-
 export async function setScrapingResults(source: 'linkedin' | 'google' | 'remoterocketship', results: ScraperResult[]): Promise<void> {
   const database = getDb();
   const dbTransaction = database.transaction(() => {
@@ -926,7 +886,7 @@ export async function getSavedJobs(source?: 'linkedin' | 'google'): Promise<Scra
   return rows.map(parseSavedRowFromSqlite);
 }
 
-export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'google', customTitle?: string): Promise<void> {
+export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship', customTitle?: string): Promise<void> {
   const database = getDb();
   const title = customTitle?.trim() || result.title || 'Untitled Job';
 
@@ -981,18 +941,11 @@ export async function applyToJob(result: ScraperResult, source: 'linkedin' | 'go
   clearCachedRun();
 }
 
-export async function getJobDashboard(): Promise<{ results: ScraperResult[]; statusCounts: Record<string, number> }> {
+export async function getJobDashboard(): Promise<ScraperResult[]> {
   const database = getDb();
   const rows = database.prepare('SELECT rowid, * FROM job_dashboard').all() as (Record<string, unknown> & { rowid: number })[];
   let changed = false;
   const results: ScraperResult[] = [];
-  const statusCounts: Record<string, number> = {
-    'No News': 0,
-    'Interviewing': 0,
-    'Rejected': 0,
-    'Offer': 0,
-    'Hired': 0,
-  };
 
   for (const row of rows) {
     let jobId = row.jobId as string | undefined;
@@ -1005,10 +958,6 @@ export async function getJobDashboard(): Promise<{ results: ScraperResult[]; sta
       const status = row.status as string;
       column = STATUS_TO_LIST[status] || 'applied';
       changed = true;
-    }
-    const status = row.status as string;
-    if (status && statusCounts[status] !== undefined) {
-      statusCounts[status]++;
     }
     results.push({
       ...parseDashboardRowFromSqlite(row),
@@ -1049,7 +998,7 @@ export async function getJobDashboard(): Promise<{ results: ScraperResult[]; sta
     dbTransaction();
   }
 
-  return { results, statusCounts };
+  return results;
 }
 
 export async function updateDashboardJob(url?: string, updates: Partial<ScraperResult> = {}, id?: string): Promise<void> {
