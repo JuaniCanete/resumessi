@@ -1045,6 +1045,31 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     return;
   }
 
+  if (requestPath === '/api/job-data/update-source' && req.method === 'POST') {
+    try {
+      const body = await getRequestBody(req);
+      const { url, source, id } = JSON.parse(body) as { url?: string; source: string; id?: string };
+      if ((!url && !id) || !source) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing url or id, or source' }));
+        return;
+      }
+      if (!['linkedin', 'google', 'remoterocketship', 'user'].includes(source)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid source value' }));
+        return;
+      }
+      const validSource = source as 'linkedin' | 'google' | 'remoterocketship' | 'user';
+      await updateDashboardJob(url, { source: validSource }, id);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Error: ' + (err as Error).message }));
+    }
+    return;
+  }
+
   if (requestPath === '/api/job-data/dashboard/delete' && req.method === 'POST') {
     try {
       const body = await getRequestBody(req);

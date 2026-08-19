@@ -998,10 +998,11 @@
             max-width: 640px;
             width: 92%;
             max-height: 88vh;
-            overflow-y: auto;
             box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
             position: relative;
             border: 1px solid rgba(255, 255, 255, 0.12);
+            display: flex;
+            flex-direction: column;
         }
 
         #jd-edit-modal .modal-close {
@@ -1045,6 +1046,7 @@
         #jd-edit-modal textarea {
             width: 100%;
             min-height: 250px;
+            flex: 1;
             padding: 12px;
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.15);
@@ -1055,6 +1057,7 @@
             line-height: 1.5;
             resize: vertical;
             outline: none;
+            overflow-y: auto;
         }
 
         #jd-edit-modal textarea:focus {
@@ -1087,6 +1090,13 @@
             background: rgba(255, 255, 255, 0.08);
             color: #fff;
             border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'Comfortaa', sans-serif;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
         }
 
         #jd-edit-modal .btn-cancel:hover {
@@ -1320,14 +1330,18 @@
 
         .board-container::-webkit-scrollbar-thumb,
         .board-cards-container::-webkit-scrollbar-thumb,
-        #job-scraper-content::-webkit-scrollbar-thumb {
+        #job-scraper-content::-webkit-scrollbar-thumb,
+        #jd-edit-modal textarea::-webkit-scrollbar-thumb,
+        #jd-view-body::-webkit-scrollbar-thumb {
             background: var(--accent);
             border-radius: 3px;
         }
 
         .board-container,
         .board-cards-container,
-        #job-scraper-content {
+        #job-scraper-content,
+        #jd-edit-modal textarea,
+        #jd-view-body {
             scrollbar-width: thin;
             scrollbar-color: var(--accent) rgba(255, 255, 255, 0.05);
         }
@@ -1417,6 +1431,12 @@
             background: rgba(234, 67, 53, 0.15);
             color: #f87171;
             border: 1px solid rgba(234, 67, 53, 0.25);
+        }
+
+        .board-card-source.user {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
         }
 
         .board-add-card-btn {
@@ -1548,7 +1568,7 @@
 
         .board-card-menu.show {
             display: flex;
-            z-index: 9999;
+            z-index: 10001;
          }
 
         .board-card-menu-item {
@@ -2073,14 +2093,14 @@
 
     <!-- JD View Modal (Feature 1: Show JD) -->
     <div id="jd-view-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(146, 178, 219, 0.129); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 640px; width: 92%; max-height: 80vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(37, 99, 235, 0.4);">
+        <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 640px; width: 92%; max-height: 80vh; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(37, 99, 235, 0.4); display: flex; flex-direction: column;">
             <button onclick="closeJdViewModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
                 onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
             <h2 id="jd-view-title" style="color: #fff; margin-bottom: 12px; font-family: 'Comfortaa', sans-serif;">Job Description</h2>
             <div id="jd-view-loading" style="display: none; color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 12px;">
                 <span class="dot-anim">Loading job description...</span>
             </div>
-            <div id="jd-view-body" style="color: rgba(255,255,255,0.9); font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; max-height: 60vh; overflow-y: auto;"></div>
+            <div id="jd-view-body" style="color: rgba(255,255,255,0.9); font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; flex: 1; overflow-y: auto;"></div>
         </div>
     </div>
 
@@ -2106,7 +2126,14 @@
             <p class="desc">Edit the fetched JD text below to remove unrelated content (benefits, navigation, etc.), then scan with ATS.</p>
             <div id="jd-saved-indicator" style="display: none; padding: 8px 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #10b981; font-size: 12px; font-weight: 600; margin-bottom: 12px; align-items: center; justify-content: space-between;">
                 <span>✓ Using saved JD from database</span>
-                <button id="jd-refresh-btn" onclick="refreshJd()" style="padding: 4px 10px; background: var(--accent); color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">🔄 Refresh</button>
+                <button id="jd-refresh-btn" onclick="refreshJd()" style="padding: 4px 10px; background: var(--accent); color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">Fetch JD again using AI</button>
+            </div>
+            <div id="jd-clean-indicator" style="display: none; padding: 8px 12px; background: rgba(37, 99, 235, 0.15); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 6px; color: #60a5fa; font-size: 12px; font-weight: 600; margin-bottom: 12px; align-items: center; justify-content: space-between;">
+                <span>No saved JD — click to clean using AI</span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button id="jd-clean-btn" onclick="cleanJdWithAi()" style="padding: 4px 10px; background: var(--accent); color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">Clean JD using AI</button>
+                    <button id="jd-stop-btn" class="btn-cancel" onclick="stopCleanJd()" style="display: none;">Stop</button>
+                </div>
             </div>
             <div class="jd-fetch-loading" id="jd-fetch-loading">
                 <span class="dot-anim">Fetching job description...</span>

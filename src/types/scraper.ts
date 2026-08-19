@@ -8,7 +8,7 @@ export interface ScraperResult {
   title: string;
   url: string;
   snippet: string;
-  source: 'linkedin' | 'google' | 'remoterocketship';
+  source: 'linkedin' | 'google' | 'remoterocketship' | 'user';
   author?: string;
   company?: string;
   postedDate?: string;

@@ -52,6 +52,9 @@ const expandedCardUrl: Record<'linkedin' | 'google' | 'remoterocketship', string
 
 // Scraper state
 let scraperController: AbortController | null = null;
+
+// JD Clean AI state
+let jdCleanController: AbortController | null = null;
 let currentScraperPlatform: 'linkedin' | 'google' | 'remoterocketship' = 'linkedin';
 
 // Providers modal state
@@ -896,7 +899,7 @@ function createBoardList(listDef: { id: DashboardListId; title: string }, jobs: 
       title: text,
       url: '',
       snippet: '',
-      source: 'linkedin',
+      source: 'user',
       company: '',
       status: LIST_TO_STATUS[listDef.id] as 'No News' | 'Interviewing' | 'Offer' | 'Rejected',
       column: listDef.id,
@@ -1031,7 +1034,8 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
 
   const sourceBadge = document.createElement('span');
   sourceBadge.className = `board-card-source ${job.source}`;
-  sourceBadge.textContent = job.source === 'linkedin' ? 'LinkedIn' : 'Google';
+  const sourceLabel = job.source === 'linkedin' ? 'LinkedIn' : job.source === 'google' ? 'Google' : 'User';
+  sourceBadge.textContent = sourceLabel;
   footer.appendChild(sourceBadge);
 
   if (job.postedDate) {
@@ -1076,6 +1080,16 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
   });
   menu.appendChild(renameItem);
 
+  const changeSourceItem = document.createElement('button');
+  changeSourceItem.className = 'board-card-menu-item';
+  changeSourceItem.textContent = 'Change Source';
+  changeSourceItem.addEventListener('click', (e: MouseEvent) => {
+    e.stopPropagation();
+    menu.classList.remove('show');
+    changeCardSource(card, job);
+  });
+  menu.appendChild(changeSourceItem);
+
   const deleteItem = document.createElement('button');
   deleteItem.className = 'board-card-menu-item danger';
   deleteItem.textContent = 'Delete';
@@ -1111,8 +1125,8 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
 }
 
 function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult): void {
-  const currentTitle = job.title || '';
   const currentTitleEl = card.querySelector('.board-card-title') || titleEl;
+  const currentTitle = currentTitleEl.textContent || job.title || '';
   const input = document.createElement('input');
   input.type = 'text';
   input.value = currentTitle;
@@ -1139,12 +1153,12 @@ function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult
           body: JSON.stringify(body),
         });
         if (!resp.ok) throw new Error('Failed to rename job');
+        job.title = newTitle;
         showToast({ message: 'Job renamed', type: 'success' });
       } catch (err: unknown) {
         showToast({ message: 'Error: ' + (err as Error).message, type: 'error' });
       }
     } else if (save) {
-      // Save without changes - acknowledge but don't call API
       showToast({ message: 'No changes made', type: 'info' });
     }
 
@@ -1162,6 +1176,50 @@ function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult
       finish(false);
     }
   });
+}
+
+function changeCardSource(card: HTMLElement, job: ScraperResult): void {
+  const sources: Array<'linkedin' | 'google' | 'remoterocketship' | 'user'> = ['linkedin', 'google', 'remoterocketship', 'user'];
+  const currentSource = job.source;
+  const currentIndex = sources.indexOf(currentSource);
+  const nextSource = sources[(currentIndex + 1) % sources.length];
+
+  job.source = nextSource;
+
+  const sourceBadge = card.querySelector('.board-card-source') as HTMLElement;
+  const sourceLabel = nextSource === 'linkedin' ? 'LinkedIn' : nextSource === 'google' ? 'Google' : nextSource === 'remoterocketship' ? 'Remote Rocketship' : 'User';
+  if (sourceBadge) {
+    sourceBadge.className = `board-card-source ${nextSource}`;
+    sourceBadge.textContent = sourceLabel;
+  }
+
+  try {
+    const body: Record<string, string> = { source: nextSource };
+    if (job.url) {
+      body.url = job.url;
+    } else if (job.id) {
+      body.id = job.id;
+    }
+    fetch('/api/job-data/update-source', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then((resp) => {
+      if (!resp.ok) throw new Error('Failed to update source');
+      showToast({ message: `Source changed to ${sourceLabel}`, type: 'success' });
+    }).catch((err: Error) => {
+      showToast({ message: 'Error: ' + err.message, type: 'error' });
+      // Revert on error
+      job.source = currentSource;
+      if (sourceBadge) {
+        const revertLabel = currentSource === 'linkedin' ? 'LinkedIn' : currentSource === 'google' ? 'Google' : currentSource === 'remoterocketship' ? 'Remote Rocketship' : 'User';
+        sourceBadge.className = `board-card-source ${currentSource}`;
+        sourceBadge.textContent = revertLabel;
+      }
+    });
+  } catch (err: unknown) {
+    showToast({ message: 'Error: ' + (err as Error).message, type: 'error' });
+  }
 }
 
 function updateInterviewRounds(job: ScraperResult, delta: number): void {
@@ -1463,7 +1521,7 @@ function createJobCard(item: ScraperResult, view: 'scraping' | 'saved' | 'dashbo
 
 // ─── Card Actions ────────────────────────────────────────────────────────
 
-async function handleSave(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship'): Promise<void> {
+async function handleSave(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship' | 'user'): Promise<void> {
   try {
     const resp = await fetch('/api/job-data/save', {
       method: 'POST',
@@ -1478,27 +1536,29 @@ async function handleSave(item: ScraperResult, source: 'linkedin' | 'google' | '
   }
 }
 
-function handleRemove(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship'): void {
+function handleRemove(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship' | 'user'): void {
   confirmDelete(
     'job',
     async () => {
       try {
-        const resp = await fetch('/api/job-data/remove', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: item.url, source }),
-        });
-        if (!resp.ok) throw new Error('Failed to remove job');
+        // Only call API for scraper sources (not user-created cards)
+        if (source !== 'user') {
+          const resp = await fetch('/api/job-data/remove', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: item.url, source }),
+          });
+          if (!resp.ok) throw new Error('Failed to remove job');
 
-        if (payloadsBySource[source] && payloadsBySource[source]!.results) {
-          payloadsBySource[source]!.results = payloadsBySource[source]!.results.filter(r => r.url !== item.url);
-          payloadsBySource[source]!.totalResults = payloadsBySource[source]!.results.length;
-          const totalPages = Math.ceil(payloadsBySource[source]!.results.length / RESULTS_PER_PAGE) || 1;
-          if (currentPage > totalPages) {
-            currentPage = 1;
+          if (payloadsBySource[source] && payloadsBySource[source]!.results) {
+            payloadsBySource[source]!.results = payloadsBySource[source]!.results.filter(r => r.url !== item.url);
+            payloadsBySource[source]!.totalResults = payloadsBySource[source]!.results.length;
+            const totalPages = Math.ceil(payloadsBySource[source]!.results.length / RESULTS_PER_PAGE) || 1;
+            if (currentPage > totalPages) {
+              currentPage = 1;
+            }
           }
         }
-
         showRefreshMessage();
         renderScrapingResults();
       } catch (err: unknown) {
@@ -1508,7 +1568,7 @@ function handleRemove(item: ScraperResult, source: 'linkedin' | 'google' | 'remo
   );
 }
 
-async function handleApply(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship'): Promise<void> {
+async function handleApply(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship' | 'user'): Promise<void> {
   showApplyModal({
     item,
     onConfirm: async (name: string) => {
@@ -1533,7 +1593,7 @@ async function handleApply(item: ScraperResult, source: 'linkedin' | 'google' | 
   });
 }
 
-function handleUnsave(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship'): void {
+function handleUnsave(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship' | 'user'): void {
   confirmUnsave(
     'job',
     async () => {
@@ -1856,6 +1916,14 @@ async function openJdEditModal(item: ScraperResult): Promise<void> {
 
   modal.classList.add('show');
 
+  // Hide clean indicator and stop button initially
+  const cleanIndicator = document.getElementById('jd-clean-indicator');
+  const cleanBtn = document.getElementById('jd-clean-btn');
+  const stopBtn = document.getElementById('jd-stop-btn');
+  if (cleanIndicator) cleanIndicator.style.display = 'none';
+  if (cleanBtn) cleanBtn.style.display = 'none';
+  if (stopBtn) stopBtn.style.display = 'none';
+
   // Feature 1: Check for saved JD first (from SQLite) before fetching fresh
   let savedJd = '';
   try {
@@ -1887,64 +1955,10 @@ async function openJdEditModal(item: ScraperResult): Promise<void> {
     return;
   }
 
-  // For Remote Rocketship, don't auto-fetch - let user click Fetch JD or paste manually
-  if (isRemoteRocketship) {
-    if (loading) loading.classList.remove('show');
-    return;
-  }
-
-  fetchJobDescription(item.url)
-    .then(async (rawText) => {
-      const textToClean = rawText || fallbackContent;
-      try {
-        const cleanResp = await fetch('/api/ats/clean-jd', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jobDescription: textToClean,
-            url: item.url,
-            source: item.source,
-          }),
-        });
-
-        if (cleanResp.status === 409) {
-          const errData = await cleanResp.json() as { error?: string; message?: string };
-          closeJdEditModal();
-          showJdCollectionModal(errData.message || 'This link belongs to a collection of jobs. ATS scan is not possible.');
-          return;
-        }
-
-        if (cleanResp.ok) {
-          const cleanData = await cleanResp.json() as { cleanedJD?: string };
-          textarea.value = cleanData.cleanedJD || textToClean;
-        } else {
-          textarea.value = textToClean;
-        }
-      } catch {
-        textarea.value = textToClean;
-      }
-
-      textarea.disabled = false;
-      if (scanBtnDefault) scanBtnDefault.disabled = false;
-      if (scanBtn) scanBtn.disabled = false;
-      if (fetchBtn) fetchBtn.disabled = false;
-      if (loading) loading.classList.remove('show');
-    })
-    .catch((err) => {
-      // Session-expired or collection: surface the message instead of silently
-      // running clean-jd on the fallback content (which would recreate the bug).
-      if (err instanceof Error && (err.message.includes('LinkedIn session expired') || err.message.includes('collection'))) {
-        closeJdEditModal();
-        showJdCollectionModal(err.message);
-        return;
-      }
-      textarea.value = fallbackContent;
-      textarea.disabled = false;
-      if (scanBtnDefault) scanBtnDefault.disabled = false;
-      if (scanBtn) scanBtn.disabled = false;
-      if (fetchBtn) fetchBtn.disabled = false;
-      if (loading) loading.classList.remove('show');
-    });
+  // No saved JD — show "Clean JD using AI" button for user to initiate
+  if (loading) loading.classList.remove('show');
+  if (cleanIndicator) cleanIndicator.style.display = 'flex';
+  if (cleanBtn) cleanBtn.style.display = 'inline-flex';
 }
 
 // Fetch JD for ATS - used by Remote Rocketship Fetch JD button
@@ -2072,6 +2086,150 @@ async function refreshJd(): Promise<void> {
   }
 }
 
+// Clean JD using AI — fetch from URL and clean with AI (user-initiated, abortable)
+async function cleanJdWithAi(): Promise<void> {
+  const modal = document.getElementById('jd-edit-modal');
+  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+  const loading = document.getElementById('jd-fetch-loading');
+  const cleanBtn = document.getElementById('jd-clean-btn') as HTMLButtonElement;
+  const stopBtn = document.getElementById('jd-stop-btn') as HTMLButtonElement;
+  const scanBtnDefault = document.getElementById('btn-scan-jd-default') as HTMLButtonElement;
+  const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+  const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
+
+  if (!modal || !currentJdItem) return;
+
+  // Create new AbortController for this request
+  jdCleanController = new AbortController();
+
+  // Switch UI: hide Clean button, show Stop button, show loading
+  if (cleanBtn) cleanBtn.style.display = 'none';
+  if (stopBtn) stopBtn.style.display = 'inline-flex';
+  if (loading) loading.classList.add('show');
+  textarea.disabled = true;
+  if (scanBtnDefault) scanBtnDefault.disabled = true;
+  if (scanBtn) scanBtn.disabled = true;
+  if (fetchBtn) fetchBtn.disabled = true;
+
+  // First fetch the raw JD from the URL
+  let rawText = '';
+  try {
+    const fetchResp = await fetch('/api/fetch-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: currentJdItem.url }),
+      signal: jdCleanController.signal,
+    });
+
+    if (!fetchResp.ok) {
+      if (fetchResp.status === 400) {
+        const errData = await fetchResp.json() as { error?: string; message?: string };
+        if (errData.error === 'COLLECTION_URL') {
+          closeJdEditModal();
+          showJdCollectionModal(errData.message || 'This is a collection page. JD cannot be auto-fetched.');
+          return;
+        }
+      }
+      if (fetchResp.status === 503) {
+        const errData = await fetchResp.json() as { error?: string; message?: string };
+        if (errData.error === 'LINKEDIN_SESSION_EXPIRED') {
+          closeJdEditModal();
+          showJdCollectionModal(errData.message || 'LinkedIn session expired. Run: tsx scripts/linkedin-auth.ts');
+          return;
+        }
+      }
+      throw new Error(`Failed to fetch: ${fetchResp.status}`);
+    }
+
+    const fetchData = await fetchResp.json() as { text: string };
+    rawText = fetchData.text || '';
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return; // User cancelled
+    }
+    // If fetch fails, use fallback content
+    const fallbackParts: string[] = [];
+    if (currentJdItem.title) fallbackParts.push(currentJdItem.title);
+    if (currentJdItem.company) fallbackParts.push(`Company: ${currentJdItem.company}`);
+    if (currentJdItem.snippet) fallbackParts.push(currentJdItem.snippet);
+    if (currentJdItem.aiSummary) fallbackParts.push(stripMarkdown(currentJdItem.aiSummary));
+    rawText = fallbackParts.join('\n\n');
+  }
+
+  // Now clean with AI using the raw text
+  const textToClean = rawText || textarea.value;
+  try {
+    const cleanResp = await fetch('/api/ats/clean-jd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobDescription: textToClean,
+        url: currentJdItem.url,
+        source: currentJdItem.source,
+      }),
+      signal: jdCleanController.signal,
+    });
+
+    if (cleanResp.status === 409) {
+      const errData = await cleanResp.json() as { error?: string; message?: string };
+      closeJdEditModal();
+      showJdCollectionModal(errData.message || 'This link belongs to a collection of jobs. ATS scan is not possible.');
+      return;
+    }
+
+    if (cleanResp.ok) {
+      const cleanData = await cleanResp.json() as { cleanedJD?: string };
+      textarea.value = cleanData.cleanedJD || textToClean;
+      showToast({ message: 'JD cleaned successfully with AI', type: 'success' });
+    } else {
+      textarea.value = textToClean;
+      showToast({ message: 'AI cleaning failed, using raw JD', type: 'warning' });
+    }
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      showToast({ message: 'JD cleaning cancelled', type: 'info' });
+      return;
+    }
+    // If AI cleaning fails, keep the raw text
+    textarea.value = textToClean;
+    showToast({ message: 'AI cleaning failed, using raw JD', type: 'warning' });
+  } finally {
+    // Reset UI
+    if (loading) loading.classList.remove('show');
+    if (cleanBtn) cleanBtn.style.display = 'inline-flex';
+    if (stopBtn) stopBtn.style.display = 'none';
+    textarea.disabled = false;
+    if (scanBtnDefault) scanBtnDefault.disabled = false;
+    if (scanBtn) scanBtn.disabled = false;
+    if (fetchBtn) fetchBtn.disabled = false;
+    jdCleanController = null;
+  }
+}
+
+// Stop the JD cleaning process
+function stopCleanJd(): void {
+  if (jdCleanController) {
+    jdCleanController.abort();
+    jdCleanController = null;
+  }
+  // Reset UI immediately
+  const loading = document.getElementById('jd-fetch-loading');
+  const cleanBtn = document.getElementById('jd-clean-btn') as HTMLButtonElement;
+  const stopBtn = document.getElementById('jd-stop-btn') as HTMLButtonElement;
+  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+  const scanBtnDefault = document.getElementById('btn-scan-jd-default') as HTMLButtonElement;
+  const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+  const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
+
+  if (loading) loading.classList.remove('show');
+  if (cleanBtn) cleanBtn.style.display = 'inline-flex';
+  if (stopBtn) stopBtn.style.display = 'none';
+  if (textarea) textarea.disabled = false;
+  if (scanBtnDefault) scanBtnDefault.disabled = false;
+  if (scanBtn) scanBtn.disabled = false;
+  if (fetchBtn) fetchBtn.disabled = false;
+}
+
 // Feature 1: "Show JD" button — fetch saved JD from SQLite via new API
 async function showJdForItem(item: ScraperResult): Promise<void> {
   const modal = document.getElementById('jd-view-modal');
@@ -2119,41 +2277,6 @@ async function showJdForItem(item: ScraperResult): Promise<void> {
     if (loadingEl) loadingEl.style.display = 'none';
     bodyEl.textContent = 'Error loading job description: ' + (err as Error).message;
   }
-}
-
-async function fetchJobDescription(url: string): Promise<string> {
-  try {
-    const resp = await fetch('/api/fetch-url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
-    });
-    if (resp.ok) {
-      const data = await resp.json() as { text: string };
-      return data.text;
-    }
-    // Collection pages cannot be auto-fetched; route to modal, skip AI call.
-    if (resp.status === 400) {
-      const errData = await resp.json() as { error?: string; message?: string };
-      if (errData.error === 'COLLECTION_URL') {
-        throw new Error(errData.message || 'This is a collection page. JD cannot be auto-fetched.');
-      }
-    }
-    // Surface a LinkedIn session-expiry so the caller can tell the user to
-    // regenerate the session, instead of silently falling back to the login page.
-    if (resp.status === 503) {
-      const errData = await resp.json() as { error?: string; message?: string };
-      if (errData.error === 'LINKEDIN_SESSION_EXPIRED') {
-        throw new Error(errData.message || 'LinkedIn session expired. Run: tsx scripts/linkedin-auth.ts');
-      }
-    }
-  } catch (err) {
-    // Re-throw the session-expired/collection errors; swallow all other errors (fallback).
-    if (err instanceof Error && (err.message.includes('LinkedIn session expired') || err.message.includes('collection'))) {
-      throw err;
-    }
-  }
-  return '';
 }
 
 function closeJdEditModal(): void {
@@ -2988,6 +3111,8 @@ function cancelProvidersSelection(): void {
 (window as unknown as Record<string, unknown>).clearScraperSource = clearScraperSource;
 (window as unknown as Record<string, unknown>).refreshJd = refreshJd;
 (window as unknown as Record<string, unknown>).fetchJdForAts = fetchJdForAts;
+(window as unknown as Record<string, unknown>).cleanJdWithAi = cleanJdWithAi;
+(window as unknown as Record<string, unknown>).stopCleanJd = stopCleanJd;
 (window as unknown as Record<string, unknown>).closeRemoteRocketshipConfirm = closeRemoteRocketshipConfirm;
 (window as unknown as Record<string, unknown>).confirmRemoteRocketship = confirmRemoteRocketship;
 
@@ -3060,7 +3185,7 @@ async function clearTestData(): Promise<void> {
     if (!resp.ok) throw new Error('Failed to clear test data');
     showToast({ message: 'Test data cleared', type: 'success' });
     renderDashboard();
-  } catch (err: unknown) {
+} catch (err: unknown) {
     showToast({ message: 'Failed to clear test data: ' + (err as Error).message, type: 'error' });
   }
 }
