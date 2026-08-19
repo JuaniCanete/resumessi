@@ -68,7 +68,7 @@ async function switchSource(page: import('@playwright/test').Page, source: 'link
     // Wait for confirm modal to appear
     await page.locator('#remoterocketship-confirm-modal').waitFor({ state: 'visible', timeout: 5000 });
     // Click Confirm button
-    await page.locator('#remoterocketship-confirm-modal button:has-text("✓ Confirm")').click();
+    await page.locator('#remoterocketship-confirm-modal button:has-text("Confirm")').click();
     // Wait for modal to disappear
     await page.locator('#remoterocketship-confirm-modal').waitFor({ state: 'hidden', timeout: 5000 });
   }

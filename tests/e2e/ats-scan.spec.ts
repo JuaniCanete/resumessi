@@ -15,9 +15,10 @@ test.describe('ATS Scan — UI Flow', () => {
 
 	test('scan button shows loading state on click', async ({ mainPage }) => {
 		await mainPage.enterJobDescription(jobDescriptionFixtures.minimal);
-		await mainPage.btnRunScan.click();
-
-		await expect(mainPage.btnRunScan).toHaveText('Cancel Scan', { timeout: 2000 });
+		await Promise.all([
+			mainPage.btnRunScan.click(),
+			expect(mainPage.btnRunScan).toHaveText('Cancel Scan', { timeout: 2000 }),
+		]);
 		await mainPage.btnRunScan.click();
 	});
 
