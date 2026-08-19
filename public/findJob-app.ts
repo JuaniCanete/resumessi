@@ -2017,7 +2017,15 @@ function closeJdCollectionModal(): void {
 
 function closeJdViewModal(): void {
   const modal = document.getElementById('jd-view-modal');
-  if (modal) modal.style.display = 'none';
+  if (modal) {
+    modal.style.display = 'none';
+    // Remove Escape key handler
+    const handler = (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
+    if (handler) {
+      document.removeEventListener('keydown', handler);
+      delete (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
+    }
+  }
 }
 
 // Feature 1: Refresh JD — fetch fresh from LinkedIn (bypass cache)
@@ -2077,6 +2085,15 @@ async function showJdForItem(item: ScraperResult): Promise<void> {
   bodyEl.textContent = '';
   if (loadingEl) loadingEl.style.display = 'block';
   modal.style.display = 'flex';
+
+  // Add Escape key handler
+  const escapeHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      closeJdViewModal();
+    }
+  };
+  document.addEventListener('keydown', escapeHandler);
+  (modal as HTMLDivElement & { _escapeHandler?: typeof escapeHandler })._escapeHandler = escapeHandler;
 
   try {
     const resp = await fetch('/api/scraper/jd', {
