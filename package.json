@@ -1,78 +1,91 @@
 {
-  "name": "resumessi",
-  "version": "2.3.1",
-  "description": "AI-powered job seeker and validator",
-  "main": "public/main.html",
-  "engines": {
-    "node": ">=22.22.0"
-  },
-  "scripts": {
-    "setup": "tsx setup.ts",
-    "validate": "tsx scripts/validate.ts",
-    "prebuild": "npm run validate",
-    "build": "tsx build.ts",
-    "build:check": "tsx build.ts --check",
-    "prestart": "npm run build",
-    "start": "tsx start.ts",
-    "generate": "tsx src/resume/generate-resume.ts",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "html:validate": "html-validate public/**/*.html",
-    "css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html",
-    "test:unit": "tsx --test \"tests/unit/**/*.test.ts\"",
-    "test:e2e": "playwright test --config=tests/playwright.config.ts",
-    "evals": "tsx scripts/run-evals.ts",
-    "scraper:auth": "tsx scripts/linkedin-auth.ts"
-  },
-  "lint-staged": {
-    "*.{js,ts}": [
-      "eslint --fix"
-    ],
-    "*.html": [
-      "html-validate",
-      "stylelint --custom-syntax postcss-html"
-    ]
-  },
-  "keywords": [
-    "resume",
-    "ats",
-    "ai",
-    "cv",
-    "scoring",
-    "generation"
-  ],
-  "author": "Juani Cañete",
-  "license": "MIT",
-  "dependencies": {
-    "better-sqlite3": "^13.0.3",
-    "formidable": "^3.5.0",
-    "pdf-parse-fork": "^1.1.0",
-    "playwright-extra": "^4.3.0",
-    "puppeteer-extra-plugin-stealth": "^2.11.0",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.0.0",
-    "@playwright/test": "^1.61.1",
-    "@types/better-sqlite3": "^9.6.0",
-    "@types/formidable": "^3.5.1",
-    "@types/node": "^22.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.65.0",
-    "@typescript-eslint/parser": "^8.65.0",
-    "cross-env": "^10.1.0",
-    "esbuild": "^0.28.1",
-    "eslint": "^9.0.0",
-    "eslint-plugin-html": "^8.1.4",
-    "globals": "^14.0.0",
-    "html-validate": "^9.0.0",
-    "husky": "^9.1.7",
-    "jsdom": "^29.1.1",
-    "lint-staged": "^15.2.0",
-    "postcss-html": "^1.8.1",
-    "stylelint": "^16.0.0",
-    "stylelint-config-standard": "^36.0.0",
-    "tsx": "^4.23.1",
-    "typescript": "^6.0.3"
-  }
+	"name": "resumessi",
+	"version": "2.3.1",
+	"description": "AI-powered job seeker and validator",
+	"main": "public/main.html",
+	"engines": {
+		"node": ">=22.22.0"
+	},
+	"scripts": {
+		"setup": "tsx setup.ts",
+		"validate": "tsx scripts/validate.ts",
+		"prebuild": "npm run validate",
+		"build": "tsx build.ts",
+		"build:check": "tsx build.ts --check",
+		"prestart": "npm run build",
+		"start": "tsx start.ts",
+		"generate": "tsx src/resume/generate-resume.ts",
+		"typecheck": "tsc --noEmit",
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"html:validate": "html-validate public/**/*.html",
+		"css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html",
+		"test:unit": "tsx --test \"tests/unit/**/*.test.ts\"",
+		"test:e2e": "playwright test --config=tests/playwright.config.ts",
+		"evals": "tsx scripts/run-evals.ts",
+		"scraper:auth": "tsx scripts/linkedin-auth.ts"
+	},
+	"lint-staged": {
+		"*.{js,ts}": [
+			"eslint --fix",
+			"prettier --write"
+		],
+		"*.{json,md,html}": [
+			"prettier --write"
+		],
+		"*.html": [
+			"html-validate",
+			"stylelint --custom-syntax postcss-html"
+		]
+	},
+	"keywords": [
+		"resume",
+		"ats",
+		"ai",
+		"cv",
+		"scoring",
+		"generation"
+	],
+	"author": "Juani Cañete",
+	"license": "MIT",
+	"dependencies": {
+		"better-sqlite3": "^13.0.3",
+		"formidable": "^3.5.0",
+		"pdf-parse-fork": "^1.1.0",
+		"playwright-extra": "^4.3.0",
+		"puppeteer-extra-plugin-stealth": "^2.11.0",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.0.0",
+		"@playwright/test": "^1.61.1",
+		"@types/better-sqlite3": "^9.6.0",
+		"@types/formidable": "^3.5.1",
+		"@types/node": "^22.0.0",
+		"@typescript-eslint/eslint-plugin": "^8.65.0",
+		"@typescript-eslint/parser": "^8.65.0",
+		"cross-env": "^10.1.0",
+		"esbuild": "^0.28.1",
+		"eslint": "^9.0.0",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-html": "^8.1.4",
+		"eslint-plugin-import-x": "^4.17.1",
+		"eslint-plugin-no-only-tests": "^3.4.0",
+		"eslint-plugin-playwright": "^2.11.0",
+		"eslint-plugin-prettier": "^5.5.6",
+		"globals": "^14.0.0",
+		"html-validate": "^9.0.0",
+		"husky": "^9.1.7",
+		"jsdom": "^29.1.1",
+		"lint-staged": "^15.2.0",
+		"postcss-html": "^1.8.1",
+		"prettier": "^3.9.6",
+		"prettier-plugin-multiline-arrays": "^4.1.11",
+		"stylelint": "^16.0.0",
+		"stylelint-config-standard": "^36.0.0",
+		"tsx": "^4.23.1",
+		"typescript": "^6.0.3"
+	}
 }

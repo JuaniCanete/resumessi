@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+public/dist/
+coverage/
+playwright-report/
+test-results/
+*.svg
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+package-lock.json
+.fonts
+.env
+.env.example

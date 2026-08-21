@@ -1,8 +1,14 @@
 #!/usr/bin/env sh
 set -e
 
+# TODO (post-migration): After full repo is formatted with tabs:
+# 1. Run: npx prettier --write . && npm run lint -- --fix
+# 2. In eslint.config.mjs: change all "warn" rules to "error"
+# 3. lint-staged stays - enforces format on every commit
+
 echo "Running pre-commit validations..."
 
+npx lint-staged
 npm run build:check
 npm run validate -- --skip-evals
 npm run typecheck
