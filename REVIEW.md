@@ -4,8 +4,9 @@ This document defines the standard for code reviews in the **resumessi** project
 
 ## When to Trigger Code Review
 
-- Only when explicitly requested by the user.
-- Not for every commit; use for feature branches, risky changes, or complex refactors.
+- **Mandatory for feature branches** — part of the standard workflow (step 7 in AGENTS_LOCAL.md).
+- When explicitly requested by the user.
+- For risky changes or complex refactors.
 
 ## Code Review Checklist
 
@@ -79,7 +80,7 @@ For each finding, provide:
 
 ```
 
-- File should be added to thsi folder `code-review`
+- File should be added to this folder `code-review`
 - File name should be `<feature-name>.md`
 
 ## Sign-off

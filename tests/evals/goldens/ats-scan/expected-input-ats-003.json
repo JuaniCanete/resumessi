@@ -1,0 +1,25 @@
+{
+  "overall_score": 25,
+  "tier": "WEAK_MATCH",
+  "breakdown": {
+    "skills_score": 15,
+    "experience_years_score": 20,
+    "education_match": false,
+    "keyword_coverage": 0.12
+  },
+  "feedback": "Weak match for DevOps Engineer role. Candidate is a Frontend Developer with 3 years experience, lacking the required 5+ years DevOps experience. Missing all core requirements: Kubernetes, Docker, Terraform, cloud platforms (AWS/GCP), CI/CD pipelines, Python/Go scripting, monitoring tools, and Linux administration. Skills are primarily frontend-focused (React, Vue, CSS animations). Education level (Associate) below typical requirement for senior DevOps role.",
+  "missingKeywords": [
+    "Kubernetes",
+    "Docker",
+    "AWS",
+    "GCP",
+    "Terraform",
+    "CI/CD",
+    "Python",
+    "Go",
+    "Prometheus",
+    "Grafana",
+    "Linux",
+    "Infrastructure as Code"
+  ]
+}

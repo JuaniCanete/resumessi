@@ -26,6 +26,7 @@ function ensureModalContainer(): HTMLDivElement {
   if (modalContainer) return modalContainer;
   modalContainer = document.createElement('div');
   modalContainer.id = 'shared-modal-container';
+  modalContainer.setAttribute('data-testid', 'shared-modal-container');
   modalContainer.style.cssText = `
     position: fixed;
     top: 0;
@@ -47,6 +48,7 @@ function ensureToastContainer(): HTMLDivElement {
   if (toastContainer) return toastContainer;
   toastContainer = document.createElement('div');
   toastContainer.id = 'shared-toast-container';
+  toastContainer.setAttribute('data-testid', 'shared-toast-container');
   toastContainer.style.cssText = `
     position: fixed;
     bottom: 24px;
@@ -100,6 +102,7 @@ export function showConfirmModal(options: ModalOptions): void {
 
   const modal = document.createElement('div');
   modal.className = 'shared-modal';
+  modal.setAttribute('data-testid', 'shared-modal');
   modal.style.cssText = `
     background: var(--secondary, #0a0a0a);
     padding: 28px;
@@ -232,6 +235,7 @@ export function showToast(options: ToastOptions): void {
   const { message, type = 'info', duration = 4000 } = options;
 
   const toast = document.createElement('div');
+  toast.setAttribute('data-testid', 'toast');
   const colors: Record<string, { bg: string; border: string; text: string }> = {
     success: { bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.4)', text: '#34d399' },
     error: { bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.4)', text: '#f87171' },
@@ -327,6 +331,7 @@ export function showApplyModal(options: ApplyModalOptions): void {
 
   const modal = document.createElement('div');
   modal.className = 'shared-modal';
+  modal.setAttribute('data-testid', 'shared-modal');
   modal.style.cssText = `
     background: var(--secondary, #0a0a0a);
     padding: 28px;

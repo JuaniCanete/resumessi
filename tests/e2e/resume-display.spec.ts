@@ -82,11 +82,11 @@ test.describe('Resume Display', () => {
 		await page.reload();
 		await mainPage.waitForResumeLoaded();
 
-		const linkedInLink = mainPage.resumeContent.locator('a[href="https://www.linkedin.com/in/testuser/"]');
+		const linkedInLink = mainPage.getLinkedInLink();
 		await expect(linkedInLink).toBeVisible();
 		await expect(linkedInLink).toHaveText('LinkedIn profile');
 
-		const githubLink = mainPage.resumeContent.locator('a[href="https://github.com/testuser"]');
+		const githubLink = mainPage.getGitHubLink();
 		await expect(githubLink).toBeVisible();
 		await expect(githubLink).toHaveText('GitHub profile');
 	});
@@ -105,11 +105,11 @@ test.describe('Resume Display', () => {
 		await page.reload();
 		await mainPage.waitForResumeLoaded();
 
-		const certLink = mainPage.resumeContent.locator('a[href="https://example.com/cert"]');
+		const certLink = mainPage.getCertLink();
 		await expect(certLink).toBeVisible();
 		await expect(certLink).toHaveText('Verify certificate');
 
-		const talkLink = mainPage.resumeContent.locator('a[href="https://example.com/talk"]');
+		const talkLink = mainPage.getTalkLink();
 		await expect(talkLink).toBeVisible();
 		await expect(talkLink).toHaveText('Watch recording');
 	});
@@ -136,7 +136,7 @@ test.describe('Resume Display', () => {
 		await mainPage.waitForResumeLoaded();
 
 		// Should render the JSON file data (with links), not the stale localStorage data
-		const linkedInLink = mainPage.resumeContent.locator('a[href="https://www.linkedin.com/in/testuser/"]');
+		const linkedInLink = mainPage.getLinkedInLink();
 		await expect(linkedInLink).toBeVisible();
 
 		// Should NOT have the stale data name

@@ -1,0 +1,66 @@
+{
+  "jd": "We are seeking a Full Stack Developer with 3+ years of experience to build and maintain our e-commerce platform. Required: JavaScript/TypeScript, React, Node.js, PostgreSQL, AWS. Nice to have: GraphQL, Docker, Kubernetes, CI/CD. You will work on both frontend and backend features, collaborate with design team, and participate in code reviews. Competitive compensation, health benefits, 401k matching, hybrid work (3 days office).",
+  "resume": {
+    "basics": {
+      "name": "Alex Chen",
+      "email": "alex.chen@email.com",
+      "phone": "+1-555-0456",
+      "location": "Austin, TX",
+      "summary": "Full Stack Developer with 4 years experience building scalable web applications. Proficient in React, Node.js, TypeScript, and cloud technologies.",
+      "url": "https://linkedin.com/in/alexchen",
+      "github": "https://github.com/alexchen"
+    },
+    "experience": [
+      {
+        "title": "Full Stack Developer",
+        "company": "E-Commerce Solutions Ltd",
+        "location": "Austin, TX",
+        "startDate": "2020-01-15",
+        "endDate": "present",
+        "description": "Developing and maintaining e-commerce platform serving 100K+ users",
+        "highlights": [
+          "Built RESTful APIs with Node.js/Express and PostgreSQL",
+          "Developed React frontend with Redux for state management",
+          "Implemented Docker containerization and AWS deployment",
+          "Set up CI/CD pipelines with GitHub Actions"
+        ]
+      },
+      {
+        "title": "Junior Developer",
+        "company": "Digital Agency",
+        "location": "Austin, TX",
+        "startDate": "2018-06-01",
+        "endDate": "2019-12-31",
+        "description": "Worked on client projects using MERN stack",
+        "highlights": [
+          "Created responsive UIs with React and Material-UI",
+          "Built backend services with Node.js and MongoDB",
+          "Collaborated with designers to implement pixel-perfect designs"
+        ]
+      }
+    ],
+    "education": [
+      {
+        "institution": "Texas State University",
+        "degree": "Bachelor of Science",
+        "field": "Computer Science",
+        "endDate": "2018-05-31"
+      }
+    ],
+    "skills": {
+      "Frontend": ["React", "TypeScript", "JavaScript", "Redux", "Material-UI", "HTML/CSS"],
+      "Backend": ["Node.js", "Express", "PostgreSQL", "MongoDB", "GraphQL"],
+      "DevOps": ["Docker", "AWS (EC2, RDS, S3)", "GitHub Actions", "Linux"],
+      "Testing": ["Jest", "Supertest", "Cypress"]
+    },
+    "projects": [],
+    "certifications": [
+      {
+        "name": "AWS Certified Developer Associate",
+        "date": "2022-03-15",
+        "url": "https://aws.amazon.com/certification/"
+      }
+    ],
+    "languages": ["English (Native)", "Mandarin (Fluent)"]
+  }
+}

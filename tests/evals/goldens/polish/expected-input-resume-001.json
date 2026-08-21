@@ -1,0 +1,41 @@
+{
+  "basics": {
+    "name": "David Kim",
+    "email": "david.kim@email.com",
+    "phone": "+1-555-1111",
+    "location": "Seattle, WA",
+    "summary": "Results-driven Software Engineer with 3+ years of experience building scalable web applications using JavaScript, Python, and Java. Proven track record of delivering high-quality features, reducing bug rates, and improving system performance. Seeking to leverage expertise in React, Spring Boot, and cloud technologies to drive impact at a growth-stage company.",
+    "url": "https://linkedin.com/in/davidkim"
+  },
+  "experience": [
+    {
+      "title": "Software Engineer",
+      "company": "Tech Company",
+      "location": "Seattle, WA",
+      "startDate": "2020-01-01",
+      "endDate": "present",
+      "description": "Design and develop full-stack features for core product serving 100K+ users. Collaborate with cross-functional teams to deliver high-impact projects.",
+      "highlights": [
+        "Architected and deployed 5+ major features using React and Spring Boot, improving user engagement by 25%",
+        "Reduced production bug rate by 40% through implementation of comprehensive testing strategy (unit, integration, e2e)",
+        "Optimized API response times by 60% through database query optimization and caching layer implementation",
+        "Mentored 2 junior engineers, conducting code reviews and guiding professional development"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "University of Washington",
+      "degree": "Bachelor of Science in Computer Science",
+      "endDate": "2019-06-01"
+    }
+  ],
+  "skills": {
+    "Programming Languages": ["JavaScript", "TypeScript", "Python", "Java"],
+    "Frontend Frameworks": ["React", "Redux", "Next.js"],
+    "Backend Frameworks": ["Spring Boot", "Node.js", "Express"],
+    "Databases": ["PostgreSQL", "MongoDB", "Redis"],
+    "Cloud & DevOps": ["AWS", "Docker", "GitHub Actions", "Terraform"],
+    "Testing": ["Jest", "Cypress", "JUnit", "Mockito"]
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "name": "Sarah Johnson",
+  "contact": {
+    "email": "sarah.j@email.com",
+    "phone": "(555) 234-5678",
+    "location": "Austin, TX",
+    "linkedin": "linkedin.com/in/sarahjohnson"
+  },
+  "experience": [
+    {
+      "company": "E-Commerce Co",
+      "role": "Full Stack Developer",
+      "duration": "Jan 2021 - Present",
+      "highlights": [
+        "Built and maintained customer-facing e-commerce platform",
+        "Developed REST APIs with Node.js/Express and MongoDB",
+        "Created responsive UI components with React and Tailwind CSS",
+        "Implemented automated testing with Jest and Cypress",
+        "Collaborated with UX team to improve conversion rates by 15%"
+      ]
+    },
+    {
+      "company": "Digital Agency",
+      "role": "Junior Developer",
+      "duration": "Jun 2019 - Dec 2020",
+      "highlights": [
+        "Built client websites using MERN stack",
+        "Created custom React components and hooks",
+        "Integrated third-party APIs (Stripe, SendGrid)",
+        "Participated in code reviews and agile ceremonies"
+      ]
+    }
+  ],
+  "skills": ["React", "Redux", "TypeScript", "HTML5", "CSS3", "Tailwind CSS", "Node.js", "Express", "MongoDB", "REST APIs", "Git", "Docker", "AWS", "Jest", "Cypress"],
+  "education": [
+    {
+      "institution": "University of Texas at Austin",
+      "degree": "B.S. Computer Science",
+      "year": "2019"
+    }
+  ]
+}

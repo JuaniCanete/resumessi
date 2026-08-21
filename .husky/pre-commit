@@ -4,7 +4,7 @@ set -e
 echo "Running pre-commit validations..."
 
 npm run build:check
-npm run validate
+npm run validate -- --skip-evals
 npm run typecheck
 npm run lint
 npm run test:unit

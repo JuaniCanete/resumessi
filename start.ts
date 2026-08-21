@@ -1646,7 +1646,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   }
 
   // Default to main.html for root
-  let filePath = requestPath === '/' ? '/public/main.html' : requestPath;
+  let filePath = (requestPath === '/' || requestPath === '/main.html' || requestPath === '/findJob.html') ? '/public' + requestPath : requestPath;
   filePath = path.join(ROOT, filePath as string);
 
   // Security: prevent directory traversal

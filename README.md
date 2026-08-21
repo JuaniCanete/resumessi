@@ -8,16 +8,27 @@
 
 ## 🚀 Quick Start
 
+### Prerequisites
+
+- **Node.js ≥ 18** (required for native modules and modern TypeScript features)
+- **Visual Studio Build Tools + Python 3** (Windows only — required for `better-sqlite3` and `pdf-parse-fork` native compilation via `node-gyp`)
+- **Playwright browsers** — run `npx playwright install` after `npm install` to download Chromium
+
+### Setup
+
 1. **Clone** the project.
-2. **Run setup** — `npm run setup` creates `.env` from `.env.example` (⚠️ overwrites an existing `.env`).
-3. **Complete steps from Wizard** This will setup all the API keys needed (SERP and AI providers).
-4. **Start the app** — `npm start` runs the local server and opens the app in your browser.
-5. **Build your resume** — Drop your existing resume in PDF format and a photo, and AI will generate a brand new one for you.
-6. **Paste a Job Description** in the left panel and click **Validate JD using AI**.
-7. **Start scraping for jobs** For LinkedIn it uses storage state to treat the page respectfully. For Google it uses SERP API.
-8. **Apply or save jobs** Search the job that better match your preferences.
-9. **Manage your needs** Job dashboard allows to control the status of the applications, it can be within the APP or outside the app.
-10. **Generate a cover letter** After an ATS scan, use the **Cover Letter** button to auto-generate a tailored cover letter from the JD.
+2. **Install dependencies** — `npm install`
+3. **Install Playwright browsers** — `npx playwright install`
+4. **Run setup** — `npm run setup` creates `.env` from `.env.example` (⚠️ **WARNING: overwrites an existing `.env`** — backup your keys first!)
+5. **Complete steps from Wizard** — This will set up AI provider API keys. **Note:** `npm run setup` only configures AI providers. SerpAPI (`GOOGLE_API_KEY`) and scraper settings (`SCRAPER_DEBUG`, `REMOTEROCKETSHIP_*`, `COLLECTION_WARNING_ENABLED`) must be added manually to `.env` after setup.
+6. **LinkedIn authentication** — Run `npm run scraper:auth` (or `tsx scripts/linkedin-auth.ts`) to generate the LinkedIn session state for scraping.
+7. **Start the app** — `npm start` runs the local server and opens the app in your browser.
+8. **Build your resume** — Drop your existing resume in PDF format and a photo, and AI will generate a brand new one for you.
+9. **Paste a Job Description** in the left panel and click **Validate JD using AI**.
+10. **Start scraping for jobs** — For LinkedIn it uses storage state to treat the page respectfully. For Google it uses SerpAPI.
+11. **Apply or save jobs** — Search the job that better match your preferences.
+12. **Manage your needs** — Job dashboard allows to control the status of the applications, within the app or outside.
+13. **Generate a cover letter** — After an ATS scan, use the **Cover Letter** button to auto-generate a tailored cover letter from the JD.
 
 ---
 
@@ -179,10 +190,10 @@ After editing any prompt or frontend code, run `npm run build` before committing
 | Command | Description |
 |---|---|
 | `npm start` | Start dev server (runs build first) |
-| `npm run setup` | Run setup wizard (⚠️ overwrites existing .env) |
+| `npm run setup` | Run setup wizard (⚠️ **overwrites existing .env** — only configures AI providers; SerpAPI & scraper settings must be added manually) |
 | `npm run build` | Build prompts into HTML/JS + bundle frontend with esbuild |
 | `npm run build:check` | Verify build is up-to-date |
-| `npm run validate` | Run pre-build validation |
+| `npm run validate` | Run pre-build validation (includes LLM evals) |
 | `npm run generate` | Generate resume from prompt data |
 | `npm run evals` | Run LLM evaluation harness |
 | `npm run typecheck` | Run TypeScript type checks (`tsc --noEmit`) |

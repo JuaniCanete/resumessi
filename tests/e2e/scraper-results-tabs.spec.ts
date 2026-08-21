@@ -1,6 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './test-setup';
 
-// Mirrors the ScraperRunPayload shape from public/findJob-app.ts
 interface MockResult {
   title: string;
   url: string;
@@ -39,145 +38,150 @@ function buildEmptyPayload(source: 'linkedin' | 'google' | 'remoterocketship'): 
   };
 }
 
-async function switchSource(page: import('@playwright/test').Page, source: 'linkedin' | 'google' | 'remoterocketship') {
-  const labelMap: Record<string, string> = {
-    linkedin: 'LinkedIn',
-    google: 'Google',
-    remoterocketship: 'Remote Rocketship',
-  };
-  const label = labelMap[source];
-  
-  // Open the actions dropdown by directly manipulating DOM
-  await page.evaluate(() => {
-    const dropdown = document.getElementById('findjob-actions-dropdown');
-    const trigger = document.getElementById('findjob-actions-trigger');
-    if (dropdown && trigger) {
-      dropdown.classList.remove('hidden');
-      trigger.setAttribute('aria-expanded', 'true');
-    }
-  });
-  
-  // Wait for dropdown to be visible
-  await page.locator('#findjob-actions-dropdown').waitFor({ state: 'visible', timeout: 5000 });
-  
-  // Click the appropriate source option
-  await page.locator(`.actions-option:has-text("${label}")`).click();
-  
-  // For Remote Rocketship, handle the confirm modal
-  if (source === 'remoterocketship') {
-    // Wait for confirm modal to appear
-    await page.locator('#remoterocketship-confirm-modal').waitFor({ state: 'visible', timeout: 5000 });
-    // Click Confirm button
-    await page.locator('#remoterocketship-confirm-modal button:has-text("Confirm")').click();
-    // Wait for modal to disappear
-    await page.locator('#remoterocketship-confirm-modal').waitFor({ state: 'hidden', timeout: 5000 });
-  }
-  
-  // Wait for the badge to update (polling fetches and renders results)
-  const expectedLabel = label === 'remoterocketship' ? 'Remote Rocketship' : label;
-  await expect(page.locator('#source-badge')).toContainText(expectedLabel, { timeout: 10000 });
-}
-
 test.describe('Scraper Results — Source Switching', () => {
-	test('empty results show only no-results state and clear previously rendered cards', async ({ page }) => {
-		// Mock LinkedIn with results, Google with no results
-		await page.route('**/api/scraper/results?source=linkedin', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(buildPayload('linkedin')),
-			});
-		});
-		await page.route('**/api/scraper/results?source=google', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(buildEmptyPayload('google')),
-			});
-		});
+  test('empty results show only no-results state and clear previously rendered cards', async ({ findJobPage }) => {
+    await findJobPage.page.route('**/api/scraper/results?source=linkedin', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(buildPayload('linkedin')),
+      });
+    });
+    await findJobPage.page.route('**/api/scraper/results?source=google', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(buildEmptyPayload('google')),
+      });
+    });
 
-		await page.goto('/public/findJob.html?source=linkedin', { waitUntil: 'domcontentloaded' });
+    await findJobPage.goto();
+    await findJobPage.page.waitForURL('**/findJob.html?source=linkedin*');
 
-		// LinkedIn shows a card and no empty state
-		await expect(page.locator('#results-list')).toContainText('LinkedIn Job Result');
-		await expect(page.locator('#no-results')).not.toBeVisible();
+    // LinkedIn shows a card and no empty state
+    await expect(findJobPage.resultsList).toContainText('LinkedIn Job Result');
+    await expect(findJobPage.noResults).not.toBeVisible();
 
-		// Switch to Google (empty) → cards must be cleared, only no-results shows
-		await switchSource(page, 'google');
+    // Switch to Google (empty) → cards must be cleared, only no-results shows
+    await findJobPage.switchSource(findJobPage.googleSourceValue);
 
-		await expect(page.locator('#no-results')).toBeVisible();
-		await expect(page.locator('#results-list')).not.toContainText('LinkedIn Job Result');
-		await expect(page.locator('#results-list')).toBeEmpty();
-		await expect(page.locator('#pagination')).not.toBeVisible();
+    await expect(findJobPage.noResults).toBeVisible();
+    await expect(findJobPage.resultsList).not.toContainText('LinkedIn Job Result');
+    await expect(findJobPage.resultsList).toBeEmpty();
+    await expect(findJobPage.pagination).not.toBeVisible();
 
-		// Header meta fields must be reset to empty-state defaults (Issue 6)
-		await expect(page.locator('#meta-timestamp')).toHaveText('No results');
-		await expect(page.locator('#meta-total')).toHaveText('N/A');
-		await expect(page.locator('#meta-query')).toHaveText('N/A');
-		await expect(page.locator('#query-link-wrapper')).not.toBeVisible();
-	});
+    // Header meta fields must be reset to empty-state defaults (Issue 6)
+    await expect(findJobPage.metaTimestamp).toHaveText('No results');
+    await expect(findJobPage.metaTotal).toHaveText('N/A');
+    await expect(findJobPage.metaQuery).toHaveText('N/A');
+    await expect(findJobPage.queryLinkWrapper).not.toBeVisible();
+  });
 
-	test('switchResultsTab is wired and toggles between LinkedIn and Google results', async ({ page }) => {
-		// Mock the scraper results API per source
-		await page.route('**/api/scraper/results?source=linkedin', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(buildPayload('linkedin')),
-			});
-		});
-		await page.route('**/api/scraper/results?source=google', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(buildPayload('google')),
-			});
-		});
+  test('switchResultsTab is wired and toggles between LinkedIn and Google results', async ({ findJobPage }) => {
+    await findJobPage.page.route('**/api/scraper/results?source=linkedin', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(buildPayload('linkedin')),
+      });
+    });
+    await findJobPage.page.route('**/api/scraper/results?source=google', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(buildPayload('google')),
+      });
+    });
 
-		await page.goto('/public/findJob.html?source=linkedin', { waitUntil: 'domcontentloaded' });
+    await findJobPage.goto();
+    await findJobPage.page.waitForURL('**/findJob.html?source=linkedin*');
 
-		// LinkedIn should be active by default and show the LinkedIn result
-		await expect(page.locator('#source-badge')).toContainText('LinkedIn');
-		await expect(page.locator('#results-list')).toContainText('LinkedIn Job Result');
+    // LinkedIn should be active by default and show the LinkedIn result
+    await expect(findJobPage.metaSource).toContainText(findJobPage.linkedinSourceValue);
+    await expect(findJobPage.resultsList).toContainText('LinkedIn Job Result');
 
-		// Click Google source via dropdown → switchResultsTab('google') must be defined
-		await switchSource(page, 'google');
+    // Click Google source via dropdown → switchResultsTab('google') must be defined
+    await findJobPage.switchSource(findJobPage.googleSourceValue);
+    await expect(findJobPage.metaSource).toContainText(findJobPage.googleSourceValue);
+    await expect(findJobPage.resultsList).toContainText('Google Job Result');
 
-		await expect(page.locator('#results-list')).toContainText('Google Job Result');
+    // Click LinkedIn source via dropdown → switch back
+    await findJobPage.switchSource(findJobPage.linkedinSourceValue);
+    await expect(findJobPage.metaSource).toContainText(findJobPage.linkedinSourceValue);
+    await expect(findJobPage.resultsList).toContainText('LinkedIn Job Result');
+  });
 
-		// Click LinkedIn source via dropdown → switch back
-		await switchSource(page, 'linkedin');
+  test('can switch to Remote Rocketship source', async ({ findJobPage }) => {
+    await findJobPage.page.route('**/api/scraper/results?source=linkedin', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(buildPayload('linkedin')),
+      });
+    });
+    await findJobPage.page.route('**/api/scraper/results?source=google', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(buildPayload('google')),
+      });
+    });
+    await findJobPage.page.route('**/api/scraper/results?source=remoterocketship', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(buildPayload('remoterocketship')),
+      });
+    });
 
-		await expect(page.locator('#results-list')).toContainText('LinkedIn Job Result');
-	});
+    await findJobPage.goto();
+    await findJobPage.page.waitForURL('**/findJob.html?source=linkedin*');
 
-	test('can switch to Remote Rocketship source', async ({ page }) => {
-		await page.route('**/api/scraper/results?source=linkedin', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(buildPayload('linkedin')),
-			});
-		});
-		await page.route('**/api/scraper/results?source=google', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(buildPayload('google')),
-			});
-		});
-		await page.route('**/api/scraper/results?source=remoterocketship', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(buildPayload('remoterocketship')),
-			});
-		});
+    await findJobPage.switchSource(findJobPage.remoteRocketshipSourceValue);
+    await expect(findJobPage.metaSource).toContainText(findJobPage.remoteRocketshipSourceValue);
+    await expect(findJobPage.resultsList).toContainText('RemoteRocketship Job Result');
+  });
 
-		await page.goto('/public/findJob.html?source=linkedin', { waitUntil: 'domcontentloaded' });
+  test('dropdown closes after selecting a source option', async ({ findJobPage }) => {
+    await findJobPage.page.route('**/api/scraper/results?source=linkedin', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(buildPayload('linkedin')),
+      });
+    });
+    await findJobPage.page.route('**/api/scraper/results?source=google', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(buildPayload('google')),
+      });
+    });
 
-		await switchSource(page, 'remoterocketship');
+    await findJobPage.goto();
+    await findJobPage.page.waitForURL('**/findJob.html?source=linkedin*');
 
-		await expect(page.locator('#results-list')).toContainText('RemoteRocketship Job Result');
-	});
+    // Verify dropdown is initially closed
+    await expect(findJobPage.isDropdownClosed()).resolves.toBe(true);
+
+    // Open dropdown using the page object method
+    await findJobPage.findJobActionsTrigger.click({ force: true });
+    await findJobPage.page.evaluate(() => {
+      const dropdown = document.getElementById('findjob-actions-dropdown');
+      if (dropdown) dropdown.classList.remove('hidden');
+    });
+    await findJobPage.findJobActionsDropdown.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Verify dropdown is open
+    await expect(findJobPage.isDropdownClosed()).resolves.toBe(false);
+
+    // Select Google source
+    await findJobPage.sourceOptionGoogle.click();
+
+    // Verify dropdown closes after selection
+    await expect(findJobPage.isDropdownClosed()).resolves.toBe(true);
+
+    // Verify source changed
+    await expect(findJobPage.metaSource).toContainText(findJobPage.googleSourceValue);
+  });
 });

@@ -126,7 +126,19 @@ function toggleFindJobActions(): void {
     const label = trigger.querySelector('.actions-label');
     if (label) label.textContent = 'Scraping sources \u25B4';
     updateSourceOptionsActiveState();
-} else {
+  } else {
+    dropdown.classList.add('hidden');
+    trigger.setAttribute('aria-expanded', 'false');
+    const label = trigger.querySelector('.actions-label');
+    if (label) label.textContent = 'Scraping sources \u25BE';
+  }
+}
+
+function closeFindJobActionsDropdown(): void {
+  const dropdown = document.getElementById('findjob-actions-dropdown');
+  const trigger = document.getElementById('findjob-actions-trigger');
+  if (!dropdown || !trigger) return;
+  if (!dropdown.classList.contains('hidden')) {
     dropdown.classList.add('hidden');
     trigger.setAttribute('aria-expanded', 'false');
     const label = trigger.querySelector('.actions-label');
@@ -141,6 +153,13 @@ function updateSourceOptionsActiveState(): void {
     const isActive = onclick.includes(`switchResultsTab('${currentSource}')`);
     option.classList.toggle('active', isActive);
   });
+
+  const metaSource = document.getElementById('meta-source');
+  if (metaSource) {
+    const sourceLabel = getSourceDisplayName(currentSource);
+    metaSource.textContent = sourceLabel;
+    metaSource.style.display = 'inline';
+  }
 }
 
 // Close dropdown when clicking outside
@@ -212,6 +231,7 @@ function switchResultsTab(source: 'linkedin' | 'google' | 'remoterocketship'): v
       updateResultsTabs();
       updateUrlSourceParam(source);
       loadDataAndRender(source);
+      closeFindJobActionsDropdown();
     });
     return;
   }
@@ -219,6 +239,7 @@ function switchResultsTab(source: 'linkedin' | 'google' | 'remoterocketship'): v
   updateResultsTabs();
   updateUrlSourceParam(source);
   loadDataAndRender(source);
+  closeFindJobActionsDropdown();
 }
 
 function updateUrlSourceParam(source: 'linkedin' | 'google' | 'remoterocketship'): void {
@@ -233,12 +254,6 @@ function updateResultsTabs(): void {
 
 function showLoadingUI(source: 'linkedin' | 'google' | 'remoterocketship'): void {
   isLoadingResults = true;
-  const badge = document.getElementById('source-badge');
-  if (badge) {
-    const sourceLabel = getSourceDisplayName(source);
-    badge.textContent = sourceLabel;
-    badge.className = `source-badge ${source}`;
-  }
 
   const list = document.getElementById('results-list');
   if (list) {
@@ -416,13 +431,6 @@ function renderScrapingResults(): void {
 
   const activePayload = payloadsBySource[currentSource];
   const isExtracting = extractionStatus[currentSource] === 'extracting';
-
-  const badge = document.getElementById('source-badge');
-  if (badge && activePayload) {
-    const sourceLabel = getSourceDisplayName(activePayload.source);
-    badge.textContent = sourceLabel;
-    badge.className = `source-badge ${activePayload.source}`;
-  }
 
   // Show extraction loading banner if metadata is being extracted
   const extractionBanner = document.getElementById('extraction-loading');
@@ -1370,6 +1378,7 @@ function createJobCard(item: ScraperResult, view: 'scraping' | 'saved' | 'dashbo
   // Source badge
   const sourceBadge = document.createElement('span');
   sourceBadge.className = `result-source-badge ${item.source}`;
+  //juani
   sourceBadge.textContent = item.source === 'linkedin' ? 'LinkedIn' : 'Google';
   headerActions.appendChild(sourceBadge);
 
@@ -2086,8 +2095,8 @@ async function refreshJd(): Promise<void> {
   }
 }
 
-// Clean JD using AI — fetch from URL and clean with AI (user-initiated, abortable)
-async function cleanJdWithAi(): Promise<void> {
+// Clean JD using AI — fetch from URL and clean using AI (user-initiated, abortable)
+async function cleanJdUsingAi(): Promise<void> {
   const modal = document.getElementById('jd-edit-modal');
   const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
   const loading = document.getElementById('jd-fetch-loading');
@@ -2156,7 +2165,7 @@ async function cleanJdWithAi(): Promise<void> {
     rawText = fallbackParts.join('\n\n');
   }
 
-  // Now clean with AI using the raw text
+  // Now clean using AI using the raw text
   const textToClean = rawText || textarea.value;
   try {
     const cleanResp = await fetch('/api/ats/clean-jd', {
@@ -2180,7 +2189,7 @@ async function cleanJdWithAi(): Promise<void> {
     if (cleanResp.ok) {
       const cleanData = await cleanResp.json() as { cleanedJD?: string };
       textarea.value = cleanData.cleanedJD || textToClean;
-      showToast({ message: 'JD cleaned successfully with AI', type: 'success' });
+      showToast({ message: 'JD cleaned successfully using AI', type: 'success' });
     } else {
       textarea.value = textToClean;
       showToast({ message: 'AI cleaning failed, using raw JD', type: 'warning' });
@@ -3111,7 +3120,7 @@ function cancelProvidersSelection(): void {
 (window as unknown as Record<string, unknown>).clearScraperSource = clearScraperSource;
 (window as unknown as Record<string, unknown>).refreshJd = refreshJd;
 (window as unknown as Record<string, unknown>).fetchJdForAts = fetchJdForAts;
-(window as unknown as Record<string, unknown>).cleanJdWithAi = cleanJdWithAi;
+(window as unknown as Record<string, unknown>).cleanJdUsingAi = cleanJdUsingAi;
 (window as unknown as Record<string, unknown>).stopCleanJd = stopCleanJd;
 (window as unknown as Record<string, unknown>).closeRemoteRocketshipConfirm = closeRemoteRocketshipConfirm;
 (window as unknown as Record<string, unknown>).confirmRemoteRocketship = confirmRemoteRocketship;

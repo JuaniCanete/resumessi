@@ -273,28 +273,6 @@
             gap: 10px;
         }
 
-        .source-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .source-badge.linkedin {
-            background: rgba(10, 102, 194, 0.25);
-            color: #70b5f9;
-            border: 1px solid rgba(10, 102, 194, 0.5);
-        }
-
-        .source-badge.google {
-            background: rgba(234, 67, 53, 0.2);
-            color: #f87171;
-            border: 1px solid rgba(234, 67, 53, 0.4);
-        }
-
         .meta-row {
             display: flex;
             gap: 20px;
@@ -1821,7 +1799,7 @@
                     <span class="tab-icon">💾</span>
                     Saved Jobs
                 </button>
-                <button class="sidebar-tab" data-tab="dashboard" onclick="switchTab('dashboard')">
+                <button class="sidebar-tab" data-tab="dashboard" data-testid="sidebar-tab-dashboard" onclick="switchTab('dashboard')">
                     <span class="tab-icon">🗃️</span>
                     Job Dashboard
                 </button>
@@ -1866,27 +1844,27 @@
                                 <button id="findjob-actions-trigger" data-testid="findjob-actions-trigger" class="actions-dropdown-trigger" onclick="toggleFindJobActions()"
                                     aria-expanded="false" aria-haspopup="true" title="Actions"><span class="actions-label">Scraping sources ▾</span></button>
                                 <div id="findjob-actions-dropdown" data-testid="findjob-actions-dropdown" class="actions-dropdown hidden" role="menu">
-                                    <button class="actions-option" onclick="switchResultsTab('linkedin')" role="menuitem">
+                                    <button class="actions-option" data-testid="source-option-linkedin" onclick="switchResultsTab('linkedin')" role="menuitem">
                                         <span class="actions-option-icon">🔗</span>
                                         <span class="actions-option-text">LinkedIn</span>
                                     </button>
-                                    <button class="actions-option" onclick="switchResultsTab('google')" role="menuitem">
+                                    <button class="actions-option" data-testid="source-option-google" onclick="switchResultsTab('google')" role="menuitem">
                                         <span class="actions-option-icon">🔍</span>
                                         <span class="actions-option-text">Google</span>
                                     </button>
-                                    <button class="actions-option" onclick="switchResultsTab('remoterocketship')" role="menuitem">
+                                    <button class="actions-option" data-testid="source-option-remoterocketship" onclick="switchResultsTab('remoterocketship')" role="menuitem">
                                         <span class="actions-option-icon">🚀</span>
                                         <span class="actions-option-text">Remote Rocketship</span>
                                     </button>
                                 </div>
                             </div>
-                            <span id="source-badge" class="source-badge linkedin" style="display: none;">LinkedIn</span>
                         </div>
                     </div>
                 <div class="meta-row">
-                    <div class="meta-item">Scanned: <span id="meta-timestamp">No results</span></div>
-                    <div class="meta-item">Total Findings: <span id="meta-total">N/A</span></div>
-                    <div class="meta-item">Query: <span id="meta-query">N/A</span><span id="query-link-wrapper" style="display: none;">. <a id="query-link" href="#" target="_blank" rel="noopener noreferrer">Link</a></span></div>
+                    <div class="meta-item">Scanned: <span id="meta-timestamp" data-testid="meta-timestamp">No results</span></div>
+                    <div class="meta-item">Total Findings: <span id="meta-total" data-testid="meta-total">N/A</span></div>
+                    <div class="meta-item">Query: <span id="meta-query" data-testid="meta-query">N/A</span><span id="query-link-wrapper" data-testid="query-link-wrapper" style="display: none;">. <a id="query-link" href="#" target="_blank" rel="noopener noreferrer">Link</a></span></div>
+                    <div class="meta-item">Source: <span id="meta-source" data-testid="meta-source">LinkedIn</span></div>
                 </div>
             </div>
 
@@ -1894,9 +1872,9 @@
                 ⏳ Metadata extraction is in progress, this process usually takes one minute per page.
             </div>
 
-            <div id="results-list" class="results-list"></div>
+            <div id="results-list" data-testid="results-list" class="results-list"></div>
 
-                <div id="no-results" class="no-results" style="display: none;">
+                <div id="no-results" data-testid="no-results" class="no-results" style="display: none;">
                     <h3>There are no scraping results available</h3>
                     <p style="font-size: 13px; color: #64748b;">Results will appear here.</p>
                 </div>
@@ -1909,7 +1887,7 @@
                     </div>
                 </div>
 
-                <div id="pagination" class="pagination" style="display: none;">
+                <div id="pagination" data-testid="pagination" class="pagination" style="display: none;">
                     <button id="btn-prev-page" class="page-btn" onclick="prevPage()">◀ Previous</button>
                     <span id="page-info" class="page-info">Page 1 of 1</span>
                     <button id="btn-next-page" class="page-btn" onclick="nextPage()">Next ▶</button>
@@ -1950,7 +1928,7 @@
                         <div class="meta-item">Statuses: <span id="dashboard-meta-statuses">None</span></div>
                     </div>
                 </div>
-                <div id="dashboard-board" class="board-container"></div>
+                <div id="dashboard-board" data-testid="dashboard-board" class="board-container"></div>
             </div>
         </div>
     </div>
@@ -2015,7 +1993,7 @@
             </div>
 
             <div class="ats-loading" id="ats-loading">
-                <span class="dot-anim">Scanning with AI</span>
+                <span class="dot-anim">Scanning using AI</span>
             </div>
 
             <button onclick="openCoverLetterModal()" style="width: 100%; padding: 10px; background: var(--static); color: #fff; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; cursor: pointer; margin-top: 12px;">
@@ -2064,7 +2042,7 @@
 
             <!-- Loading State -->
             <div id="cover-letter-loading" style="display: none; text-align: center; padding: 20px;">
-                <p style="color: var(--accent);" class="dot-anim">Generating cover letter with AI</p>
+                <p style="color: var(--accent);" class="dot-anim">Generating cover letter using AI</p>
             </div>
 
             <!-- Error State -->
@@ -2131,7 +2109,7 @@
             <div id="jd-clean-indicator" style="display: none; padding: 8px 12px; background: rgba(37, 99, 235, 0.15); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 6px; color: #60a5fa; font-size: 12px; font-weight: 600; margin-bottom: 12px; align-items: center; justify-content: space-between;">
                 <span>No saved JD — click to clean using AI</span>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <button id="jd-clean-btn" onclick="cleanJdWithAi()" style="padding: 4px 10px; background: var(--accent); color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">Clean JD using AI</button>
+                    <button id="jd-clean-btn" onclick="cleanJdUsingAi()" style="padding: 4px 10px; background: var(--accent); color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">Clean JD using AI</button>
                     <button id="jd-stop-btn" class="btn-cancel" onclick="stopCleanJd()" style="display: none;">Stop</button>
                 </div>
             </div>
@@ -2335,11 +2313,11 @@
     </div>
 
     <!-- Remote Rocketship Confirm Modal -->
-    <div id="remoterocketship-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(22, 22, 26, 0.8); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div id="remoterocketship-confirm-modal" data-testid="remoterocketship-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(22, 22, 26, 0.8); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
         <div class="modal-content" style="max-width: 520px; width: 92%; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; background: var(--secondary); border-radius: 14px; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 12px 48px rgba(0,0,0,0.6);">
             <!-- Top bar with close X -->
             <div style="display: flex; justify-content: flex-end; padding: 12px 16px 0 16px;">
-                <button onclick="closeRemoteRocketshipConfirm()" aria-label="Close" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
+                <button data-testid="remoterocketship-confirm-close" onclick="closeRemoteRocketshipConfirm()" aria-label="Close" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
                     onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
             </div>
             
@@ -2358,7 +2336,7 @@
             
             <!-- Confirm button at bottom -->
             <div style="padding: 0 24px 24px 24px; display: flex; justify-content: center;">
-                <button onclick="confirmRemoteRocketship()" class="p-btn p-btn-primary" style="min-width: 160px; background: var(--accent); color: #fff; padding: 14px 32px; border-radius: 8px; font-family: 'Comfortaa', sans-serif; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: background 0.2s;"
+                <button data-testid="remoterocketship-confirm-btn" onclick="confirmRemoteRocketship()" class="p-btn p-btn-primary" style="min-width: 160px; background: var(--accent); color: #fff; padding: 14px 32px; border-radius: 8px; font-family: 'Comfortaa', sans-serif; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: background 0.2s;"
                     onmouseenter="this.style.background='#1d4ed8'" onmouseleave="this.style.background='var(--accent)'">
                     Confirm
                 </button>
@@ -2373,13 +2351,13 @@
                 onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
             <h2 style="color: #fff; margin-bottom: 6px; text-align: center;">🧠 AI Providers</h2>
             <p id="providers-modal-subtitle" style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 18px; font-family: 'Comfortaa', sans-serif;">Select default provider for LLM API calls</p>
-            <div id="providers-list"></div>
+            <div id="providers-list" data-testid="providers-list"></div>
             <div id="providers-empty-message" style="display: none; color: #fff; font-size: 13px; text-align: center; padding: 24px 16px; font-family: 'Comfortaa', sans-serif;">
                 There are not LLM providers configured. Please, setup them to chose provider and model.
             </div>
-            <div id="providers-modal-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch; margin-top: 16px;">
-                <button id="providers-cancel-btn" class="p-btn p-btn-secondary" style="flex: 1;" onclick="cancelProvidersSelection()">Cancel</button>
-                <button id="providers-confirm-btn" class="p-btn p-btn-primary" style="flex: 1; background: var(--accent); color: #fff;" onclick="confirmProvidersSelection()">Confirm</button>
+            <div id="providers-modal-actions" data-testid="providers-modal-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch; margin-top: 16px;">
+                <button id="providers-cancel-btn" data-testid="providers-cancel-btn" class="p-btn p-btn-secondary" style="flex: 1;" onclick="cancelProvidersSelection()">Cancel</button>
+                <button id="providers-confirm-btn" data-testid="providers-confirm-btn" class="p-btn p-btn-primary" style="flex: 1; background: var(--accent); color: #fff;" onclick="confirmProvidersSelection()">Confirm</button>
             </div>
         </div>
     </div>

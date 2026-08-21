@@ -61,8 +61,8 @@ test.describe('AI Providers Modal', () => {
 
 		await mainPage.selectProvider('Mistral');
 
-		const cohereChecked = await mainPage.providersList.locator('.provider-item[data-provider="cohere"] .provider-checkbox').isChecked();
-		const mistralChecked = await mainPage.providersList.locator('.provider-item[data-provider="mistral"] .provider-checkbox').isChecked();
+		const cohereChecked = await mainPage.isProviderChecked('cohere');
+		const mistralChecked = await mainPage.isProviderChecked('mistral');
 
 		expect(cohereChecked).toBe(false);
 		expect(mistralChecked).toBe(true);
@@ -82,7 +82,7 @@ test.describe('AI Providers Modal', () => {
 	test('checkbox click properly updates selection', async ({ mainPage }) => {
 		await mainPage.openProvidersModal();
 		
-		await mainPage.providersList.locator('.provider-item[data-provider="gemini"] .provider-checkbox').click();
+		await mainPage.checkProvider('gemini');
 		await mainPage.confirmProvidersSelection();
 
 		const stored = await mainPage.getSelectedProviderFromLocalStorage();
@@ -179,15 +179,7 @@ test.describe('AI Providers Modal', () => {
 
 		await mainPage.openProvidersModal();
 
-		const providerItems = await mainPage.getProviderItems();
-		let groqChecked = false;
-		for (const item of providerItems) {
-			const text = await item.textContent();
-			if (text && text.includes('Groq')) {
-				groqChecked = await item.locator('.provider-checkbox').isChecked();
-				break;
-			}
-		}
+		const groqChecked = await mainPage.isProviderChecked('groq');
 		expect(groqChecked).toBe(true);
 
 		await mainPage.closeProvidersModal();

@@ -1,0 +1,15 @@
+{
+  "overall_score": 82,
+  "tier": "GOOD_MATCH",
+  "breakdown": {
+    "skills_score": 85,
+    "experience_years_score": 80,
+    "education_match": true,
+    "keyword_coverage": 0.78
+  },
+  "feedback": "Good match for Full Stack Developer role. Candidate has 4 years of relevant experience with React, Node.js, TypeScript, PostgreSQL, and AWS - covering all required skills. Docker and CI/CD experience is a plus. Hybrid work preference matches. Missing: explicit Kubernetes experience (nice-to-have), GraphQL only listed in skills without project evidence.",
+  "missingKeywords": [
+    "Kubernetes",
+    "GraphQL"
+  ]
+}

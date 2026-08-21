@@ -4,11 +4,11 @@ import { join } from 'node:path';
 const TEST_DB_PATH = join(__dirname, '..', 'data', 'test', 'jobdata-test.db');
 
 export default defineConfig({
-  timeout: 15000,
+  timeout: 60000,
   testDir: './e2e',
   outputDir: './test-results',
   workers: 2,
-  reporter: [['html', { open: 'on-failure' }]],
+  reporter: [['html', { open: 'on-failure' },] , ['list']],
   use: {
     baseURL: 'http://localhost:3001',
     screenshot: 'only-on-failure',

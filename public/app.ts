@@ -387,21 +387,21 @@ function renderResume(data?: Record<string, unknown>): void {
   // Header
   html += '<header class="resume-header">';
   html += '<div class="header-main">';
-  html += '<h1>' + escHtml(b.name) + '</h1>';
+  html += '<h1 data-testid="resume-name">' + escHtml(b.name) + '</h1>';
   html += '<div class="subtitle">' + escHtml(b.title) + '</div>';
   html += '</div>';
   html += '<div class="profile-photo-container">';
-  html += '<img src="' + escHtml(getPhotoPath(d as { basics?: { photo?: string } })) + '" alt="' + escHtml(b.name) + '" class="profile-photo" onerror="this.style.display=\'none\';">';
+  html += '<img src="' + escHtml(getPhotoPath(d as { basics?: { photo?: string } })) + '" alt="' + escHtml(b.name) + '" class="profile-photo" data-testid="profile-photo" onerror="this.style.display=\'none\';">';
   html += '</div>';
   html += '<div class="contact-info">';
   html += '<p><strong>Email:</strong> ' + escHtml(b.email) + '</p>';
   html += '<p><strong>Phone:</strong> ' + escHtml(b.phone) + '</p>';
   html += '<p><strong>Location:</strong> ' + escHtml(b.location) + '</p>';
   if (b.linkedin && b.linkedin !== '#') {
-    html += '<p style="margin-top: 6px;"><a class="cert-link" href="' + escHtml(b.linkedin) + '" target="_blank" rel="noopener noreferrer">LinkedIn profile</a></p>';
+    html += '<p style="margin-top: 6px;"><a class="cert-link" href="' + escHtml(b.linkedin) + '" target="_blank" rel="noopener noreferrer" data-testid="linkedin-link">LinkedIn profile</a></p>';
   }
   if (b.github && b.github !== '#') {
-    html += '<p style="margin-top: 6px;"><a class="cert-link" href="' + escHtml(b.github) + '" target="_blank" rel="noopener noreferrer">GitHub profile</a></p>';
+    html += '<p style="margin-top: 6px;"><a class="cert-link" href="' + escHtml(b.github) + '" target="_blank" rel="noopener noreferrer" data-testid="github-link">GitHub profile</a></p>';
   }
   html += '</div>';
   html += '</header>';
@@ -502,7 +502,7 @@ function renderResume(data?: Record<string, unknown>): void {
       html += '<p style="font-weight: 700; color: var(--secondary); font-size: 13px;">' + escHtml(talk.title) + '</p>';
       html += '<p style="font-size: 12.5px; color: var(--text-light); margin-top: 4px;">' + escHtml(talk.event) + '</p>';
       if (talk.url) {
-        html += '<p style="margin-top: 6px;"><a class="cert-link" href="' + escHtml(talk.url) + '" target="_blank" rel="noopener noreferrer">Watch recording</a></p>';
+        html += '<p style="margin-top: 6px;"><a class="cert-link" href="' + escHtml(talk.url) + '" target="_blank" rel="noopener noreferrer" data-testid="talk-link">Watch recording</a></p>';
       }
       html += '</div>';
     }
@@ -519,7 +519,7 @@ function renderResume(data?: Record<string, unknown>): void {
       if (cert.duration) certMeta += ' \u00b7 ' + escHtml(cert.duration);
       html += '<p style="font-size: 12.5px; color: var(--text-light);">' + certMeta + '</p>';
       if (cert.url) {
-        html += '<p style="margin-top: 4px;"><a class="cert-link" href="' + escHtml(cert.url) + '" target="_blank" rel="noopener noreferrer">Verify certificate</a></p>';
+        html += '<p style="margin-top: 4px;"><a class="cert-link" href="' + escHtml(cert.url) + '" target="_blank" rel="noopener noreferrer" data-testid="cert-link">Verify certificate</a></p>';
       }
       html += '</div>';
     }

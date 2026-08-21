@@ -77,4 +77,7 @@ tests/data/
 data/test/
 data-test-sqlite/
 
-
+# Eval artifacts (auto-generated)
+.eval-metrics/
+.eval-baselines/
+tests/evals/goldens/recorded/

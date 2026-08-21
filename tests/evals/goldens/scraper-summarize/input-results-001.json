@@ -1,0 +1,35 @@
+{
+  "timestamp": "2024-01-15T10:00:00Z",
+  "source": "linkedin",
+  "query": { "role": "Frontend Engineer", "seniority": "Senior" },
+  "totalResults": 2,
+  "results": [
+    {
+      "title": "Senior Frontend Engineer",
+      "url": "https://linkedin.com/jobs/view/123456",
+      "snippet": "We are looking for a Senior Frontend Engineer to join our team...",
+      "source": "linkedin",
+      "company": "TechCorp Inc",
+      "postedDate": "2 days ago",
+      "aiSummary": "Senior Frontend role at TechCorp requiring React, TypeScript, 5+ years exp. Remote friendly.",
+      "queryAffinity": "High",
+      "parameters": ["remote", "senior"],
+      "saved": false,
+      "applied": false
+    },
+    {
+      "title": "Frontend Engineer",
+      "url": "https://linkedin.com/jobs/view/789012",
+      "snippet": "Join our growing frontend team...",
+      "source": "linkedin",
+      "company": "StartupXYZ",
+      "postedDate": "1 week ago",
+      "aiSummary": "Frontend Engineer at StartupXYZ, React/TypeScript, 3+ years, hybrid NYC.",
+      "queryAffinity": "Medium",
+      "parameters": ["hybrid", "mid-level"],
+      "saved": false,
+      "applied": false
+    }
+  ],
+  "summary": "Found 2 Senior Frontend Engineer positions. TechCorp offers remote work with 5+ years exp requirement. StartupXYZ is hybrid in NYC with 3+ years requirement."
+}

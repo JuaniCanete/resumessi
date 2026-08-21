@@ -40,7 +40,7 @@ test.describe('UI Feedback — Toasts, Modals, Dashboard', () => {
       });
       await mainPage.btnRunScan.click();
 
-      const toast = mainPage.page.locator('#shared-toast-container div');
+      const toast = mainPage.getToastElement();
       await toast.waitFor({ state: 'visible', timeout: 5000 });
       const text = await toast.textContent();
       expect(text).toContain('Please paste a Job Description');
@@ -54,7 +54,7 @@ test.describe('UI Feedback — Toasts, Modals, Dashboard', () => {
       await findJobPage.page.waitForTimeout(500);
 
       const card = findJobPage.getCardsInColumn('applied').first();
-      const targetContainer = findJobPage.page.locator('.board-cards-container[data-list-id="applied"]');
+      const targetContainer = findJobPage.getCardsInColumn('applied').locator('..');
       await card.dragTo(targetContainer);
       await findJobPage.page.waitForTimeout(500);
 
@@ -96,10 +96,10 @@ test.describe('UI Feedback — Toasts, Modals, Dashboard', () => {
       await mainPage.openProvidersModal();
       await expect(mainPage.providersModal).toBeVisible();
 
-      const modalCountBefore = await mainPage.page.locator('#shared-modal-container .shared-modal').count();
+      const modalCountBefore = await mainPage.getModalElement().count();
       await mainPage.page.keyboard.press('Enter');
       await mainPage.page.waitForTimeout(500);
-      const modalCountAfter = await mainPage.page.locator('#shared-modal-container .shared-modal').count();
+      const modalCountAfter = await mainPage.getModalElement().count();
       expect(modalCountAfter).toBeLessThanOrEqual(modalCountBefore);
     });
   });
@@ -164,7 +164,7 @@ test.describe('UI Feedback — Toasts, Modals, Dashboard', () => {
       await findJobPage.page.waitForTimeout(500);
 
       const card = findJobPage.getCardsInColumn('applied').first();
-      const targetContainer = findJobPage.page.locator('.board-cards-container[data-list-id="applied"]');
+      const targetContainer = findJobPage.getCardsInColumn('applied').locator('..');
       await card.dragTo(targetContainer);
       await findJobPage.page.waitForTimeout(500);
 

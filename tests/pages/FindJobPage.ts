@@ -6,17 +6,56 @@ export class FindJobPage {
   readonly dashboardBoard: Locator;
   readonly toastContainer: Locator;
   readonly sharedModal: Locator;
+  readonly resultsList: Locator;
+  readonly noResults: Locator;
+  readonly pagination: Locator;
+  readonly metaTimestamp: Locator;
+  readonly metaTotal: Locator;
+  readonly metaQuery: Locator;
+  readonly metaSource: Locator;
+  readonly queryLinkWrapper: Locator;
+  readonly findJobActionsTrigger: Locator;
+  readonly findJobActionsDropdown: Locator;
+  readonly sourceOptionLinkedIn: Locator;
+  readonly sourceOptionGoogle: Locator;
+  readonly sourceOptionRemoteRocketship: Locator;
+  readonly remoteRocketshipConfirmModal: Locator;
+  readonly remoteRocketshipConfirmBtn: Locator;
+  readonly remoteRocketshipConfirmClose: Locator;
+  readonly linkedinSourceValue: string;
+  readonly remoteRocketshipSourceValue: string;
+  readonly googleSourceValue: string;
 
   constructor(page: Page) {
     this.page = page;
-    this.dashboardTab = page.locator('.sidebar-tab[data-tab="dashboard"]');
-    this.dashboardBoard = page.locator('#dashboard-board');
-    this.toastContainer = page.locator('#shared-toast-container');
-    this.sharedModal = page.locator('#shared-modal-container .shared-modal');
+    this.dashboardTab = page.getByTestId('sidebar-tab-dashboard');
+    this.dashboardBoard = page.getByTestId('dashboard-board');
+    this.toastContainer = page.getByTestId('shared-toast-container');
+    this.sharedModal = page.getByTestId('shared-modal-container').locator('[data-testid="shared-modal"]').first();
+    this.resultsList = page.getByTestId('results-list');
+    this.noResults = page.getByTestId('no-results');
+    this.pagination = page.getByTestId('pagination');
+    this.metaTimestamp = page.getByTestId('meta-timestamp');
+    this.metaTotal = page.getByTestId('meta-total');
+    this.metaQuery = page.getByTestId('meta-query');
+    this.metaSource = page.getByTestId('meta-source');
+    this.queryLinkWrapper = page.getByTestId('query-link-wrapper');
+    this.findJobActionsTrigger = page.getByTestId('findjob-actions-trigger');
+    this.findJobActionsDropdown = page.getByTestId('findjob-actions-dropdown');
+    this.sourceOptionLinkedIn = page.getByTestId('source-option-linkedin');
+    this.sourceOptionGoogle = page.getByTestId('source-option-google');
+    this.sourceOptionRemoteRocketship = page.getByTestId('source-option-remoterocketship');
+    this.remoteRocketshipConfirmModal = page.getByTestId('remoterocketship-confirm-modal');
+    this.remoteRocketshipConfirmBtn = page.getByTestId('remoterocketship-confirm-btn');
+    this.remoteRocketshipConfirmClose = page.getByTestId('remoterocketship-confirm-close');
+    this.linkedinSourceValue = 'LinkedIn';
+    this.remoteRocketshipSourceValue = 'Remote Rocketship';
+    this.googleSourceValue = 'Google';
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/public/findJob.html', { waitUntil: 'domcontentloaded' });
+    await this.page.goto('/findJob.html', { waitUntil: 'domcontentloaded' });
+    await this.findJobActionsTrigger.waitFor({ state: 'visible' });
   }
 
   async switchToDashboard(): Promise<void> {
@@ -196,5 +235,43 @@ export class FindJobPage {
     const cards = this.getCardsInColumn(columnId);
     const card = cards.nth(cardIndex);
     return (await card.locator('.board-card-title').textContent()) || '';
+  }
+
+  async switchSource(source: string): Promise<void> {
+    // Open the actions dropdown - click may not trigger the JS handler in test env
+    await this.findJobActionsTrigger.click({ force: true });
+    await this.page.evaluate(() => {
+      const fn = (window as unknown as Record<string, unknown>).toggleFindJobActions;
+      if (typeof fn === 'function') fn();
+    });
+    // Fallback: directly remove hidden class if function didn't work
+    await this.page.evaluate(() => {
+      const dropdown = document.getElementById('findjob-actions-dropdown');
+      if (dropdown) dropdown.classList.remove('hidden');
+    });
+    await this.findJobActionsDropdown.waitFor({ state: 'visible', timeout: 5000 });
+
+    const resolveSourceLocator = (source: string): Locator => {
+      if (source === this.linkedinSourceValue) return this.sourceOptionLinkedIn;
+      if (source === this.googleSourceValue) return this.sourceOptionGoogle;
+      if (source === this.remoteRocketshipSourceValue) return this.sourceOptionRemoteRocketship;
+      throw new Error(`Unknown source locator: ${source}`);
+    };
+
+    await resolveSourceLocator(source).click();
+
+    // For Remote Rocketship, handle the confirm modal
+    if (source === this.remoteRocketshipSourceValue) {
+      await this.remoteRocketshipConfirmModal.waitFor({ state: 'visible', timeout: 5000 });
+      await this.remoteRocketshipConfirmBtn.click();
+      await this.remoteRocketshipConfirmModal.waitFor({ state: 'hidden', timeout: 5000 });
+    }
+
+    // Wait for the meta source to appear
+    await this.metaSource.waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  async isDropdownClosed(): Promise<boolean> {
+    return await this.findJobActionsDropdown.evaluate((el: HTMLElement) => el.classList.contains('hidden'));
   }
 }

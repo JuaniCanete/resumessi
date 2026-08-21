@@ -64,6 +64,23 @@ tests/
 - **E2E tests:** Playwright
 - **Evals:** Custom LLM evaluation harness (`scripts/run-evals.ts`)
 
+## Testing Conventions
+
+### Page Object Model (POM) Rule
+
+**All E2E tests MUST use Page Object Model methods exclusively.** No plain `page.locator(...)`, `page.getByTestId(...)`, or raw selectors in test files.
+
+- Test files in `tests/e2e/` should only call methods on `MainPage` and `FindJobPage` (from `tests/pages/`).
+- If a test needs an interaction not covered by the POM, add a new method to the POM class instead of using raw locators.
+- POM constructors must use `page.getByTestId(...)` exclusively (no CSS selectors).
+
+### No Real AI API Calls
+
+**No E2E or unit tests should exercise real AI API calls.** Only `scripts/run-evals.ts` may use inference.
+
+- All AI endpoints (`/api/infer`, `/api/prompts/**`, `/api/parse-resume-pdf`, `/api/polish-resume`) are mocked via `page.route()` in `tests/e2e/test-setup.ts`.
+- Unit tests mock provider responses; no real HTTP calls to AI providers.
+
 ## Notes
 
 Test files mirror implementations from `public/main.html`, `public/findJob.html`, `src/providers.ts`, and `src/storage/jobDataSqlite.ts`. When functions are extracted to external files, update imports accordingly.

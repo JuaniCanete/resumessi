@@ -1,0 +1,68 @@
+{
+  "jd": "We are looking for a Senior Frontend Engineer to join our growing team. You will be responsible for building and maintaining our customer-facing web applications using React, TypeScript, and modern CSS. The ideal candidate has 5+ years of experience with React, strong TypeScript skills, and experience with state management (Redux, Zustand, or similar). You should be comfortable with CI/CD pipelines, testing frameworks (Jest, Cypress), and have a good eye for UX/UI. Experience with Node.js backend is a plus. We offer competitive salary, equity, and full remote work options.",
+  "resume": {
+    "basics": {
+      "name": "Jane Developer",
+      "email": "jane.dev@example.com",
+      "phone": "+1-555-0123",
+      "location": "San Francisco, CA",
+      "summary": "Senior Frontend Engineer with 6 years of experience building scalable web applications with React, TypeScript, and modern CSS. Strong background in state management, testing, and CI/CD.",
+      "url": "https://linkedin.com/in/janedeveloper",
+      "github": "https://github.com/janedev"
+    },
+    "experience": [
+      {
+        "title": "Senior Frontend Engineer",
+        "company": "TechCorp Inc",
+        "location": "San Francisco, CA",
+        "startDate": "2021-03-01",
+        "endDate": "present",
+        "description": "Leading frontend architecture for customer-facing SaaS platform",
+        "highlights": [
+          "Migrated legacy jQuery app to React/TypeScript, reducing bundle size by 40%",
+          "Implemented micro-frontend architecture serving 500K+ daily users",
+          "Established CI/CD pipeline with automated testing (Jest, Cypress)",
+          "Mentored 3 junior engineers on React best practices"
+        ]
+      },
+      {
+        "title": "Frontend Engineer",
+        "company": "StartupXYZ",
+        "location": "Remote",
+        "startDate": "2019-06-01",
+        "endDate": "2021-02-28",
+        "description": "Built and maintained core product UI",
+        "highlights": [
+          "Developed design system components used across 5 products",
+          "Optimized Core Web Vitals: LCP from 4.2s to 1.8s",
+          "Integrated Storybook for component documentation"
+        ]
+      }
+    ],
+    "education": [
+      {
+        "institution": "University of California, Berkeley",
+        "degree": "Bachelor of Science",
+        "field": "Computer Science",
+        "endDate": "2019-05-31"
+      }
+    ],
+    "skills": {
+      "Frontend": ["React", "TypeScript", "JavaScript", "HTML5", "CSS3", "Tailwind CSS", "Styled Components"],
+      "State Management": ["Redux", "Zustand", "React Query", "Context API"],
+      "Testing": ["Jest", "React Testing Library", "Cypress", "Playwright"],
+      "Tools": ["Webpack", "Vite", "ESLint", "Prettier", "Git", "GitHub Actions"],
+      "Backend": ["Node.js", "Express", "GraphQL", "REST APIs"]
+    },
+    "projects": [
+      {
+        "name": "Open Source Component Library",
+        "description": "Accessible React component library with 2k+ GitHub stars",
+        "url": "https://github.com/janedev/ui-components",
+        "highlights": ["WCAG 2.1 AA compliant", "Zero dependencies", "TypeScript first"]
+      }
+    ],
+    "certifications": [],
+    "languages": ["English (Native)", "Spanish (Conversational)"]
+  }
+}

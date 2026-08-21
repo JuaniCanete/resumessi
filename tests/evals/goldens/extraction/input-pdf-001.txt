@@ -1,0 +1,49 @@
+JOHN SMITH
+Senior Software Engineer
+john.smith@email.com | +1-555-0101 | San Francisco, CA
+linkedin.com/in/johnsmith | github.com/johnsmith
+
+SUMMARY
+Experienced Senior Software Engineer with 8+ years building scalable backend systems and distributed architectures. Expert in Go, Python, and cloud technologies. Proven track record of leading technical initiatives and mentoring engineering teams.
+
+EXPERIENCE
+
+Senior Software Engineer | TechCorp Inc | 2020 - Present
+• Led redesign of payment processing system handling $10M+ daily transactions
+• Built microservices platform using Go and gRPC, reducing latency by 60%
+• Mentored team of 5 engineers, established code review and testing standards
+• Designed and implemented event-driven architecture with Kafka
+
+Software Engineer | DataSystems LLC | 2017 - 2020
+• Developed real-time analytics pipeline processing 1B+ events/day
+• Built internal tools and APIs using Python and Flask
+• Implemented automated testing and deployment pipelines
+• Optimized database queries, reducing query time by 80%
+
+Junior Developer | StartupXYZ | 2015 - 2017
+• Built customer-facing features for SaaS platform
+• Worked with React, Node.js, and PostgreSQL
+• Participated in agile development process
+
+EDUCATION
+
+Master of Science in Computer Science | Stanford University | 2015
+Bachelor of Science in Computer Science | UC Berkeley | 2013
+
+SKILLS
+
+Languages: Go, Python, JavaScript, TypeScript, SQL, Bash
+Frameworks: Gin, Flask, React, gRPC, GraphQL
+Databases: PostgreSQL, Redis, MongoDB, Cassandra
+Cloud: AWS (EC2, Lambda, RDS, S3), GCP, Docker, Kubernetes
+Tools: Git, CI/CD, Terraform, Prometheus, Grafana, Kafka
+
+CERTIFICATIONS
+
+AWS Certified Solutions Architect Professional | 2021
+Google Cloud Professional Cloud Architect | 2022
+
+PROJECTS
+
+Open Source Contributor | etcd, Prometheus | 2018 - Present
+Distributed Systems Blog | blog.johnsmith.dev | 2019 - Present

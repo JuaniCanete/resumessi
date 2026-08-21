@@ -35,6 +35,12 @@ export class MainPage {
   readonly leftOpenStub: Locator;
   readonly collapseSidebarBtn: Locator;
   readonly btnRefreshResume: Locator;
+  readonly linkedInLink: Locator;
+  readonly githubLink: Locator;
+  readonly certLink: Locator;
+  readonly talkLink: Locator;
+  readonly toastContainer: Locator;
+  readonly modalContainer: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -51,9 +57,9 @@ export class MainPage {
     this.photoUploadTrigger = page.getByTestId('photo-upload-trigger');
     this.providersButton = page.getByTestId('providers-button');
     this.providersModal = page.getByTestId('providers-modal');
-    this.providersList = page.locator('#providers-list');
-    this.providersConfirmBtn = page.locator('#providers-modal-actions button.p-btn-primary');
-    this.providersCancelBtn = page.locator('#providers-modal-actions button.p-btn-secondary');
+    this.providersList = page.getByTestId('providers-list');
+    this.providersConfirmBtn = page.getByTestId('providers-confirm-btn');
+    this.providersCancelBtn = page.getByTestId('providers-cancel-btn');
     this.actionsTrigger = page.getByTestId('actions-trigger');
     this.actionsDropdown = page.getByTestId('actions-dropdown');
     this.polishOverlay = page.getByTestId('polish-overlay');
@@ -62,19 +68,25 @@ export class MainPage {
     this.photoInput = page.getByTestId('photo-input');
     this.photoUploadConfirm = page.getByTestId('photo-upload-confirm');
     this.resumeContent = page.getByTestId('resume-content');
-    this.profilePhoto = page.locator('.profile-photo');
+    this.profilePhoto = page.getByTestId('profile-photo');
     this.aiModal = page.getByTestId('ai-modal');
-    this.modalUploadSection = page.getByTestId('ai-modal').locator('#modal-upload-section');
-    this.resumeName = page.locator('#resume-content h1');
+    this.modalUploadSection = page.getByTestId('ai-modal').locator('[data-testid="modal-upload-section"]');
+    this.resumeName = page.getByTestId('resume-name');
     this.body = page.locator('body');
-    this.leftSidebar = page.locator('#left-sidebar');
-    this.leftOpenStub = page.locator('#left-open-stub');
-    this.collapseSidebarBtn = page.locator('[aria-label="Collapse sidebar"]');
+    this.leftSidebar = page.getByTestId('left-sidebar');
+    this.leftOpenStub = page.getByTestId('left-open-stub');
+    this.collapseSidebarBtn = page.getByTestId('collapse-sidebar-btn');
     this.btnRefreshResume = page.getByTestId('btn-refresh-resume');
+    this.linkedInLink = page.getByTestId('resume-content').locator('a[data-testid="linkedin-link"]');
+    this.githubLink = page.getByTestId('resume-content').locator('a[data-testid="github-link"]');
+    this.certLink = page.getByTestId('resume-content').locator('a[data-testid="cert-link"]');
+    this.talkLink = page.getByTestId('resume-content').locator('a[data-testid="talk-link"]');
+    this.toastContainer = page.getByTestId('shared-toast-container');
+    this.modalContainer = page.getByTestId('shared-modal-container');
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/public/main.html', { waitUntil: 'domcontentloaded' });
+    await this.page.goto('/main.html', { waitUntil: 'domcontentloaded' });
   }
 
   async waitForResumeLoaded(): Promise<void> {
@@ -181,6 +193,8 @@ export class MainPage {
   async confirmPhotoUpload(): Promise<void> {
     await this.photoUploadConfirm.waitFor({ state: 'visible' });
     await this.photoUploadConfirm.click();
+    // Wait for modal to close (processing completes)
+    await this.photoUploadModal.waitFor({ state: 'hidden', timeout: 10000 });
   }
 
   // ─── Refresh Message ────────────────────────────────────────────
@@ -240,5 +254,54 @@ export class MainPage {
   async expectProvidersModalVisible(): Promise<void> {
     const isVisible = await this.providersModal.isVisible();
     if (!isVisible) throw new Error('Providers modal is not visible');
+  }
+
+  // ─── Link Getters ───────────────────────────────────────────────────
+
+  getLinkedInLink(): Locator {
+    return this.linkedInLink;
+  }
+
+  getGitHubLink(): Locator {
+    return this.githubLink;
+  }
+
+  getCertLink(): Locator {
+    return this.certLink;
+  }
+
+  getTalkLink(): Locator {
+    return this.talkLink;
+  }
+
+  // ─── Toast & Modal ──────────────────────────────────────────────────
+
+  getToastElement(): Locator {
+    return this.toastContainer.locator('[data-testid="toast"]').first();
+  }
+
+  getModalElement(): Locator {
+    return this.modalContainer.locator('[data-testid="shared-modal"]').first();
+  }
+
+  // ─── AI Modal ───────────────────────────────────────────────────────
+
+  async closeAiModal(): Promise<void> {
+    await this.aiModal.evaluate((el: HTMLElement) => {
+      el.style.display = 'none';
+    });
+  }
+
+  // ─── Providers Modal Helpers ────────────────────────────────────────
+
+  async isProviderChecked(name: string): Promise<boolean> {
+    const providerItem = this.providersList.locator(`.provider-item[data-provider="${name.toLowerCase()}"]`);
+    const checkbox = providerItem.locator('.provider-checkbox');
+    return await checkbox.isChecked();
+  }
+
+  async checkProvider(name: string): Promise<void> {
+    const providerItem = this.providersList.locator(`.provider-item[data-provider="${name.toLowerCase()}"]`);
+    await providerItem.click();
   }
 }
