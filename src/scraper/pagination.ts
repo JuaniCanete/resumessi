@@ -53,30 +53,30 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
 			}
 		}
 		if (query.role) parts.push(query.role);
+		if (query.seniority) parts.push(query.seniority);
 		if (query.employmentType) parts.push(query.employmentType);
 		if (query.region) parts.push(query.region);
 		if (query.country) parts.push(query.country);
 		if (query.currency) parts.push(query.currency);
 
 		const fullQuery = parts.join(' ');
-		const url = new URL('https://www.linkedin.com/jobs/search/');
-		// URLSearchParams.set handles encoding — do NOT wrap with encodeURIComponent
-		url.searchParams.set('keywords', fullQuery);
+		const search = new URLSearchParams();
+		search.set('keywords', fullQuery);
 
 		if (query.seniority) {
 			const mapped = LINKEDIN_SENIORITY_MAP[query.seniority.toLowerCase()];
-			if (mapped) url.searchParams.set('f_E', mapped);
+			if (mapped) search.set('f_E', mapped);
 		}
 		if (query.datePosted) {
 			const mapped = LINKEDIN_DATE_POSTED_MAP[query.datePosted.toLowerCase()];
-			if (mapped) url.searchParams.set('f_TPR', mapped);
+			if (mapped) search.set('f_TPR', mapped);
 		}
 		if (query.workType) {
 			const mapped = LINKEDIN_WORK_TYPE_MAP[query.workType.toLowerCase()];
-			if (mapped) url.searchParams.set('f_WT', mapped);
+			if (mapped) search.set('f_WT', mapped);
 		}
 
-		return url.toString();
+		return `https://www.linkedin.com/jobs/search/?${search.toString().replace(/\+/g, '%20')}`;
 	}
 
 	if (source === 'remoterocketship') {

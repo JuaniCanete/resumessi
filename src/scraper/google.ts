@@ -114,8 +114,7 @@ export async function scrapeGoogle(
 			// identifies the result as a listing). We still enforce the domain
 			// allowlist above, so this is a permissive second signal only for ATS
 			// domains that don't always expose `/jobs/` in the URL path.
-			// Configurable via SCRAPER_JOB_BOARD_HOSTS env var (comma-separated).
-			const defaultJobBoardHosts = [
+			const JOB_BOARD_HOSTS = new Set([
 				'jobs.lever.co',
 				'jobs.ashbyhq.com',
 				'myworkdayjobs.com',
@@ -124,14 +123,7 @@ export async function scrapeGoogle(
 				'bamboohr.com',
 				'torre.ai',
 				'jobs.dayforcehcm.com',
-			];
-			const configuredJobBoardHosts = (process.env.SCRAPER_JOB_BOARD_HOSTS || '')
-				.split(',')
-				.map(h => h.trim().toLowerCase())
-				.filter(Boolean);
-			const JOB_BOARD_HOSTS = new Set(
-				configuredJobBoardHosts.length > 0 ? configuredJobBoardHosts : defaultJobBoardHosts
-			);
+			]);
 
 			for (const item of items) {
 				const title = item.title || '';

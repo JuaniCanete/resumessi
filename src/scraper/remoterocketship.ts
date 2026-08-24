@@ -41,11 +41,11 @@ export class RemoteRocketshipTimeoutError extends RemoteRocketshipError {
  */
 export async function scrapeRemoteRocketship(
 	query: ScraperQuery,
-	env?: Record<string, string | undefined>
+	_env?: Record<string, string | undefined>
 ): Promise<ScraperResult[]> {
-	const browserPath = env?.REMOTEROCKETSHIP_BROWSER_PATH || undefined;
-	const timeoutMs = Number(env?.REMOTEROCKETSHIP_TIMEOUT_MS) || 30000;
-	const rateLimitMs = Number(env?.REMOTEROCKETSHIP_RATE_LIMIT_MS) || 2000;
+	const browserPath = undefined; // auto-detected via findChromePath
+	const timeoutMs = 30000;
+	const rateLimitMs = 2000;
 
 	const { browser, context } = await launchStealthBrowser({
 		headless: true,

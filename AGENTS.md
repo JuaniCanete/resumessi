@@ -5,6 +5,7 @@ This file defines how AI assistants collaborate within the **resumessi** project
 ## Project Scope
 
 **resumessi** is a public-facing, self-contained HTML tool for:
+
 1. **ATS Resume Scoring** — using LLM models to evaluate resumes against job descriptions.
 2. **Resume Generation** — structured prompts + AI to auto-generate resume content.
 3. **Job Finder & Scraping** — LinkedIn (Playwright) and Google (SerpAPI) job scraping with pagination.
@@ -28,39 +29,39 @@ This file defines how AI assistants collaborate within the **resumessi** project
 
 ### File Ownership
 
-| File | Purpose | Can Edit? |
-|------|---------|-----------|
-| `public/main.html` | Main app (template) | �� Yes — improve UI/UX, fix bugs |
-| `public/utils.ts` | Shared utility functions (TS) | �� Yes — add helpers, fix bugs |
-| `public/app.ts` | Frontend application logic (TS) | �� Yes — improve UI logic |
-| `public/dist/app.js` | Compiled frontend bundle | ��� No — auto-generated |
-| `.env` | Runtime config (gitignored) | �� Yes — add new config keys to `.env.example` |
-| `.env.example` | Config template | �� Yes — keep in sync |
-| `src/providers.ts` | AI provider configuration & API logic (TS) | �� Yes — add providers, fix bugs |
-| `src/router.ts` | Inference router for multi-provider fallback (TS) | �� Yes — improve fallback logic |
-| `src/types/` | TypeScript type definitions | �� Yes — add/improve types |
-| `src/prompts/ats-scan.txt` | ATS evaluation system prompt | �� Yes — improve scoring logic |
-| `src/prompts/resume-generation.txt` | Resume generation prompt template | �� Yes — improve structure |
-| `src/prompts/extraction.txt` | Resume extraction prompt (PDF → JSON) | �� Yes — improve extraction logic |
-| `src/prompts/polish.txt` | Resume polishing prompt | �� Yes — improve polish quality |
-| `start.ts` | Dev server with /config.json endpoint (TS) | �� Yes — fixes only |
-| `build.ts` | Build script + esbuild frontend bundler (TS) | �� Yes — fixes only |
-| `setup.ts` | CLI setup wizard (TS) | ������ Yes — but NEVER run automatically |
-| `scripts/validate.ts` | Pre-build validation (TS) | �� Yes — keep in sync with prompts |
-| `scripts/run-evals.ts` | LLM evaluation harness (TS) | �� Yes — improve validation |
-| `scripts/linkedin-auth.ts` | LinkedIn session auth helper (TS) | �� Yes — generate/refresh session state |
-| `src/scraper/` | LinkedIn & Google scraper modules (TS) | �� Yes — core scraper logic & types |
-| `src/prompts/scraper-summarize.txt` | Scraper LLM summarization prompt | �� Yes — improve summary structure |
-| `public/findJob.html` | Unified job finder page with sidebar | �� Yes — improve UI/UX |
-| `public/findJob-app.ts` | Job finder page logic (TS) | �� Yes — improve paginated view |
-| `public/utils/modal.ts` | Shared modal/toast utilities | �� Yes — add helpers |
-| `public/utils/storage.ts` | Client-side localStorage helpers | �� Yes — add helpers |
-| `public/utils/types.ts` | Shared client-side types | �� Yes — add helpers |
-| `src/storage/jobDataSqlite.ts` | SQLite-backed job data storage (active) | �� Yes — add storage logic |
-| `data/storage-state/` | Saved LinkedIn session cookies | ��� No — auto-generated (gitignored) |
-| `data/scraper-results/` | Legacy scraper output (migrated to SQLite) | ��� No — delete after migration |
-| `README.md` | Project docs | �� Yes — keep updated |
-| `AGENTS.md` | This file | �� Yes — keep updated |
+| File                                | Purpose                                           | Can Edit?                                      |
+| ----------------------------------- | ------------------------------------------------- | ---------------------------------------------- |
+| `public/main.html`                  | Main app (template)                               | �� Yes — improve UI/UX, fix bugs               |
+| `public/utils.ts`                   | Shared utility functions (TS)                     | �� Yes — add helpers, fix bugs                 |
+| `public/app.ts`                     | Frontend application logic (TS)                   | �� Yes — improve UI logic                      |
+| `public/dist/app.js`                | Compiled frontend bundle                          | ��� No — auto-generated                        |
+| `.env`                              | Runtime config (gitignored)                       | �� Yes — add new config keys to `.env.example` |
+| `.env.example`                      | Config template                                   | �� Yes — keep in sync                          |
+| `src/providers.ts`                  | AI provider configuration & API logic (TS)        | �� Yes — add providers, fix bugs               |
+| `src/router.ts`                     | Inference router for multi-provider fallback (TS) | �� Yes — improve fallback logic                |
+| `src/types/`                        | TypeScript type definitions                       | �� Yes — add/improve types                     |
+| `src/prompts/ats-scan.txt`          | ATS evaluation system prompt                      | �� Yes — improve scoring logic                 |
+| `src/prompts/resume-generation.txt` | Resume generation prompt template                 | �� Yes — improve structure                     |
+| `src/prompts/extraction.txt`        | Resume extraction prompt (PDF → JSON)             | �� Yes — improve extraction logic              |
+| `src/prompts/polish.txt`            | Resume polishing prompt                           | �� Yes — improve polish quality                |
+| `start.ts`                          | Dev server with /config.json endpoint (TS)        | �� Yes — fixes only                            |
+| `build.ts`                          | Build script + esbuild frontend bundler (TS)      | �� Yes — fixes only                            |
+| `setup.ts`                          | CLI setup wizard (TS)                             | ������ Yes — but NEVER run automatically       |
+| `scripts/validate.ts`               | Pre-build validation (TS)                         | �� Yes — keep in sync with prompts             |
+| `scripts/run-evals.ts`              | LLM evaluation harness (TS)                       | �� Yes — improve validation                    |
+| `scripts/linkedin-auth.ts`          | LinkedIn session auth helper (TS)                 | �� Yes — generate/refresh session state        |
+| `src/scraper/`                      | LinkedIn & Google scraper modules (TS)            | �� Yes — core scraper logic & types            |
+| `src/prompts/scraper-summarize.txt` | Scraper LLM summarization prompt                  | �� Yes — improve summary structure             |
+| `public/findJob.html`               | Unified job finder page with sidebar              | �� Yes — improve UI/UX                         |
+| `public/findJob-app.ts`             | Job finder page logic (TS)                        | �� Yes — improve paginated view                |
+| `public/utils/modal.ts`             | Shared modal/toast utilities                      | �� Yes — add helpers                           |
+| `public/utils/storage.ts`           | Client-side localStorage helpers                  | �� Yes — add helpers                           |
+| `public/utils/types.ts`             | Shared client-side types                          | �� Yes — add helpers                           |
+| `src/storage/jobDataSqlite.ts`      | SQLite-backed job data storage (active)           | �� Yes — add storage logic                     |
+| `data/storage-state/`               | Saved LinkedIn session cookies                    | ��� No — auto-generated (gitignored)           |
+| `data/scraper-results/`             | Legacy scraper output (migrated to SQLite)        | ��� No — delete after migration                |
+| `README.md`                         | Project docs                                      | �� Yes — keep updated                          |
+| `AGENTS.md`                         | This file                                         | �� Yes — keep updated                          |
 
 ---
 
@@ -75,7 +76,8 @@ This file defines how AI assistants collaborate within the **resumessi** project
 ## Code Review
 
 **Important:**
-Trigger this only when the user ask to code review.
+Code review is **mandatory for feature branches** (step 7 in AGENTS_LOCAL.md workflow).
+Also trigger when explicitly requested by the user, or for risky changes/complex refactors.
 
 **Review prompt and guidelines:** `REVIEW.md` (project-wide standard)
 

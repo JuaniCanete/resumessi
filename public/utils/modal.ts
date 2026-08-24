@@ -63,7 +63,7 @@ function ensureToastContainer(): HTMLDivElement {
 	return toastContainer;
 }
 
-function getVariantStyles(variant: ModalOptions['variant'] = 'warning'): {
+export function getVariantStyles(variant: ModalOptions['variant'] = 'warning'): {
 	borderColor: string;
 	confirmBg: string;
 	confirmHover: string;
