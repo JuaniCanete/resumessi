@@ -63,6 +63,8 @@ const expandedCardUrl: Record<'linkedin' | 'google' | 'remoterocketship', string
 const removedToastShown = new Set<'linkedin' | 'google' | 'remoterocketship'>();
 
 function showRemovedToastIfNeeded(source: 'linkedin' | 'google' | 'remoterocketship', removedCount: number): void {
+	// Only show on scraping tab
+	if (currentTab !== 'scraping') return;
 	if (removedCount > 0 && !removedToastShown.has(source)) {
 		removedToastShown.add(source);
 		const sourceName = source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship';
@@ -235,6 +237,14 @@ function switchTab(tab: 'scraping' | 'saved' | 'dashboard' | 'resume'): void {
 	});
 	const activeContent = document.getElementById(`tab-${tab}`);
 	if (activeContent) activeContent.style.display = 'block';
+
+	// Close ATS sidebar and hide stub when switching to dashboard (ATS only on scraping/saved)
+	if (tab === 'dashboard') {
+		closeAtsSidebar();
+		updateAtsStubVisibility();
+	} else {
+		updateAtsStubVisibility();
+	}
 
 	// Render content for the active tab
 	if (tab === 'scraping') {
@@ -1737,16 +1747,30 @@ function nextPage(): void {
 
 // ─── ATS Sidebar ─────────────────────────────────────────────────────────
 
+function isAtsSupportedTab(): boolean {
+	return currentTab === 'scraping' || currentTab === 'saved';
+}
+
+function updateAtsStubVisibility(): void {
+	const stub = document.getElementById('ats-open-stub');
+	if (stub) {
+		stub.style.display = isAtsSupportedTab() ? 'flex' : 'none';
+	}
+}
+
 function openAtsSidebar(): void {
+	if (!isAtsSupportedTab()) return;
 	const sidebar = document.getElementById('ats-sidebar');
 	if (sidebar) sidebar.classList.add('open');
 	document.body.classList.add('ats-open');
+	updateAtsStubVisibility();
 }
 
 function closeAtsSidebar(): void {
 	const sidebar = document.getElementById('ats-sidebar');
 	if (sidebar) sidebar.classList.remove('open');
 	document.body.classList.remove('ats-open');
+	updateAtsStubVisibility();
 }
 
 function loadScanResults(): Record<string, unknown> | null {
@@ -1887,7 +1911,7 @@ function scoreColor(score: number): string {
 	return '#ef4444';
 }
 
-function applyAtsResultsToUI(screening: Record<string, unknown>): void {
+function applyAtsResultsToUI(screening: Record<string, unknown>, autoOpen = false): void {
 	// Persist the scan in localStorage so it survives server restarts and navigation
 	try {
 		if (typeof window !== 'undefined') {
@@ -1973,7 +1997,9 @@ function applyAtsResultsToUI(screening: Record<string, unknown>): void {
 	document.getElementById('ats-breakdown-section')!.style.display = 'block';
 
 	document.getElementById('ats-loading')!.classList.remove('show');
-	openAtsSidebar();
+	if (autoOpen && isAtsSupportedTab()) {
+		openAtsSidebar();
+	}
 }
 
 // ─── JD Edit Modal ───────────────────────────────────────────────────────
@@ -2485,7 +2511,9 @@ async function runAtsScanFromResults(): Promise<void> {
 
 	const loading = document.getElementById('ats-loading');
 	if (loading) loading.classList.add('show');
-	openAtsSidebar();
+	if (isAtsSupportedTab()) {
+		openAtsSidebar();
+	}
 
 	try {
 		const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
@@ -2504,7 +2532,7 @@ async function runAtsScanFromResults(): Promise<void> {
 		const data = (await resp.json()) as Record<string, unknown>;
 		if (data.error) throw new Error(data.error as string);
 
-		applyAtsResultsToUI(data);
+		applyAtsResultsToUI(data, true);
 	} catch (err: unknown) {
 		if (loading) loading.classList.remove('show');
 		const feedbackEl = document.getElementById('ats-feedback')!;
@@ -3380,14 +3408,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	switchResultsTab(sourceParam);
 
+	// Update ATS stub visibility after tab/source is set
+	updateAtsStubVisibility();
+
 	// Restore the latest ATS scan (if any) so the sidebar shows it
-	// after navigating back to this page.
+	// after navigating back to this page. Do NOT auto-open sidebar.
 	try {
 		const raw = localStorage.getItem('ats:scanResults:jobfinder');
 		if (raw) {
 			const saved = JSON.parse(raw) as Record<string, unknown>;
 			applyAtsResultsToUI(saved);
-			openAtsSidebar();
 		}
 	} catch {
 		// ignore malformed saved scan
