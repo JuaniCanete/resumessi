@@ -53,14 +53,22 @@ export function removeStorageItem(key: string): void {
 export function clearJobDataStorage(): void {
 	if (typeof window === 'undefined') return;
 	try {
-		Object.entries(LOCALSTORAGE_KEYS).forEach(([_, value]) => {
-			if (typeof value === 'string') {
-				localStorage.removeItem(value);
-			} else if (typeof value === 'object' && value !== null) {
-				// atsScanResults is an object with resume/jobfinder keys
-				Object.values(value).forEach(v => localStorage.removeItem(v));
+		// Clear known static keys
+		localStorage.removeItem(LOCALSTORAGE_KEYS.jobDashboard);
+		localStorage.removeItem(LOCALSTORAGE_KEYS.sidebarState);
+		
+		// Clear atsScanResults object keys
+		Object.values(LOCALSTORAGE_KEYS.atsScanResults).forEach(v => localStorage.removeItem(v));
+		
+		// Clear dynamic keys by pattern matching (for scrapingResults and savedJobs)
+		const keysToRemove: string[] = [];
+		for (let i = 0; i < localStorage.length; i++) {
+			const key = localStorage.key(i);
+			if (key && (key.startsWith('jobData:') || key.startsWith('ats:scanResults:'))) {
+				keysToRemove.push(key);
 			}
-		});
+		}
+		keysToRemove.forEach(key => localStorage.removeItem(key));
 	} catch {
 		// Ignore
 	}

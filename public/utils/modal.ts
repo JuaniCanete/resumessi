@@ -22,6 +22,12 @@ export interface ToastOptions {
 let modalContainer: HTMLDivElement | null = null;
 let toastContainer: HTMLDivElement | null = null;
 
+// Test-only: reset internal state
+export function __resetModalState(): void {
+	modalContainer = null;
+	toastContainer = null;
+}
+
 function ensureModalContainer(): HTMLDivElement {
 	if (modalContainer) return modalContainer;
 	modalContainer = document.createElement('div');

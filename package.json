@@ -23,9 +23,32 @@
 		"html:validate": "html-validate public/**/*.html",
 		"css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html",
 		"test:unit": "tsx --test \"tests/unit/**/*.test.ts\"",
+		"test:coverage": "npx c8 --reporter=text --reporter=lcov --reporter=html tsx --test \"tests/unit/**/*.test.ts\"",
 		"test:e2e": "playwright test --config=tests/playwright.config.ts",
 		"evals": "tsx scripts/run-evals.ts",
 		"scraper:auth": "tsx scripts/linkedin-auth.ts"
+	},
+	"c8": {
+		"thresholds": {
+			"lines": 70,
+			"functions": 70,
+			"branches": 70,
+			"statements": 70
+		},
+		"perFile": {
+			"src/start.ts": { "lines": 40, "branches": 50 },
+			"src/scraper/linkedin.ts": { "lines": 40 },
+			"public/utils/modal.ts": { "lines": 80 },
+			"src/storage/jobDataSqlite.ts": { "lines": 75 }
+		},
+		"exclude": [
+			"tests/**",
+			"public/dist/**",
+			"scripts/**",
+			"setup.ts",
+			"build.ts",
+			"start.ts"
+		]
 	},
 	"lint-staged": {
 		"*.{js,ts}": [

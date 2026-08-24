@@ -37,7 +37,14 @@ export interface JobData {
 }
 
 const DATA_DIR = join(process.cwd(), 'data');
-const DB_PATH = process.env.JOB_DATA_DB_PATH || join(DATA_DIR, 'jobdata.db');
+let DB_PATH = process.env.JOB_DATA_DB_PATH || join(DATA_DIR, 'jobdata.db');
+
+// Test-only: allow overriding DB_PATH at runtime
+export function setDbPathForTesting(path: string): void {
+	DB_PATH = path;
+	// Close existing connection so getDb() creates a new one with the new path
+	closeDb();
+}
 
 // In-memory cache for scraper run payloads with TTL and size limit
 interface CacheEntry {
@@ -154,6 +161,14 @@ export function getDb(): Database.Database {
 		}
 	}
 	return db;
+}
+
+// Test-only: close and reset the database connection
+export function closeDb(): void {
+	if (db) {
+		db.close();
+		db = null;
+	}
 }
 
 // Status <-> Dashboard column mapping

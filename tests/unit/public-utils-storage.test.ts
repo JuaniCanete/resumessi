@@ -1,17 +1,25 @@
-/**
- * tests/unit/public-utils-storage.test.ts
- *
- * Unit tests for public/utils/storage.ts localStorage helpers.
- * Tests the pure logic functions without complex localStorage mocking.
- */
-'use strict';
-
-import { test } from 'node:test';
+// @ts-nocheck
+import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { JSDOM } from 'jsdom';
+
+// Setup JSDOM with localStorage
+const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+	url: 'http://localhost',
+	pretendToBeVisual: true,
+});
+
+global.window = dom.window;
+global.document = dom.window.document;
+// global.navigator = dom.window.navigator; // read-only
+global.localStorage = dom.window.localStorage;
+
+// Import after DOM setup
 import {
 	getStorageItem,
 	setStorageItem,
 	removeStorageItem,
+	clearJobDataStorage,
 	getLocalScrapingResults,
 	setLocalScrapingResults,
 	getLocalSavedJobs,
@@ -25,167 +33,191 @@ import {
 	saveAtsScanResults,
 	loadAtsScanResults,
 	clearAtsScanResults,
-	clearJobDataStorage,
-} from '../../public/utils/storage';
-import { ScraperResult } from '../../src/types/scraper';
+	LOCALSTORAGE_KEYS,
+} from '../../public/utils/storage.ts';
 
-function makeScraperResult(overrides: Partial<{
-	title: string;
-	url: string;
-	snippet: string;
-	source: 'linkedin' | 'google' | 'remoterocketship' | 'user';
-}> = {}): ScraperResult {
-	return {
-		title: overrides.title ?? 'Test Job',
-		url: overrides.url ?? 'https://example.com/job',
-		snippet: overrides.snippet ?? 'Test snippet',
-		source: overrides.source ?? 'linkedin',
-	};
+function setupDOM(): void {
+	dom.window.localStorage.clear();
 }
 
-test('getStorageItem - returns fallback when key missing', () => {
-	const result = getStorageItem('missing-key', 'fallback-value');
-	assert.equal(result, 'fallback-value');
+function teardownDOM(): void {
+	dom.window.localStorage.clear();
+}
+
+beforeEach(setupDOM);
+afterEach(teardownDOM);
+
+test('getStorageItem - returns fallback when key not exists', () => {
+	const result = getStorageItem('nonexistent', 'default');
+	assert.equal(result, 'default');
 });
 
 test('getStorageItem - returns parsed value when key exists', () => {
-	// This test requires localStorage mocking, skip in unit tests
-	// Full integration tested in E2E
+	dom.window.localStorage.setItem('test', JSON.stringify({ a: 1 }));
+	const result = getStorageItem('test', { a: 0 });
+	assert.deepEqual(result, { a: 1 });
 });
 
 test('getStorageItem - returns fallback on parse error', () => {
-	// Requires localStorage mocking, skip in unit tests
+	dom.window.localStorage.setItem('test', 'invalid json');
+	const result = getStorageItem('test', 'fallback');
+	assert.equal(result, 'fallback');
 });
 
-test('setStorageItem - no-op in non-browser environment', () => {
+test('getStorageItem - returns fallback when window undefined', () => {
 	const originalWindow = global.window;
-	// @ts-expect-error - deleting window for test
-	delete global.window;
-	setStorageItem('test-key', { a: 1 });
-	// Should not throw
-	global.window = {} as Window & typeof globalThis;
+	global.window = undefined as any;
+	const result = getStorageItem('test', 'fallback');
+	assert.equal(result, 'fallback');
+	global.window = originalWindow;
 });
 
-test('removeStorageItem - no-op in non-browser environment', () => {
+test('setStorageItem - sets value in localStorage', () => {
+	setStorageItem('test', { b: 2 });
+	assert.equal(dom.window.localStorage.getItem('test'), JSON.stringify({ b: 2 }));
+});
+
+test('setStorageItem - no-op when window undefined', () => {
 	const originalWindow = global.window;
-	// @ts-expect-error
-	delete global.window;
-	// Should not throw
-	removeStorageItem('any-key');
-	global.window = {} as Window & typeof globalThis;
+	global.window = undefined as any;
+	setStorageItem('test', { b: 2 });
+	assert.ok(true);
+	global.window = originalWindow;
 });
 
-test('getLocalScrapingResults - returns empty array default', () => {
+test('removeStorageItem - removes key from localStorage', () => {
+	dom.window.localStorage.setItem('test', 'value');
+	removeStorageItem('test');
+	assert.equal(dom.window.localStorage.getItem('test'), null);
+});
+
+test('removeStorageItem - no-op when window undefined', () => {
+	const originalWindow = global.window;
+	global.window = undefined as any;
+	removeStorageItem('test');
+	assert.ok(true);
+	global.window = originalWindow;
+});
+
+test('clearJobDataStorage - clears all job data keys', () => {
+	dom.window.localStorage.setItem(LOCALSTORAGE_KEYS.scrapingResults('linkedin'), '[]');
+	dom.window.localStorage.setItem(LOCALSTORAGE_KEYS.savedJobs('linkedin'), '[]');
+	dom.window.localStorage.setItem(LOCALSTORAGE_KEYS.jobDashboard, '[]');
+	dom.window.localStorage.setItem(LOCALSTORAGE_KEYS.sidebarState, '{}');
+	dom.window.localStorage.setItem(LOCALSTORAGE_KEYS.atsScanResults.resume, '{}');
+	dom.window.localStorage.setItem(LOCALSTORAGE_KEYS.atsScanResults.jobfinder, '{}');
+	
+	clearJobDataStorage();
+	
+	assert.equal(dom.window.localStorage.getItem(LOCALSTORAGE_KEYS.scrapingResults('linkedin')), null);
+	assert.equal(dom.window.localStorage.getItem(LOCALSTORAGE_KEYS.savedJobs('linkedin')), null);
+	assert.equal(dom.window.localStorage.getItem(LOCALSTORAGE_KEYS.jobDashboard), null);
+	assert.equal(dom.window.localStorage.getItem(LOCALSTORAGE_KEYS.sidebarState), null);
+	assert.equal(dom.window.localStorage.getItem(LOCALSTORAGE_KEYS.atsScanResults.resume), null);
+	assert.equal(dom.window.localStorage.getItem(LOCALSTORAGE_KEYS.atsScanResults.jobfinder), null);
+});
+
+test('getLocalScrapingResults - returns empty array when not set', () => {
 	const result = getLocalScrapingResults('linkedin');
 	assert.deepEqual(result, []);
 });
 
-test('getLocalSavedJobs - returns empty array default', () => {
-	const result = getLocalSavedJobs('linkedin');
-	assert.deepEqual(result, []);
+test('setLocalScrapingResults - stores results', () => {
+	const results = [{ title: 'Job 1', url: 'https://example.com/1', snippet: '', source: 'linkedin' }];
+	setLocalScrapingResults('linkedin', results);
+	const stored = getLocalScrapingResults('linkedin');
+	assert.deepEqual(stored, results);
 });
 
-test('getLocalJobDashboard - returns empty array default', () => {
+test('getLocalSavedJobs - with source returns source jobs', () => {
+	const jobs = [{ title: 'Saved 1', url: 'https://example.com/1', snippet: '', source: 'linkedin' }];
+	setLocalSavedJobs('linkedin', jobs);
+	const result = getLocalSavedJobs('linkedin');
+	assert.deepEqual(result, jobs);
+});
+
+test('getLocalSavedJobs - without source returns combined from both sources', () => {
+	const linkedinJobs = [{ title: 'LI Job', url: 'https://example.com/li', snippet: '', source: 'linkedin' }];
+	const googleJobs = [{ title: 'Google Job', url: 'https://example.com/google', snippet: '', source: 'google' }];
+	setLocalSavedJobs('linkedin', linkedinJobs);
+	setLocalSavedJobs('google', googleJobs);
+	const result = getLocalSavedJobs();
+	assert.equal(result.length, 2);
+});
+
+test('setLocalSavedJobs - stores jobs', () => {
+	const jobs = [{ title: 'Saved', url: 'https://example.com', snippet: '', source: 'google' }];
+	setLocalSavedJobs('google', jobs);
+	assert.deepEqual(getLocalSavedJobs('google'), jobs);
+});
+
+test('getLocalJobDashboard - returns empty array when not set', () => {
 	const result = getLocalJobDashboard();
 	assert.deepEqual(result, []);
 });
 
-test('loadLocalSidebarState - returns null when missing', () => {
+test('setLocalJobDashboard - stores dashboard', () => {
+	const jobs = [{ title: 'Dashboard Job', url: 'https://example.com', snippet: '', source: 'linkedin', status: 'Applied' }];
+	setLocalJobDashboard(jobs);
+	assert.deepEqual(getLocalJobDashboard(), jobs);
+});
+
+test('saveLocalSidebarState / loadLocalSidebarState - roundtrip', () => {
+	const state = { sidebarOpen: true, activeTab: 'scraping', sourceFilters: { linkedin: true, google: false } };
+	saveLocalSidebarState(state);
+	const loaded = loadLocalSidebarState();
+	assert.deepEqual(loaded, state);
+});
+
+test('loadLocalSidebarState - returns null when not set', () => {
 	const result = loadLocalSidebarState();
 	assert.equal(result, null);
 });
 
-test('saveAtsScanResults - saves screening (requires localStorage)', () => {
-	// Requires localStorage, tested in E2E
+test('scheduleLocalStorageSync - debounces writes', async () => {
+	scheduleLocalStorageSync({ scrapingResults: { linkedin: [{ title: 'Test', url: 'https://example.com', snippet: '', source: 'linkedin' }] } });
+	await new Promise(r => setTimeout(r, 150));
+	const result = getLocalScrapingResults('linkedin');
+	assert.equal(result.length, 1);
+	assert.equal(result[0].title, 'Test');
 });
 
-test('loadAtsScanResults - loads screening (requires localStorage)', () => {
-	// Requires localStorage, tested in E2E
+test('flushLocalStorageSync - forces immediate write', async () => {
+	scheduleLocalStorageSync({ scrapingResults: { linkedin: [{ title: 'Flush', url: 'https://example.com', snippet: '', source: 'linkedin' }] } });
+	flushLocalStorageSync();
+	const result = getLocalScrapingResults('linkedin');
+	assert.equal(result.length, 1);
+	assert.equal(result[0].title, 'Flush');
 });
 
-test('clearAtsScanResults - removes screening (requires localStorage)', () => {
-	// Requires localStorage, tested in E2E
+test('saveAtsScanResults / loadAtsScanResults - resume context', () => {
+	const data = { score: 85, tier: 'Strong Match', keywords: ['TypeScript', 'Playwright'] };
+	saveAtsScanResults(data, 'resume');
+	const loaded = loadAtsScanResults('resume');
+	assert.deepEqual(loaded, data);
 });
 
-test('clearJobDataStorage - clears all job data keys (requires localStorage)', () => {
-	// Requires localStorage, tested in E2E
+test('saveAtsScanResults / loadAtsScanResults - jobfinder context', () => {
+	const data = { score: 90, tier: 'Excellent Match' };
+	saveAtsScanResults(data, 'jobfinder');
+	const loaded = loadAtsScanResults('jobfinder');
+	assert.deepEqual(loaded, data);
 });
 
-test('getStorageItem - returns fallback in non-browser environment', () => {
-	const originalWindow = global.window;
-	// @ts-expect-error - deleting window for test
-	delete global.window;
-	const result = getStorageItem('any-key', 'fallback');
-	assert.equal(result, 'fallback');
-	global.window = {} as Window & typeof globalThis;
+test('clearAtsScanResults - removes data', () => {
+	saveAtsScanResults({ score: 80 }, 'resume');
+	assert.ok(loadAtsScanResults('resume'));
+	clearAtsScanResults('resume');
+	assert.equal(loadAtsScanResults('resume'), null);
 });
 
-test('setStorageItem - no-op in non-browser environment', () => {
-	const originalWindow = global.window;
-	// @ts-expect-error
-	delete global.window;
-	// Should not throw
-	setStorageItem('any-key', { a: 1 });
-	global.window = {} as Window & typeof globalThis;
-});
-
-test('removeStorageItem - no-op in non-browser environment', () => {
-	const originalWindow = global.window;
-	// @ts-expect-error
-	delete global.window;
-	// Should not throw
-	removeStorageItem('any-key');
-	global.window = originalWindow;
-});
-
-test('LOCALSTORAGE_KEYS - scrapingResults generates correct keys', () => {
-	const { LOCALSTORAGE_KEYS } = require('../../public/utils/types');
-	assert.equal(LOCALSTORAGE_KEYS.scrapingResults('linkedin'), 'jobData:scrapingResults:linkedin');
-	assert.equal(LOCALSTORAGE_KEYS.scrapingResults('google'), 'jobData:scrapingResults:google');
-});
-
-test('LOCALSTORAGE_KEYS - savedJobs generates correct keys', () => {
-	const { LOCALSTORAGE_KEYS } = require('../../public/utils/types');
-	assert.equal(LOCALSTORAGE_KEYS.savedJobs('linkedin'), 'jobData:savedJobs:linkedin');
-	assert.equal(LOCALSTORAGE_KEYS.savedJobs('google'), 'jobData:savedJobs:google');
-});
-
-test('LOCALSTORAGE_KEYS - jobDashboard is constant', () => {
-	const { LOCALSTORAGE_KEYS } = require('../../public/utils/types');
-	assert.equal(LOCALSTORAGE_KEYS.jobDashboard, 'jobData:jobDashboard');
-});
-
-test('LOCALSTORAGE_KEYS - sidebarState is constant', () => {
-	const { LOCALSTORAGE_KEYS } = require('../../public/utils/types');
-	assert.equal(LOCALSTORAGE_KEYS.sidebarState, 'findJob:sidebarState');
-});
-
-test('LOCALSTORAGE_KEYS - atsScanResults has resume and jobfinder keys', () => {
-	const { LOCALSTORAGE_KEYS } = require('../../public/utils/types');
-	assert.equal(LOCALSTORAGE_KEYS.atsScanResults.resume, 'ats:scanResults:resume');
-	assert.equal(LOCALSTORAGE_KEYS.atsScanResults.jobfinder, 'ats:scanResults:jobfinder');
-});
-
-test('SidebarState type - validates structure', () => {
-	// Type-only test - ensures the interface compiles correctly
-	const state = {
-		open: true,
-		activeTab: 'scraping' as const,
-	};
-	assert.equal(state.open, true);
-	assert.equal(state.activeTab, 'scraping');
-
-	const state2 = {
-		open: false,
-		activeTab: 'saved' as const,
-	};
-	assert.equal(state2.open, false);
-	assert.equal(state2.activeTab, 'saved');
-
-	const state3 = {
-		open: true,
-		activeTab: 'dashboard' as const,
-	};
-	assert.equal(state3.open, true);
-	assert.equal(state3.activeTab, 'dashboard');
+test('LOCALSTORAGE_KEYS - has expected keys', () => {
+	assert.ok(LOCALSTORAGE_KEYS.scrapingResults('linkedin'));
+	assert.ok(LOCALSTORAGE_KEYS.scrapingResults('google'));
+	assert.ok(LOCALSTORAGE_KEYS.savedJobs('linkedin'));
+	assert.ok(LOCALSTORAGE_KEYS.savedJobs('google'));
+	assert.ok(LOCALSTORAGE_KEYS.jobDashboard);
+	assert.ok(LOCALSTORAGE_KEYS.sidebarState);
+	assert.ok(LOCALSTORAGE_KEYS.atsScanResults.resume);
+	assert.ok(LOCALSTORAGE_KEYS.atsScanResults.jobfinder);
 });

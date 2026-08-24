@@ -671,11 +671,19 @@ function showRefreshMessage(): void {
 
 // ─── Polish Resume ──────────────────────────────────────────────────
 async function polishResume(): Promise<void> {
+	console.log('[polishResume] START - called from click');
 	const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
 	if (dropdownBtn.disabled) return;
 
 	dropdownBtn.disabled = true;
-	document.getElementById('polish-overlay')!.style.display = 'flex';
+	console.log('[polishResume] Setting overlay display to flex');
+	const overlay = document.getElementById('polish-overlay');
+	if (overlay) {
+		overlay.style.display = 'flex';
+		console.log('[polishResume] Overlay display set to:', overlay.style.display);
+	} else {
+		console.error('[polishResume] ERROR: Overlay element not found!');
+	}
 
 	polishController = new AbortController();
 	const signal = polishController.signal;
@@ -772,6 +780,11 @@ function cancelPolish(): void {
 	dropdownBtn.disabled = false;
 	updatePolishButton();
 }
+
+// Expose functions to global scope for inline event handlers (onclick)
+(window as any).polishResume = polishResume;
+(window as any).cancelPolish = cancelPolish;
+(window as any).rollbackPolish = rollbackPolish;
 
 async function rollbackPolish(): Promise<void> {
 	try {

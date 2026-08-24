@@ -141,6 +141,23 @@ const test = playwrightTest.extend<{ mainPage: MainPage; findJobPage: FindJobPag
 			await page.route('**/src/resume/output/resume-data-AI-polished.json', async route => {
 				await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
 			});
+
+			// Default mock for resume-data.json - returns a valid generated resume
+			await page.route('**/src/resume/output/resume-data.json', async route => {
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({
+						basics: { name: 'Test User', email: 'test@example.com', phone: '+1234567890', location: 'Test City', title: 'Software Engineer', linkedin: 'https://linkedin.com/in/test', github: 'https://github.com/test', photo: null },
+						summary: 'Test summary',
+						experience: [],
+						education: [],
+						skills: { 'Core Skills': [{ name: 'JavaScript', expert: true }] },
+						certifications: [],
+						talks: [],
+					}),
+				});
+			});
 		};
 
 		await registerDefaultRoutes();
