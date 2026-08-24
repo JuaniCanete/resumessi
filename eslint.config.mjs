@@ -19,6 +19,7 @@ export default [
       "playwright-report/**",
       "node_modules/**",
       "public/dist/**",
+      ".kilo/**",
     ],
   },
   importPlugin.flatConfigs.recommended,

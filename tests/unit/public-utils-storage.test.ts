@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
@@ -9,7 +8,7 @@ const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
 	pretendToBeVisual: true,
 });
 
-global.window = dom.window;
+global.window = dom.window as unknown as Window & typeof globalThis;
 global.document = dom.window.document;
 // global.navigator = dom.window.navigator; // read-only
 global.localStorage = dom.window.localStorage;
@@ -34,7 +33,7 @@ import {
 	loadAtsScanResults,
 	clearAtsScanResults,
 	LOCALSTORAGE_KEYS,
-} from '../../public/utils/storage.ts';
+} from '../../public/utils/storage';
 
 function setupDOM(): void {
 	dom.window.localStorage.clear();
@@ -66,7 +65,8 @@ test('getStorageItem - returns fallback on parse error', () => {
 
 test('getStorageItem - returns fallback when window undefined', () => {
 	const originalWindow = global.window;
-	global.window = undefined as any;
+	// @ts-expect-error - testing undefined window
+	global.window = undefined;
 	const result = getStorageItem('test', 'fallback');
 	assert.equal(result, 'fallback');
 	global.window = originalWindow;
@@ -79,7 +79,8 @@ test('setStorageItem - sets value in localStorage', () => {
 
 test('setStorageItem - no-op when window undefined', () => {
 	const originalWindow = global.window;
-	global.window = undefined as any;
+	// @ts-expect-error - testing undefined window
+	global.window = undefined;
 	setStorageItem('test', { b: 2 });
 	assert.ok(true);
 	global.window = originalWindow;
@@ -93,7 +94,8 @@ test('removeStorageItem - removes key from localStorage', () => {
 
 test('removeStorageItem - no-op when window undefined', () => {
 	const originalWindow = global.window;
-	global.window = undefined as any;
+	// @ts-expect-error - testing undefined window
+	global.window = undefined;
 	removeStorageItem('test');
 	assert.ok(true);
 	global.window = originalWindow;
@@ -106,9 +108,9 @@ test('clearJobDataStorage - clears all job data keys', () => {
 	dom.window.localStorage.setItem(LOCALSTORAGE_KEYS.sidebarState, '{}');
 	dom.window.localStorage.setItem(LOCALSTORAGE_KEYS.atsScanResults.resume, '{}');
 	dom.window.localStorage.setItem(LOCALSTORAGE_KEYS.atsScanResults.jobfinder, '{}');
-	
+
 	clearJobDataStorage();
-	
+
 	assert.equal(dom.window.localStorage.getItem(LOCALSTORAGE_KEYS.scrapingResults('linkedin')), null);
 	assert.equal(dom.window.localStorage.getItem(LOCALSTORAGE_KEYS.savedJobs('linkedin')), null);
 	assert.equal(dom.window.localStorage.getItem(LOCALSTORAGE_KEYS.jobDashboard), null);
@@ -123,22 +125,42 @@ test('getLocalScrapingResults - returns empty array when not set', () => {
 });
 
 test('setLocalScrapingResults - stores results', () => {
-	const results = [{ title: 'Job 1', url: 'https://example.com/1', snippet: '', source: 'linkedin' }];
+	const results: Array<{
+		title: string;
+		url: string;
+		snippet: string;
+		source: 'linkedin' | 'google' | 'remoterocketship' | 'user';
+	}> = [{ title: 'Job 1', url: 'https://example.com/1', snippet: '', source: 'linkedin' }];
 	setLocalScrapingResults('linkedin', results);
 	const stored = getLocalScrapingResults('linkedin');
 	assert.deepEqual(stored, results);
 });
 
 test('getLocalSavedJobs - with source returns source jobs', () => {
-	const jobs = [{ title: 'Saved 1', url: 'https://example.com/1', snippet: '', source: 'linkedin' }];
+	const jobs: Array<{
+		title: string;
+		url: string;
+		snippet: string;
+		source: 'linkedin' | 'google' | 'remoterocketship' | 'user';
+	}> = [{ title: 'Saved 1', url: 'https://example.com/1', snippet: '', source: 'linkedin' }];
 	setLocalSavedJobs('linkedin', jobs);
 	const result = getLocalSavedJobs('linkedin');
 	assert.deepEqual(result, jobs);
 });
 
 test('getLocalSavedJobs - without source returns combined from both sources', () => {
-	const linkedinJobs = [{ title: 'LI Job', url: 'https://example.com/li', snippet: '', source: 'linkedin' }];
-	const googleJobs = [{ title: 'Google Job', url: 'https://example.com/google', snippet: '', source: 'google' }];
+	const linkedinJobs: Array<{
+		title: string;
+		url: string;
+		snippet: string;
+		source: 'linkedin' | 'google' | 'remoterocketship' | 'user';
+	}> = [{ title: 'LI Job', url: 'https://example.com/li', snippet: '', source: 'linkedin' }];
+	const googleJobs: Array<{
+		title: string;
+		url: string;
+		snippet: string;
+		source: 'linkedin' | 'google' | 'remoterocketship' | 'user';
+	}> = [{ title: 'Google Job', url: 'https://example.com/google', snippet: '', source: 'google' }];
 	setLocalSavedJobs('linkedin', linkedinJobs);
 	setLocalSavedJobs('google', googleJobs);
 	const result = getLocalSavedJobs();
@@ -146,7 +168,12 @@ test('getLocalSavedJobs - without source returns combined from both sources', ()
 });
 
 test('setLocalSavedJobs - stores jobs', () => {
-	const jobs = [{ title: 'Saved', url: 'https://example.com', snippet: '', source: 'google' }];
+	const jobs: Array<{
+		title: string;
+		url: string;
+		snippet: string;
+		source: 'linkedin' | 'google' | 'remoterocketship' | 'user';
+	}> = [{ title: 'Saved', url: 'https://example.com', snippet: '', source: 'google' }];
 	setLocalSavedJobs('google', jobs);
 	assert.deepEqual(getLocalSavedJobs('google'), jobs);
 });
@@ -157,13 +184,27 @@ test('getLocalJobDashboard - returns empty array when not set', () => {
 });
 
 test('setLocalJobDashboard - stores dashboard', () => {
-	const jobs = [{ title: 'Dashboard Job', url: 'https://example.com', snippet: '', source: 'linkedin', status: 'Applied' }];
+	const jobs: Array<{
+		title: string;
+		url: string;
+		snippet: string;
+		source: 'linkedin' | 'google' | 'remoterocketship' | 'user';
+		status: 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | 'Hired';
+		company?: string;
+		postedDate?: string;
+	}> = [
+		{ title: 'Dashboard Job', url: 'https://example.com', snippet: '', source: 'linkedin', status: 'Interviewing' },
+	];
 	setLocalJobDashboard(jobs);
 	assert.deepEqual(getLocalJobDashboard(), jobs);
 });
 
 test('saveLocalSidebarState / loadLocalSidebarState - roundtrip', () => {
-	const state = { sidebarOpen: true, activeTab: 'scraping', sourceFilters: { linkedin: true, google: false } };
+	const state = {
+		open: true,
+		activeTab: 'scraping' as 'scraping' | 'saved' | 'dashboard',
+		sourceFilters: { linkedin: true, google: false },
+	};
 	saveLocalSidebarState(state);
 	const loaded = loadLocalSidebarState();
 	assert.deepEqual(loaded, state);
@@ -175,7 +216,19 @@ test('loadLocalSidebarState - returns null when not set', () => {
 });
 
 test('scheduleLocalStorageSync - debounces writes', async () => {
-	scheduleLocalStorageSync({ scrapingResults: { linkedin: [{ title: 'Test', url: 'https://example.com', snippet: '', source: 'linkedin' }] } });
+	scheduleLocalStorageSync({
+		scrapingResults: {
+			linkedin: [
+				{
+					title: 'Test',
+					url: 'https://example.com',
+					snippet: '',
+					source: 'linkedin' as 'linkedin' | 'google' | 'remoterocketship' | 'user',
+				},
+			],
+			google: [],
+		},
+	});
 	await new Promise(r => setTimeout(r, 150));
 	const result = getLocalScrapingResults('linkedin');
 	assert.equal(result.length, 1);
@@ -183,7 +236,19 @@ test('scheduleLocalStorageSync - debounces writes', async () => {
 });
 
 test('flushLocalStorageSync - forces immediate write', async () => {
-	scheduleLocalStorageSync({ scrapingResults: { linkedin: [{ title: 'Flush', url: 'https://example.com', snippet: '', source: 'linkedin' }] } });
+	scheduleLocalStorageSync({
+		scrapingResults: {
+			linkedin: [
+				{
+					title: 'Flush',
+					url: 'https://example.com',
+					snippet: '',
+					source: 'linkedin' as 'linkedin' | 'google' | 'remoterocketship' | 'user',
+				},
+			],
+			google: [],
+		},
+	});
 	flushLocalStorageSync();
 	const result = getLocalScrapingResults('linkedin');
 	assert.equal(result.length, 1);

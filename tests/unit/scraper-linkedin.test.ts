@@ -13,7 +13,9 @@ test('normalizeLinkedInJobUrl - converts collections wrapper to canonical jobs/v
 });
 
 test('normalizeLinkedInJobUrl - converts search wrapper to canonical jobs/view URL', () => {
-	const result = normalizeLinkedInJobUrl('https://www.linkedin.com/jobs/search/?keywords=react&location=NYC&currentJobId=67890');
+	const result = normalizeLinkedInJobUrl(
+		'https://www.linkedin.com/jobs/search/?keywords=react&location=NYC&currentJobId=67890'
+	);
 	assert.equal(result, 'https://www.linkedin.com/jobs/view/67890/');
 });
 
@@ -73,7 +75,8 @@ test('extractJdTextFromBody - returns empty string for empty input', () => {
 });
 
 test('extractJdTextFromBody - handles multiple occurrences (uses first)', () => {
-	const body = 'About the job First description Set alert for similar jobs About the job Second description Set alert for similar jobs';
+	const body =
+		'About the job First description Set alert for similar jobs About the job Second description Set alert for similar jobs';
 	const result = extractJdTextFromBody(body);
 	assert.equal(result, 'First description');
 });
@@ -86,14 +89,22 @@ test('extractJdTextFromBody - trims whitespace', () => {
 
 test('extractLinkedInJdFromPage - throws LinkedInSessionExpiredError when redirected to login', () => {
 	assert.throws(
-		() => extractLinkedInJdFromPage('https://www.linkedin.com/login?redirect=...', 'About the job Desc Set alert for similar jobs'),
+		() =>
+			extractLinkedInJdFromPage(
+				'https://www.linkedin.com/login?redirect=...',
+				'About the job Desc Set alert for similar jobs'
+			),
 		LinkedInSessionExpiredError
 	);
 });
 
 test('extractLinkedInJdFromPage - throws LinkedInSessionExpiredError when redirected to checkpoint', () => {
 	assert.throws(
-		() => extractLinkedInJdFromPage('https://www.linkedin.com/checkpoint/challenge', 'About the job Desc Set alert for similar jobs'),
+		() =>
+			extractLinkedInJdFromPage(
+				'https://www.linkedin.com/checkpoint/challenge',
+				'About the job Desc Set alert for similar jobs'
+			),
 		LinkedInSessionExpiredError
 	);
 });

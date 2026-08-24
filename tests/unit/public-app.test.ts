@@ -13,26 +13,6 @@ import assert from 'node:assert/strict';
 // These tests focus on pure utility functions that can be tested in isolation.
 // Full integration tests are in tests/e2e/
 
-// Mock DOM environment for testing
-const originalWindow = global.window;
-const originalDocument = global.document;
-
-function setupDom() {
-	global.window = {} as unknown as Window & typeof globalThis;
-	global.document = {
-		createElement: () => ({ style: {}, classList: { add: () => {}, remove: () => {}, contains: () => false } }),
-		querySelector: () => null,
-		querySelectorAll: () => [],
-		getElementById: () => null,
-		body: { classList: { add: () => {}, remove: () => {}, contains: () => false } },
-	} as unknown as Document;
-}
-
-function teardownDom() {
-	global.window = originalWindow;
-	global.document = originalDocument;
-}
-
 test('public/app.ts - formatDate utility (mirrored from utils)', () => {
 	// Mirror the formatDate logic from public/utils.ts
 	function formatDate(dateStr: string | null | undefined): string {
@@ -86,10 +66,7 @@ test('public/app.ts - renderSkills utility (mirrored from utils)', () => {
 });
 
 test('public/app.ts - getPhotoPath utility (mirrored from utils)', () => {
-	function getPhotoPath(
-		uploadedPhoto: string | null,
-		resumeData?: { basics?: { photo?: string } } | null
-	): string {
+	function getPhotoPath(uploadedPhoto: string | null, resumeData?: { basics?: { photo?: string } } | null): string {
 		if (uploadedPhoto) return uploadedPhoto;
 		if (resumeData && resumeData.basics && resumeData.basics.photo) {
 			if (resumeData.basics.photo.includes('/')) {
@@ -102,7 +79,10 @@ test('public/app.ts - getPhotoPath utility (mirrored from utils)', () => {
 
 	assert.equal(getPhotoPath('custom.jpg'), 'custom.jpg');
 	assert.equal(getPhotoPath(null, { basics: { photo: 'photo.jpg' } }), 'public/assets/photos/photo.jpg');
-	assert.equal(getPhotoPath(null, { basics: { photo: 'http://example.com/photo.jpg' } }), 'http://example.com/photo.jpg');
+	assert.equal(
+		getPhotoPath(null, { basics: { photo: 'http://example.com/photo.jpg' } }),
+		'http://example.com/photo.jpg'
+	);
 	assert.equal(getPhotoPath(null, { basics: {} }), '/demo/goat.jpg');
 	assert.equal(getPhotoPath(null, null), '/demo/goat.jpg');
 });

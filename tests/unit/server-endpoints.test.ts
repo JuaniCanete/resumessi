@@ -1,4 +1,4 @@
-import { test, before, after, mock } from 'node:test';
+import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execSync, type ChildProcess } from 'node:child_process';
 import * as http from 'node:http';
@@ -108,13 +108,13 @@ before(async () => {
 			JOB_DATA_DB_PATH: TEST_DB,
 			// Only pass necessary env vars, avoid leaking sensitive keys
 			AI_INFERENCE_ORDER: process.env.AI_INFERENCE_ORDER,
-			COHERE_API_KEY: process.env.COHERE_API_KEY,
+			COHERE_API_KEY: '',
 			COHERE_MODEL: process.env.COHERE_MODEL,
-			MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
+			MISTRAL_API_KEY: '',
 			MISTRAL_MODEL: process.env.MISTRAL_MODEL,
-			GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+			GEMINI_API_KEY: '',
 			GEMINI_MODEL: process.env.GEMINI_MODEL,
-			GROQ_API_KEY: process.env.GROQ_API_KEY,
+			GROQ_API_KEY: '',
 			GROQ_MODEL: process.env.GROQ_MODEL,
 			PRIMARY_COLOR: process.env.PRIMARY_COLOR,
 			SECONDARY_COLOR: process.env.SECONDARY_COLOR,
@@ -320,13 +320,13 @@ function startIsolatedServer(
 				LINKEDIN_STORAGE_FILE: linkedInStorageFile,
 				// Only pass necessary env vars
 				AI_INFERENCE_ORDER: process.env.AI_INFERENCE_ORDER,
-				COHERE_API_KEY: process.env.COHERE_API_KEY,
+				COHERE_API_KEY: '',
 				COHERE_MODEL: process.env.COHERE_MODEL,
-				MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
+				MISTRAL_API_KEY: '',
 				MISTRAL_MODEL: process.env.MISTRAL_MODEL,
-				GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+				GEMINI_API_KEY: '',
 				GEMINI_MODEL: process.env.GEMINI_MODEL,
-				GROQ_API_KEY: process.env.GROQ_API_KEY,
+				GROQ_API_KEY: '',
 				GROQ_MODEL: process.env.GROQ_MODEL,
 				PRIMARY_COLOR: process.env.PRIMARY_COLOR,
 				SECONDARY_COLOR: process.env.SECONDARY_COLOR,
@@ -384,19 +384,21 @@ function killChild(child: ChildProcess): void {
 }
 
 test('POST /api/fetch-url routes LinkedIn job URLs through the normalized path and returns a string body', async () => {
-	// Canonical LinkedIn /jobs/view pages are public and do NOT redirect to login,
-	// so the missing-session file still yields a 200 with page text (no crash, no
-	// fallthrough to the login page). The 503 LINKEDIN_SESSION_EXPIRED behavior is
-	// covered deterministically at unit level via extractLinkedInJdFromPage.
+	// With a missing session file, fetchLinkedInJobDescription fails fast (no
+	// browser launch, no network) with LinkedInSessionExpiredError, which the
+	// server surfaces as 503. There is no fallthrough to an unauthenticated
+	// fetch (which would recreate the collection misclassification). The 200
+	// happy-path is covered deterministically at unit level via
+	// extractLinkedInJdFromPage.
 	const missingStorage = join(__dirname, '..', '..', 'data', 'storage-state', 'linkedin-does-not-exist.json');
 	const { baseUrl, child } = await startIsolatedServer(3448, missingStorage);
 	try {
 		const res = await httpJsonWithBase(baseUrl, 'POST', '/api/fetch-url', {
 			url: 'https://www.linkedin.com/jobs/view/4440070396/',
 		});
-		assert.equal(res.status, 200);
-		const data = res.data as { text?: string };
-		assert.equal(typeof data.text, 'string');
+		assert.equal(res.status, 503);
+		const data = res.data as { error?: string; message?: string };
+		assert.equal(data.error, 'LINKEDIN_SESSION_EXPIRED');
 	} finally {
 		killChild(child);
 	}
@@ -460,13 +462,6 @@ const TEST_RESUME_DATA = {
 	techStack: 'TypeScript, Playwright, Node.js',
 };
 
-function setupTestResume(): void {
-	if (!existsSync(TEST_RESUME_DIR)) {
-		mkdirSync(TEST_RESUME_DIR, { recursive: true });
-	}
-	writeFileSync(TEST_RESUME_FILE, JSON.stringify(TEST_RESUME_DATA, null, 2));
-}
-
 function cleanupTestResume(): void {
 	try {
 		rmSync(TEST_RESUME_FILE, { force: true });
@@ -486,13 +481,13 @@ function startIsolatedServerForATS(port: number): Promise<{ baseUrl: string; chi
 				JOB_DATA_DB_PATH: TEST_DB,
 				// Only pass necessary env vars
 				AI_INFERENCE_ORDER: process.env.AI_INFERENCE_ORDER,
-				COHERE_API_KEY: process.env.COHERE_API_KEY,
+				COHERE_API_KEY: '',
 				COHERE_MODEL: process.env.COHERE_MODEL,
-				MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
+				MISTRAL_API_KEY: '',
 				MISTRAL_MODEL: process.env.MISTRAL_MODEL,
-				GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+				GEMINI_API_KEY: '',
 				GEMINI_MODEL: process.env.GEMINI_MODEL,
-				GROQ_API_KEY: process.env.GROQ_API_KEY,
+				GROQ_API_KEY: '',
 				GROQ_MODEL: process.env.GROQ_MODEL,
 				PRIMARY_COLOR: process.env.PRIMARY_COLOR,
 				SECONDARY_COLOR: process.env.SECONDARY_COLOR,
@@ -521,7 +516,7 @@ function httpJsonOn(baseUrl: string, method: string, path: string, body?: unknow
 	return httpJsonWithBase(baseUrl, method, path, body);
 }
 
-function setupTestResumeOn(baseUrl: string): void {
+function setupTestResumeOn(): void {
 	// Write resume file for the test server
 	if (!existsSync(TEST_RESUME_DIR)) {
 		mkdirSync(TEST_RESUME_DIR, { recursive: true });
@@ -533,7 +528,7 @@ function setupTestResumeOn(baseUrl: string): void {
 
 test('POST /api/generate-cover-letter rejects missing jobDescription with 400', async () => {
 	const { baseUrl, child } = await startIsolatedServerForATS(3450);
-	setupTestResumeOn(baseUrl);
+	setupTestResumeOn();
 	try {
 		const res = await httpJsonOn(baseUrl, 'POST', '/api/generate-cover-letter', { tone: 'Formal' });
 		assert.equal(res.status, 400);
@@ -566,7 +561,7 @@ test('POST /api/generate-cover-letter returns 503 when no AI providers configure
 
 test('POST /api/generate-cover-letter includes salutation/sign-off when requested', async () => {
 	const { baseUrl, child } = await startIsolatedServerForATS(3452);
-	setupTestResumeOn(baseUrl);
+	setupTestResumeOn();
 	try {
 		const res = await httpJsonOn(baseUrl, 'POST', '/api/generate-cover-letter', {
 			jobDescription: 'Test JD for cover letter',
@@ -592,7 +587,7 @@ test('POST /api/generate-cover-letter includes salutation/sign-off when requeste
 
 test('POST /api/generate-cover-letter omits salutation/sign-off when false', async () => {
 	const { baseUrl, child } = await startIsolatedServerForATS(3453);
-	setupTestResumeOn(baseUrl);
+	setupTestResumeOn();
 	try {
 		const res = await httpJsonOn(baseUrl, 'POST', '/api/generate-cover-letter', {
 			jobDescription: 'Test JD for cover letter',
@@ -633,7 +628,7 @@ test('POST /api/ats/clean-jd returns COLLECTION_DETECTED for collection pages', 
 
 test('POST /api/ats/scan rejects missing jobDescription with 400', async () => {
 	const { baseUrl, child } = await startIsolatedServerForATS(3455);
-	setupTestResumeOn(baseUrl);
+	setupTestResumeOn();
 	try {
 		const res = await httpJsonOn(baseUrl, 'POST', '/api/ats/scan', { provider: 'mistral' });
 		assert.equal(res.status, 400);
@@ -660,7 +655,7 @@ test('POST /api/ats/scan rejects missing resume with 400', async () => {
 
 test('POST /api/ats/scan returns 503 when no AI providers configured', async () => {
 	const { baseUrl, child } = await startIsolatedServerForATS(3457);
-	setupTestResumeOn(baseUrl);
+	setupTestResumeOn();
 	try {
 		const res = await httpJsonOn(baseUrl, 'POST', '/api/ats/scan', { jobDescription: 'Test JD for scanning' });
 		assert.ok([200, 500, 503].includes(res.status));
@@ -676,7 +671,7 @@ test('POST /api/ats/scan returns 503 when no AI providers configured', async () 
 
 test('POST /api/ats/scan accepts optional provider parameter', async () => {
 	const { baseUrl, child } = await startIsolatedServerForATS(3458);
-	setupTestResumeOn(baseUrl);
+	setupTestResumeOn();
 	try {
 		const res = await httpJsonOn(baseUrl, 'POST', '/api/ats/scan', {
 			jobDescription: 'Test JD for scanning',
@@ -692,11 +687,11 @@ test('POST /api/ats/scan accepts optional provider parameter', async () => {
 
 test('POST /api/ats/scan rate limits correctly', async () => {
 	const { baseUrl, child } = await startIsolatedServerForATS(3459);
-	setupTestResumeOn(baseUrl);
+	setupTestResumeOn();
 	try {
 		let saw429 = false;
 		for (let i = 0; i < 25; i++) {
-			const res = await httpJsonOn(baseUrl, 'POST', '/api/ats/scan', { jobDescription: 'Test JD ' + i });
+			const res = await httpJsonOn(baseUrl, 'POST', '/api/ats/scan', { jobDescription: `Test JD ${i}` });
 			if (res.status === 429) {
 				saw429 = true;
 				const data = res.data as { error: string };

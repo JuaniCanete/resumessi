@@ -299,6 +299,13 @@ export async function fetchLinkedInJobDescription(rawUrl: string): Promise<strin
 	const jobUrl = normalizeLinkedInJobUrl(rawUrl);
 	if (!jobUrl) return '';
 
+	// No stored session means any Playwright fetch would only return LinkedIn's
+	// login page. Fail fast with the typed error instead of launching a headless
+	// browser and waiting for a JD that can never render.
+	if (!fs.existsSync(STORAGE_FILE)) {
+		throw new LinkedInSessionExpiredError('LinkedIn session missing. Run: tsx scripts/linkedin-auth.ts');
+	}
+
 	const { browser, context } = await launchStealthBrowser({
 		headless: true,
 		storageStatePath: STORAGE_FILE,

@@ -56,10 +56,10 @@ export function clearJobDataStorage(): void {
 		// Clear known static keys
 		localStorage.removeItem(LOCALSTORAGE_KEYS.jobDashboard);
 		localStorage.removeItem(LOCALSTORAGE_KEYS.sidebarState);
-		
+
 		// Clear atsScanResults object keys
 		Object.values(LOCALSTORAGE_KEYS.atsScanResults).forEach(v => localStorage.removeItem(v));
-		
+
 		// Clear dynamic keys by pattern matching (for scrapingResults and savedJobs)
 		const keysToRemove: string[] = [];
 		for (let i = 0; i < localStorage.length; i++) {

@@ -1,7 +1,15 @@
-// @ts-nocheck
 import path from 'path';
 import { test, expect } from './test-setup';
 import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
+
+// Extend window type for test functions exposed by app.ts
+declare global {
+	interface Window {
+		polishResume: () => Promise<void>;
+		cancelPolish: () => void;
+		rollbackPolish: () => void;
+	}
+}
 
 // Valid generated resume flag so polish/photo flows behave as "generated" data
 const GENERATED_FLAG = JSON.stringify({
@@ -40,7 +48,16 @@ test.describe('Advanced Flows', () => {
 	test('polish resume flow — mocked response updates UI', async ({ mainPage }) => {
 		// Complete resume data matching what renderResume expects
 		const completeResumeData = {
-			basics: { name: 'Test User', email: 'test@example.com', phone: '+1234567890', location: 'Test City', title: 'Software Engineer', linkedin: 'https://linkedin.com/in/test', github: 'https://github.com/test', photo: null },
+			basics: {
+				name: 'Test User',
+				email: 'test@example.com',
+				phone: '+1234567890',
+				location: 'Test City',
+				title: 'Software Engineer',
+				linkedin: 'https://linkedin.com/in/test',
+				github: 'https://github.com/test',
+				photo: null,
+			},
 			summary: 'Test summary',
 			experience: [],
 			education: [],
@@ -122,23 +139,23 @@ test.describe('Advanced Flows', () => {
 		console.log('Button display (computed):', displayStyle);
 		console.log('Button inline style:', inlineStyle);
 		console.log('Button class:', classAttr);
-		
+
 		// Call polishResume directly via evaluate with more logging
 		const evalResult = await mainPage.page.evaluate(() => {
 			try {
-				const btn = document.getElementById('btn-polish-dropdown');
+				const btn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement | null;
 				const overlay = document.getElementById('polish-overlay');
 				const isFunc = typeof window.polishResume === 'function';
 				const btnFound = !!btn;
-				const btnDisabled = btn?.disabled;
+				const btnDisabled = btn?.disabled ?? false;
 				const overlayFound = !!overlay;
 				const overlayStyleDisplay = overlay?.style.display;
 				const overlayComputedDisplay = overlay ? getComputedStyle(overlay).display : 'N/A';
-				
+
 				if (typeof window.polishResume === 'function') {
 					window.polishResume();
 				}
-				
+
 				// Return debug info
 				return {
 					isFunction: isFunc,
@@ -147,20 +164,20 @@ test.describe('Advanced Flows', () => {
 					overlayFound,
 					overlayStyleDisplay,
 					overlayComputedDisplay,
-					overlayStyleAfter: overlay ? overlay.style.display : 'N/A'
+					overlayStyleAfter: overlay ? overlay.style.display : 'N/A',
 				};
 			} catch (e) {
 				return { error: String(e) };
 			}
 		});
-console.log('[TEST] evaluate returned:', evalResult);
-		
+		console.log('[TEST] evaluate returned:', evalResult);
+
 		// Wait for the async function to complete and refresh message to appear
 		await mainPage.page.waitForTimeout(500);
-		
+
 		// Check refresh message (it's shown briefly, then hidden after 2s)
 		const refreshMsg = mainPage.refreshMessage;
-		const refreshText = await refreshMsg.textContent();
+		const refreshText = (await refreshMsg.textContent()) ?? '';
 		console.log('Refresh message text:', refreshText);
 		console.log('Refresh message display:', await refreshMsg.evaluate(el => getComputedStyle(el).display));
 		expect(refreshText).toBeTruthy();

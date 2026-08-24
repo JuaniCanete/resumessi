@@ -1,7 +1,6 @@
-// @ts-nocheck
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LOCALSTORAGE_KEYS } from '../../public/utils/types.ts';
+import { LOCALSTORAGE_KEYS } from '../../public/utils/types';
 
 test('LOCALSTORAGE_KEYS.scrapingResults - generates correct key for linkedin', () => {
 	const key = LOCALSTORAGE_KEYS.scrapingResults('linkedin');
@@ -43,15 +42,15 @@ test('LOCALSTORAGE_KEYS - all keys have expected prefix patterns', () => {
 	// scrapingResults keys
 	assert.ok(LOCALSTORAGE_KEYS.scrapingResults('linkedin').startsWith('jobData:scrapingResults:'));
 	assert.ok(LOCALSTORAGE_KEYS.scrapingResults('google').startsWith('jobData:scrapingResults:'));
-	
+
 	// savedJobs keys
 	assert.ok(LOCALSTORAGE_KEYS.savedJobs('linkedin').startsWith('jobData:savedJobs:'));
 	assert.ok(LOCALSTORAGE_KEYS.savedJobs('google').startsWith('jobData:savedJobs:'));
-	
+
 	// atsScanResults keys
 	assert.ok(LOCALSTORAGE_KEYS.atsScanResults.resume.startsWith('ats:scanResults:'));
 	assert.ok(LOCALSTORAGE_KEYS.atsScanResults.jobfinder.startsWith('ats:scanResults:'));
-	
+
 	// static keys
 	assert.ok(LOCALSTORAGE_KEYS.jobDashboard.startsWith('jobData:'));
 	assert.ok(LOCALSTORAGE_KEYS.sidebarState.startsWith('findJob:'));
@@ -68,20 +67,14 @@ test('LOCALSTORAGE_KEYS - keys are unique', () => {
 		LOCALSTORAGE_KEYS.atsScanResults.resume,
 		LOCALSTORAGE_KEYS.atsScanResults.jobfinder,
 	];
-	
+
 	const uniqueKeys = new Set(keys);
 	assert.equal(uniqueKeys.size, keys.length);
 });
 
 test('LOCALSTORAGE_KEYS - function keys produce different values for different sources', () => {
-	assert.notEqual(
-		LOCALSTORAGE_KEYS.scrapingResults('linkedin'),
-		LOCALSTORAGE_KEYS.scrapingResults('google')
-	);
-	assert.notEqual(
-		LOCALSTORAGE_KEYS.savedJobs('linkedin'),
-		LOCALSTORAGE_KEYS.savedJobs('google')
-	);
+	assert.notEqual(LOCALSTORAGE_KEYS.scrapingResults('linkedin'), LOCALSTORAGE_KEYS.scrapingResults('google'));
+	assert.notEqual(LOCALSTORAGE_KEYS.savedJobs('linkedin'), LOCALSTORAGE_KEYS.savedJobs('google'));
 });
 
 test('LOCALSTORAGE_KEYS - as const preserves readonly', () => {

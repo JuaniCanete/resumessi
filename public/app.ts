@@ -782,9 +782,15 @@ function cancelPolish(): void {
 }
 
 // Expose functions to global scope for inline event handlers (onclick)
-(window as any).polishResume = polishResume;
-(window as any).cancelPolish = cancelPolish;
-(window as any).rollbackPolish = rollbackPolish;
+const win = window as Window &
+	typeof globalThis & {
+		polishResume: typeof polishResume;
+		cancelPolish: typeof cancelPolish;
+		rollbackPolish: typeof rollbackPolish;
+	};
+win.polishResume = polishResume;
+win.cancelPolish = cancelPolish;
+win.rollbackPolish = rollbackPolish;
 
 async function rollbackPolish(): Promise<void> {
 	try {

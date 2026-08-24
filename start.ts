@@ -211,6 +211,15 @@ function parseEnvFile(): Record<string, string | undefined> {
 				console.warn(`[parseEnvFile] Invalid key format: ${key}`);
 				return;
 			}
+			// Test isolation: never load credentials/keys from .env when a test
+			// server is spawned. This keeps unit/integration tests off the real
+			// AI providers and LinkedIn session (avoids cost + slow live calls).
+			if (
+				process.env.NODE_ENV === 'test' &&
+				(/_(API_KEY|SECRET)$/i.test(key) || key.startsWith('LINKEDIN_') || key === 'CHROME_PATH')
+			) {
+				return;
+			}
 			let value = line.substring(eqIndex + 1).trim();
 			// Validate value: no control characters, reasonable length
 			const hasControlChars = value.split('').some(ch => ch.charCodeAt(0) <= 0x1f || ch.charCodeAt(0) === 0x7f);

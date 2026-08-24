@@ -36,10 +36,19 @@
 			"statements": 70
 		},
 		"perFile": {
-			"src/start.ts": { "lines": 40, "branches": 50 },
-			"src/scraper/linkedin.ts": { "lines": 40 },
-			"public/utils/modal.ts": { "lines": 80 },
-			"src/storage/jobDataSqlite.ts": { "lines": 75 }
+			"src/start.ts": {
+				"lines": 40,
+				"branches": 50
+			},
+			"src/scraper/linkedin.ts": {
+				"lines": 40
+			},
+			"public/utils/modal.ts": {
+				"lines": 80
+			},
+			"src/storage/jobDataSqlite.ts": {
+				"lines": 75
+			}
 		},
 		"exclude": [
 			"tests/**",
@@ -83,6 +92,7 @@
 		"@playwright/test": "^1.61.1",
 		"@types/better-sqlite3": "^9.6.0",
 		"@types/formidable": "^3.5.1",
+		"@types/jsdom": "^30.0.0",
 		"@types/node": "^22.0.0",
 		"@typescript-eslint/eslint-plugin": "^8.65.0",
 		"@typescript-eslint/parser": "^8.65.0",
