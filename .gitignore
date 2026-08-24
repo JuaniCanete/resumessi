@@ -56,6 +56,7 @@ build/
 # Test outputs (Playwright screenshots, videos, reports)
 test-results/
 playwright-report/
+coverage/
 
 # Husky git hook files (auto-generated)
 .husky/_/

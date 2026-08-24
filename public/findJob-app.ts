@@ -1,33 +1,42 @@
-import { stripMarkdown, buildQueryUrl, confirmDelete, confirmUnsave, showToast, showApplyModal, isCollectionUrl } from './utils';
+import {
+	stripMarkdown,
+	buildQueryUrl,
+	confirmDelete,
+	confirmUnsave,
+	showToast,
+	showApplyModal,
+	isCollectionUrl,
+} from './utils';
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import type { ScraperResult } from './utils';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 function getSourceDisplayName(source: 'linkedin' | 'google' | 'remoterocketship'): string {
-  return source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship';
+	return source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship';
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
 interface ScraperRunPayload {
-  timestamp: string | null;
-  source: 'linkedin' | 'google';
-  query: Record<string, string>;
-  totalResults: number;
-  results: ScraperResult[];
-  summary?: string;
-  runId?: string;
-  provider?: string;
-  metadataExtractionStatus?: 'extracting' | 'done';
+	timestamp: string | null;
+	source: 'linkedin' | 'google' | 'remoterocketship';
+	query: Record<string, string>;
+	totalResults: number;
+	results: ScraperResult[];
+	summary?: string;
+	runId?: string;
+	provider?: string;
+	metadataExtractionStatus?: 'extracting' | 'done';
+	removedCount?: number;
 }
 
 // ─── State ───────────────────────────────────────────────────────────────
 
 const payloadsBySource: Record<'linkedin' | 'google' | 'remoterocketship', ScraperRunPayload | null> = {
-  linkedin: null,
-  google: null,
-  remoterocketship: null,
+	linkedin: null,
+	google: null,
+	remoterocketship: null,
 };
 let currentPage = 1;
 const RESULTS_PER_PAGE = 10;
@@ -38,17 +47,31 @@ let currentTab: 'scraping' | 'saved' | 'dashboard' | 'resume' = 'scraping';
 let isLoadingResults = false;
 let currentJdItem: ScraperResult | null = null;
 const extractionStatus: Record<'linkedin' | 'google' | 'remoterocketship', 'idle' | 'extracting' | 'done'> = {
-  linkedin: 'idle',
-  google: 'idle',
-  remoterocketship: 'idle',
+	linkedin: 'idle',
+	google: 'idle',
+	remoterocketship: 'idle',
 };
 
 // Track expanded card URL per source to preserve on re-render
 const expandedCardUrl: Record<'linkedin' | 'google' | 'remoterocketship', string | null> = {
-  linkedin: null,
-  google: null,
-  remoterocketship: null,
+	linkedin: null,
+	google: null,
+	remoterocketship: null,
 };
+
+// Track which sources have already shown the "removed results" toast
+const removedToastShown = new Set<'linkedin' | 'google' | 'remoterocketship'>();
+
+function showRemovedToastIfNeeded(source: 'linkedin' | 'google' | 'remoterocketship', removedCount: number): void {
+	if (removedCount > 0 && !removedToastShown.has(source)) {
+		removedToastShown.add(source);
+		const sourceName = source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship';
+		showToast({
+			message: `Some ${sourceName} results are not displayed as they were previously removed (${removedCount} hidden).`,
+			type: 'info',
+		});
+	}
+}
 
 // Scraper state
 let scraperController: AbortController | null = null;
@@ -63,201 +86,221 @@ let cachedConfig: Record<string, unknown> | null = null;
 
 // DANGEROUS_TAGS for sanitization
 const DANGEROUS_TAGS = new Set([
-  'script', 'iframe', 'object', 'embed', 'link', 'meta', 'style',
-  'form', 'input', 'textarea', 'button', 'select', 'option',
-  'base', 'frame', 'frameset', 'applet', 'audio', 'video', 'source', 'track',
+	'script',
+	'iframe',
+	'object',
+	'embed',
+	'link',
+	'meta',
+	'style',
+	'form',
+	'input',
+	'textarea',
+	'button',
+	'select',
+	'option',
+	'base',
+	'frame',
+	'frameset',
+	'applet',
+	'audio',
+	'video',
+	'source',
+	'track',
 ]);
 
 function sanitizeHtml(dirtyHtml: string): string {
-  const template = document.createElement('template');
-  template.innerHTML = dirtyHtml;
-  const walk = (node: Node): void => {
-    let child = node.firstChild;
-    while (child) {
-      const next = child.nextSibling;
-      if (child.nodeType === Node.ELEMENT_NODE) {
-        const el = child as Element;
-        const tag = el.tagName.toLowerCase();
-        if (DANGEROUS_TAGS.has(tag)) {
-          el.remove();
-        } else {
-          for (const attr of Array.from(el.attributes)) {
-            const name = attr.name.toLowerCase();
-            const value = attr.value.trim().toLowerCase();
-            if (name.startsWith('on')) {
-              el.removeAttribute(attr.name);
-            } else if ((name === 'href' || name === 'src' || name === 'xlink:href') &&
-              (value.startsWith('javascript:') || value.startsWith('vbscript:') || value.startsWith('data:'))) {
-              el.removeAttribute(attr.name);
-            } else if (name === 'style' && (value.includes('expression(') || value.includes('url(javascript:'))) {
-              el.removeAttribute(attr.name);
-            }
-          }
-          walk(el);
-        }
-      }
-      child = next;
-    }
-  };
-  walk(template.content);
-  return template.innerHTML;
+	const template = document.createElement('template');
+	template.innerHTML = dirtyHtml;
+	const walk = (node: Node): void => {
+		let child = node.firstChild;
+		while (child) {
+			const next = child.nextSibling;
+			if (child.nodeType === Node.ELEMENT_NODE) {
+				const el = child as Element;
+				const tag = el.tagName.toLowerCase();
+				if (DANGEROUS_TAGS.has(tag)) {
+					el.remove();
+				} else {
+					for (const attr of Array.from(el.attributes)) {
+						const name = attr.name.toLowerCase();
+						const value = attr.value.trim().toLowerCase();
+						if (name.startsWith('on')) {
+							el.removeAttribute(attr.name);
+						} else if (
+							(name === 'href' || name === 'src' || name === 'xlink:href') &&
+							(value.startsWith('javascript:') || value.startsWith('vbscript:') || value.startsWith('data:'))
+						) {
+							el.removeAttribute(attr.name);
+						} else if (name === 'style' && (value.includes('expression(') || value.includes('url(javascript:'))) {
+							el.removeAttribute(attr.name);
+						}
+					}
+					walk(el);
+				}
+			}
+			child = next;
+		}
+	};
+	walk(template.content);
+	return template.innerHTML;
 }
 
 // ─── Sidebar Navigation ──────────────────────────────────────────────────
 
 function toggleSidebar(): void {
-  const sidebar = document.getElementById('findjob-sidebar');
-  if (!sidebar) return;
-  sidebar.classList.toggle('collapsed');
-  document.body.classList.toggle('sidebar-collapsed');
-  const isCollapsed = sidebar.classList.contains('collapsed');
-  localStorage.setItem('findJob.sidebarOpen', String(!isCollapsed));
+	const sidebar = document.getElementById('findjob-sidebar');
+	if (!sidebar) return;
+	sidebar.classList.toggle('collapsed');
+	document.body.classList.toggle('sidebar-collapsed');
+	const isCollapsed = sidebar.classList.contains('collapsed');
+	localStorage.setItem('findJob.sidebarOpen', String(!isCollapsed));
 }
 
 function toggleFindJobActions(): void {
-  const dropdown = document.getElementById('findjob-actions-dropdown');
-  const trigger = document.getElementById('findjob-actions-trigger');
-  if (!dropdown || !trigger) return;
+	const dropdown = document.getElementById('findjob-actions-dropdown');
+	const trigger = document.getElementById('findjob-actions-trigger');
+	if (!dropdown || !trigger) return;
 
-  const isHidden = dropdown.classList.contains('hidden');
-  if (isHidden) {
-    dropdown.classList.remove('hidden');
-    trigger.setAttribute('aria-expanded', 'true');
-    const label = trigger.querySelector('.actions-label');
-    if (label) label.textContent = 'Scraping sources \u25B4';
-    updateSourceOptionsActiveState();
-  } else {
-    dropdown.classList.add('hidden');
-    trigger.setAttribute('aria-expanded', 'false');
-    const label = trigger.querySelector('.actions-label');
-    if (label) label.textContent = 'Scraping sources \u25BE';
-  }
+	const isHidden = dropdown.classList.contains('hidden');
+	if (isHidden) {
+		dropdown.classList.remove('hidden');
+		trigger.setAttribute('aria-expanded', 'true');
+		const label = trigger.querySelector('.actions-label');
+		if (label) label.textContent = 'Scraping sources \u25B4';
+		updateSourceOptionsActiveState();
+	} else {
+		dropdown.classList.add('hidden');
+		trigger.setAttribute('aria-expanded', 'false');
+		const label = trigger.querySelector('.actions-label');
+		if (label) label.textContent = 'Scraping sources \u25BE';
+	}
 }
 
 function closeFindJobActionsDropdown(): void {
-  const dropdown = document.getElementById('findjob-actions-dropdown');
-  const trigger = document.getElementById('findjob-actions-trigger');
-  if (!dropdown || !trigger) return;
-  if (!dropdown.classList.contains('hidden')) {
-    dropdown.classList.add('hidden');
-    trigger.setAttribute('aria-expanded', 'false');
-    const label = trigger.querySelector('.actions-label');
-    if (label) label.textContent = 'Scraping sources \u25BE';
-  }
+	const dropdown = document.getElementById('findjob-actions-dropdown');
+	const trigger = document.getElementById('findjob-actions-trigger');
+	if (!dropdown || !trigger) return;
+	if (!dropdown.classList.contains('hidden')) {
+		dropdown.classList.add('hidden');
+		trigger.setAttribute('aria-expanded', 'false');
+		const label = trigger.querySelector('.actions-label');
+		if (label) label.textContent = 'Scraping sources \u25BE';
+	}
 }
 
 function updateSourceOptionsActiveState(): void {
-  const options = document.querySelectorAll('#findjob-actions-dropdown .actions-option');
-  options.forEach(option => {
-    const onclick = option.getAttribute('onclick') || '';
-    const isActive = onclick.includes(`switchResultsTab('${currentSource}')`);
-    option.classList.toggle('active', isActive);
-  });
+	const options = document.querySelectorAll('#findjob-actions-dropdown .actions-option');
+	options.forEach(option => {
+		const onclick = option.getAttribute('onclick') || '';
+		const isActive = onclick.includes(`switchResultsTab('${currentSource}')`);
+		option.classList.toggle('active', isActive);
+	});
 
-  const metaSource = document.getElementById('meta-source');
-  if (metaSource) {
-    const sourceLabel = getSourceDisplayName(currentSource);
-    metaSource.textContent = sourceLabel;
-    metaSource.style.display = 'inline';
-  }
+	const metaSource = document.getElementById('meta-source');
+	if (metaSource) {
+		const sourceLabel = getSourceDisplayName(currentSource);
+		metaSource.textContent = sourceLabel;
+		metaSource.style.display = 'inline';
+	}
 }
 
 // Close dropdown when clicking outside
 document.addEventListener('click', (e: MouseEvent) => {
-  const dropdown = document.getElementById('findjob-actions-dropdown');
-  const trigger = document.getElementById('findjob-actions-trigger');
-  if (!dropdown || !trigger) return;
-  if (!dropdown.contains(e.target as Node) && !trigger.contains(e.target as Node)) {
-    dropdown.classList.add('hidden');
-    trigger.setAttribute('aria-expanded', 'false');
-  }
+	const dropdown = document.getElementById('findjob-actions-dropdown');
+	const trigger = document.getElementById('findjob-actions-trigger');
+	if (!dropdown || !trigger) return;
+	if (!dropdown.contains(e.target as Node) && !trigger.contains(e.target as Node)) {
+		dropdown.classList.add('hidden');
+		trigger.setAttribute('aria-expanded', 'false');
+	}
 });
 
 function switchTab(tab: 'scraping' | 'saved' | 'dashboard' | 'resume'): void {
-  currentTab = tab;
+	currentTab = tab;
 
-  if (tab === 'resume') {
-    window.location.href = '/public/main.html';
-    return;
-  }
+	if (tab === 'resume') {
+		window.location.href = '/public/main.html';
+		return;
+	}
 
-  // Update sidebar tabs
-  document.querySelectorAll('.sidebar-tab').forEach(btn => {
-    btn.classList.toggle('active', (btn as HTMLElement).dataset.tab === tab);
-  });
+	// Update sidebar tabs
+	document.querySelectorAll('.sidebar-tab').forEach(btn => {
+		btn.classList.toggle('active', (btn as HTMLElement).dataset.tab === tab);
+	});
 
-  // Show/hide tab content
-  document.querySelectorAll('.tab-content').forEach(content => {
-    (content as HTMLElement).style.display = 'none';
-  });
-  const activeContent = document.getElementById(`tab-${tab}`);
-  if (activeContent) activeContent.style.display = 'block';
+	// Show/hide tab content
+	document.querySelectorAll('.tab-content').forEach(content => {
+		(content as HTMLElement).style.display = 'none';
+	});
+	const activeContent = document.getElementById(`tab-${tab}`);
+	if (activeContent) activeContent.style.display = 'block';
 
-  // Render content for the active tab
-  if (tab === 'scraping') {
-    renderScrapingResults();
-  } else if (tab === 'saved') {
-    renderSavedJobs();
-  } else if (tab === 'dashboard') {
-    renderDashboard();
-  }
+	// Render content for the active tab
+	if (tab === 'scraping') {
+		renderScrapingResults();
+	} else if (tab === 'saved') {
+		renderSavedJobs();
+	} else if (tab === 'dashboard') {
+		renderDashboard();
+	}
 
-  localStorage.setItem('findJob.activeTab', tab);
+	localStorage.setItem('findJob.activeTab', tab);
 }
 
 function loadSidebarState(): void {
-  const sidebarOpen = localStorage.getItem('findJob.sidebarOpen');
-  const activeTab = localStorage.getItem('findJob.activeTab') as 'scraping' | 'saved' | 'dashboard' | 'resume' | null;
+	const sidebarOpen = localStorage.getItem('findJob.sidebarOpen');
+	const activeTab = localStorage.getItem('findJob.activeTab') as 'scraping' | 'saved' | 'dashboard' | 'resume' | null;
 
-  const sidebar = document.getElementById('findjob-sidebar');
-  if (sidebar) {
-    if (sidebarOpen === 'false') {
-      sidebar.classList.add('collapsed');
-      document.body.classList.add('sidebar-collapsed');
-    }
-  }
+	const sidebar = document.getElementById('findjob-sidebar');
+	if (sidebar) {
+		if (sidebarOpen === 'false') {
+			sidebar.classList.add('collapsed');
+			document.body.classList.add('sidebar-collapsed');
+		}
+	}
 
-  if (activeTab && activeTab !== 'resume') {
-    switchTab(activeTab);
-  }
+	if (activeTab && activeTab !== 'resume') {
+		switchTab(activeTab);
+	}
 }
 
 // ─── Scraping Results Tab ────────────────────────────────────────────────
 
 function switchResultsTab(source: 'linkedin' | 'google' | 'remoterocketship'): void {
-  if (source === 'remoterocketship') {
-    showRemoteRocketshipConfirm(() => {
-      currentSource = source;
-      updateResultsTabs();
-      updateUrlSourceParam(source);
-      loadDataAndRender(source);
-      closeFindJobActionsDropdown();
-    });
-    return;
-  }
-  currentSource = source;
-  updateResultsTabs();
-  updateUrlSourceParam(source);
-  loadDataAndRender(source);
-  closeFindJobActionsDropdown();
+	if (source === 'remoterocketship') {
+		showRemoteRocketshipConfirm(() => {
+			currentSource = source;
+			updateResultsTabs();
+			updateUrlSourceParam(source);
+			loadDataAndRender(source);
+			closeFindJobActionsDropdown();
+		});
+		return;
+	}
+	currentSource = source;
+	updateResultsTabs();
+	updateUrlSourceParam(source);
+	loadDataAndRender(source);
+	closeFindJobActionsDropdown();
 }
 
 function updateUrlSourceParam(source: 'linkedin' | 'google' | 'remoterocketship'): void {
-  const url = new URL(window.location.href);
-  url.searchParams.set('source', source);
-  window.history.replaceState({}, '', url);
+	const url = new URL(window.location.href);
+	url.searchParams.set('source', source);
+	window.history.replaceState({}, '', url);
 }
 
 function updateResultsTabs(): void {
-  updateSourceOptionsActiveState();
+	updateSourceOptionsActiveState();
 }
 
 function showLoadingUI(source: 'linkedin' | 'google' | 'remoterocketship'): void {
-  isLoadingResults = true;
+	isLoadingResults = true;
 
-  const list = document.getElementById('results-list');
-  if (list) {
-    list.innerHTML = `
+	const list = document.getElementById('results-list');
+	if (list) {
+		list.innerHTML = `
       <div style="text-align: center; padding: 60px 20px; background: #161920; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
         <h3 style="font-family: 'Comfortaa', sans-serif; font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 12px;">
           🔎 Scraping ${getSourceDisplayName(source)}...
@@ -270,539 +313,556 @@ function showLoadingUI(source: 'linkedin' | 'google' | 'remoterocketship'): void
         </div>
       </div>
     `;
-  }
+	}
 }
 
 function showRefreshMessage(): void {
-  const msg = document.getElementById('refresh-message');
-  if (msg) {
-    msg.textContent = 'Applying changes . . .';
-    msg.style.display = 'block';
-    setTimeout(() => {
-      msg.style.display = 'none';
-    }, 2000);
-  }
+	const msg = document.getElementById('refresh-message');
+	if (msg) {
+		msg.textContent = 'Applying changes . . .';
+		msg.style.display = 'block';
+		setTimeout(() => {
+			msg.style.display = 'none';
+		}, 2000);
+	}
 }
 
 function startPolling(source: 'linkedin' | 'google' | 'remoterocketship'): void {
-  if (pollInterval) clearInterval(pollInterval);
+	if (pollInterval) clearInterval(pollInterval);
 
-  // Safety: stop polling after 3 minutes no matter what, and always hide overlay.
-  let settledTicks = 0;
-  let totalTicks = 0;
-  const MAX_TICKS = 90; // 90 * 2000ms = 180s
-  const MAX_SETTLED_TICKS = 3; // grace ticks after background processing completes
+	// Safety: stop polling after 3 minutes no matter what, and always hide overlay.
+	let settledTicks = 0;
+	let totalTicks = 0;
+	const MAX_TICKS = 90; // 90 * 2000ms = 180s
+	const MAX_SETTLED_TICKS = 3; // grace ticks after background processing completes
 
-  pollInterval = setInterval(async () => {
-    totalTicks += 1;
-    try {
-      const resp = await fetch(`/api/scraper/results?source=${source}`);
-      if (resp.ok) {
-        const data = await resp.json() as ScraperRunPayload;
-        if (data && data.timestamp && data.runId && data.runId === currentRunId) {
-          payloadsBySource[source] = data;
-          sessionStorage.setItem('scraper-results', JSON.stringify(data));
-          localStorage.setItem(`scraper-results:${source}`, JSON.stringify(data));
-          isLoadingResults = false;
-          const overlay = document.getElementById('scraper-overlay');
-          if (overlay) overlay.style.display = 'none';
+	pollInterval = setInterval(async () => {
+		totalTicks += 1;
+		try {
+			const resp = await fetch(`/api/scraper/results?source=${source}`);
+			if (resp.ok) {
+				const data = (await resp.json()) as ScraperRunPayload;
+				if (data && data.timestamp && data.runId && data.runId === currentRunId) {
+					payloadsBySource[source] = data;
+					sessionStorage.setItem('scraper-results', JSON.stringify(data));
+					localStorage.setItem(`scraper-results:${source}`, JSON.stringify(data));
+					isLoadingResults = false;
+					const overlay = document.getElementById('scraper-overlay');
+					if (overlay) overlay.style.display = 'none';
 
-          // Track metadata extraction status
-          const prevStatus = extractionStatus[source];
-          if (data.metadataExtractionStatus) {
-            extractionStatus[source] = data.metadataExtractionStatus;
-          } else {
-            // No extraction status in response means extraction is not running (idle/done)
-            extractionStatus[source] = 'idle';
-          }
+					// Track metadata extraction status
+					const prevStatus = extractionStatus[source];
+					if (data.metadataExtractionStatus) {
+						extractionStatus[source] = data.metadataExtractionStatus;
+					} else {
+						// No extraction status in response means extraction is not running (idle/done)
+						extractionStatus[source] = 'idle';
+					}
 
-          // Only re-render if we're viewing this source's tab
-          if (source === currentSource) {
-            renderScrapingResults();
-          }
+					// Show toast if some results were previously removed and are now hidden
+					showRemovedToastIfNeeded(source, data.removedCount || 0);
 
-          // Show toast when extraction finishes
-          if (prevStatus === 'extracting' && extractionStatus[source] === 'done') {
-            showToast({ message: 'Metadata extraction finished successfully.', type: 'success' });
-          }
+					// Only re-render if we're viewing this source's tab
+					if (source === currentSource) {
+						renderScrapingResults();
+					}
 
-          // Background summarization + parameter extraction may still be writing
-          // to the results file after the scrape returns. Keep polling (and
-          // re-rendering) until the provider is set AND every result has a
-          // parameters array, then allow a couple of grace ticks before stopping.
-          const backgroundDone = !!(data.provider && Array.isArray(data.results) &&
-            data.results.length > 0 &&
-            data.results.every(r => Array.isArray(r.parameters)));
-          if (backgroundDone) {
-            settledTicks += 1;
-            if (settledTicks >= MAX_SETTLED_TICKS) {
-              if (pollInterval) clearInterval(pollInterval);
-              pollInterval = null;
-            }
-          } else {
-            settledTicks = 0;
-          }
-        }
-      } else if (resp.status === 400 || resp.status >= 500) {
-        handleScrapeFailure('Scrape request was rejected by the server.');
-      }
-    } catch {
-      // Ignore polling fetch errors
-    }
+					// Show toast when extraction finishes
+					if (prevStatus === 'extracting' && extractionStatus[source] === 'done') {
+						showToast({ message: 'Metadata extraction finished successfully.', type: 'success' });
+					}
 
-    // Failsafe: stop polling and hide overlay after the cap
-    if (totalTicks >= MAX_TICKS) {
-      if (pollInterval) clearInterval(pollInterval);
-      pollInterval = null;
-      const overlay = document.getElementById('scraper-overlay');
-      if (overlay) overlay.style.display = 'none';
-      isLoadingResults = false;
-      renderScrapingResults();
-    }
-  }, 2000);
+					// Background summarization + parameter extraction may still be writing
+					// to the results file after the scrape returns. Keep polling (and
+					// re-rendering) until the provider is set AND every result has a
+					// parameters array, then allow a couple of grace ticks before stopping.
+					const backgroundDone = !!(
+						data.provider &&
+						Array.isArray(data.results) &&
+						data.results.length > 0 &&
+						data.results.every(r => Array.isArray(r.parameters))
+					);
+					if (backgroundDone) {
+						settledTicks += 1;
+						if (settledTicks >= MAX_SETTLED_TICKS) {
+							if (pollInterval) clearInterval(pollInterval);
+							pollInterval = null;
+						}
+					} else {
+						settledTicks = 0;
+					}
+				}
+			} else if (resp.status === 400 || resp.status >= 500) {
+				handleScrapeFailure('Scrape request was rejected by the server.');
+			}
+		} catch {
+			// Ignore polling fetch errors
+		}
+
+		// Failsafe: stop polling and hide overlay after the cap
+		if (totalTicks >= MAX_TICKS) {
+			if (pollInterval) clearInterval(pollInterval);
+			pollInterval = null;
+			const overlay = document.getElementById('scraper-overlay');
+			if (overlay) overlay.style.display = 'none';
+			isLoadingResults = false;
+			renderScrapingResults();
+		}
+	}, 2000);
 }
 
 function handleScrapeFailure(errorMessage: string): void {
-  if (pollInterval) {
-    clearInterval(pollInterval);
-    pollInterval = null;
-  }
+	if (pollInterval) {
+		clearInterval(pollInterval);
+		pollInterval = null;
+	}
 
-  const list = document.getElementById('results-list');
-  if (list) list.innerHTML = '';
+	const list = document.getElementById('results-list');
+	if (list) list.innerHTML = '';
 
-  const errorEl = document.getElementById('scrape-error');
-  if (errorEl) {
-    const msgEl = document.getElementById('scrape-error-message');
-    if (msgEl) msgEl.textContent = errorMessage || 'The scraping process could not be completed. Please try again.';
-    errorEl.style.display = 'block';
-  }
+	const errorEl = document.getElementById('scrape-error');
+	if (errorEl) {
+		const msgEl = document.getElementById('scrape-error-message');
+		if (msgEl) msgEl.textContent = errorMessage || 'The scraping process could not be completed. Please try again.';
+		errorEl.style.display = 'block';
+	}
 
-  const noResults = document.getElementById('no-results');
-  if (noResults) noResults.style.display = 'none';
-  const pagination = document.getElementById('pagination');
-  if (pagination) pagination.style.display = 'none';
+	const noResults = document.getElementById('no-results');
+	if (noResults) noResults.style.display = 'none';
+	const pagination = document.getElementById('pagination');
+	if (pagination) pagination.style.display = 'none';
 }
 
 async function loadDataAndRender(sourceParam: 'linkedin' | 'google' | 'remoterocketship'): Promise<void> {
-  currentSource = sourceParam;
+	currentSource = sourceParam;
 
-  const rawSession = sessionStorage.getItem('scraper-results');
-  if (rawSession) {
-    try {
-      const parsed = JSON.parse(rawSession) as ScraperRunPayload;
-      if (parsed.source === sourceParam && parsed.results) {
-        payloadsBySource[sourceParam] = parsed;
-        if (parsed.metadataExtractionStatus) {
-          extractionStatus[sourceParam] = parsed.metadataExtractionStatus;
-        }
-      }
-    } catch {
-      // Fallback to fetch
-    }
-  }
+	const rawSession = sessionStorage.getItem('scraper-results');
+	if (rawSession) {
+		try {
+			const parsed = JSON.parse(rawSession) as ScraperRunPayload;
+			if (parsed.source === sourceParam && parsed.results) {
+				payloadsBySource[sourceParam] = parsed;
+				if (parsed.metadataExtractionStatus) {
+					extractionStatus[sourceParam] = parsed.metadataExtractionStatus;
+				}
+				// Show toast if some results were previously removed and are now hidden
+				showRemovedToastIfNeeded(sourceParam, parsed.removedCount || 0);
+			}
+		} catch {
+			// Fallback to fetch
+		}
+	}
 
-  if (!payloadsBySource[sourceParam]) {
-    try {
-      const resp = await fetch(`/api/scraper/results?source=${sourceParam}`);
-      if (resp.ok) {
-        const data = await resp.json() as ScraperRunPayload;
-        payloadsBySource[sourceParam] = data;
-        localStorage.setItem(`scraper-results:${sourceParam}`, JSON.stringify(data));
-        // Always update extraction status based on server response
-        // If no metadataExtractionStatus in response, default to 'idle' (no extraction running)
-        if (data.metadataExtractionStatus) {
-          extractionStatus[sourceParam] = data.metadataExtractionStatus;
-        } else {
-          extractionStatus[sourceParam] = 'idle';
-        }
-      }
-    } catch (err: unknown) {
-      console.error('Failed to fetch scraper results:', (err as Error).message);
-    }
-  }
+	if (!payloadsBySource[sourceParam]) {
+		try {
+			const resp = await fetch(`/api/scraper/results?source=${sourceParam}`);
+			if (resp.ok) {
+				const data = (await resp.json()) as ScraperRunPayload;
+				payloadsBySource[sourceParam] = data;
+				localStorage.setItem(`scraper-results:${sourceParam}`, JSON.stringify(data));
+				// Always update extraction status based on server response
+				// If no metadataExtractionStatus in response, default to 'idle' (no extraction running)
+				if (data.metadataExtractionStatus) {
+					extractionStatus[sourceParam] = data.metadataExtractionStatus;
+				} else {
+					extractionStatus[sourceParam] = 'idle';
+				}
+			}
+		} catch (err: unknown) {
+			console.error('Failed to fetch scraper results:', (err as Error).message);
+		}
+	}
 
-  renderScrapingResults();
+	// Show toast for fallback fetch if removedCount > 0
+	const currentPayload = payloadsBySource[sourceParam];
+	showRemovedToastIfNeeded(sourceParam, currentPayload?.removedCount || 0);
+
+	renderScrapingResults();
 }
 
 function renderScrapingResults(): void {
-  if (currentTab !== 'scraping') return;
-  if (isLoadingResults) return;
+	if (currentTab !== 'scraping') return;
+	if (isLoadingResults) return;
 
-  const activePayload = payloadsBySource[currentSource];
-  const isExtracting = extractionStatus[currentSource] === 'extracting';
+	const activePayload = payloadsBySource[currentSource];
+	const isExtracting = extractionStatus[currentSource] === 'extracting';
 
-  // Show extraction loading banner if metadata is being extracted
-  const extractionBanner = document.getElementById('extraction-loading');
-  if (extractionBanner) {
-    extractionBanner.style.display = isExtracting ? 'block' : 'none';
-  }
+	// Show extraction loading banner if metadata is being extracted
+	const extractionBanner = document.getElementById('extraction-loading');
+	if (extractionBanner) {
+		extractionBanner.style.display = isExtracting ? 'block' : 'none';
+	}
 
-  if (!activePayload || !activePayload.results || activePayload.results.length === 0) {
-    const list = document.getElementById('results-list');
-    if (list) list.innerHTML = '';
+	if (!activePayload || !activePayload.results || activePayload.results.length === 0) {
+		const list = document.getElementById('results-list');
+		if (list) list.innerHTML = '';
 
-    const timestampElem = document.getElementById('meta-timestamp');
-    if (timestampElem) timestampElem.textContent = 'No results';
-    const totalElem = document.getElementById('meta-total');
-    if (totalElem) totalElem.textContent = 'N/A';
-    const queryElem = document.getElementById('meta-query');
-    if (queryElem) queryElem.textContent = 'N/A';
-    const queryLinkWrapper = document.getElementById('query-link-wrapper');
-    if (queryLinkWrapper) queryLinkWrapper.style.display = 'none';
+		const timestampElem = document.getElementById('meta-timestamp');
+		if (timestampElem) timestampElem.textContent = 'No results';
+		const totalElem = document.getElementById('meta-total');
+		if (totalElem) totalElem.textContent = 'N/A';
+		const queryElem = document.getElementById('meta-query');
+		if (queryElem) queryElem.textContent = 'N/A';
+		const queryLinkWrapper = document.getElementById('query-link-wrapper');
+		if (queryLinkWrapper) queryLinkWrapper.style.display = 'none';
 
-    const noResults = document.getElementById('no-results');
-    if (noResults) noResults.style.display = 'block';
-    const pagination = document.getElementById('pagination');
-    if (pagination) pagination.style.display = 'none';
-    return;
-  }
+		const noResults = document.getElementById('no-results');
+		if (noResults) noResults.style.display = 'block';
+		const pagination = document.getElementById('pagination');
+		if (pagination) pagination.style.display = 'none';
+		return;
+	}
 
-  const noResults = document.getElementById('no-results');
-  if (noResults) noResults.style.display = 'none';
+	const noResults = document.getElementById('no-results');
+	if (noResults) noResults.style.display = 'none';
 
-  const timestampElem = document.getElementById('meta-timestamp');
-  if (timestampElem) {
-    timestampElem.textContent = activePayload.timestamp
-      ? new Date(activePayload.timestamp).toLocaleString()
-      : 'N/A';
-  }
+	const timestampElem = document.getElementById('meta-timestamp');
+	if (timestampElem) {
+		timestampElem.textContent = activePayload.timestamp ? new Date(activePayload.timestamp).toLocaleString() : 'N/A';
+	}
 
-  const totalElem = document.getElementById('meta-total');
-  if (totalElem) {
-    totalElem.textContent = String(activePayload.totalResults || activePayload.results.length);
-  }
+	const totalElem = document.getElementById('meta-total');
+	if (totalElem) {
+		totalElem.textContent = String(activePayload.totalResults || activePayload.results.length);
+	}
 
-  const queryElem = document.getElementById('meta-query');
-  if (queryElem && activePayload.query) {
-    const q = activePayload.query;
-    const parts = [q.role, q.seniority, q.keywords, q.employmentType, q.region, q.country, q.currency].filter(Boolean);
-    queryElem.textContent = parts.length > 0 ? parts.join(' • ') : 'All jobs';
-  }
+	const queryElem = document.getElementById('meta-query');
+	if (queryElem && activePayload.query) {
+		const q = activePayload.query;
+		const parts = [q.role, q.seniority, q.keywords, q.employmentType, q.region, q.country, q.currency].filter(Boolean);
+		queryElem.textContent = parts.length > 0 ? parts.join(' • ') : 'All jobs';
+	}
 
-  const queryLinkWrapper = document.getElementById('query-link-wrapper');
-  const queryLink = document.getElementById('query-link') as HTMLAnchorElement;
-  if (queryLinkWrapper && queryLink && activePayload.query) {
-    const source = activePayload.source;
-    const url = buildQueryUrl(source, activePayload.query);
-    queryLink.href = url;
-    queryLinkWrapper.style.display = 'inline';
-  }
+	const queryLinkWrapper = document.getElementById('query-link-wrapper');
+	const queryLink = document.getElementById('query-link') as HTMLAnchorElement;
+	if (queryLinkWrapper && queryLink && activePayload.query) {
+		const source = activePayload.source;
+		const url = buildQueryUrl(source, activePayload.query);
+		queryLink.href = url;
+		queryLinkWrapper.style.display = 'inline';
+	}
 
-  renderPage(currentPage);
+	renderPage(currentPage);
 }
 
 function renderPage(page: number): void {
-  const activePayload = payloadsBySource[currentSource];
-  if (!activePayload || !activePayload.results) return;
+	const activePayload = payloadsBySource[currentSource];
+	if (!activePayload || !activePayload.results) return;
 
-  const totalPages = Math.ceil(activePayload.results.length / RESULTS_PER_PAGE) || 1;
-  currentPage = Math.max(1, Math.min(page, totalPages));
+	const totalPages = Math.ceil(activePayload.results.length / RESULTS_PER_PAGE) || 1;
+	currentPage = Math.max(1, Math.min(page, totalPages));
 
-  const startIdx = (currentPage - 1) * RESULTS_PER_PAGE;
-  const endIdx = startIdx + RESULTS_PER_PAGE;
-  const pageResults = activePayload.results.slice(startIdx, endIdx);
+	const startIdx = (currentPage - 1) * RESULTS_PER_PAGE;
+	const endIdx = startIdx + RESULTS_PER_PAGE;
+	const pageResults = activePayload.results.slice(startIdx, endIdx);
 
-  const container = document.getElementById('results-list');
-  if (!container) return;
+	const container = document.getElementById('results-list');
+	if (!container) return;
 
-  container.innerHTML = '';
+	container.innerHTML = '';
 
-  for (const item of pageResults) {
-    const card = document.createElement('div');
-    card.className = 'result-card';
-    card.dataset.url = item.url;
-    card.dataset.snippet = item.snippet || '';
-    card.dataset.aiSummary = item.aiSummary || '';
+	for (const item of pageResults) {
+		const card = document.createElement('div');
+		card.className = 'result-card';
+		card.dataset.url = item.url;
+		card.dataset.snippet = item.snippet || '';
+		card.dataset.aiSummary = item.aiSummary || '';
 
-    card.addEventListener('click', (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'A' || target.tagName === 'BUTTON' || target.closest('a') || target.closest('button')) {
-        return;
-      }
-      const expandedCards = container.querySelectorAll('.result-card.expanded');
-      expandedCards.forEach((expanded: Element) => {
-        if (expanded !== card) {
-          expanded.classList.remove('expanded');
-        }
-      });
-      card.classList.toggle('expanded');
-      // Track expanded card URL for preservation across re-renders
-      if (card.classList.contains('expanded')) {
-        expandedCardUrl[currentSource] = item.url;
-      } else {
-        expandedCardUrl[currentSource] = null;
-      }
-    });
+		card.addEventListener('click', (e: MouseEvent) => {
+			const target = e.target as HTMLElement;
+			if (target.tagName === 'A' || target.tagName === 'BUTTON' || target.closest('a') || target.closest('button')) {
+				return;
+			}
+			const expandedCards = container.querySelectorAll('.result-card.expanded');
+			expandedCards.forEach((expanded: Element) => {
+				if (expanded !== card) {
+					expanded.classList.remove('expanded');
+				}
+			});
+			card.classList.toggle('expanded');
+			// Track expanded card URL for preservation across re-renders
+			if (card.classList.contains('expanded')) {
+				expandedCardUrl[currentSource] = item.url;
+			} else {
+				expandedCardUrl[currentSource] = null;
+			}
+		});
 
-    // Header: title + actions
-    const header = document.createElement('div');
-    header.className = 'result-card-header';
+		// Header: title + actions
+		const header = document.createElement('div');
+		header.className = 'result-card-header';
 
-    const titleEl = document.createElement('span');
-    titleEl.className = 'result-title';
-    titleEl.textContent = item.title;
+		const titleEl = document.createElement('span');
+		titleEl.className = 'result-title';
+		titleEl.textContent = item.title;
 
-    const headerActions = document.createElement('div');
-    headerActions.className = 'result-card-actions';
+		const headerActions = document.createElement('div');
+		headerActions.className = 'result-card-actions';
 
-    // Action buttons
-    const RunATSBtn = document.createElement('button');
-    RunATSBtn.className = 'card-action-btn runATS';
-    RunATSBtn.textContent = 'Run ATS';
-    const isCollection = isCollectionUrl(item.url);
-    if (isCollection) {
-      RunATSBtn.disabled = true;
-      RunATSBtn.title = 'Cannot run ATS on a collection page';
-      RunATSBtn.classList.add('card-action-btn--disabled');
-    }
-    RunATSBtn.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      openJdEditModal(item);
-    });
-    headerActions.appendChild(RunATSBtn);
+		// Action buttons
+		const RunATSBtn = document.createElement('button');
+		RunATSBtn.className = 'card-action-btn runATS';
+		RunATSBtn.textContent = 'Run ATS';
+		const isCollection = isCollectionUrl(item.url);
+		if (isCollection) {
+			RunATSBtn.disabled = true;
+			RunATSBtn.title = 'Cannot run ATS on a collection page';
+			RunATSBtn.classList.add('card-action-btn--disabled');
+		}
+		RunATSBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			openJdEditModal(item);
+		});
+		headerActions.appendChild(RunATSBtn);
 
-    const showJdBtn = document.createElement('button');
-    showJdBtn.className = 'card-action-btn showJD';
-    showJdBtn.textContent = 'Show JD';
-    showJdBtn.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      showJdForItem(item);
-    });
-    headerActions.appendChild(showJdBtn);
+		const showJdBtn = document.createElement('button');
+		showJdBtn.className = 'card-action-btn showJD';
+		showJdBtn.textContent = 'Show JD';
+		showJdBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			showJdForItem(item);
+		});
+		headerActions.appendChild(showJdBtn);
 
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'card-action-btn save';
-    saveBtn.textContent = item.saved ? 'Saved ✓' : 'Save';
-    saveBtn.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      handleSave(item, currentSource);
-    });
-    headerActions.appendChild(saveBtn);
+		const saveBtn = document.createElement('button');
+		saveBtn.className = 'card-action-btn save';
+		saveBtn.textContent = item.saved ? 'Saved ✓' : 'Save';
+		saveBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			handleSave(item, currentSource);
+		});
+		headerActions.appendChild(saveBtn);
 
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'card-action-btn remove';
-    removeBtn.textContent = 'Remove';
-    removeBtn.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      handleRemove(item, currentSource);
-    });
-    headerActions.appendChild(removeBtn);
+		const removeBtn = document.createElement('button');
+		removeBtn.className = 'card-action-btn remove';
+		removeBtn.textContent = 'Remove';
+		removeBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			handleRemove(item, currentSource);
+		});
+		headerActions.appendChild(removeBtn);
 
-    const applyBtn = document.createElement('button');
-    applyBtn.className = 'card-action-btn apply';
-    applyBtn.textContent = 'Applied?';
-    applyBtn.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      handleApply(item, currentSource);
-    });
-    headerActions.appendChild(applyBtn);
+		const applyBtn = document.createElement('button');
+		applyBtn.className = 'card-action-btn apply';
+		applyBtn.textContent = 'Applied?';
+		applyBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			handleApply(item, currentSource);
+		});
+		headerActions.appendChild(applyBtn);
 
-    header.appendChild(titleEl);
-    header.appendChild(headerActions);
-    card.appendChild(header);
+		header.appendChild(titleEl);
+		header.appendChild(headerActions);
+		card.appendChild(header);
 
-    // Footer: company + apply link
-    const footer = document.createElement('div');
-    footer.className = 'result-footer';
+		// Footer: company + apply link
+		const footer = document.createElement('div');
+		footer.className = 'result-footer';
 
-    const footerLeft = document.createElement('div');
-    footerLeft.className = 'result-footer-left';
+		const footerLeft = document.createElement('div');
+		footerLeft.className = 'result-footer-left';
 
-    if (item.company) {
-      const company = document.createElement('span');
-      company.className = 'result-company';
-      company.textContent = item.company;
-      footerLeft.appendChild(company);
-    }
+		if (item.company) {
+			const company = document.createElement('span');
+			company.className = 'result-company';
+			company.textContent = item.company;
+			footerLeft.appendChild(company);
+		}
 
-    if (item.postedDate) {
-      const date = document.createElement('span');
-      date.className = 'result-posted-date';
-      date.textContent = item.postedDate;
-      footerLeft.appendChild(date);
-    }
+		if (item.postedDate) {
+			const date = document.createElement('span');
+			date.className = 'result-posted-date';
+			date.textContent = item.postedDate;
+			footerLeft.appendChild(date);
+		}
 
-    // Site label (Feature 4) — only for Google/Remote Rocketship sources
-    if (item.site && item.source !== 'linkedin') {
-      const siteEl = document.createElement('span');
-      siteEl.className = 'result-site-label';
-      siteEl.textContent = item.site;
-      siteEl.title = item.site;
-      footerLeft.appendChild(siteEl);
-    }
+		// Site label (Feature 4) — only for Google/Remote Rocketship sources
+		if (item.site && item.source !== 'linkedin') {
+			const siteEl = document.createElement('span');
+			siteEl.className = 'result-site-label';
+			siteEl.textContent = item.site;
+			siteEl.title = item.site;
+			footerLeft.appendChild(siteEl);
+		}
 
-    const applyLinkBtn = document.createElement('a');
-    applyLinkBtn.className = 'result-link-btn';
-    applyLinkBtn.href = item.url;
-    applyLinkBtn.target = '_blank';
-    applyLinkBtn.rel = 'noopener noreferrer';
-    applyLinkBtn.textContent = 'Apply ↗';
-    footer.appendChild(footerLeft);
-    footer.appendChild(applyLinkBtn);
-    card.appendChild(footer);
+		const applyLinkBtn = document.createElement('a');
+		applyLinkBtn.className = 'result-link-btn';
+		applyLinkBtn.href = item.url;
+		applyLinkBtn.target = '_blank';
+		applyLinkBtn.rel = 'noopener noreferrer';
+		applyLinkBtn.textContent = 'Apply ↗';
+		footer.appendChild(footerLeft);
+		footer.appendChild(applyLinkBtn);
+		card.appendChild(footer);
 
-    // Expanded body
-    const body = document.createElement('div');
-    body.className = 'result-card-body';
+		// Expanded body
+		const body = document.createElement('div');
+		body.className = 'result-card-body';
 
-    if (item.snippet) {
-      const snippet = document.createElement('div');
-      const trimmedAtChar = 100;
-      snippet.className = 'result-snippet';
-      const snippetText = item.snippet.length > trimmedAtChar
-        ? item.snippet.substring(0, trimmedAtChar) + '...'
-        : item.snippet;
-      snippet.textContent = snippetText;
-      body.appendChild(snippet);
-    }
+		if (item.snippet) {
+			const snippet = document.createElement('div');
+			const trimmedAtChar = 100;
+			snippet.className = 'result-snippet';
+			const snippetText =
+				item.snippet.length > trimmedAtChar ? `${item.snippet.substring(0, trimmedAtChar)}...` : item.snippet;
+			snippet.textContent = snippetText;
+			body.appendChild(snippet);
+		}
 
-    if (item.aiSummary) {
-      const aiSummary = document.createElement('div');
-      aiSummary.className = 'result-ai-summary';
-      // Limit AI summary length to prevent DOM DoS
-      const MAX_AI_SUMMARY_LENGTH = 5000;
-      const summaryText = item.aiSummary.length > MAX_AI_SUMMARY_LENGTH
-        ? item.aiSummary.substring(0, MAX_AI_SUMMARY_LENGTH) + '...'
-        : item.aiSummary;
-      const marked = (window as unknown as Record<string, unknown>).marked;
-      if (marked && typeof marked === 'object' && 'parse' in marked) {
-        const rendered = (marked as { parse: (s: string) => string }).parse(summaryText);
-        // Use DOMPurify if available, otherwise fall back to sanitizeHtml
-        const DOMPurify = (window as unknown as Record<string, unknown>).DOMPurify;
-        if (DOMPurify && typeof DOMPurify === 'object' && 'sanitize' in DOMPurify) {
-          aiSummary.innerHTML = (DOMPurify as { sanitize: (s: string) => string }).sanitize(rendered);
-        } else {
-          aiSummary.innerHTML = sanitizeHtml(rendered);
-        }
-      } else {
-        aiSummary.textContent = summaryText;
-      }
-      body.appendChild(aiSummary);
-    }
+		if (item.aiSummary) {
+			const aiSummary = document.createElement('div');
+			aiSummary.className = 'result-ai-summary';
+			// Limit AI summary length to prevent DOM DoS
+			const MAX_AI_SUMMARY_LENGTH = 5000;
+			const summaryText =
+				item.aiSummary.length > MAX_AI_SUMMARY_LENGTH
+					? `${item.aiSummary.substring(0, MAX_AI_SUMMARY_LENGTH)}...`
+					: item.aiSummary;
+			const marked = (window as unknown as Record<string, unknown>).marked;
+			if (marked && typeof marked === 'object' && 'parse' in marked) {
+				const rendered = (marked as { parse: (s: string) => string }).parse(summaryText);
+				// Use DOMPurify if available, otherwise fall back to sanitizeHtml
+				const DOMPurify = (window as unknown as Record<string, unknown>).DOMPurify;
+				if (DOMPurify && typeof DOMPurify === 'object' && 'sanitize' in DOMPurify) {
+					aiSummary.innerHTML = (DOMPurify as { sanitize: (s: string) => string }).sanitize(rendered);
+				} else {
+					aiSummary.innerHTML = sanitizeHtml(rendered);
+				}
+			} else {
+				aiSummary.textContent = summaryText;
+			}
+			body.appendChild(aiSummary);
+		}
 
-    if (item.queryAffinity) {
-      const queryAffinity = document.createElement('div');
-      queryAffinity.className = 'result-queryAffinity';
-      const color = item.queryAffinity === 'High' ? '#10b981' : item.queryAffinity === 'Medium' ? '#f59e0b' : '#ef4444';
-      queryAffinity.innerHTML = `<span style="color: ${color}; font-weight: 600;">Query Affinity: ${item.queryAffinity}</span>`;
-      body.appendChild(queryAffinity);
-    }
+		if (item.queryAffinity) {
+			const queryAffinity = document.createElement('div');
+			queryAffinity.className = 'result-queryAffinity';
+			const color = item.queryAffinity === 'High' ? '#10b981' : item.queryAffinity === 'Medium' ? '#f59e0b' : '#ef4444';
+			queryAffinity.innerHTML = `<span style="color: ${color}; font-weight: 600;">Query Affinity: ${item.queryAffinity}</span>`;
+			body.appendChild(queryAffinity);
+		}
 
-    if (item.parameters && item.parameters.length > 0) {
-      const parameters = document.createElement('div');
-      parameters.className = 'result-parameters';
-      parameters.textContent = `Parameters found: ${item.parameters.join(' • ')}`;
-      body.appendChild(parameters);
-    }
+		if (item.parameters && item.parameters.length > 0) {
+			const parameters = document.createElement('div');
+			parameters.className = 'result-parameters';
+			parameters.textContent = `Parameters found: ${item.parameters.join(' • ')}`;
+			body.appendChild(parameters);
+		}
 
-    card.appendChild(body);
-    container.appendChild(card);
-  }
+		card.appendChild(body);
+		container.appendChild(card);
+	}
 
-  // Restore expanded card if it's on the current page
-  const savedUrl = expandedCardUrl[currentSource];
-  if (savedUrl) {
-    const savedCard = container.querySelector(`.result-card[data-url="${savedUrl}"]`);
-    if (savedCard) {
-      savedCard.classList.add('expanded');
-    }
-  }
+	// Restore expanded card if it's on the current page
+	const savedUrl = expandedCardUrl[currentSource];
+	if (savedUrl) {
+		const savedCard = container.querySelector(`.result-card[data-url="${savedUrl}"]`);
+		if (savedCard) {
+			savedCard.classList.add('expanded');
+		}
+	}
 
-  const pagination = document.getElementById('pagination');
-  if (pagination) pagination.style.display = 'flex';
+	const pagination = document.getElementById('pagination');
+	if (pagination) pagination.style.display = 'flex';
 
-  const pageInfo = document.getElementById('page-info');
-  if (pageInfo) pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+	const pageInfo = document.getElementById('page-info');
+	if (pageInfo) pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
 
-  const prevBtn = document.getElementById('btn-prev-page') as HTMLButtonElement;
-  const nextBtn = document.getElementById('btn-next-page') as HTMLButtonElement;
+	const prevBtn = document.getElementById('btn-prev-page') as HTMLButtonElement;
+	const nextBtn = document.getElementById('btn-next-page') as HTMLButtonElement;
 
-  if (prevBtn) prevBtn.disabled = currentPage === 1;
-  if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+	if (prevBtn) prevBtn.disabled = currentPage === 1;
+	if (nextBtn) nextBtn.disabled = currentPage === totalPages;
 }
 
 // ─── Saved Jobs Tab ──────────────────────────────────────────────────────
 
 async function renderSavedJobs(): Promise<void> {
-  if (currentTab !== 'saved') return;
+	if (currentTab !== 'saved') return;
 
-  const container = document.getElementById('saved-results-list');
-  const noResults = document.getElementById('saved-no-results');
-  if (!container) return;
+	const container = document.getElementById('saved-results-list');
+	const noResults = document.getElementById('saved-no-results');
+	if (!container) return;
 
-  container.innerHTML = '';
+	container.innerHTML = '';
 
-  try {
-    const resp = await fetch('/api/job-data/saved');
-    if (!resp.ok) throw new Error('Failed to load saved jobs');
-    const allSaved = await resp.json() as ScraperResult[];
+	try {
+		const resp = await fetch('/api/job-data/saved');
+		if (!resp.ok) throw new Error('Failed to load saved jobs');
+		const allSaved = (await resp.json()) as ScraperResult[];
 
-    const totalElem = document.getElementById('saved-meta-total');
-    if (totalElem) totalElem.textContent = String(allSaved.length);
+		const totalElem = document.getElementById('saved-meta-total');
+		if (totalElem) totalElem.textContent = String(allSaved.length);
 
-    const sourcesElem = document.getElementById('saved-meta-sources');
-    if (sourcesElem) {
-      const sources = new Set(allSaved.map(r => r.source));
-      sourcesElem.textContent = sources.size > 0 ? Array.from(sources).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ') : 'None';
-    }
+		const sourcesElem = document.getElementById('saved-meta-sources');
+		if (sourcesElem) {
+			const sources = new Set(allSaved.map(r => r.source));
+			sourcesElem.textContent =
+				sources.size > 0
+					? Array.from(sources)
+							.map(s => s.charAt(0).toUpperCase() + s.slice(1))
+							.join(', ')
+					: 'None';
+		}
 
-    if (allSaved.length === 0) {
-      if (noResults) noResults.style.display = 'block';
-      return;
-    }
-    if (noResults) noResults.style.display = 'none';
+		if (allSaved.length === 0) {
+			if (noResults) noResults.style.display = 'block';
+			return;
+		}
+		if (noResults) noResults.style.display = 'none';
 
-    for (const item of allSaved) {
-      const card = createJobCard(item, 'saved');
-      container.appendChild(card);
-    }
-  } catch (err: unknown) {
-    console.error('Failed to load saved jobs:', (err as Error).message);
-    showToast({ message: 'Failed to load saved jobs', type: 'error' });
-  }
+		for (const item of allSaved) {
+			const card = createJobCard(item, 'saved');
+			container.appendChild(card);
+		}
+	} catch (err: unknown) {
+		console.error('Failed to load saved jobs:', (err as Error).message);
+		showToast({ message: 'Failed to load saved jobs', type: 'error' });
+	}
 }
 
 // ─── Job Dashboard Tab ───────────────────────────────────────────────────
 
 const DASHBOARD_LISTS = [
-  { id: 'applied', title: 'Applied' },
-  { id: 'screening', title: 'Screening' },
-  { id: 'tech', title: 'Tech round' },
-  { id: 'client', title: 'Client interview' },
-  { id: 'offer', title: 'Offer/Cultural fit' },
-  { id: 'hired', title: 'Hired' },
+	{ id: 'applied', title: 'Applied' },
+	{ id: 'screening', title: 'Screening' },
+	{ id: 'tech', title: 'Tech round' },
+	{ id: 'client', title: 'Client interview' },
+	{ id: 'offer', title: 'Offer/Cultural fit' },
+	{ id: 'rejected', title: 'Rejected' },
+	{ id: 'hired', title: 'Hired' },
 ] as const;
 
-type DashboardListId = typeof DASHBOARD_LISTS[number]['id'];
+type DashboardListId = (typeof DASHBOARD_LISTS)[number]['id'];
 
 const ROUND_LIST_IDS: Set<DashboardListId> = new Set(['screening', 'tech', 'client', 'offer']);
 
 function isRoundStatus(listId: DashboardListId): boolean {
-  return ROUND_LIST_IDS.has(listId);
+	return ROUND_LIST_IDS.has(listId);
 }
 
 const STATUS_TO_LIST: Record<string, DashboardListId> = {
-  'No News': 'applied',
-  'Interviewing': 'screening',
-  'Offer': 'offer',
-  'Rejected': 'hired',
+	'No News': 'applied',
+	'Interviewing': 'screening',
+	'Offer': 'offer',
+	'Rejected': 'rejected',
 };
 
 const LIST_TO_STATUS: Record<DashboardListId, string> = {
-  applied: 'No News',
-  screening: 'Interviewing',
-  tech: 'Interviewing',
-  client: 'Interviewing',
-  offer: 'Offer',
-  hired: 'Rejected',
+	applied: 'No News',
+	screening: 'Interviewing',
+	tech: 'Interviewing',
+	client: 'Interviewing',
+	offer: 'Offer',
+	rejected: 'Rejected',
+	hired: 'Hired',
 };
 
 function getColumnForJob(job: ScraperResult): DashboardListId {
-  if (job.column && (DASHBOARD_LISTS as readonly { id: DashboardListId }[]).some(l => l.id === job.column)) {
-    return job.column as DashboardListId;
-  }
-  return STATUS_TO_LIST[job.status || 'No News'] || 'applied';
+	if (job.column && (DASHBOARD_LISTS as readonly { id: DashboardListId }[]).some(l => l.id === job.column)) {
+		return job.column as DashboardListId;
+	}
+	return STATUS_TO_LIST[job.status || 'No News'] || 'applied';
 }
 
 let draggedCardUrl: string | null = null;
@@ -810,84 +870,84 @@ let draggedCardId: string | null = null;
 let draggedCardSourceListId: DashboardListId | null = null;
 
 async function renderDashboard(): Promise<void> {
-  if (currentTab !== 'dashboard') return;
+	if (currentTab !== 'dashboard') return;
 
-  const board = document.getElementById('dashboard-board');
-  if (!board) return;
+	const board = document.getElementById('dashboard-board');
+	if (!board) return;
 
-  board.innerHTML = '';
+	board.innerHTML = '';
 
-  try {
-    const resp = await fetch('/api/job-data/dashboard');
-    if (!resp.ok) throw new Error('Failed to load dashboard');
-    const jobs = await resp.json() as ScraperResult[];
+	try {
+		const resp = await fetch('/api/job-data/dashboard');
+		if (!resp.ok) throw new Error('Failed to load dashboard');
+		const jobs = (await resp.json()) as ScraperResult[];
 
-    const totalElem = document.getElementById('dashboard-meta-total');
-    if (totalElem) totalElem.textContent = String(jobs.length);
+		const totalElem = document.getElementById('dashboard-meta-total');
+		if (totalElem) totalElem.textContent = String(jobs.length);
 
-    const statusesElem = document.getElementById('dashboard-meta-statuses');
-    if (statusesElem) {
-      const statuses = new Set(jobs.map(j => j.status || 'No News'));
-      statusesElem.textContent = statuses.size > 0 ? Array.from(statuses).join(', ') : 'None';
-    }
+		const statusesElem = document.getElementById('dashboard-meta-statuses');
+		if (statusesElem) {
+			const statuses = new Set(jobs.map(j => j.status || 'No News'));
+			statusesElem.textContent = statuses.size > 0 ? Array.from(statuses).join(', ') : 'None';
+		}
 
-    const jobsByList = new Map<DashboardListId, ScraperResult[]>();
-    for (const job of jobs) {
-      const listId = getColumnForJob(job);
-      const list = jobsByList.get(listId) || [];
-      list.push(job);
-      jobsByList.set(listId, list);
-    }
+		const jobsByList = new Map<DashboardListId, ScraperResult[]>();
+		for (const job of jobs) {
+			const listId = getColumnForJob(job);
+			const list = jobsByList.get(listId) || [];
+			list.push(job);
+			jobsByList.set(listId, list);
+		}
 
-    for (const listDef of DASHBOARD_LISTS) {
-      const listJobs = jobsByList.get(listDef.id) || [];
-      const listEl = createBoardList(listDef, listJobs);
-      board.appendChild(listEl);
-    }
+		for (const listDef of DASHBOARD_LISTS) {
+			const listJobs = jobsByList.get(listDef.id) || [];
+			const listEl = createBoardList(listDef, listJobs);
+			board.appendChild(listEl);
+		}
 
-    initBoardDragAndDrop();
-  } catch (err: unknown) {
-    console.error('Failed to load dashboard:', (err as Error).message);
-    showToast({ message: 'Failed to load dashboard', type: 'error' });
-  }
+		initBoardDragAndDrop();
+	} catch (err: unknown) {
+		console.error('Failed to load dashboard:', (err as Error).message);
+		showToast({ message: 'Failed to load dashboard', type: 'error' });
+	}
 }
 
 function createBoardList(listDef: { id: DashboardListId; title: string }, jobs: ScraperResult[]): HTMLElement {
-  const list = document.createElement('div');
-  list.className = 'board-list';
-  list.dataset.listId = listDef.id;
+	const list = document.createElement('div');
+	list.className = 'board-list';
+	list.dataset.listId = listDef.id;
 
-  const header = document.createElement('div');
-  header.className = 'board-list-header';
-  header.textContent = listDef.title;
+	const header = document.createElement('div');
+	header.className = 'board-list-header';
+	header.textContent = listDef.title;
 
-  const count = document.createElement('span');
-  count.className = 'board-list-count';
-  count.textContent = String(jobs.length);
-  header.appendChild(count);
+	const count = document.createElement('span');
+	count.className = 'board-list-count';
+	count.textContent = String(jobs.length);
+	header.appendChild(count);
 
-  list.appendChild(header);
+	list.appendChild(header);
 
-  const cardsContainer = document.createElement('div');
-  cardsContainer.className = 'board-cards-container';
-  cardsContainer.dataset.listId = listDef.id;
+	const cardsContainer = document.createElement('div');
+	cardsContainer.className = 'board-cards-container';
+	cardsContainer.dataset.listId = listDef.id;
 
-  for (const job of jobs) {
-    const card = createBoardCard(job, listDef.id);
-    cardsContainer.appendChild(card);
-  }
+	for (const job of jobs) {
+		const card = createBoardCard(job, listDef.id);
+		cardsContainer.appendChild(card);
+	}
 
-  list.appendChild(cardsContainer);
+	list.appendChild(cardsContainer);
 
-  const addBtn = document.createElement('button');
-  addBtn.className = 'board-add-card-btn';
-  addBtn.textContent = '+ Add a card';
-  addBtn.addEventListener('click', () => showBoardComposer(addBtn));
-  list.appendChild(addBtn);
+	const addBtn = document.createElement('button');
+	addBtn.className = 'board-add-card-btn';
+	addBtn.textContent = '+ Add a card';
+	addBtn.addEventListener('click', () => showBoardComposer(addBtn));
+	list.appendChild(addBtn);
 
-  const composer = document.createElement('div');
-  composer.className = 'board-card-composer';
-  composer.innerHTML = `
+	const composer = document.createElement('div');
+	composer.className = 'board-card-composer';
+	composer.innerHTML = `
     <textarea placeholder="Enter job title or note..."></textarea>
     <div class="board-composer-actions">
       <button class="board-btn-confirm">Add card</button>
@@ -895,1453 +955,1573 @@ function createBoardList(listDef: { id: DashboardListId; title: string }, jobs: 
     </div>
   `;
 
-  const textarea = composer.querySelector('textarea') as HTMLTextAreaElement;
-  const confirmBtn = composer.querySelector('.board-btn-confirm') as HTMLButtonElement;
-  const cancelBtn = composer.querySelector('.board-btn-cancel') as HTMLButtonElement;
-  confirmBtn.addEventListener('click', async () => {
+	const textarea = composer.querySelector('textarea') as HTMLTextAreaElement;
+	const confirmBtn = composer.querySelector('.board-btn-confirm') as HTMLButtonElement;
+	const cancelBtn = composer.querySelector('.board-btn-cancel') as HTMLButtonElement;
+	confirmBtn.addEventListener('click', async () => {
+		const text = textarea.value.trim();
+		if (!text) return;
 
-    const text = textarea.value.trim();
-    if (!text) return;
+		const newJob: ScraperResult = {
+			title: text,
+			url: '',
+			snippet: '',
+			source: 'user',
+			company: '',
+			status: LIST_TO_STATUS[listDef.id] as 'No News' | 'Interviewing' | 'Offer' | 'Rejected',
+			column: listDef.id,
+			savedAt: new Date().toISOString(),
+			appliedAt: new Date().toISOString(),
+			saved: true,
+			applied: true,
+			id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+		};
 
-    const newJob: ScraperResult = {
-      title: text,
-      url: '',
-      snippet: '',
-      source: 'user',
-      company: '',
-      status: LIST_TO_STATUS[listDef.id] as 'No News' | 'Interviewing' | 'Offer' | 'Rejected',
-      column: listDef.id,
-      savedAt: new Date().toISOString(),
-      appliedAt: new Date().toISOString(),
-      saved: true,
-      applied: true,
-      id: 'manual-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-    };
+		try {
+			const resp = await fetch('/api/job-data/dashboard/add', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(newJob),
+			});
+			if (!resp.ok) throw new Error('Failed to add job');
+			showToast({ message: 'Job added to dashboard', type: 'success' });
+			renderDashboard();
+		} catch (err: unknown) {
+			showToast({ message: `Failed to add job: ${(err as Error).message}`, type: 'error' });
+		}
+	});
 
-    try {
-      const resp = await fetch('/api/job-data/dashboard/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newJob),
-      });
-      if (!resp.ok) throw new Error('Failed to add job');
-      showToast({ message: 'Job added to dashboard', type: 'success' });
-      renderDashboard();
-    } catch (err: unknown) {
-      showToast({ message: 'Failed to add job: ' + (err as Error).message, type: 'error' });
-    }
-  });
+	cancelBtn.addEventListener('click', () => hideBoardComposer(cancelBtn));
 
-  cancelBtn.addEventListener('click', () => hideBoardComposer(cancelBtn));
+	list.appendChild(composer);
 
-  list.appendChild(composer);
-
-  return list;
+	return list;
 }
 
 function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLElement {
-  const card = document.createElement('div');
-  card.className = 'board-card';
-  card.draggable = true;
-  card.dataset.url = job.url;
-  if (job.id) {
-    card.dataset.id = job.id;
-  }
+	const card = document.createElement('div');
+	card.className = 'board-card';
+	card.draggable = true;
+	card.dataset.url = job.url;
+	if (job.id) {
+		card.dataset.id = job.id;
+	}
 
-  if (isRoundStatus(listId)) {
-    const roundsContainer = document.createElement('div');
-    roundsContainer.className = 'board-card-rounds';
+	if (isRoundStatus(listId)) {
+		const roundsContainer = document.createElement('div');
+		roundsContainer.className = 'board-card-rounds';
 
-    const roundsToggle = document.createElement('button');
-    roundsToggle.className = 'board-card-rounds-toggle';
-    roundsToggle.textContent = (job.interviewRounds || 0) > 0 ? '+/-' : '+';
+		const roundsToggle = document.createElement('button');
+		roundsToggle.className = 'board-card-rounds-toggle';
+		roundsToggle.textContent = (job.interviewRounds || 0) > 0 ? '+/-' : '+';
 
-    const tooltip = document.createElement('span');
-    tooltip.className = 'board-card-rounds-tooltip';
-    tooltip.textContent = 'Counter control for rounds within current status';
-    roundsToggle.appendChild(tooltip);
+		const tooltip = document.createElement('span');
+		tooltip.className = 'board-card-rounds-tooltip';
+		tooltip.textContent = 'Counter control for rounds within current status';
+		roundsToggle.appendChild(tooltip);
 
-    roundsToggle.addEventListener('mouseenter', () => {
-      const rect = roundsToggle.getBoundingClientRect();
-      tooltip.style.left = `${rect.right - 220}px`;
-      tooltip.style.top = `${rect.top - 8}px`;
-      tooltip.style.transform = 'translateY(-100%)';
-    });
+		roundsToggle.addEventListener('mouseenter', () => {
+			const rect = roundsToggle.getBoundingClientRect();
+			tooltip.style.left = `${rect.right - 220}px`;
+			tooltip.style.top = `${rect.top - 8}px`;
+			tooltip.style.transform = 'translateY(-100%)';
+		});
 
-    roundsToggle.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      const menu = roundsContainer.querySelector('.board-card-rounds-menu');
-      const allMenus = document.querySelectorAll('.board-card-rounds-menu.show');
-      allMenus.forEach((m) => {
-        if (m !== menu) m.classList.remove('show');
-      });
-      if (menu) {
-        const menuEl = menu as HTMLElement;
-        const rect = roundsToggle.getBoundingClientRect();
-        menuEl.style.left = `${rect.right - 110}px`;
-        menuEl.style.top = `${rect.bottom + 4}px`;
-        menuEl.classList.toggle('show');
-      }
-    });
+		roundsToggle.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			const menu = roundsContainer.querySelector('.board-card-rounds-menu');
+			const allMenus = document.querySelectorAll('.board-card-rounds-menu.show');
+			allMenus.forEach(m => {
+				if (m !== menu) m.classList.remove('show');
+			});
+			if (menu) {
+				const menuEl = menu as HTMLElement;
+				const rect = roundsToggle.getBoundingClientRect();
+				menuEl.style.left = `${rect.right - 110}px`;
+				menuEl.style.top = `${rect.bottom + 4}px`;
+				menuEl.classList.toggle('show');
+			}
+		});
 
-    const roundsCount = document.createElement('span');
-    roundsCount.className = 'board-card-rounds-count';
-    roundsCount.textContent = String(job.interviewRounds || 1);
+		const roundsCount = document.createElement('span');
+		roundsCount.className = 'board-card-rounds-count';
+		roundsCount.textContent = String(job.interviewRounds || 1);
 
-    const roundsMenu = document.createElement('div');
-    roundsMenu.className = 'board-card-rounds-menu';
+		const roundsMenu = document.createElement('div');
+		roundsMenu.className = 'board-card-rounds-menu';
 
-    const incrementItem = document.createElement('button');
-    incrementItem.className = 'board-card-rounds-menu-item';
-    incrementItem.textContent = 'Increment';
-    incrementItem.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      roundsMenu.classList.remove('show');
-      updateInterviewRounds(job, 1);
-    });
+		const incrementItem = document.createElement('button');
+		incrementItem.className = 'board-card-rounds-menu-item';
+		incrementItem.textContent = 'Increment';
+		incrementItem.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			roundsMenu.classList.remove('show');
+			updateInterviewRounds(job, 1);
+		});
 
-    const decrementItem = document.createElement('button');
-    decrementItem.className = 'board-card-rounds-menu-item';
-    if ((job.interviewRounds || 1) === 1) {
-      decrementItem.classList.add('disabled');
-    }
-    decrementItem.textContent = 'Decrement';
-    decrementItem.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      if ((job.interviewRounds || 1) > 1) {
-        roundsMenu.classList.remove('show');
-        updateInterviewRounds(job, -1);
-      }
-    });
+		const decrementItem = document.createElement('button');
+		decrementItem.className = 'board-card-rounds-menu-item';
+		if ((job.interviewRounds || 1) === 1) {
+			decrementItem.classList.add('disabled');
+		}
+		decrementItem.textContent = 'Decrement';
+		decrementItem.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			if ((job.interviewRounds || 1) > 1) {
+				roundsMenu.classList.remove('show');
+				updateInterviewRounds(job, -1);
+			}
+		});
 
-    roundsMenu.appendChild(incrementItem);
-    roundsMenu.appendChild(decrementItem);
+		roundsMenu.appendChild(incrementItem);
+		roundsMenu.appendChild(decrementItem);
 
-    roundsContainer.appendChild(roundsToggle);
-    roundsContainer.appendChild(roundsCount);
-    roundsContainer.appendChild(roundsMenu);
+		roundsContainer.appendChild(roundsToggle);
+		roundsContainer.appendChild(roundsCount);
+		roundsContainer.appendChild(roundsMenu);
 
-    card.appendChild(roundsContainer);
-  }
+		card.appendChild(roundsContainer);
+	}
 
-  const title = document.createElement('div');
-  title.className = 'board-card-title';
-  title.textContent = job.title || 'Untitled Job';
-  card.appendChild(title);
+	const title = document.createElement('div');
+	title.className = 'board-card-title';
+	title.textContent = job.title || 'Untitled Job';
+	card.appendChild(title);
 
-  if (job.company) {
-    const company = document.createElement('div');
-    company.className = 'board-card-company';
-    company.textContent = job.company;
-    card.appendChild(company);
-  }
+	if (job.company) {
+		const company = document.createElement('div');
+		company.className = 'board-card-company';
+		company.textContent = job.company;
+		card.appendChild(company);
+	}
 
-  const footer = document.createElement('div');
-  footer.className = 'board-card-footer';
-  footer.style.position = 'relative';
+	const footer = document.createElement('div');
+	footer.className = 'board-card-footer';
+	footer.style.position = 'relative';
 
-  const sourceBadge = document.createElement('span');
-  sourceBadge.className = `board-card-source ${job.source}`;
-  const sourceLabel = job.source === 'linkedin' ? 'LinkedIn' : job.source === 'google' ? 'Google' : 'User';
-  sourceBadge.textContent = sourceLabel;
-  footer.appendChild(sourceBadge);
+	const sourceBadge = document.createElement('span');
+	sourceBadge.className = `board-card-source ${job.source}`;
+	const sourceLabel =
+		job.source === 'linkedin'
+			? 'LinkedIn'
+			: job.source === 'google'
+				? 'Google'
+				: job.source === 'remoterocketship'
+					? 'Remote Rocketship'
+					: 'User';
+	sourceBadge.textContent = sourceLabel;
+	footer.appendChild(sourceBadge);
 
-  if (job.postedDate) {
-    const date = document.createElement('span');
-    date.className = 'board-card-meta';
-    date.textContent = job.postedDate;
-    footer.appendChild(date);
-  }
+	if (job.postedDate) {
+		const date = document.createElement('span');
+		date.className = 'board-card-meta';
+		date.textContent = job.postedDate;
+		footer.appendChild(date);
+	}
 
-  const menuBtn = document.createElement('button');
-  menuBtn.className = 'board-card-menu-btn';
-  menuBtn.textContent = '⋯';
-  menuBtn.addEventListener('click', (e: MouseEvent) => {
-    e.stopPropagation();
-    const currentMenu = card.querySelector('.board-card-menu');
-    const allMenus = document.querySelectorAll('.board-card-menu.show');
-    allMenus.forEach((m) => {
-      if (m !== currentMenu) m.classList.remove('show');
-    });
-    if (currentMenu) {
-      const menuEl = currentMenu as HTMLElement;
-      const rect = menuBtn.getBoundingClientRect();
-      menuEl.style.left = `${rect.right - 140}px`;
-      menuEl.style.top = `${rect.bottom + 4}px`;
-      menuEl.classList.toggle('show');
-    }
-  });
-  footer.appendChild(menuBtn);
+	const menuBtn = document.createElement('button');
+	menuBtn.className = 'board-card-menu-btn';
+	menuBtn.textContent = '⋯';
+	menuBtn.addEventListener('click', (e: MouseEvent) => {
+		e.stopPropagation();
+		const currentMenu = card.querySelector('.board-card-menu');
+		const allMenus = document.querySelectorAll('.board-card-menu.show');
+		allMenus.forEach(m => {
+			if (m !== currentMenu) m.classList.remove('show');
+		});
+		if (currentMenu) {
+			const menuEl = currentMenu as HTMLElement;
+			const rect = menuBtn.getBoundingClientRect();
+			menuEl.style.left = `${rect.right - 140}px`;
+			menuEl.style.top = `${rect.bottom + 4}px`;
+			menuEl.classList.toggle('show');
+		}
+	});
+	footer.appendChild(menuBtn);
 
-  card.appendChild(footer);
+	card.appendChild(footer);
 
-  const menu = document.createElement('div');
-  menu.className = 'board-card-menu';
+	const menu = document.createElement('div');
+	menu.className = 'board-card-menu';
 
-  const renameItem = document.createElement('button');
-  renameItem.className = 'board-card-menu-item';
-  renameItem.textContent = 'Rename';
-  renameItem.addEventListener('click', (e: MouseEvent) => {
-    e.stopPropagation();
-    menu.classList.remove('show');
-    startRename(card, title, job);
-  });
-  menu.appendChild(renameItem);
+	const renameItem = document.createElement('button');
+	renameItem.className = 'board-card-menu-item';
+	renameItem.textContent = 'Rename';
+	renameItem.addEventListener('click', (e: MouseEvent) => {
+		e.stopPropagation();
+		menu.classList.remove('show');
+		startRename(card, title, job);
+	});
+	menu.appendChild(renameItem);
 
-  const changeSourceItem = document.createElement('button');
-  changeSourceItem.className = 'board-card-menu-item';
-  changeSourceItem.textContent = 'Change Source';
-  changeSourceItem.addEventListener('click', (e: MouseEvent) => {
-    e.stopPropagation();
-    menu.classList.remove('show');
-    changeCardSource(card, job);
-  });
-  menu.appendChild(changeSourceItem);
+	const changeSourceItem = document.createElement('button');
+	changeSourceItem.className = 'board-card-menu-item';
+	changeSourceItem.textContent = 'Change Source';
+	changeSourceItem.addEventListener('click', (e: MouseEvent) => {
+		e.stopPropagation();
+		menu.classList.remove('show');
+		changeCardSource(card, job);
+	});
+	menu.appendChild(changeSourceItem);
 
-  const deleteItem = document.createElement('button');
-  deleteItem.className = 'board-card-menu-item danger';
-  deleteItem.textContent = 'Delete';
-  deleteItem.addEventListener('click', (e: MouseEvent) => {
-    e.stopPropagation();
-    menu.classList.remove('show');
-    handleDashboardDelete(job);
-  });
-  menu.appendChild(deleteItem);
+	const deleteItem = document.createElement('button');
+	deleteItem.className = 'board-card-menu-item danger';
+	deleteItem.textContent = 'Delete';
+	deleteItem.addEventListener('click', (e: MouseEvent) => {
+		e.stopPropagation();
+		menu.classList.remove('show');
+		handleDashboardDelete(job);
+	});
+	menu.appendChild(deleteItem);
 
-  card.appendChild(menu);
+	card.appendChild(menu);
 
-  card.addEventListener('dragstart', (e: DragEvent) => {
-    draggedCardUrl = job.url;
-    draggedCardId = job.id || null;
-    // Capture source column at drag start (before card might move during dragover)
-    const sourceContainer = card.closest('.board-cards-container') as HTMLElement | null;
-    draggedCardSourceListId = (sourceContainer?.dataset.listId as DashboardListId) || null;
-    setTimeout(() => card.classList.add('dragging'), 0);
-    if (e.dataTransfer) {
-      e.dataTransfer.effectAllowed = 'move';
-    }
-  });
+	card.addEventListener('dragstart', (e: DragEvent) => {
+		draggedCardUrl = job.url;
+		draggedCardId = job.id || null;
+		// Capture source column at drag start (before card might move during dragover)
+		const sourceContainer = card.closest('.board-cards-container') as HTMLElement | null;
+		draggedCardSourceListId = (sourceContainer?.dataset.listId as DashboardListId) || null;
+		setTimeout(() => card.classList.add('dragging'), 0);
+		if (e.dataTransfer) {
+			e.dataTransfer.effectAllowed = 'move';
+		}
+	});
 
-  card.addEventListener('dragend', () => {
-    card.classList.remove('dragging');
-    draggedCardUrl = null;
-    draggedCardId = null;
-    draggedCardSourceListId = null;
-  });
+	card.addEventListener('dragend', () => {
+		card.classList.remove('dragging');
+		draggedCardUrl = null;
+		draggedCardId = null;
+		draggedCardSourceListId = null;
+	});
 
-  return card;
+	return card;
 }
 
 function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult): void {
-  const currentTitleEl = card.querySelector('.board-card-title') || titleEl;
-  const currentTitle = currentTitleEl.textContent || job.title || '';
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.value = currentTitle;
-  input.style.cssText = 'width: 100%; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 6px 8px; color: #e2e8f0; font-family: Comfortaa, sans-serif; font-size: 13px; outline: none;';
+	const currentTitleEl = card.querySelector('.board-card-title') || titleEl;
+	const currentTitle = currentTitleEl.textContent || job.title || '';
+	const input = document.createElement('input');
+	input.type = 'text';
+	input.value = currentTitle;
+	input.style.cssText =
+		'width: 100%; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 6px 8px; color: #e2e8f0; font-family: Comfortaa, sans-serif; font-size: 13px; outline: none;';
 
-  currentTitleEl.replaceWith(input);
-  input.focus();
-  input.select();
+	currentTitleEl.replaceWith(input);
+	input.focus();
+	input.select();
 
-  const finish = async (save: boolean) => {
-    const newTitle = save ? input.value.trim() : currentTitle;
-    const titleChanged = save && newTitle && newTitle !== currentTitle;
-    if (titleChanged) {
-      try {
-        const body: Record<string, string> = { title: newTitle };
-        if (job.url) {
-          body.url = job.url;
-        } else if (job.id) {
-          body.id = job.id;
-        }
-        const resp = await fetch('/api/job-data/rename', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        if (!resp.ok) throw new Error('Failed to rename job');
-        job.title = newTitle;
-        showToast({ message: 'Job renamed', type: 'success' });
-      } catch (err: unknown) {
-        showToast({ message: 'Error: ' + (err as Error).message, type: 'error' });
-      }
-    } else if (save) {
-      showToast({ message: 'No changes made', type: 'info' });
-    }
+	const finish = async (save: boolean) => {
+		const newTitle = save ? input.value.trim() : currentTitle;
+		const titleChanged = save && newTitle && newTitle !== currentTitle;
+		if (titleChanged) {
+			try {
+				const body: Record<string, string> = { title: newTitle };
+				if (job.url) {
+					body.url = job.url;
+				} else if (job.id) {
+					body.id = job.id;
+				}
+				const resp = await fetch('/api/job-data/rename', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body),
+				});
+				if (!resp.ok) throw new Error('Failed to rename job');
+				job.title = newTitle;
+				showToast({ message: 'Job renamed', type: 'success' });
+			} catch (err: unknown) {
+				showToast({ message: `Error: ${(err as Error).message}`, type: 'error' });
+			}
+		} else if (save) {
+			showToast({ message: 'No changes made', type: 'info' });
+		}
 
-    const newTitleEl = document.createElement('div');
-    newTitleEl.className = 'board-card-title';
-    newTitleEl.textContent = newTitle || 'Untitled Job';
-    input.replaceWith(newTitleEl);
-  };
+		const newTitleEl = document.createElement('div');
+		newTitleEl.className = 'board-card-title';
+		newTitleEl.textContent = newTitle || 'Untitled Job';
+		input.replaceWith(newTitleEl);
+	};
 
-  input.addEventListener('blur', () => finish(true));
-  input.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      input.blur();
-    } else if (e.key === 'Escape') {
-      finish(false);
-    }
-  });
+	input.addEventListener('blur', () => finish(true));
+	input.addEventListener('keydown', (e: KeyboardEvent) => {
+		if (e.key === 'Enter') {
+			input.blur();
+		} else if (e.key === 'Escape') {
+			finish(false);
+		}
+	});
 }
 
 function changeCardSource(card: HTMLElement, job: ScraperResult): void {
-  const sources: Array<'linkedin' | 'google' | 'remoterocketship' | 'user'> = ['linkedin', 'google', 'remoterocketship', 'user'];
-  const currentSource = job.source;
-  const currentIndex = sources.indexOf(currentSource);
-  const nextSource = sources[(currentIndex + 1) % sources.length];
+	const sources: Array<'linkedin' | 'google' | 'remoterocketship' | 'user'> = [
+		'linkedin',
+		'google',
+		'remoterocketship',
+		'user',
+	];
+	const currentSource = job.source;
+	const currentIndex = sources.indexOf(currentSource);
+	const nextSource = sources[(currentIndex + 1) % sources.length];
 
-  job.source = nextSource;
+	job.source = nextSource;
 
-  const sourceBadge = card.querySelector('.board-card-source') as HTMLElement;
-  const sourceLabel = nextSource === 'linkedin' ? 'LinkedIn' : nextSource === 'google' ? 'Google' : nextSource === 'remoterocketship' ? 'Remote Rocketship' : 'User';
-  if (sourceBadge) {
-    sourceBadge.className = `board-card-source ${nextSource}`;
-    sourceBadge.textContent = sourceLabel;
-  }
+	const sourceBadge = card.querySelector('.board-card-source') as HTMLElement;
+	const sourceLabel =
+		nextSource === 'linkedin'
+			? 'LinkedIn'
+			: nextSource === 'google'
+				? 'Google'
+				: nextSource === 'remoterocketship'
+					? 'Remote Rocketship'
+					: 'User';
+	if (sourceBadge) {
+		sourceBadge.className = `board-card-source ${nextSource}`;
+		sourceBadge.textContent = sourceLabel;
+	}
 
-  try {
-    const body: Record<string, string> = { source: nextSource };
-    if (job.url) {
-      body.url = job.url;
-    } else if (job.id) {
-      body.id = job.id;
-    }
-    fetch('/api/job-data/update-source', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    }).then((resp) => {
-      if (!resp.ok) throw new Error('Failed to update source');
-      showToast({ message: `Source changed to ${sourceLabel}`, type: 'success' });
-    }).catch((err: Error) => {
-      showToast({ message: 'Error: ' + err.message, type: 'error' });
-      // Revert on error
-      job.source = currentSource;
-      if (sourceBadge) {
-        const revertLabel = currentSource === 'linkedin' ? 'LinkedIn' : currentSource === 'google' ? 'Google' : currentSource === 'remoterocketship' ? 'Remote Rocketship' : 'User';
-        sourceBadge.className = `board-card-source ${currentSource}`;
-        sourceBadge.textContent = revertLabel;
-      }
-    });
-  } catch (err: unknown) {
-    showToast({ message: 'Error: ' + (err as Error).message, type: 'error' });
-  }
+	try {
+		const body: Record<string, string> = { source: nextSource };
+		if (job.url) {
+			body.url = job.url;
+		} else if (job.id) {
+			body.id = job.id;
+		}
+		fetch('/api/job-data/update-source', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+		})
+			.then(resp => {
+				if (!resp.ok) throw new Error('Failed to update source');
+				showToast({ message: `Source changed to ${sourceLabel}`, type: 'success' });
+			})
+			.catch((err: Error) => {
+				showToast({ message: `Error: ${err.message}`, type: 'error' });
+				// Revert on error
+				job.source = currentSource;
+				if (sourceBadge) {
+					const revertLabel =
+						currentSource === 'linkedin'
+							? 'LinkedIn'
+							: currentSource === 'google'
+								? 'Google'
+								: currentSource === 'remoterocketship'
+									? 'Remote Rocketship'
+									: 'User';
+					sourceBadge.className = `board-card-source ${currentSource}`;
+					sourceBadge.textContent = revertLabel;
+				}
+			});
+	} catch (err: unknown) {
+		showToast({ message: `Error: ${(err as Error).message}`, type: 'error' });
+	}
 }
 
 function updateInterviewRounds(job: ScraperResult, delta: number): void {
-  fetch('/api/job-data/rounds', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url: job.url, id: job.id, delta }),
-  }).then((resp) => {
-    if (resp.ok) {
-      renderDashboard();
-    }
-  }).catch(() => {
-    // ignore
-  });
+	fetch('/api/job-data/rounds', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ url: job.url, id: job.id, delta }),
+	})
+		.then(resp => {
+			if (resp.ok) {
+				renderDashboard();
+			}
+		})
+		.catch(() => {
+			// ignore
+		});
 }
 
 function handleDashboardDelete(job: ScraperResult): void {
-  confirmDelete(
-    'job',
-    async () => {
-      try {
-        const body: Record<string, string> = {};
-        if (job.url) {
-          body.url = job.url;
-        } else if (job.id) {
-          body.id = job.id;
-        }
-        const resp = await fetch('/api/job-data/dashboard/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        if (!resp.ok) {
-          const errData = await resp.json().catch(() => ({ error: 'Failed to delete job' }));
-          throw new Error(errData.error || 'Failed to delete job');
-        }
-        showToast({ message: 'Job removed from dashboard', type: 'success' });
-        renderDashboard();
-      } catch (err: unknown) {
-        showToast({ message: 'Error: ' + (err as Error).message, type: 'error' });
-      }
-    },
-    { variant: 'danger', message: 'This card will be removed from the board. Do you want to continue?' }
-  );
+	confirmDelete(
+		'job',
+		async () => {
+			try {
+				const body: Record<string, string> = {};
+				if (job.url) {
+					body.url = job.url;
+				} else if (job.id) {
+					body.id = job.id;
+				}
+				const resp = await fetch('/api/job-data/dashboard/delete', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body),
+				});
+				if (!resp.ok) {
+					const errData = await resp.json().catch(() => ({ error: 'Failed to delete job' }));
+					throw new Error(errData.error || 'Failed to delete job');
+				}
+				showToast({ message: 'Job removed from dashboard', type: 'success' });
+				renderDashboard();
+			} catch (err: unknown) {
+				showToast({ message: `Error: ${(err as Error).message}`, type: 'error' });
+			}
+		},
+		{ variant: 'danger', message: 'This card will be removed from the board. Do you want to continue?' }
+	);
 }
 
 function initBoardDragAndDrop(): void {
-  const containers = document.querySelectorAll('.board-cards-container');
-  containers.forEach(container => {
-    container.addEventListener('dragover', (e: Event) => {
-      e.preventDefault();
-      if (!draggedCardUrl && !draggedCardId) return;
-      const afterElement = getDragAfterElement(container, (e as DragEvent).clientY);
-      const card = draggedCardUrl
-        ? document.querySelector(`.board-card[data-url="${draggedCardUrl}"]`) as HTMLElement | null
-        : document.querySelector(`.board-card[data-id="${draggedCardId}"]`) as HTMLElement | null;
-      if (!card) return;
-      if (afterElement == null) {
-        container.appendChild(card);
-      } else {
-        container.insertBefore(card, afterElement);
-      }
-    });
+	const containers = document.querySelectorAll('.board-cards-container');
+	containers.forEach(container => {
+		container.addEventListener('dragover', (e: Event) => {
+			e.preventDefault();
+			if (!draggedCardUrl && !draggedCardId) return;
+			const afterElement = getDragAfterElement(container, (e as DragEvent).clientY);
+			const card = draggedCardUrl
+				? (document.querySelector(`.board-card[data-url="${draggedCardUrl}"]`) as HTMLElement | null)
+				: (document.querySelector(`.board-card[data-id="${draggedCardId}"]`) as HTMLElement | null);
+			if (!card) return;
+			if (afterElement == null) {
+				container.appendChild(card);
+			} else {
+				container.insertBefore(card, afterElement);
+			}
+		});
 
-    container.addEventListener('drop', async (e: Event) => {
-      e.preventDefault();
-      if (!draggedCardUrl && !draggedCardId) return;
-      const newListId = (container as HTMLElement).dataset.listId as DashboardListId;
-      // Use the source column captured at dragstart (before dragover moves the card)
-      const currentListId = draggedCardSourceListId;
-      if (currentListId && newListId && currentListId === newListId) {
-        showToast({ message: 'Already in this column', type: 'info' });
-        return;
-      }
-      const newStatus = LIST_TO_STATUS[newListId];
-      try {
-        const body: Record<string, string> = { status: newStatus, column: newListId };
-        if (draggedCardUrl) {
-          body.url = draggedCardUrl;
-        } else if (draggedCardId) {
-          body.id = draggedCardId;
-        }
-        const resp = await fetch('/api/job-data/update-status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        if (!resp.ok) throw new Error('Failed to update status');
-        showToast({ message: 'Status updated', type: 'success' });
-        renderDashboard();
-      } catch (err: unknown) {
-        showToast({ message: 'Failed to update status: ' + (err as Error).message, type: 'error' });
-      }
-    });
-  });
+		container.addEventListener('drop', async (e: Event) => {
+			e.preventDefault();
+			if (!draggedCardUrl && !draggedCardId) return;
+			const newListId = (container as HTMLElement).dataset.listId as DashboardListId;
+			// Use the source column captured at dragstart (before dragover moves the card)
+			const currentListId = draggedCardSourceListId;
+			if (currentListId && newListId && currentListId === newListId) {
+				showToast({ message: 'Already in this column', type: 'info' });
+				return;
+			}
+			const newStatus = LIST_TO_STATUS[newListId];
+			try {
+				const body: Record<string, string> = { status: newStatus, column: newListId };
+				if (draggedCardUrl) {
+					body.url = draggedCardUrl;
+				} else if (draggedCardId) {
+					body.id = draggedCardId;
+				}
+				const resp = await fetch('/api/job-data/update-status', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body),
+				});
+				if (!resp.ok) throw new Error('Failed to update status');
+				showToast({ message: 'Status updated', type: 'success' });
+				renderDashboard();
+			} catch (err: unknown) {
+				showToast({ message: `Failed to update status: ${(err as Error).message}`, type: 'error' });
+			}
+		});
+	});
 }
 
 function getDragAfterElement(container: Element, y: number): Element | null {
-  const draggableElements = [...container.querySelectorAll('.board-card:not(.dragging)')];
-  const result = draggableElements.reduce((closest, child) => {
-    const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height / 2;
-    if (offset < 0 && offset > closest.offset) {
-      return { offset, element: child };
-    }
-    return closest;
-  }, { offset: -Infinity } as { offset: number; element?: Element });
-  return result.element || null;
+	const draggableElements = [...container.querySelectorAll('.board-card:not(.dragging)')];
+	const result = draggableElements.reduce(
+		(closest, child) => {
+			const box = child.getBoundingClientRect();
+			const offset = y - box.top - box.height / 2;
+			if (offset < 0 && offset > closest.offset) {
+				return { offset, element: child };
+			}
+			return closest;
+		},
+		{ offset: -Infinity } as { offset: number; element?: Element }
+	);
+	return result.element || null;
 }
 
 function showBoardComposer(btn: HTMLButtonElement): void {
-  btn.style.display = 'none';
-  const composer = btn.nextElementSibling as HTMLElement;
-  if (!composer) return;
-  composer.style.display = 'flex';
-  const textarea = composer.querySelector('textarea') as HTMLTextAreaElement;
-  if (textarea) textarea.focus();
+	btn.style.display = 'none';
+	const composer = btn.nextElementSibling as HTMLElement;
+	if (!composer) return;
+	composer.style.display = 'flex';
+	const textarea = composer.querySelector('textarea') as HTMLTextAreaElement;
+	if (textarea) textarea.focus();
 }
 
 function hideBoardComposer(btn: HTMLButtonElement): void {
-  const composer = btn.closest('.board-card-composer') as HTMLElement;
-  if (!composer) return;
-  composer.style.display = 'none';
-  const addBtn = composer.previousElementSibling as HTMLElement;
-  if (addBtn) addBtn.style.display = 'flex';
-  const textarea = composer.querySelector('textarea');
-  if (textarea) (textarea as HTMLTextAreaElement).value = '';
+	const composer = btn.closest('.board-card-composer') as HTMLElement;
+	if (!composer) return;
+	composer.style.display = 'none';
+	const addBtn = composer.previousElementSibling as HTMLElement;
+	if (addBtn) addBtn.style.display = 'flex';
+	const textarea = composer.querySelector('textarea');
+	if (textarea) (textarea as HTMLTextAreaElement).value = '';
 }
 
 // ─── Card Creation Helper ────────────────────────────────────────────────
 
 function createJobCard(item: ScraperResult, view: 'scraping' | 'saved' | 'dashboard'): HTMLElement {
-  const card = document.createElement('div');
-  card.className = 'result-card';
-  card.dataset.url = item.url;
+	const card = document.createElement('div');
+	card.className = 'result-card';
+	card.dataset.url = item.url;
 
-  // Header
-  const header = document.createElement('div');
-  header.className = 'result-card-header';
+	// Header
+	const header = document.createElement('div');
+	header.className = 'result-card-header';
 
-  const titleEl = document.createElement('span');
-  titleEl.className = 'result-title';
-  titleEl.textContent = item.title;
+	const titleEl = document.createElement('span');
+	titleEl.className = 'result-title';
+	titleEl.textContent = item.title;
 
-  const headerActions = document.createElement('div');
-  headerActions.className = 'result-card-actions';
+	const headerActions = document.createElement('div');
+	headerActions.className = 'result-card-actions';
 
-  // Source badge
-  const sourceBadge = document.createElement('span');
-  sourceBadge.className = `result-source-badge ${item.source}`;
-  //juani
-  sourceBadge.textContent = item.source === 'linkedin' ? 'LinkedIn' : 'Google';
-  headerActions.appendChild(sourceBadge);
+	// Source badge
+	const sourceBadge = document.createElement('span');
+	sourceBadge.className = `result-source-badge ${item.source}`;
+	//juani
+	sourceBadge.textContent = item.source === 'linkedin' ? 'LinkedIn' : 'Google';
+	headerActions.appendChild(sourceBadge);
 
-  // Status badge (dashboard only)
-  if (view === 'dashboard' && item.status) {
-    const statusBadge = document.createElement('span');
-    statusBadge.className = 'result-source-badge';
-    statusBadge.style.background = 'rgba(37, 99, 235, 0.2)';
-    statusBadge.style.color = '#60a5fa';
-    statusBadge.style.border = '1px solid rgba(37, 99, 235, 0.3)';
-    statusBadge.textContent = item.status as string;
-    headerActions.appendChild(statusBadge);
-  }
+	// Status badge (dashboard only)
+	if (view === 'dashboard' && item.status) {
+		const statusBadge = document.createElement('span');
+		statusBadge.className = 'result-source-badge';
+		statusBadge.style.background = 'rgba(37, 99, 235, 0.2)';
+		statusBadge.style.color = '#60a5fa';
+		statusBadge.style.border = '1px solid rgba(37, 99, 235, 0.3)';
+		statusBadge.textContent = item.status as string;
+		headerActions.appendChild(statusBadge);
+	}
 
-  // Actions based on view
-  if (view === 'scraping') {
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'card-action-btn save';
-    saveBtn.textContent = item.saved ? 'Saved ✓' : 'Save';
-    saveBtn.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      handleSave(item, item.source);
-    });
-    headerActions.appendChild(saveBtn);
+	// Actions based on view
+	if (view === 'scraping') {
+		const saveBtn = document.createElement('button');
+		saveBtn.className = 'card-action-btn save';
+		saveBtn.textContent = item.saved ? 'Saved ✓' : 'Save';
+		saveBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			handleSave(item, item.source);
+		});
+		headerActions.appendChild(saveBtn);
 
-    const applyBtn = document.createElement('button');
-    applyBtn.className = 'card-action-btn apply';
-    applyBtn.textContent = 'Applied?';
-    applyBtn.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      handleApply(item, item.source);
-    });
-    headerActions.appendChild(applyBtn);
+		const applyBtn = document.createElement('button');
+		applyBtn.className = 'card-action-btn apply';
+		applyBtn.textContent = 'Applied?';
+		applyBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			handleApply(item, item.source);
+		});
+		headerActions.appendChild(applyBtn);
 
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'card-action-btn remove';
-    removeBtn.textContent = 'Remove';
-    removeBtn.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      handleRemove(item, item.source);
-    });
-    headerActions.appendChild(removeBtn);
-  } else if (view === 'saved') {
-    const unsaveBtn = document.createElement('button');
-    unsaveBtn.className = 'card-action-btn unsave';
-    unsaveBtn.textContent = 'Unsave';
-    unsaveBtn.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      handleUnsave(item, item.source);
-    });
-    headerActions.appendChild(unsaveBtn);
+		const removeBtn = document.createElement('button');
+		removeBtn.className = 'card-action-btn remove';
+		removeBtn.textContent = 'Remove';
+		removeBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			handleRemove(item, item.source);
+		});
+		headerActions.appendChild(removeBtn);
+	} else if (view === 'saved') {
+		const unsaveBtn = document.createElement('button');
+		unsaveBtn.className = 'card-action-btn unsave';
+		unsaveBtn.textContent = 'Unsave';
+		unsaveBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			handleUnsave(item, item.source);
+		});
+		headerActions.appendChild(unsaveBtn);
 
-    const applyBtn = document.createElement('button');
-    applyBtn.className = 'card-action-btn apply';
-    applyBtn.textContent = 'Applied?';
-    applyBtn.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation();
-      handleApply(item, item.source);
-    });
-    headerActions.appendChild(applyBtn);
-  } else if (view === 'dashboard') {
-    // Future: status transition dropdown
-    const statusLabel = document.createElement('span');
-    statusLabel.style.cssText = 'font-size: 11px; color: #94a3b8;';
-    statusLabel.textContent = `Saved: ${item.savedAt ? new Date(item.savedAt).toLocaleDateString() : 'N/A'}`;
-    headerActions.appendChild(statusLabel);
-  }
+		const applyBtn = document.createElement('button');
+		applyBtn.className = 'card-action-btn apply';
+		applyBtn.textContent = 'Applied?';
+		applyBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			handleApply(item, item.source);
+		});
+		headerActions.appendChild(applyBtn);
+	} else if (view === 'dashboard') {
+		// Future: status transition dropdown
+		const statusLabel = document.createElement('span');
+		statusLabel.style.cssText = 'font-size: 11px; color: #94a3b8;';
+		statusLabel.textContent = `Saved: ${item.savedAt ? new Date(item.savedAt).toLocaleDateString() : 'N/A'}`;
+		headerActions.appendChild(statusLabel);
+	}
 
-  header.appendChild(titleEl);
-  header.appendChild(headerActions);
-  card.appendChild(header);
+	header.appendChild(titleEl);
+	header.appendChild(headerActions);
+	card.appendChild(header);
 
-  // Footer
-  const footer = document.createElement('div');
-  footer.className = 'result-footer';
+	// Footer
+	const footer = document.createElement('div');
+	footer.className = 'result-footer';
 
-  const footerLeft = document.createElement('div');
-  footerLeft.className = 'result-footer-left';
+	const footerLeft = document.createElement('div');
+	footerLeft.className = 'result-footer-left';
 
-  if (item.company) {
-    const company = document.createElement('span');
-    company.className = 'result-company';
-    company.textContent = item.company;
-    footerLeft.appendChild(company);
-  }
+	if (item.company) {
+		const company = document.createElement('span');
+		company.className = 'result-company';
+		company.textContent = item.company;
+		footerLeft.appendChild(company);
+	}
 
-  if (item.postedDate) {
-    const date = document.createElement('span');
-    date.className = 'result-posted-date';
-    date.textContent = item.postedDate;
-    footerLeft.appendChild(date);
-  }
+	if (item.postedDate) {
+		const date = document.createElement('span');
+		date.className = 'result-posted-date';
+		date.textContent = item.postedDate;
+		footerLeft.appendChild(date);
+	}
 
-  const applyLinkBtn = document.createElement('a');
-  applyLinkBtn.className = 'result-link-btn';
-  applyLinkBtn.href = item.url;
-  applyLinkBtn.target = '_blank';
-  applyLinkBtn.rel = 'noopener noreferrer';
-  applyLinkBtn.textContent = 'Apply ↗';
-  footer.appendChild(footerLeft);
-  footer.appendChild(applyLinkBtn);
-  card.appendChild(footer);
+	const applyLinkBtn = document.createElement('a');
+	applyLinkBtn.className = 'result-link-btn';
+	applyLinkBtn.href = item.url;
+	applyLinkBtn.target = '_blank';
+	applyLinkBtn.rel = 'noopener noreferrer';
+	applyLinkBtn.textContent = 'Apply ↗';
+	footer.appendChild(footerLeft);
+	footer.appendChild(applyLinkBtn);
+	card.appendChild(footer);
 
-  // Expanded body
-  const body = document.createElement('div');
-  body.className = 'result-card-body';
+	// Expanded body
+	const body = document.createElement('div');
+	body.className = 'result-card-body';
 
-  if (item.snippet) {
-    const snippet = document.createElement('div');
-    snippet.className = 'result-snippet';
-    snippet.textContent = item.snippet.length > 100 ? item.snippet.substring(0, 100) + '...' : item.snippet;
-    body.appendChild(snippet);
-  }
+	if (item.snippet) {
+		const snippet = document.createElement('div');
+		snippet.className = 'result-snippet';
+		snippet.textContent = item.snippet.length > 100 ? `${item.snippet.substring(0, 100)}...` : item.snippet;
+		body.appendChild(snippet);
+	}
 
-  if (item.aiSummary) {
-    const aiSummary = document.createElement('div');
-    aiSummary.className = 'result-ai-summary';
-    // Limit AI summary length to prevent DOM DoS
-    const MAX_AI_SUMMARY_LENGTH = 5000;
-    const summaryText = item.aiSummary.length > MAX_AI_SUMMARY_LENGTH
-      ? item.aiSummary.substring(0, MAX_AI_SUMMARY_LENGTH) + '...'
-      : item.aiSummary;
-    const marked = (window as unknown as Record<string, unknown>).marked;
-    if (marked && typeof marked === 'object' && 'parse' in marked) {
-      const rendered = (marked as { parse: (s: string) => string }).parse(summaryText);
-      // Use DOMPurify if available, otherwise fall back to sanitizeHtml
-      const DOMPurify = (window as unknown as Record<string, unknown>).DOMPurify;
-      if (DOMPurify && typeof DOMPurify === 'object' && 'sanitize' in DOMPurify) {
-        aiSummary.innerHTML = (DOMPurify as { sanitize: (s: string) => string }).sanitize(rendered);
-      } else {
-        aiSummary.innerHTML = sanitizeHtml(rendered);
-      }
-    } else {
-      aiSummary.textContent = summaryText;
-    }
-    body.appendChild(aiSummary);
-  }
+	if (item.aiSummary) {
+		const aiSummary = document.createElement('div');
+		aiSummary.className = 'result-ai-summary';
+		// Limit AI summary length to prevent DOM DoS
+		const MAX_AI_SUMMARY_LENGTH = 5000;
+		const summaryText =
+			item.aiSummary.length > MAX_AI_SUMMARY_LENGTH
+				? `${item.aiSummary.substring(0, MAX_AI_SUMMARY_LENGTH)}...`
+				: item.aiSummary;
+		const marked = (window as unknown as Record<string, unknown>).marked;
+		if (marked && typeof marked === 'object' && 'parse' in marked) {
+			const rendered = (marked as { parse: (s: string) => string }).parse(summaryText);
+			// Use DOMPurify if available, otherwise fall back to sanitizeHtml
+			const DOMPurify = (window as unknown as Record<string, unknown>).DOMPurify;
+			if (DOMPurify && typeof DOMPurify === 'object' && 'sanitize' in DOMPurify) {
+				aiSummary.innerHTML = (DOMPurify as { sanitize: (s: string) => string }).sanitize(rendered);
+			} else {
+				aiSummary.innerHTML = sanitizeHtml(rendered);
+			}
+		} else {
+			aiSummary.textContent = summaryText;
+		}
+		body.appendChild(aiSummary);
+	}
 
-  if (item.parameters && item.parameters.length > 0) {
-    const parameters = document.createElement('div');
-    parameters.className = 'result-parameters';
-    parameters.textContent = `Parameters found: ${item.parameters.join(' • ')}`;
-    body.appendChild(parameters);
-  }
+	if (item.parameters && item.parameters.length > 0) {
+		const parameters = document.createElement('div');
+		parameters.className = 'result-parameters';
+		parameters.textContent = `Parameters found: ${item.parameters.join(' • ')}`;
+		body.appendChild(parameters);
+	}
 
-  card.appendChild(body);
-  return card;
+	card.appendChild(body);
+	return card;
 }
 
 // ─── Card Actions ────────────────────────────────────────────────────────
 
-async function handleSave(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship' | 'user'): Promise<void> {
-  try {
-    const resp = await fetch('/api/job-data/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ item, source }),
-    });
-    if (!resp.ok) throw new Error('Failed to save job');
-    showToast({ message: 'Job saved successfully', type: 'success' });
-    renderScrapingResults();
-  } catch (err: unknown) {
-    showToast({ message: 'Failed to save job: ' + (err as Error).message, type: 'error' });
-  }
+async function handleSave(
+	item: ScraperResult,
+	source: 'linkedin' | 'google' | 'remoterocketship' | 'user'
+): Promise<void> {
+	try {
+		const resp = await fetch('/api/job-data/save', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ item, source }),
+		});
+		if (!resp.ok) throw new Error('Failed to save job');
+		showToast({ message: 'Job saved successfully', type: 'success' });
+		renderScrapingResults();
+	} catch (err: unknown) {
+		showToast({ message: `Failed to save job: ${(err as Error).message}`, type: 'error' });
+	}
 }
 
 function handleRemove(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship' | 'user'): void {
-  confirmDelete(
-    'job',
-    async () => {
-      try {
-        // Only call API for scraper sources (not user-created cards)
-        if (source !== 'user') {
-          const resp = await fetch('/api/job-data/remove', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: item.url, source }),
-          });
-          if (!resp.ok) throw new Error('Failed to remove job');
+	confirmDelete('job', async () => {
+		try {
+			// Only call API for scraper sources (not user-created cards)
+			if (source !== 'user') {
+				const resp = await fetch('/api/job-data/remove', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ url: item.url, source }),
+				});
+				if (!resp.ok) throw new Error('Failed to remove job');
 
-          if (payloadsBySource[source] && payloadsBySource[source]!.results) {
-            payloadsBySource[source]!.results = payloadsBySource[source]!.results.filter(r => r.url !== item.url);
-            payloadsBySource[source]!.totalResults = payloadsBySource[source]!.results.length;
-            const totalPages = Math.ceil(payloadsBySource[source]!.results.length / RESULTS_PER_PAGE) || 1;
-            if (currentPage > totalPages) {
-              currentPage = 1;
-            }
-          }
-        }
-        showRefreshMessage();
-        renderScrapingResults();
-      } catch (err: unknown) {
-        showToast({ message: 'Error: ' + (err as Error).message, type: 'error' });
-      }
-    }
-  );
+				if (payloadsBySource[source] && payloadsBySource[source]!.results) {
+					payloadsBySource[source]!.results = payloadsBySource[source]!.results.filter(r => r.url !== item.url);
+					payloadsBySource[source]!.totalResults = payloadsBySource[source]!.results.length;
+					const totalPages = Math.ceil(payloadsBySource[source]!.results.length / RESULTS_PER_PAGE) || 1;
+					if (currentPage > totalPages) {
+						currentPage = 1;
+					}
+				}
+			}
+			showRefreshMessage();
+			renderScrapingResults();
+		} catch (err: unknown) {
+			showToast({ message: `Error: ${(err as Error).message}`, type: 'error' });
+		}
+	});
 }
 
-async function handleApply(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship' | 'user'): Promise<void> {
-  showApplyModal({
-    item,
-    onConfirm: async (name: string) => {
-      try {
-        const resp = await fetch('/api/job-data/apply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ item, source, customTitle: name }),
-        });
-        if (resp.status === 409) {
-          const data = await resp.json() as { error?: string };
-          showToast({ message: data.error || 'Card is already on board', type: 'error' });
-          return;
-        }
-        if (!resp.ok) throw new Error('Failed to apply to job');
-        showToast({ message: 'Job moved to dashboard', type: 'success' });
-        renderScrapingResults();
-      } catch (err: unknown) {
-        showToast({ message: 'Failed to apply to job: ' + (err as Error).message, type: 'error' });
-      }
-    },
-  });
+async function handleApply(
+	item: ScraperResult,
+	source: 'linkedin' | 'google' | 'remoterocketship' | 'user'
+): Promise<void> {
+	showApplyModal({
+		item,
+		onConfirm: async (name: string) => {
+			try {
+				const resp = await fetch('/api/job-data/apply', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ item, source, customTitle: name }),
+				});
+				if (resp.status === 409) {
+					const data = (await resp.json()) as { error?: string };
+					showToast({ message: data.error || 'Card is already on board', type: 'error' });
+					return;
+				}
+				if (!resp.ok) throw new Error('Failed to apply to job');
+				showToast({ message: 'Job moved to dashboard', type: 'success' });
+				renderScrapingResults();
+			} catch (err: unknown) {
+				showToast({ message: `Failed to apply to job: ${(err as Error).message}`, type: 'error' });
+			}
+		},
+	});
 }
 
 function handleUnsave(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship' | 'user'): void {
-  confirmUnsave(
-    'job',
-    async () => {
-      try {
-        const resp = await fetch('/api/job-data/unsave', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: item.url, source }),
-        });
-        if (!resp.ok) throw new Error('Failed to unsave job');
-        showToast({ message: 'Job removed from saved jobs', type: 'success' });
-        renderSavedJobs();
-      } catch (err: unknown) {
-        showToast({ message: 'Failed to unsave job: ' + (err as Error).message, type: 'error' });
-      }
-    }
-  );
+	confirmUnsave('job', async () => {
+		try {
+			const resp = await fetch('/api/job-data/unsave', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ url: item.url, source }),
+			});
+			if (!resp.ok) throw new Error('Failed to unsave job');
+			showToast({ message: 'Job removed from saved jobs', type: 'success' });
+			renderSavedJobs();
+		} catch (err: unknown) {
+			showToast({ message: `Failed to unsave job: ${(err as Error).message}`, type: 'error' });
+		}
+	});
 }
 
 // ─── Pagination ──────────────────────────────────────────────────────────
 
 function prevPage(): void {
-  if (currentPage > 1) {
-    renderPage(currentPage - 1);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+	if (currentPage > 1) {
+		renderPage(currentPage - 1);
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}
 }
 
 function nextPage(): void {
-  const activePayload = payloadsBySource[currentSource];
-  if (!activePayload || !activePayload.results) return;
-  const totalPages = Math.ceil(activePayload.results.length / RESULTS_PER_PAGE);
-  if (currentPage < totalPages) {
-    renderPage(currentPage + 1);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+	const activePayload = payloadsBySource[currentSource];
+	if (!activePayload || !activePayload.results) return;
+	const totalPages = Math.ceil(activePayload.results.length / RESULTS_PER_PAGE);
+	if (currentPage < totalPages) {
+		renderPage(currentPage + 1);
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}
 }
 
 // ─── ATS Sidebar ─────────────────────────────────────────────────────────
 
 function openAtsSidebar(): void {
-  const sidebar = document.getElementById('ats-sidebar');
-  if (sidebar) sidebar.classList.add('open');
-  document.body.classList.add('ats-open');
+	const sidebar = document.getElementById('ats-sidebar');
+	if (sidebar) sidebar.classList.add('open');
+	document.body.classList.add('ats-open');
 }
 
 function closeAtsSidebar(): void {
-  const sidebar = document.getElementById('ats-sidebar');
-  if (sidebar) sidebar.classList.remove('open');
-  document.body.classList.remove('ats-open');
+	const sidebar = document.getElementById('ats-sidebar');
+	if (sidebar) sidebar.classList.remove('open');
+	document.body.classList.remove('ats-open');
 }
 
 function loadScanResults(): Record<string, unknown> | null {
-  try {
-    const raw = sessionStorage.getItem('ats-scan-results');
-    if (!raw) return null;
-    return JSON.parse(raw) as Record<string, unknown>;
-  } catch (e) {
-    console.warn('Could not load scan results:', e);
-    return null;
-  }
+	try {
+		if (typeof window !== 'undefined') {
+			const raw = localStorage.getItem('ats:scanResults:jobfinder');
+			if (raw) return JSON.parse(raw) as Record<string, unknown>;
+		}
+		return null;
+	} catch (e) {
+		console.warn('Could not load scan results:', e);
+		return null;
+	}
 }
 
 // ─── Cover Letter Modal Functions ─────────────────────────────────────
 
 function openCoverLetterModal(): void {
-  const modal = document.getElementById('cover-letter-modal');
-  if (!modal) return;
+	const modal = document.getElementById('cover-letter-modal');
+	if (!modal) return;
 
-  document.getElementById('cover-letter-settings')!.style.display = 'flex';
-  document.getElementById('cover-letter-loading')!.style.display = 'none';
-  document.getElementById('cover-letter-error')!.style.display = 'none';
-  document.getElementById('cover-letter-result')!.style.display = 'none';
-  document.getElementById('cover-letter-actions')!.style.display = 'flex';
-  document.getElementById('cover-letter-result-actions')!.style.display = 'none';
+	document.getElementById('cover-letter-settings')!.style.display = 'flex';
+	document.getElementById('cover-letter-loading')!.style.display = 'none';
+	document.getElementById('cover-letter-error')!.style.display = 'none';
+	document.getElementById('cover-letter-result')!.style.display = 'none';
+	document.getElementById('cover-letter-actions')!.style.display = 'flex';
+	document.getElementById('cover-letter-result-actions')!.style.display = 'none';
 
-  (document.getElementById('cl-tone') as HTMLSelectElement).value = 'Formal';
-  (document.getElementById('cl-english-level') as HTMLSelectElement).value = 'C1';
-  (document.getElementById('cl-focus') as HTMLInputElement).value = '';
-  (document.getElementById('cl-char-limit') as HTMLInputElement).value = '';
+	(document.getElementById('cl-tone') as HTMLSelectElement).value = 'Formal';
+	(document.getElementById('cl-english-level') as HTMLSelectElement).value = 'C1';
+	(document.getElementById('cl-focus') as HTMLInputElement).value = '';
+	(document.getElementById('cl-char-limit') as HTMLInputElement).value = '';
 
-  modal.style.display = 'flex';
+	modal.style.display = 'flex';
 }
 
 function closeCoverLetterModal(): void {
-  const modal = document.getElementById('cover-letter-modal');
-  if (modal) modal.style.display = 'none';
+	const modal = document.getElementById('cover-letter-modal');
+	if (modal) modal.style.display = 'none';
 }
 
 async function generateCoverLetter(): Promise<void> {
-  const jdTextarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement | null;
-  const jd = jdTextarea ? jdTextarea.value.trim() : '';
-  if (!jd) {
-    showToast({ message: 'Please review a Job Description first using the "Check JD" button on a job card.', type: 'error' });
-    return;
-  }
+	const jdTextarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement | null;
+	const jd = jdTextarea ? jdTextarea.value.trim() : '';
+	if (!jd) {
+		showToast({
+			message: 'Please review a Job Description first using the "Check JD" button on a job card.',
+			type: 'error',
+		});
+		return;
+	}
 
-  const tone = (document.getElementById('cl-tone') as HTMLSelectElement).value;
-  const englishLevel = (document.getElementById('cl-english-level') as HTMLSelectElement).value;
-  const focusAreas = (document.getElementById('cl-focus') as HTMLInputElement).value.trim();
-  const charLimitInput = (document.getElementById('cl-char-limit') as HTMLInputElement).value.trim();
-  const charLimit = charLimitInput === '' ? undefined : parseInt(charLimitInput, 10);
+	const tone = (document.getElementById('cl-tone') as HTMLSelectElement).value;
+	const englishLevel = (document.getElementById('cl-english-level') as HTMLSelectElement).value;
+	const focusAreas = (document.getElementById('cl-focus') as HTMLInputElement).value.trim();
+	const charLimitInput = (document.getElementById('cl-char-limit') as HTMLInputElement).value.trim();
+	const charLimit = charLimitInput === '' ? undefined : parseInt(charLimitInput, 10);
+	const includeSalutationSignOff =
+		(document.getElementById('cl-salutation-signoff') as HTMLSelectElement).value === 'true';
 
-  document.getElementById('cover-letter-settings')!.style.display = 'none';
-  document.getElementById('cover-letter-actions')!.style.display = 'none';
-  document.getElementById('cover-letter-loading')!.style.display = 'block';
-  document.getElementById('cover-letter-error')!.style.display = 'none';
+	document.getElementById('cover-letter-settings')!.style.display = 'none';
+	document.getElementById('cover-letter-actions')!.style.display = 'none';
+	document.getElementById('cover-letter-loading')!.style.display = 'block';
+	document.getElementById('cover-letter-error')!.style.display = 'none';
 
-  const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
+	const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
 
-  const atsResults = loadScanResults();
-  const atsScore = atsResults ? String(atsResults.overall_score || 'N/A') : 'N/A';
-  const atsTier = atsResults ? String(atsResults.tier || 'N/A') : 'N/A';
-  const atsMissingKeywords = atsResults && Array.isArray(atsResults.missingKeywords)
-    ? (atsResults.missingKeywords as string[]).join(', ') || 'None'
-    : 'None';
-  const atsFeedback = atsResults ? String(atsResults.feedback || 'No feedback available') : 'No ATS scan performed';
+	const atsResults = loadScanResults();
+	const atsScore = atsResults ? String(atsResults.overall_score || 'N/A') : 'N/A';
+	const atsTier = atsResults ? String(atsResults.tier || 'N/A') : 'N/A';
+	const atsMissingKeywords =
+		atsResults && Array.isArray(atsResults.missingKeywords)
+			? (atsResults.missingKeywords as string[]).join(', ') || 'None'
+			: 'None';
+	const atsFeedback = atsResults ? String(atsResults.feedback || 'No feedback available') : 'No ATS scan performed';
 
-  try {
-    const response = await fetch('/api/generate-cover-letter', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jobDescription: jd,
-        tone,
-        englishLevel,
-        focusAreas,
-        charLimit,
-        provider: selectedProvider,
-        atsScore,
-        atsTier,
-        atsMissingKeywords,
-        atsFeedback,
-      }),
-    });
+	try {
+		const response = await fetch('/api/generate-cover-letter', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				jobDescription: jd,
+				tone,
+				englishLevel,
+				focusAreas,
+				charLimit,
+				provider: selectedProvider,
+				atsScore,
+				atsTier,
+				atsMissingKeywords,
+				atsFeedback,
+				includeSalutationSignOff,
+			}),
+		});
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({ error: 'Failed to generate cover letter' }));
-      throw new Error(errData.error || errData.suggestion || `HTTP ${response.status}`);
-    }
+		if (!response.ok) {
+			const errData = await response.json().catch(() => ({ error: 'Failed to generate cover letter' }));
+			throw new Error(errData.error || errData.suggestion || `HTTP ${response.status}`);
+		}
 
-    const coverLetterText = await response.text();
+		const coverLetterText = await response.text();
 
-    document.getElementById('cover-letter-loading')!.style.display = 'none';
-    document.getElementById('cover-letter-result')!.style.display = 'block';
-    document.getElementById('cover-letter-result-actions')!.style.display = 'flex';
-    (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value = coverLetterText;
-  } catch (err: unknown) {
-    document.getElementById('cover-letter-loading')!.style.display = 'none';
-    document.getElementById('cover-letter-error')!.style.display = 'block';
-    document.getElementById('cover-letter-error-text')!.textContent = 'Error: ' + (err as Error).message;
-    document.getElementById('cover-letter-actions')!.style.display = 'flex';
-  }
+		document.getElementById('cover-letter-loading')!.style.display = 'none';
+		document.getElementById('cover-letter-result')!.style.display = 'block';
+		document.getElementById('cover-letter-result-actions')!.style.display = 'flex';
+		(document.getElementById('cover-letter-text') as HTMLTextAreaElement).value = coverLetterText;
+	} catch (err: unknown) {
+		document.getElementById('cover-letter-loading')!.style.display = 'none';
+		document.getElementById('cover-letter-error')!.style.display = 'block';
+		document.getElementById('cover-letter-error-text')!.textContent = `Error: ${(err as Error).message}`;
+		document.getElementById('cover-letter-actions')!.style.display = 'flex';
+	}
 }
 
 function copyCoverLetter(): void {
-  const text = (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value;
-  if (!text) return;
-  navigator.clipboard.writeText(text).then(() => {
-    showToast({ message: 'Cover letter copied to clipboard', type: 'success' });
-  });
+	const text = (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value;
+	if (!text) return;
+	navigator.clipboard.writeText(text).then(() => {
+		showToast({ message: 'Cover letter copied to clipboard', type: 'success' });
+	});
 }
 
 function downloadCoverLetter(): void {
-  const text = (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value;
-  if (!text) return;
-  const blob = new Blob([text], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'cover-letter.txt';
-  a.click();
-  URL.revokeObjectURL(url);
+	const text = (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value;
+	if (!text) return;
+	const blob = new Blob([text], { type: 'text/plain' });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = 'cover-letter.txt';
+	a.click();
+	URL.revokeObjectURL(url);
 }
 
 function scoreColor(score: number): string {
-  if (score >= 80) return '#10b981';
-  if (score >= 60) return '#f59e0b';
-  return '#ef4444';
+	if (score >= 80) return '#10b981';
+	if (score >= 60) return '#f59e0b';
+	return '#ef4444';
 }
 
 function applyAtsResultsToUI(screening: Record<string, unknown>): void {
-  // Persist the scan under a findJob-specific key so it survives navigation
-  // without overwriting the main page's scan (which uses 'ats-scan-results').
-  try {
-    sessionStorage.setItem('ats-scan-results-findjob', JSON.stringify(screening));
-  } catch {
-    // ignore storage errors
-  }
+	// Persist the scan in localStorage so it survives server restarts and navigation
+	try {
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('ats:scanResults:jobfinder', JSON.stringify(screening));
+		}
+	} catch {
+		// ignore storage errors
+	}
 
-  // Persist the scan under a findJob-specific key so it survives navigation
-  // without overwriting the main page's scan (which uses 'ats-scan-results').
-  try {
-    sessionStorage.setItem('ats-scan-results-findjob', JSON.stringify(screening));
-  } catch {
-    // ignore storage errors
-  }
+	const circle = document.getElementById('ats-score-circle')!;
+	circle.textContent = String(screening.overall_score);
 
-  const circle = document.getElementById('ats-score-circle')!;
-  circle.textContent = String(screening.overall_score);
+	let tierClass = 'low';
+	if (screening.tier === 'STRONG_MATCH') tierClass = 'good';
+	else if (screening.tier === 'GOOD_MATCH') tierClass = 'mid';
+	circle.className = `result-score-circle ${tierClass}`;
 
-  let tierClass = 'low';
-  if (screening.tier === 'STRONG_MATCH') tierClass = 'good';
-  else if (screening.tier === 'GOOD_MATCH') tierClass = 'mid';
-  circle.className = 'result-score-circle ' + tierClass;
+	document.getElementById('ats-score-text')!.textContent = screening.tier as string;
+	const feedbackEl = document.getElementById('ats-feedback')!;
+	feedbackEl.textContent = (screening.feedback as string) || '—';
+	feedbackEl.style.color = '';
 
-  document.getElementById('ats-score-text')!.textContent = screening.tier as string;
-  const feedbackEl = document.getElementById('ats-feedback')!;
-  feedbackEl.textContent = (screening.feedback as string) || '—';
-  feedbackEl.style.color = '';
+	// Feature 2: Render job title above score in ATS sidebar
+	const jobTitleEl = document.getElementById('ats-job-title');
+	if (jobTitleEl) {
+		const title = (screening.jobTitle as string) || currentJdItem?.title || '';
+		if (title) {
+			jobTitleEl.textContent = title;
+			jobTitleEl.style.display = 'block';
+		} else {
+			jobTitleEl.style.display = 'none';
+		}
+	}
 
-  // Feature 2: Render job title above score in ATS sidebar
-  const jobTitleEl = document.getElementById('ats-job-title');
-  if (jobTitleEl) {
-    const title = (screening.jobTitle as string) || currentJdItem?.title || '';
-    if (title) {
-      jobTitleEl.textContent = title;
-      jobTitleEl.style.display = 'block';
-    } else {
-      jobTitleEl.style.display = 'none';
-    }
-  }
+	const breakdown = screening.breakdown as Record<string, unknown>;
+	const elSkills = document.getElementById('ats-br-skills')!;
+	const elExp = document.getElementById('ats-br-experience')!;
+	const elEdu = document.getElementById('ats-br-education')!;
 
-  const breakdown = screening.breakdown as Record<string, unknown>;
-  const elSkills = document.getElementById('ats-br-skills')!;
-  const elExp = document.getElementById('ats-br-experience')!;
-  const elEdu = document.getElementById('ats-br-education')!;
+	elSkills.textContent = `${breakdown.skills_score}%`;
+	elExp.textContent = `${breakdown.experience_years_score}%`;
+	elEdu.textContent = breakdown.education_match ? 'PASS' : 'FAIL';
 
-  elSkills.textContent = `${breakdown.skills_score}%`;
-  elExp.textContent = `${breakdown.experience_years_score}%`;
-  elEdu.textContent = breakdown.education_match ? 'PASS' : 'FAIL';
+	elSkills.style.color = scoreColor(breakdown.skills_score as number);
+	elExp.style.color = scoreColor(breakdown.experience_years_score as number);
+	elEdu.style.color = breakdown.education_match ? '#10b981' : '#ef4444';
 
-  elSkills.style.color = scoreColor(breakdown.skills_score as number);
-  elExp.style.color = scoreColor(breakdown.experience_years_score as number);
-  elEdu.style.color = breakdown.education_match ? '#10b981' : '#ef4444';
+	const kwEl = document.getElementById('ats-keywords')!;
+	const missingKeywords = screening.missingKeywords as string[] | undefined;
+	const feedbackStr = (screening.feedback as string) || '';
+	const isNoFurtherScoring = feedbackStr.toLowerCase().includes('no further scoring') || screening.overall_score === 0;
 
-  const kwEl = document.getElementById('ats-keywords')!;
-  const missingKeywords = screening.missingKeywords as string[] | undefined;
-  const feedbackStr = (screening.feedback as string) || '';
-  const isNoFurtherScoring = feedbackStr.toLowerCase().includes('no further scoring') || screening.overall_score === 0;
+	if (missingKeywords && missingKeywords.length > 0) {
+		kwEl.textContent = '';
+		kwEl.style.color = '';
+		for (const k of missingKeywords) {
+			const span = document.createElement('span');
+			span.className = 'result-keyword';
+			span.textContent = k;
+			kwEl.appendChild(span);
+		}
+	} else if (isNoFurtherScoring) {
+		kwEl.textContent = 'N/A';
+		kwEl.style.color = 'rgba(255,255,255,0.7)';
+	} else {
+		kwEl.textContent = 'None detected \u2014 great match!';
+		kwEl.style.color = '#86efac';
+	}
 
-  if (missingKeywords && missingKeywords.length > 0) {
-    kwEl.textContent = '';
-    kwEl.style.color = '';
-    for (const k of missingKeywords) {
-      const span = document.createElement('span');
-      span.className = 'result-keyword';
-      span.textContent = k;
-      kwEl.appendChild(span);
-    }
-  } else if (isNoFurtherScoring) {
-    kwEl.textContent = 'N/A';
-    kwEl.style.color = 'rgba(255,255,255,0.7)';
-  } else {
-    kwEl.textContent = 'None detected \u2014 great match!';
-    kwEl.style.color = '#86efac';
-  }
+	const poweredByContainer = document.getElementById('ats-poweredBy');
+	if (poweredByContainer) {
+		const provider = (screening.provider as string) || '';
+		const model = (screening.model as string) || '';
+		const span = poweredByContainer.querySelector('.ai-powered');
+		if (span) {
+			span.textContent = provider && model ? `${provider}/${model}` : provider || model || '\u2014';
+		} else {
+			poweredByContainer.textContent = provider && model ? `${provider}/${model}` : provider || model || '\u2014';
+		}
+	}
 
-  const poweredByContainer = document.getElementById('ats-poweredBy');
-  if (poweredByContainer) {
-    const provider = (screening.provider as string) || '';
-    const model = (screening.model as string) || '';
-    const span = poweredByContainer.querySelector('.ai-powered');
-    if (span) {
-      span.textContent = provider && model ? `${provider}/${model}` : provider || model || '\u2014';
-    } else {
-      poweredByContainer.textContent = provider && model ? `${provider}/${model}` : provider || model || '\u2014';
-    }
-  }
+	document.getElementById('ats-scan-again-msg')!.style.display = 'none';
+	document.getElementById('ats-breakdown-section')!.style.display = 'block';
 
-  document.getElementById('ats-scan-again-msg')!.style.display = 'none';
-  document.getElementById('ats-breakdown-section')!.style.display = 'block';
-
-  document.getElementById('ats-loading')!.classList.remove('show');
-  openAtsSidebar();
+	document.getElementById('ats-loading')!.classList.remove('show');
+	openAtsSidebar();
 }
 
 // ─── JD Edit Modal ───────────────────────────────────────────────────────
 
 async function openJdEditModal(item: ScraperResult): Promise<void> {
-  const modal = document.getElementById('jd-edit-modal');
-  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
-  const loading = document.getElementById('jd-fetch-loading');
-  const scanBtnDefault = document.getElementById('btn-scan-jd-default') as HTMLButtonElement;
-  const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
-  const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
-  const rrActions = document.getElementById('jd-actions-rr');
+	const modal = document.getElementById('jd-edit-modal');
+	const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+	const loading = document.getElementById('jd-fetch-loading');
+	const scanBtnDefault = document.getElementById('btn-scan-jd-default') as HTMLButtonElement;
+	const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+	const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
+	const fetchActions = document.getElementById('jd-actions-fetch');
 
-  if (!modal) return;
+	if (!modal) return;
 
-  currentJdItem = item;
+	currentJdItem = item;
 
-  const isRemoteRocketship = item.source === 'remoterocketship';
+	const needsFetch = item.source === 'remoterocketship' || item.source === 'google';
 
-  // Show/hide appropriate action buttons
-  if (isRemoteRocketship) {
-    if (rrActions) rrActions.style.display = 'flex';
-    if (scanBtnDefault) scanBtnDefault.style.display = 'none';
-    if (fetchBtn) fetchBtn.style.display = 'inline-flex';
-    if (scanBtn) scanBtn.style.display = 'inline-flex';
-    // For RR, textarea should be enabled for manual paste
-    textarea.disabled = false;
-  } else {
-    if (rrActions) rrActions.style.display = 'none';
-    if (scanBtnDefault) scanBtnDefault.style.display = 'inline-flex';
-    if (fetchBtn) fetchBtn.style.display = 'none';
-    if (scanBtn) scanBtn.style.display = 'none';
-    textarea.disabled = true;
-  }
+	// Show/hide appropriate action buttons
+	if (needsFetch) {
+		if (fetchActions) fetchActions.style.display = 'flex';
+		if (scanBtnDefault) scanBtnDefault.style.display = 'none';
+		if (fetchBtn) fetchBtn.style.display = 'inline-flex';
+		if (scanBtn) scanBtn.style.display = 'inline-flex';
+		// For fetch sources, textarea should be enabled for manual paste
+		textarea.disabled = false;
+	} else {
+		// LinkedIn has JD - go straight to ATS
+		if (fetchActions) fetchActions.style.display = 'none';
+		if (scanBtnDefault) scanBtnDefault.style.display = 'inline-flex';
+		if (fetchBtn) fetchBtn.style.display = 'none';
+		if (scanBtn) scanBtn.style.display = 'none';
+		textarea.disabled = true;
+	}
 
-  const fallbackParts: string[] = [];
-  if (item.title) fallbackParts.push(item.title);
-  if (item.company) fallbackParts.push(`Company: ${item.company}`);
-  if (item.snippet) fallbackParts.push(item.snippet);
-  if (item.aiSummary) fallbackParts.push(stripMarkdown(item.aiSummary));
-  const fallbackContent = fallbackParts.join('\n\n');
+	const fallbackParts: string[] = [];
+	if (item.title) fallbackParts.push(item.title);
+	if (item.company) fallbackParts.push(`Company: ${item.company}`);
+	if (item.snippet) fallbackParts.push(item.snippet);
+	if (item.aiSummary) fallbackParts.push(stripMarkdown(item.aiSummary));
+	const fallbackContent = fallbackParts.join('\n\n');
 
-  textarea.value = fallbackContent;
-  if (loading) loading.classList.add('show');
+	textarea.value = fallbackContent;
+	if (loading) loading.classList.add('show');
 
-  modal.classList.add('show');
+	modal.classList.add('show');
 
-  // Hide clean indicator and stop button initially
-  const cleanIndicator = document.getElementById('jd-clean-indicator');
-  const cleanBtn = document.getElementById('jd-clean-btn');
-  const stopBtn = document.getElementById('jd-stop-btn');
-  if (cleanIndicator) cleanIndicator.style.display = 'none';
-  if (cleanBtn) cleanBtn.style.display = 'none';
-  if (stopBtn) stopBtn.style.display = 'none';
+	// Hide clean indicator and stop button initially
+	const cleanIndicator = document.getElementById('jd-clean-indicator');
+	const cleanBtn = document.getElementById('jd-clean-btn');
+	const stopBtn = document.getElementById('jd-stop-btn');
+	if (cleanIndicator) cleanIndicator.style.display = 'none';
+	if (cleanBtn) cleanBtn.style.display = 'none';
+	if (stopBtn) stopBtn.style.display = 'none';
 
-  // Feature 1: Check for saved JD first (from SQLite) before fetching fresh
-  let savedJd = '';
-  try {
-    const jdResp = await fetch('/api/scraper/jd', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: item.url }),
-    });
-    if (jdResp.ok) {
-      const jdData = await jdResp.json() as { jobDescription?: string };
-      if (jdData.jobDescription) {
-        savedJd = jdData.jobDescription;
-      }
-    }
-  } catch {
-    // ignore — fall through to fresh fetch
-  }
+	// Feature 1: Check for saved JD first (from SQLite) before fetching fresh
+	let savedJd = '';
+	let savedCleaned = 0;
+	try {
+		const jdResp = await fetch('/api/scraper/jd', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ url: item.url }),
+		});
+		if (jdResp.ok) {
+			const jdData = (await jdResp.json()) as { jobDescription?: string; cleaned?: number };
+			if (jdData.jobDescription) {
+				savedJd = jdData.jobDescription;
+				savedCleaned = jdData.cleaned || 0;
+			}
+		}
+	} catch {
+		// ignore — fall through to fresh fetch
+	}
 
-  if (savedJd) {
-    // Use saved JD directly — no network fetch needed
-    textarea.value = savedJd;
-    textarea.disabled = false;
-    if (scanBtnDefault) scanBtnDefault.disabled = false;
-    if (scanBtn) scanBtn.disabled = false;
-    if (fetchBtn) fetchBtn.disabled = false;
-    if (loading) loading.classList.remove('show');
-    const savedIndicator = document.getElementById('jd-saved-indicator');
-    if (savedIndicator) savedIndicator.style.display = 'flex';
-    return;
-  }
+	if (savedJd) {
+		// Use saved JD directly — no network fetch needed
+		textarea.value = savedJd;
+		textarea.disabled = false;
+		if (scanBtnDefault) scanBtnDefault.disabled = false;
+		if (scanBtn) scanBtn.disabled = false;
+		if (fetchBtn) fetchBtn.disabled = false;
+		if (loading) loading.classList.remove('show');
+		const savedIndicator = document.getElementById('jd-saved-indicator');
+		if (savedIndicator) savedIndicator.style.display = 'flex';
+		// Show Clean JD button only if not already cleaned
+		if (!savedCleaned) {
+			const cleanIndicator = document.getElementById('jd-clean-indicator');
+			const cleanBtn = document.getElementById('jd-clean-btn');
+			if (cleanIndicator) cleanIndicator.style.display = 'flex';
+			if (cleanBtn) cleanBtn.style.display = 'inline-flex';
+		}
+		return;
+	}
 
-  // No saved JD — show "Clean JD using AI" button for user to initiate
-  if (loading) loading.classList.remove('show');
-  if (cleanIndicator) cleanIndicator.style.display = 'flex';
-  if (cleanBtn) cleanBtn.style.display = 'inline-flex';
+	// No saved JD — check if textarea has content (from scraping fallback for LinkedIn)
+	// If so, show Clean JD button so user can clean it
+	if (loading) loading.classList.remove('show');
+	const hasContent = textarea.value.trim().length > 0;
+	if (hasContent) {
+		const cleanIndicator = document.getElementById('jd-clean-indicator');
+		const cleanBtn = document.getElementById('jd-clean-btn');
+		if (cleanIndicator) cleanIndicator.style.display = 'flex';
+		if (cleanBtn) cleanBtn.style.display = 'inline-flex';
+	}
+	// cleanIndicator and cleanBtn stay hidden if no content
 }
 
-// Fetch JD for ATS - used by Remote Rocketship Fetch JD button
+// Fetch JD for ATS - used by Google & Remote Rocketship Fetch JD button
 async function fetchJdForAts(): Promise<void> {
-  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
-  const loading = document.getElementById('jd-fetch-loading');
-  const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
-  const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+	const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+	const loading = document.getElementById('jd-fetch-loading');
+	const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
+	const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
 
-  if (!currentJdItem) return;
+	if (!currentJdItem) return;
 
-  // Show loading state
-  if (loading) loading.classList.add('show');
-  if (fetchBtn) {
-    fetchBtn.disabled = true;
-    fetchBtn.textContent = '⏳ Fetching...';
-  }
-  if (scanBtn) scanBtn.disabled = true;
+	// Show loading state
+	if (loading) loading.classList.add('show');
+	if (fetchBtn) {
+		fetchBtn.disabled = true;
+		fetchBtn.textContent = '⏳ Fetching...';
+	}
+	if (scanBtn) scanBtn.disabled = true;
 
-  try {
-    // Call the same endpoint that refreshJd uses but with refresh=true
-    const resp = await fetch('/api/scraper/jd', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: currentJdItem.url, refresh: true }),
-    });
+	try {
+		// Call the same endpoint that refreshJd uses but with refresh=true
+		const resp = await fetch('/api/scraper/jd', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ url: currentJdItem.url, refresh: true }),
+		});
 
-    if (!resp.ok) {
-      const errData = await resp.json() as { error?: string };
-      throw new Error(errData.error || `HTTP ${resp.status}`);
-    }
+		if (!resp.ok) {
+			const errData = (await resp.json()) as { error?: string };
+			const errMsg = errData.error || `HTTP ${resp.status}`;
+			// If Google (or other unsupported source), show manual copy modal
+			if (resp.status === 404 && (currentJdItem.source === 'google' || currentJdItem.source === 'remoterocketship')) {
+				showJdCollectionModal(
+					'Job description cannot be fetched automatically for this source. ' +
+						'Please copy the JD from the job page and paste it into the text area below, then click "Validate with ATS".'
+				);
+				return;
+			}
+			throw new Error(errMsg);
+		}
 
-    const data = await resp.json() as { jobDescription?: string };
-    if (data.jobDescription) {
-      textarea.value = data.jobDescription;
-      showToast({ message: 'Job description fetched successfully', type: 'success' });
-    } else {
-      throw new Error('No job description returned');
-    }
-  } catch (err: unknown) {
-    showToast({ message: 'Failed to fetch JD: ' + (err as Error).message, type: 'error' });
-  } finally {
-    if (loading) loading.classList.remove('show');
-    if (fetchBtn) {
-      fetchBtn.disabled = false;
-      fetchBtn.textContent = '🔄 Fetch JD';
-    }
-    if (scanBtn) scanBtn.disabled = false;
-  }
+		const data = (await resp.json()) as { jobDescription?: string; error?: string };
+		// Check for validation error from backend
+		if ((data.error && data.error.includes('JD')) || data.error?.includes('validation')) {
+			showToast({
+				message: 'Something went wrong while trying to fetch the JD. Navigate to the site and grab it yourself.',
+				type: 'error',
+			});
+			// Keep existing textarea content - don't overwrite
+			return;
+		}
+		if (data.jobDescription) {
+			textarea.value = data.jobDescription;
+			showToast({ message: 'Job description fetched successfully', type: 'success' });
+			// Show Clean JD button now that there's content to clean
+			const cleanIndicator = document.getElementById('jd-clean-indicator');
+			const cleanBtn = document.getElementById('jd-clean-btn');
+			if (cleanIndicator) cleanIndicator.style.display = 'flex';
+			if (cleanBtn) cleanBtn.style.display = 'inline-flex';
+		} else {
+			throw new Error('No job description returned');
+		}
+	} catch (err: unknown) {
+		showToast({ message: `Failed to fetch JD: ${(err as Error).message}`, type: 'error' });
+	} finally {
+		if (loading) loading.classList.remove('show');
+		if (fetchBtn) {
+			fetchBtn.disabled = false;
+			fetchBtn.textContent = '🔄 Fetch JD';
+		}
+		if (scanBtn) scanBtn.disabled = false;
+	}
 }
 
 function showJdCollectionModal(message: string): void {
-  const modal = document.getElementById('jd-collection-modal');
-  const msgEl = document.getElementById('jd-collection-message');
-  if (modal) modal.style.display = 'flex';
-  if (msgEl) {
-    // For Remote Rocketship, show custom message about manual JD copy
-    if (currentJdItem?.source === 'remoterocketship') {
-      msgEl.textContent = 'Job description should be copied manually as per limitations on site structure, we cannot gather the information. Copy the JD and paste into the JD field to run the ATS.';
-    } else {
-      msgEl.textContent = message;
-    }
-  }
+	const modal = document.getElementById('jd-collection-modal');
+	const msgEl = document.getElementById('jd-collection-message');
+	if (modal) modal.style.display = 'flex';
+	if (msgEl) {
+		// For Google & Remote Rocketship, show custom message about manual JD copy
+		if (currentJdItem?.source === 'google' || currentJdItem?.source === 'remoterocketship') {
+			msgEl.textContent =
+				'Job description cannot be fetched automatically for this source. Please copy the JD from the job page and paste it into the text area below, then click "Validate with ATS".';
+		} else {
+			msgEl.textContent = message;
+		}
+	}
 }
 
 function closeJdCollectionModal(): void {
-  const modal = document.getElementById('jd-collection-modal');
-  if (modal) modal.style.display = 'none';
+	const modal = document.getElementById('jd-collection-modal');
+	if (modal) modal.style.display = 'none';
 }
 
 function closeJdViewModal(): void {
-  const modal = document.getElementById('jd-view-modal');
-  if (modal) {
-    modal.style.display = 'none';
-    // Remove Escape key handler
-    const handler = (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
-    if (handler) {
-      document.removeEventListener('keydown', handler);
-      delete (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
-    }
-  }
+	const modal = document.getElementById('jd-view-modal');
+	if (modal) {
+		modal.style.display = 'none';
+		// Remove Escape key handler
+		const handler = (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
+		if (handler) {
+			document.removeEventListener('keydown', handler);
+			delete (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
+		}
+	}
 }
 
 // Feature 1: Refresh JD — fetch fresh from LinkedIn (bypass cache)
 async function refreshJd(): Promise<void> {
-  const modal = document.getElementById('jd-edit-modal');
-  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
-  const loading = document.getElementById('jd-fetch-loading');
-  const scanBtnEl = document.getElementById('btn-scan-jd') as HTMLButtonElement;
-  const savedIndicator = document.getElementById('jd-saved-indicator');
+	const modal = document.getElementById('jd-edit-modal');
+	const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+	const loading = document.getElementById('jd-fetch-loading');
+	const scanBtnEl = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+	const savedIndicator = document.getElementById('jd-saved-indicator');
 
-  if (!modal || !currentJdItem) return;
+	if (!modal || !currentJdItem) return;
 
-  // Hide saved indicator, show loading
-  if (savedIndicator) savedIndicator.style.display = 'none';
-  if (loading) loading.classList.add('show');
-  textarea.disabled = true;
-  if (scanBtnEl) scanBtnEl.disabled = true;
+	// Hide saved indicator, show loading
+	if (savedIndicator) savedIndicator.style.display = 'none';
+	if (loading) loading.classList.add('show');
+	textarea.disabled = true;
+	if (scanBtnEl) scanBtnEl.disabled = true;
 
-  try {
-    const resp = await fetch('/api/scraper/jd', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: currentJdItem.url, refresh: true }),
-    });
+	try {
+		const resp = await fetch('/api/scraper/jd', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ url: currentJdItem.url, refresh: true }),
+		});
 
-    if (resp.ok) {
-      const data = await resp.json() as { jobDescription?: string };
-      if (data.jobDescription) {
-        textarea.value = data.jobDescription;
-      } else {
-        throw new Error('No job description returned');
-      }
-    } else {
-      const errData = await resp.json().catch(() => ({ error: 'Failed to refresh JD' }));
-      throw new Error(errData.error || 'Failed to refresh JD');
-    }
-  } catch (err: unknown) {
-    showToast({ message: 'Failed to refresh JD: ' + (err as Error).message, type: 'error' });
-  } finally {
-    if (loading) loading.classList.remove('show');
-    textarea.disabled = false;
-    const scanBtnEl = document.getElementById('btn-scan-jd') as HTMLButtonElement;
-    if (scanBtnEl) scanBtnEl.disabled = false;
-  }
+		if (resp.ok) {
+			const data = (await resp.json()) as { jobDescription?: string; error?: string };
+			// Check for validation error from backend
+			if (data.error && (data.error.includes('JD') || data.error.includes('validation'))) {
+				showToast({
+					message: 'Something went wrong while trying to fetch the JD. Navigate to the site and grab it yourself.',
+					type: 'error',
+				});
+				// Keep existing textarea content - don't overwrite
+			} else if (data.jobDescription) {
+				textarea.value = data.jobDescription;
+				// Show Clean JD button now that there's content to clean
+				const cleanIndicator = document.getElementById('jd-clean-indicator');
+				const cleanBtn = document.getElementById('jd-clean-btn');
+				if (cleanIndicator) cleanIndicator.style.display = 'flex';
+				if (cleanBtn) cleanBtn.style.display = 'inline-flex';
+			} else {
+				throw new Error('No job description returned');
+			}
+		} else {
+			const errData = await resp.json().catch(() => ({ error: 'Failed to refresh JD' }));
+			throw new Error(errData.error || 'Failed to refresh JD');
+		}
+	} catch (err: unknown) {
+		showToast({ message: `Failed to refresh JD: ${(err as Error).message}`, type: 'error' });
+	} finally {
+		if (loading) loading.classList.remove('show');
+		textarea.disabled = false;
+		const scanBtnEl = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+		if (scanBtnEl) scanBtnEl.disabled = false;
+	}
 }
 
 // Clean JD using AI — fetch from URL and clean using AI (user-initiated, abortable)
 async function cleanJdUsingAi(): Promise<void> {
-  const modal = document.getElementById('jd-edit-modal');
-  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
-  const loading = document.getElementById('jd-fetch-loading');
-  const cleanBtn = document.getElementById('jd-clean-btn') as HTMLButtonElement;
-  const stopBtn = document.getElementById('jd-stop-btn') as HTMLButtonElement;
-  const scanBtnDefault = document.getElementById('btn-scan-jd-default') as HTMLButtonElement;
-  const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
-  const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
+	const modal = document.getElementById('jd-edit-modal');
+	const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+	const loading = document.getElementById('jd-fetch-loading');
+	const cleanBtn = document.getElementById('jd-clean-btn') as HTMLButtonElement;
+	const stopBtn = document.getElementById('jd-stop-btn') as HTMLButtonElement;
+	const scanBtnDefault = document.getElementById('btn-scan-jd-default') as HTMLButtonElement;
+	const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+	const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
 
-  if (!modal || !currentJdItem) return;
+	if (!modal || !currentJdItem) return;
 
-  // Create new AbortController for this request
-  jdCleanController = new AbortController();
+	// Create new AbortController for this request
+	jdCleanController = new AbortController();
 
-  // Switch UI: hide Clean button, show Stop button, show loading
-  if (cleanBtn) cleanBtn.style.display = 'none';
-  if (stopBtn) stopBtn.style.display = 'inline-flex';
-  if (loading) loading.classList.add('show');
-  textarea.disabled = true;
-  if (scanBtnDefault) scanBtnDefault.disabled = true;
-  if (scanBtn) scanBtn.disabled = true;
-  if (fetchBtn) fetchBtn.disabled = true;
+	// Switch UI: hide Clean button, show Stop button, show loading
+	if (cleanBtn) cleanBtn.style.display = 'none';
+	if (stopBtn) stopBtn.style.display = 'inline-flex';
+	if (loading) loading.classList.add('show');
+	textarea.disabled = true;
+	if (scanBtnDefault) scanBtnDefault.disabled = true;
+	if (scanBtn) scanBtn.disabled = true;
+	if (fetchBtn) fetchBtn.disabled = true;
 
-  // First fetch the raw JD from the URL
-  let rawText = '';
-  try {
-    const fetchResp = await fetch('/api/fetch-url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: currentJdItem.url }),
-      signal: jdCleanController.signal,
-    });
+	// First fetch the raw JD from the URL
+	let rawText = '';
+	try {
+		const fetchResp = await fetch('/api/fetch-url', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ url: currentJdItem.url }),
+			signal: jdCleanController.signal,
+		});
 
-    if (!fetchResp.ok) {
-      if (fetchResp.status === 400) {
-        const errData = await fetchResp.json() as { error?: string; message?: string };
-        if (errData.error === 'COLLECTION_URL') {
-          closeJdEditModal();
-          showJdCollectionModal(errData.message || 'This is a collection page. JD cannot be auto-fetched.');
-          return;
-        }
-      }
-      if (fetchResp.status === 503) {
-        const errData = await fetchResp.json() as { error?: string; message?: string };
-        if (errData.error === 'LINKEDIN_SESSION_EXPIRED') {
-          closeJdEditModal();
-          showJdCollectionModal(errData.message || 'LinkedIn session expired. Run: tsx scripts/linkedin-auth.ts');
-          return;
-        }
-      }
-      throw new Error(`Failed to fetch: ${fetchResp.status}`);
-    }
+		if (!fetchResp.ok) {
+			if (fetchResp.status === 400) {
+				const errData = (await fetchResp.json()) as { error?: string; message?: string };
+				if (errData.error === 'COLLECTION_URL') {
+					closeJdEditModal();
+					showJdCollectionModal(errData.message || 'This is a collection page. JD cannot be auto-fetched.');
+					return;
+				}
+			}
+			if (fetchResp.status === 503) {
+				const errData = (await fetchResp.json()) as { error?: string; message?: string };
+				if (errData.error === 'LINKEDIN_SESSION_EXPIRED') {
+					closeJdEditModal();
+					showJdCollectionModal(errData.message || 'LinkedIn session expired. Run: tsx scripts/linkedin-auth.ts');
+					return;
+				}
+			}
+			throw new Error(`Failed to fetch: ${fetchResp.status}`);
+		}
 
-    const fetchData = await fetchResp.json() as { text: string };
-    rawText = fetchData.text || '';
-  } catch (err: unknown) {
-    if (err instanceof Error && err.name === 'AbortError') {
-      return; // User cancelled
-    }
-    // If fetch fails, use fallback content
-    const fallbackParts: string[] = [];
-    if (currentJdItem.title) fallbackParts.push(currentJdItem.title);
-    if (currentJdItem.company) fallbackParts.push(`Company: ${currentJdItem.company}`);
-    if (currentJdItem.snippet) fallbackParts.push(currentJdItem.snippet);
-    if (currentJdItem.aiSummary) fallbackParts.push(stripMarkdown(currentJdItem.aiSummary));
-    rawText = fallbackParts.join('\n\n');
-  }
+		const fetchData = (await fetchResp.json()) as { text: string };
+		rawText = fetchData.text || '';
+	} catch (err: unknown) {
+		if (err instanceof Error && err.name === 'AbortError') {
+			return; // User cancelled
+		}
+		// If fetch fails, use fallback content
+		const fallbackParts: string[] = [];
+		if (currentJdItem.title) fallbackParts.push(currentJdItem.title);
+		if (currentJdItem.company) fallbackParts.push(`Company: ${currentJdItem.company}`);
+		if (currentJdItem.snippet) fallbackParts.push(currentJdItem.snippet);
+		if (currentJdItem.aiSummary) fallbackParts.push(stripMarkdown(currentJdItem.aiSummary));
+		rawText = fallbackParts.join('\n\n');
+	}
 
-  // Now clean using AI using the raw text
-  const textToClean = rawText || textarea.value;
-  try {
-    const cleanResp = await fetch('/api/ats/clean-jd', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jobDescription: textToClean,
-        url: currentJdItem.url,
-        source: currentJdItem.source,
-      }),
-      signal: jdCleanController.signal,
-    });
+	// Now clean using AI using the raw text
+	const textToClean = rawText || textarea.value;
+	try {
+		const cleanResp = await fetch('/api/ats/clean-jd', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				jobDescription: textToClean,
+				url: currentJdItem.url,
+				source: currentJdItem.source,
+			}),
+			signal: jdCleanController.signal,
+		});
 
-    if (cleanResp.status === 409) {
-      const errData = await cleanResp.json() as { error?: string; message?: string };
-      closeJdEditModal();
-      showJdCollectionModal(errData.message || 'This link belongs to a collection of jobs. ATS scan is not possible.');
-      return;
-    }
+		if (cleanResp.status === 409) {
+			const errData = (await cleanResp.json()) as { error?: string; message?: string };
+			closeJdEditModal();
+			showJdCollectionModal(errData.message || 'This link belongs to a collection of jobs. ATS scan is not possible.');
+			return;
+		}
 
-    if (cleanResp.ok) {
-      const cleanData = await cleanResp.json() as { cleanedJD?: string };
-      textarea.value = cleanData.cleanedJD || textToClean;
-      showToast({ message: 'JD cleaned successfully using AI', type: 'success' });
-    } else {
-      textarea.value = textToClean;
-      showToast({ message: 'AI cleaning failed, using raw JD', type: 'warning' });
-    }
-  } catch (err: unknown) {
-    if (err instanceof Error && err.name === 'AbortError') {
-      showToast({ message: 'JD cleaning cancelled', type: 'info' });
-      return;
-    }
-    // If AI cleaning fails, keep the raw text
-    textarea.value = textToClean;
-    showToast({ message: 'AI cleaning failed, using raw JD', type: 'warning' });
-  } finally {
-    // Reset UI
-    if (loading) loading.classList.remove('show');
-    if (cleanBtn) cleanBtn.style.display = 'inline-flex';
-    if (stopBtn) stopBtn.style.display = 'none';
-    textarea.disabled = false;
-    if (scanBtnDefault) scanBtnDefault.disabled = false;
-    if (scanBtn) scanBtn.disabled = false;
-    if (fetchBtn) fetchBtn.disabled = false;
-    jdCleanController = null;
-  }
+		if (cleanResp.ok) {
+			const cleanData = (await cleanResp.json()) as { cleanedJD?: string };
+			textarea.value = cleanData.cleanedJD || textToClean;
+			showToast({ message: 'JD cleaned successfully using AI', type: 'success' });
+			// Persist cleaned JD as golden version (sets cleaned=1 in DB)
+			if (currentJdItem?.url) {
+				try {
+					await fetch('/api/scraper/jd/save', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ url: currentJdItem.url, jobDescription: textarea.value }),
+					});
+				} catch {
+					// Non-blocking
+				}
+			}
+		} else {
+			textarea.value = textToClean;
+			showToast({ message: 'AI cleaning failed, using raw JD', type: 'warning' });
+		}
+	} catch (err: unknown) {
+		if (err instanceof Error && err.name === 'AbortError') {
+			showToast({ message: 'JD cleaning cancelled', type: 'info' });
+			return;
+		}
+		// If AI cleaning fails, keep the raw text
+		textarea.value = textToClean;
+		showToast({ message: 'AI cleaning failed, using raw JD', type: 'warning' });
+	} finally {
+		// Reset UI
+		if (loading) loading.classList.remove('show');
+		if (cleanBtn) cleanBtn.style.display = 'inline-flex';
+		if (stopBtn) stopBtn.style.display = 'none';
+		textarea.disabled = false;
+		if (scanBtnDefault) scanBtnDefault.disabled = false;
+		if (scanBtn) scanBtn.disabled = false;
+		if (fetchBtn) fetchBtn.disabled = false;
+		jdCleanController = null;
+	}
 }
 
 // Stop the JD cleaning process
 function stopCleanJd(): void {
-  if (jdCleanController) {
-    jdCleanController.abort();
-    jdCleanController = null;
-  }
-  // Reset UI immediately
-  const loading = document.getElementById('jd-fetch-loading');
-  const cleanBtn = document.getElementById('jd-clean-btn') as HTMLButtonElement;
-  const stopBtn = document.getElementById('jd-stop-btn') as HTMLButtonElement;
-  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
-  const scanBtnDefault = document.getElementById('btn-scan-jd-default') as HTMLButtonElement;
-  const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
-  const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
+	if (jdCleanController) {
+		jdCleanController.abort();
+		jdCleanController = null;
+	}
+	// Reset UI immediately
+	const loading = document.getElementById('jd-fetch-loading');
+	const cleanBtn = document.getElementById('jd-clean-btn') as HTMLButtonElement;
+	const stopBtn = document.getElementById('jd-stop-btn') as HTMLButtonElement;
+	const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+	const scanBtnDefault = document.getElementById('btn-scan-jd-default') as HTMLButtonElement;
+	const scanBtn = document.getElementById('btn-scan-jd') as HTMLButtonElement;
+	const fetchBtn = document.getElementById('jd-fetch-btn') as HTMLButtonElement;
 
-  if (loading) loading.classList.remove('show');
-  if (cleanBtn) cleanBtn.style.display = 'inline-flex';
-  if (stopBtn) stopBtn.style.display = 'none';
-  if (textarea) textarea.disabled = false;
-  if (scanBtnDefault) scanBtnDefault.disabled = false;
-  if (scanBtn) scanBtn.disabled = false;
-  if (fetchBtn) fetchBtn.disabled = false;
+	if (loading) loading.classList.remove('show');
+	if (cleanBtn) cleanBtn.style.display = 'inline-flex';
+	if (stopBtn) stopBtn.style.display = 'none';
+	if (textarea) textarea.disabled = false;
+	if (scanBtnDefault) scanBtnDefault.disabled = false;
+	if (scanBtn) scanBtn.disabled = false;
+	if (fetchBtn) fetchBtn.disabled = false;
 }
 
 // Feature 1: "Show JD" button — fetch saved JD from SQLite via new API
 async function showJdForItem(item: ScraperResult): Promise<void> {
-  const modal = document.getElementById('jd-view-modal');
-  const titleEl = document.getElementById('jd-view-title');
-  const bodyEl = document.getElementById('jd-view-body');
-  const loadingEl = document.getElementById('jd-view-loading');
+	const modal = document.getElementById('jd-view-modal');
+	const titleEl = document.getElementById('jd-view-title');
+	const bodyEl = document.getElementById('jd-view-body');
+	const loadingEl = document.getElementById('jd-view-loading');
 
-  if (!modal || !bodyEl) return;
+	if (!modal || !bodyEl) return;
 
-  if (titleEl) titleEl.textContent = item.title || 'Job Description';
-  bodyEl.textContent = '';
-  if (loadingEl) loadingEl.style.display = 'block';
-  modal.style.display = 'flex';
+	if (titleEl) titleEl.textContent = item.title || 'Job Description';
+	bodyEl.textContent = '';
+	if (loadingEl) loadingEl.style.display = 'block';
+	modal.style.display = 'flex';
 
-  // Add Escape key handler
-  const escapeHandler = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      closeJdViewModal();
-    }
-  };
-  document.addEventListener('keydown', escapeHandler);
-  (modal as HTMLDivElement & { _escapeHandler?: typeof escapeHandler })._escapeHandler = escapeHandler;
+	// Add Escape key handler
+	const escapeHandler = (e: KeyboardEvent) => {
+		if (e.key === 'Escape') {
+			closeJdViewModal();
+		}
+	};
+	document.addEventListener('keydown', escapeHandler);
+	(modal as HTMLDivElement & { _escapeHandler?: typeof escapeHandler })._escapeHandler = escapeHandler;
 
-  try {
-    const resp = await fetch('/api/scraper/jd', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: item.url }),
-    });
+	try {
+		const resp = await fetch('/api/scraper/jd', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ url: item.url }),
+		});
 
-    if (loadingEl) loadingEl.style.display = 'none';
+		if (loadingEl) loadingEl.style.display = 'none';
 
-    if (resp.status === 404) {
-      bodyEl.textContent = 'No saved job description found. Run ATS on this job to fetch and save the JD.';
-      return;
-    }
-    if (!resp.ok) {
-      const errData = await resp.json().catch(() => ({ error: 'Failed to fetch JD' }));
-      bodyEl.textContent = errData.error || 'Failed to fetch JD.';
-      return;
-    }
-    const data = await resp.json() as { jobDescription?: string };
-    bodyEl.textContent = data.jobDescription || 'No job description available.';
-  } catch (err: unknown) {
-    if (loadingEl) loadingEl.style.display = 'none';
-    bodyEl.textContent = 'Error loading job description: ' + (err as Error).message;
-  }
+		if (resp.status === 404) {
+			bodyEl.textContent = 'No saved job description found. Run ATS on this job to fetch and save the JD.';
+			return;
+		}
+		if (!resp.ok) {
+			const errData = await resp.json().catch(() => ({ error: 'Failed to fetch JD' }));
+			bodyEl.textContent = errData.error || 'Failed to fetch JD.';
+			return;
+		}
+		const data = (await resp.json()) as { jobDescription?: string };
+		bodyEl.textContent = data.jobDescription || 'No job description available.';
+	} catch (err: unknown) {
+		if (loadingEl) loadingEl.style.display = 'none';
+		bodyEl.textContent = `Error loading job description: ${(err as Error).message}`;
+	}
 }
 
 function closeJdEditModal(): void {
-  const modal = document.getElementById('jd-edit-modal');
-  if (modal) modal.classList.remove('show');
+	const modal = document.getElementById('jd-edit-modal');
+	if (modal) modal.classList.remove('show');
 }
 
 async function runAtsScanFromResults(): Promise<void> {
-  const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
-  const jdText = textarea.value.trim();
-  if (!jdText) {
-    showToast({ message: 'Please enter a job description text.', type: 'error' });
-    return;
-  }
+	const textarea = document.getElementById('jd-edit-textarea') as HTMLTextAreaElement;
+	const jdText = textarea.value.trim();
+	if (!jdText) {
+		showToast({ message: 'Please enter a job description text.', type: 'error' });
+		return;
+	}
 
-  closeJdEditModal();
+	closeJdEditModal();
 
-  const loading = document.getElementById('ats-loading');
-  if (loading) loading.classList.add('show');
-  openAtsSidebar();
+	// Before ATS scan: if JD differs from stored, persist as golden JD
+	if (currentJdItem?.url) {
+		try {
+			const saveResp = await fetch('/api/scraper/jd/save', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ url: currentJdItem.url, jobDescription: jdText }),
+			});
+			if (!saveResp.ok) {
+				const errData = await saveResp.json().catch(() => ({ error: 'Failed to save JD' }));
+				console.warn('[ATS] Could not persist JD:', errData.error);
+				// Non-blocking: continue with scan even if save fails
+			}
+		} catch (e) {
+			console.warn('[ATS] Error saving JD:', e);
+			// Non-blocking
+		}
+	}
 
-  try {
-    const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
-    const jobTitle = currentJdItem?.title || undefined;
-    const resp = await fetch('/api/ats/scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobDescription: jdText, provider: selectedProvider, jobTitle }),
-    });
+	const loading = document.getElementById('ats-loading');
+	if (loading) loading.classList.add('show');
+	openAtsSidebar();
 
-    if (!resp.ok) {
-      const errData = await resp.json() as { error?: string };
-      throw new Error(errData.error || `HTTP ${resp.status}`);
-    }
+	try {
+		const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
+		const jobTitle = currentJdItem?.title || undefined;
+		const resp = await fetch('/api/ats/scan', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ jobDescription: jdText, provider: selectedProvider, jobTitle }),
+		});
 
-    const data = await resp.json() as Record<string, unknown>;
-    if (data.error) throw new Error(data.error as string);
+		if (!resp.ok) {
+			const errData = (await resp.json()) as { error?: string };
+			throw new Error(errData.error || `HTTP ${resp.status}`);
+		}
 
-    applyAtsResultsToUI(data);
-  } catch (err: unknown) {
-    if (loading) loading.classList.remove('show');
-    const feedbackEl = document.getElementById('ats-feedback')!;
-    feedbackEl.textContent = 'ATS scan error: ' + (err as Error).message;
-    feedbackEl.style.color = '#ef4444';
-    document.getElementById('ats-scan-again-msg')!.style.display = 'none';
-    document.getElementById('ats-breakdown-section')!.style.display = 'none';
-  }
+		const data = (await resp.json()) as Record<string, unknown>;
+		if (data.error) throw new Error(data.error as string);
+
+		applyAtsResultsToUI(data);
+	} catch (err: unknown) {
+		if (loading) loading.classList.remove('show');
+		const feedbackEl = document.getElementById('ats-feedback')!;
+		feedbackEl.textContent = `ATS scan error: ${(err as Error).message}`;
+		feedbackEl.style.color = '#ef4444';
+		document.getElementById('ats-scan-again-msg')!.style.display = 'none';
+		document.getElementById('ats-breakdown-section')!.style.display = 'none';
+	}
 }
 
 // ─── Dot Animation ───────────────────────────────────────────────────────
 
 (function ensureDotAnimStyle(): void {
-  if (document.getElementById('dot-anim-style')) return;
-  const style = document.createElement('style');
-  style.id = 'dot-anim-style';
-  style.textContent = `
+	if (document.getElementById('dot-anim-style')) return;
+	const style = document.createElement('style');
+	style.id = 'dot-anim-style';
+	style.textContent = `
     .dot-anim::after {
       content: '';
       animation: dotdot 1.4s infinite;
@@ -2353,732 +2533,777 @@ async function runAtsScanFromResults(): Promise<void> {
       100% { content: '...'; }
     }
   `;
-  document.head.appendChild(style);
+	document.head.appendChild(style);
 })();
 
 // ─── Job Scraper UI Logic ───────────────────────────────────────────
 async function openJobScraperModal(): Promise<void> {
-  const dropdown = document.getElementById('actions-dropdown');
-  if (dropdown) dropdown.classList.add('hidden');
+	const dropdown = document.getElementById('actions-dropdown');
+	if (dropdown) dropdown.classList.add('hidden');
 
-  // Reset form fields
-  const roleInput = document.getElementById('scraper-role') as HTMLInputElement;
-  if (roleInput) roleInput.value = '';
-  const keywordsInput = document.getElementById('scraper-keywords') as HTMLInputElement;
-  if (keywordsInput) keywordsInput.value = '';
-  const senioritySelect = document.getElementById('scraper-seniority') as HTMLSelectElement;
-  if (senioritySelect) senioritySelect.value = '';
-  const datePostedSelect = document.getElementById('scraper-date-posted') as HTMLSelectElement;
-  if (datePostedSelect) datePostedSelect.value = 'week';
-  const workTypeSelect = document.getElementById('scraper-work-type') as HTMLSelectElement;
-  if (workTypeSelect) workTypeSelect.value = '';
-  const employmentSelect = document.getElementById('scraper-employment') as HTMLSelectElement;
-  if (employmentSelect) employmentSelect.value = '';
-  const googleSeniorityInput = document.getElementById('scraper-seniority-google') as HTMLInputElement;
-  if (googleSeniorityInput) googleSeniorityInput.value = '';
-  const googleEmploymentInput = document.getElementById('scraper-employment-google') as HTMLInputElement;
-  if (googleEmploymentInput) googleEmploymentInput.value = '';
-  const countryInput = document.getElementById('scraper-country') as HTMLInputElement;
-  if (countryInput) countryInput.value = '';
-  const regionSelect = document.getElementById('scraper-region') as HTMLSelectElement;
-  if (regionSelect) regionSelect.value = '';
-  const currencySelect = document.getElementById('scraper-currency') as HTMLSelectElement;
-  if (currencySelect) currencySelect.value = '';
+	// Reset form fields
+	const roleInput = document.getElementById('scraper-role') as HTMLInputElement;
+	if (roleInput) roleInput.value = '';
+	const keywordsInput = document.getElementById('scraper-keywords') as HTMLInputElement;
+	if (keywordsInput) keywordsInput.value = '';
+	const senioritySelect = document.getElementById('scraper-seniority') as HTMLSelectElement;
+	if (senioritySelect) senioritySelect.value = '';
+	const datePostedSelect = document.getElementById('scraper-date-posted') as HTMLSelectElement;
+	if (datePostedSelect) datePostedSelect.value = 'week';
+	const workTypeSelect = document.getElementById('scraper-work-type') as HTMLSelectElement;
+	if (workTypeSelect) workTypeSelect.value = '';
+	const employmentSelect = document.getElementById('scraper-employment') as HTMLSelectElement;
+	if (employmentSelect) employmentSelect.value = '';
+	const googleSeniorityInput = document.getElementById('scraper-seniority-google') as HTMLInputElement;
+	if (googleSeniorityInput) googleSeniorityInput.value = '';
+	const googleEmploymentInput = document.getElementById('scraper-employment-google') as HTMLInputElement;
+	if (googleEmploymentInput) googleEmploymentInput.value = '';
+	const countryInput = document.getElementById('scraper-country') as HTMLInputElement;
+	if (countryInput) countryInput.value = '';
+	const regionSelect = document.getElementById('scraper-region') as HTMLSelectElement;
+	if (regionSelect) regionSelect.value = '';
+	const currencySelect = document.getElementById('scraper-currency') as HTMLSelectElement;
+	if (currencySelect) currencySelect.value = '';
 
-  // Reset domain checkboxes: all default sites checked by default (so the
-  // initial query includes them), and the master select-all checkbox too
-  const domainBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
-  domainBoxes.forEach(cb => { cb.checked = true; });
-  const selectAllCb = document.getElementById('select-all-domains') as HTMLInputElement | null;
-  if (selectAllCb) selectAllCb.checked = true;
+	// Reset domain checkboxes: all default sites checked by default (so the
+	// initial query includes them), and the master select-all checkbox too
+	const domainBoxes = Array.from(
+		document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')
+	) as HTMLInputElement[];
+	domainBoxes.forEach(cb => {
+		cb.checked = true;
+	});
+	const selectAllCb = document.getElementById('select-all-domains') as HTMLInputElement | null;
+	if (selectAllCb) selectAllCb.checked = true;
 
-  clearRoleError();
+	clearRoleError();
 
-  const modal = document.getElementById('job-scraper-modal');
-  if (modal) modal.style.display = 'flex';
+	const modal = document.getElementById('job-scraper-modal');
+	if (modal) modal.style.display = 'flex';
 
-  switchScraperPlatform('linkedin');
-  updateQueryPreview();
-  await refreshScrapingResultsButton();
+	switchScraperPlatform('linkedin');
+	updateQueryPreview();
+	await refreshScrapingResultsButton();
 }
 
 function closeJobScraperModal(): void {
-  const modal = document.getElementById('job-scraper-modal');
-  if (modal) modal.style.display = 'none';
+	const modal = document.getElementById('job-scraper-modal');
+	if (modal) modal.style.display = 'none';
 }
 
 function clearRoleError(): void {
-  const errSpan = document.getElementById('scraper-role-error');
-  if (errSpan) errSpan.style.display = 'none';
-  const roleInput = document.getElementById('scraper-role');
-  if (roleInput) roleInput.style.border = '1px solid rgba(255,255,255,0.15)';
+	const errSpan = document.getElementById('scraper-role-error');
+	if (errSpan) errSpan.style.display = 'none';
+	const roleInput = document.getElementById('scraper-role');
+	if (roleInput) roleInput.style.border = '1px solid rgba(255,255,255,0.15)';
 }
 
 function switchScraperPlatform(platform: 'linkedin' | 'google' | 'remoterocketship'): void {
-  currentScraperPlatform = platform;
-  const btnLinkedin = document.getElementById('toggle-platform-linkedin');
-  const btnGoogle = document.getElementById('toggle-platform-google');
-  const btnRemoteRocketship = document.getElementById('toggle-platform-remoterocketship');
-  const linkedinRow1 = document.getElementById('scraper-row-linkedin-1');
-  const linkedinRow2 = document.getElementById('scraper-row-linkedin-2');
-  const googleSeniorityField = document.getElementById('scraper-field-seniority-google');
-  const googleEmploymentField = document.getElementById('scraper-field-employment-google');
-  const googleSection = document.getElementById('google-domains-section');
-  const countryField = document.getElementById('scraper-field-country');
-  const regionField = document.getElementById('scraper-field-region');
-  const currencyField = document.getElementById('scraper-field-currency');
-  const rrFields = document.getElementById('remoterocketship-fields');
+	currentScraperPlatform = platform;
+	const btnLinkedin = document.getElementById('toggle-platform-linkedin');
+	const btnGoogle = document.getElementById('toggle-platform-google');
+	const btnRemoteRocketship = document.getElementById('toggle-platform-remoterocketship');
+	const linkedinRow1 = document.getElementById('scraper-row-linkedin-1');
+	const linkedinRow2 = document.getElementById('scraper-row-linkedin-2');
+	const googleSeniorityField = document.getElementById('scraper-field-seniority-google');
+	const googleEmploymentField = document.getElementById('scraper-field-employment-google');
+	const googleSection = document.getElementById('google-domains-section');
+	const countryField = document.getElementById('scraper-field-country');
+	const regionField = document.getElementById('scraper-field-region');
+	const currencyField = document.getElementById('scraper-field-currency');
+	const rrFields = document.getElementById('remoterocketship-fields');
 
-  // Reset all buttons
-  const buttons = [btnLinkedin, btnGoogle, btnRemoteRocketship];
-  buttons.forEach(btn => {
-    if (btn) {
-      btn.style.background = 'transparent';
-      btn.style.color = 'rgba(255,255,255,0.7)';
-    }
-  });
+	// Reset all buttons
+	const buttons = [btnLinkedin, btnGoogle, btnRemoteRocketship];
+	buttons.forEach(btn => {
+		if (btn) {
+			btn.style.background = 'transparent';
+			btn.style.color = 'rgba(255,255,255,0.7)';
+		}
+	});
 
-  // Hide all platform-specific fields by default
-  if (linkedinRow1) linkedinRow1.style.display = 'none';
-  if (linkedinRow2) linkedinRow2.style.display = 'none';
-  if (googleSeniorityField) googleSeniorityField.style.display = 'none';
-  if (googleEmploymentField) googleEmploymentField.style.display = 'none';
-  if (googleSection) googleSection.style.display = 'none';
-  if (rrFields) rrFields.style.display = 'none';
-  if (countryField) countryField.style.display = 'none';
-  if (regionField) regionField.style.display = 'none';
-  if (currencyField) currencyField.style.display = 'none';
+	// Hide all platform-specific fields by default
+	if (linkedinRow1) linkedinRow1.style.display = 'none';
+	if (linkedinRow2) linkedinRow2.style.display = 'none';
+	if (googleSeniorityField) googleSeniorityField.style.display = 'none';
+	if (googleEmploymentField) googleEmploymentField.style.display = 'none';
+	if (googleSection) googleSection.style.display = 'none';
+	if (rrFields) rrFields.style.display = 'none';
+	if (countryField) countryField.style.display = 'none';
+	if (regionField) regionField.style.display = 'none';
+	if (currencyField) currencyField.style.display = 'none';
 
-  if (platform === 'linkedin') {
-    if (btnLinkedin) {
-      btnLinkedin.style.background = 'var(--accent)';
-      btnLinkedin.style.color = '#fff';
-    }
-    // LinkedIn: show LinkedIn rows (seniority, date posted, work type, employment, country, region, currency); hide Google fields
-    if (linkedinRow1) linkedinRow1.style.display = 'grid';
-    if (linkedinRow2) linkedinRow2.style.display = 'grid';
-    if (countryField) countryField.style.display = 'block';
-    if (regionField) regionField.style.display = 'block';
-    if (currencyField) currencyField.style.display = 'block';
-  } else if (platform === 'google') {
-    if (btnGoogle) {
-      btnGoogle.style.background = 'var(--accent)';
-      btnGoogle.style.color = '#fff';
-    }
-    // Google: show Google fields (seniority, employment, country, region, currency, domains); hide LinkedIn rows
-    if (countryField) countryField.style.display = 'block';
-    if (regionField) regionField.style.display = 'block';
-    if (currencyField) currencyField.style.display = 'block';
-    if (googleSeniorityField) googleSeniorityField.style.display = 'block';
-    if (googleEmploymentField) googleEmploymentField.style.display = 'block';
-    if (googleSection) googleSection.style.display = 'block';
-  } else if (platform === 'remoterocketship') {
-    if (btnRemoteRocketship) {
-      btnRemoteRocketship.style.background = 'var(--accent)';
-      btnRemoteRocketship.style.color = '#fff';
-    }
-    // Remote Rocketship: show RR-specific fields (country, sort, seniority, job titles, locations, page)
-    if (rrFields) rrFields.style.display = 'block';
-  }
+	if (platform === 'linkedin') {
+		if (btnLinkedin) {
+			btnLinkedin.style.background = 'var(--accent)';
+			btnLinkedin.style.color = '#fff';
+		}
+		// LinkedIn: show LinkedIn rows (seniority, date posted, work type, employment, country, region, currency); hide Google fields
+		if (linkedinRow1) linkedinRow1.style.display = 'grid';
+		if (linkedinRow2) linkedinRow2.style.display = 'grid';
+		if (countryField) countryField.style.display = 'block';
+		if (regionField) regionField.style.display = 'block';
+		if (currencyField) currencyField.style.display = 'block';
+	} else if (platform === 'google') {
+		if (btnGoogle) {
+			btnGoogle.style.background = 'var(--accent)';
+			btnGoogle.style.color = '#fff';
+		}
+		// Google: show Google fields (seniority, employment, country, region, currency, domains); hide LinkedIn rows
+		if (countryField) countryField.style.display = 'block';
+		if (regionField) regionField.style.display = 'block';
+		if (currencyField) currencyField.style.display = 'block';
+		if (googleSeniorityField) googleSeniorityField.style.display = 'block';
+		if (googleEmploymentField) googleEmploymentField.style.display = 'block';
+		if (googleSection) googleSection.style.display = 'block';
+	} else if (platform === 'remoterocketship') {
+		if (btnRemoteRocketship) {
+			btnRemoteRocketship.style.background = 'var(--accent)';
+			btnRemoteRocketship.style.color = '#fff';
+		}
+		// Remote Rocketship: show RR-specific fields (country, sort, seniority, job titles, locations, page)
+		if (rrFields) rrFields.style.display = 'block';
+	}
 
-  updateQueryPreview();
+	updateQueryPreview();
 }
 
 // Remote Rocketship Confirm Modal
 function showRemoteRocketshipConfirm(onConfirm: () => void): void {
-  const modal = document.getElementById('remoterocketship-confirm-modal');
-  if (!modal) return;
+	const modal = document.getElementById('remoterocketship-confirm-modal');
+	if (!modal) return;
 
-  // Check if user already dismissed this
-  const dismissed = localStorage.getItem('rr-confirm-dismissed');
-  if (dismissed === 'true') {
-    onConfirm();
-    return;
-  }
+	// Check if user already dismissed this
+	const dismissed = localStorage.getItem('rr-confirm-dismissed');
+	if (dismissed === 'true') {
+		onConfirm();
+		return;
+	}
 
-  modal.style.display = 'flex';
+	modal.style.display = 'flex';
 
-  // Store the callback to call when confirmed
-  (window as unknown as Record<string, unknown>)._rrConfirmCallback = onConfirm;
+	// Store the callback to call when confirmed
+	(window as unknown as Record<string, unknown>)._rrConfirmCallback = onConfirm;
 
-  // Add Escape key handler
-  const escapeHandler = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      closeRemoteRocketshipConfirm();
-    }
-  };
-  document.addEventListener('keydown', escapeHandler);
-  (modal as HTMLDivElement & { _escapeHandler?: typeof escapeHandler })._escapeHandler = escapeHandler;
+	// Add Escape key handler
+	const escapeHandler = (e: KeyboardEvent) => {
+		if (e.key === 'Escape') {
+			closeRemoteRocketshipConfirm();
+		}
+	};
+	document.addEventListener('keydown', escapeHandler);
+	(modal as HTMLDivElement & { _escapeHandler?: typeof escapeHandler })._escapeHandler = escapeHandler;
 }
 
 function closeRemoteRocketshipConfirm(): void {
-  const modal = document.getElementById('remoterocketship-confirm-modal');
-  if (modal) {
-    modal.style.display = 'none';
-    // Remove Escape key handler
-    const handler = (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
-    if (handler) {
-      document.removeEventListener('keydown', handler);
-      delete (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
-    }
-  }
+	const modal = document.getElementById('remoterocketship-confirm-modal');
+	if (modal) {
+		modal.style.display = 'none';
+		// Remove Escape key handler
+		const handler = (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
+		if (handler) {
+			document.removeEventListener('keydown', handler);
+			delete (modal as HTMLDivElement & { _escapeHandler?: (e: KeyboardEvent) => void })._escapeHandler;
+		}
+	}
 }
 
 function confirmRemoteRocketship(): void {
-  const modal = document.getElementById('remoterocketship-confirm-modal');
-  const checkbox = document.getElementById('rr-dont-show-again') as HTMLInputElement;
-  
-  if (checkbox?.checked) {
-    localStorage.setItem('rr-confirm-dismissed', 'true');
-  }
-  
-  if (modal) modal.style.display = 'none';
-  
-  const callback = (window as unknown as Record<string, unknown>)._rrConfirmCallback as (() => void) | undefined;
-  if (callback) {
-    callback();
-    delete (window as unknown as Record<string, unknown>)._rrConfirmCallback;
-  }
+	const modal = document.getElementById('remoterocketship-confirm-modal');
+	const checkbox = document.getElementById('rr-dont-show-again') as HTMLInputElement;
+
+	if (checkbox?.checked) {
+		localStorage.setItem('rr-confirm-dismissed', 'true');
+	}
+
+	if (modal) modal.style.display = 'none';
+
+	const callback = (window as unknown as Record<string, unknown>)._rrConfirmCallback as (() => void) | undefined;
+	if (callback) {
+		callback();
+		delete (window as unknown as Record<string, unknown>)._rrConfirmCallback;
+	}
 }
 
 function updateQueryPreview(): string {
-  const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
-  const seniority = currentScraperPlatform === 'google'
-    ? (document.getElementById('scraper-seniority-google') as HTMLInputElement)?.value.trim() || ''
-    : currentScraperPlatform === 'remoterocketship'
-      ? (document.getElementById('scraper-seniority-rr') as HTMLSelectElement)?.value || ''
-      : (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
-  const employmentType = currentScraperPlatform === 'google'
-    ? (document.getElementById('scraper-employment-google') as HTMLInputElement)?.value.trim() || ''
-    : (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
-  const country = currentScraperPlatform === 'remoterocketship'
-    ? (document.getElementById('scraper-country-rr') as HTMLInputElement)?.value.trim() || ''
-    : (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
-  const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
-  const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
-  const datePosted = (document.getElementById('scraper-date-posted') as HTMLSelectElement)?.value || '';
-  const workType = currentScraperPlatform === 'remoterocketship' ? '' : (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
-  const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
+	const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
+	const seniority =
+		currentScraperPlatform === 'google'
+			? (document.getElementById('scraper-seniority-google') as HTMLInputElement)?.value.trim() || ''
+			: currentScraperPlatform === 'remoterocketship'
+				? (document.getElementById('scraper-seniority-rr') as HTMLSelectElement)?.value || ''
+				: (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
+	const employmentType =
+		currentScraperPlatform === 'google'
+			? (document.getElementById('scraper-employment-google') as HTMLInputElement)?.value.trim() || ''
+			: (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+	const country =
+		currentScraperPlatform === 'remoterocketship'
+			? (document.getElementById('scraper-country-rr') as HTMLInputElement)?.value.trim() || ''
+			: (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
+	const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
+	const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
+	const datePosted = (document.getElementById('scraper-date-posted') as HTMLSelectElement)?.value || '';
+	const workType =
+		currentScraperPlatform === 'remoterocketship'
+			? ''
+			: (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
+	const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
 
-  const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')) as HTMLInputElement[];
-  const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
+	const checkedBoxes = Array.from(
+		document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')
+	) as HTMLInputElement[];
+	const customDomains =
+		currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
 
-  // Sync the master "Select All" checkbox with the individual domain checkboxes
-  if (currentScraperPlatform === 'google') {
-    const selectAll = document.getElementById('select-all-domains') as HTMLInputElement | null;
-    if (selectAll) {
-      const allDomainBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
-      const allChecked = allDomainBoxes.length > 0 && allDomainBoxes.every(cb => cb.checked);
-      selectAll.checked = allChecked;
-    }
-  }
+	// Sync the master "Select All" checkbox with the individual domain checkboxes
+	if (currentScraperPlatform === 'google') {
+		const selectAll = document.getElementById('select-all-domains') as HTMLInputElement | null;
+		if (selectAll) {
+			const allDomainBoxes = Array.from(
+				document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')
+			) as HTMLInputElement[];
+			const allChecked = allDomainBoxes.length > 0 && allDomainBoxes.every(cb => cb.checked);
+			selectAll.checked = allChecked;
+		}
+	}
 
-  // Delegate to the shared URL builder (single source of truth)
-  const generatedUrl = buildQueryUrl(currentScraperPlatform, {
-    source: currentScraperPlatform,
-    role,
-    seniority,
-    employmentType,
-    country,
-    region,
-    currency,
-    datePosted,
-    workType,
-    keywords,
-    customDomains,
-  });
+	// Delegate to the shared URL builder (single source of truth)
+	const generatedUrl = buildQueryUrl(currentScraperPlatform, {
+		source: currentScraperPlatform,
+		role,
+		seniority,
+		employmentType,
+		country,
+		region,
+		currency,
+		datePosted,
+		workType,
+		keywords,
+		customDomains,
+	});
 
-  const previewElem = document.getElementById('query-url-preview');
-  if (previewElem) {
-    previewElem.textContent = decodeURIComponent(generatedUrl);
-  }
-  return generatedUrl;
+	const previewElem = document.getElementById('query-url-preview');
+	if (previewElem) {
+		previewElem.textContent = decodeURIComponent(generatedUrl);
+	}
+	return generatedUrl;
 }
 
 function toggleAllDomains(master: HTMLInputElement): void {
-  const checkboxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')) as HTMLInputElement[];
-  checkboxes.forEach(cb => { cb.checked = master.checked; });
-  updateQueryPreview();
+	const checkboxes = Array.from(
+		document.querySelectorAll('#domains-checklist input[type="checkbox"]:not(#select-all-domains)')
+	) as HTMLInputElement[];
+	checkboxes.forEach(cb => {
+		cb.checked = master.checked;
+	});
+	updateQueryPreview();
 }
 
 function addCustomDomain(): void {
-  const input = document.getElementById('custom-domain-input') as HTMLInputElement;
-  if (!input) return;
-  const val = input.value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-  if (!val) return;
+	const input = document.getElementById('custom-domain-input') as HTMLInputElement;
+	if (!input) return;
+	const val = input.value
+		.trim()
+		.toLowerCase()
+		.replace(/^https?:\/\//, '')
+		.replace(/\/.*$/, '');
+	if (!val) return;
 
-  const checklist = document.getElementById('domains-checklist');
-  if (checklist) {
-    const label = document.createElement('label');
-    label.style.fontSize = '12px';
-    label.style.color = '#ddd';
-    label.style.cursor = 'pointer';
+	const checklist = document.getElementById('domains-checklist');
+	if (checklist) {
+		const label = document.createElement('label');
+		label.style.fontSize = '12px';
+		label.style.color = '#ddd';
+		label.style.cursor = 'pointer';
 
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.value = val;
-    cb.checked = true;
-    cb.onchange = () => updateQueryPreview();
+		const cb = document.createElement('input');
+		cb.type = 'checkbox';
+		cb.value = val;
+		cb.checked = true;
+		cb.onchange = () => updateQueryPreview();
 
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode(` ${val}`));
-    checklist.appendChild(label);
-  }
+		label.appendChild(cb);
+		label.appendChild(document.createTextNode(` ${val}`));
+		checklist.appendChild(label);
+	}
 
-  input.value = '';
-  updateQueryPreview();
+	input.value = '';
+	updateQueryPreview();
 }
 
 function openQueryInBrowser(): void {
-  // Validate first
-  const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
-  if (!role) {
-    const errSpan = document.getElementById('scraper-role-error');
-    if (errSpan) errSpan.style.display = 'block';
-    const roleInput = document.getElementById('scraper-role');
-    if (roleInput) roleInput.style.border = '1px solid #ef4444';
-    return;
-  }
+	// Validate first
+	const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
+	if (!role) {
+		const errSpan = document.getElementById('scraper-role-error');
+		if (errSpan) errSpan.style.display = 'block';
+		const roleInput = document.getElementById('scraper-role');
+		if (roleInput) roleInput.style.border = '1px solid #ef4444';
+		return;
+	}
 
-  const url = updateQueryPreview();
-  window.open(url, '_blank');
+	const url = updateQueryPreview();
+	window.open(url, '_blank');
 }
 
 async function startScraping(): Promise<void> {
-  const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
-  if (!role) {
-    const errSpan = document.getElementById('scraper-role-error');
-    if (errSpan) errSpan.style.display = 'block';
-    const roleInput = document.getElementById('scraper-role');
-    if (roleInput) roleInput.style.border = '1px solid #ef4444';
-    return;
-  }
+	const role = (document.getElementById('scraper-role') as HTMLInputElement)?.value.trim() || '';
+	if (!role) {
+		const errSpan = document.getElementById('scraper-role-error');
+		if (errSpan) errSpan.style.display = 'block';
+		const roleInput = document.getElementById('scraper-role');
+		if (roleInput) roleInput.style.border = '1px solid #ef4444';
+		return;
+	}
 
-  const seniority = currentScraperPlatform === 'google'
-    ? (document.getElementById('scraper-seniority-google') as HTMLInputElement)?.value.trim() || ''
-    : currentScraperPlatform === 'remoterocketship'
-      ? (document.getElementById('scraper-seniority-rr') as HTMLSelectElement)?.value || ''
-      : (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
-  const employmentType = currentScraperPlatform === 'google'
-    ? (document.getElementById('scraper-employment-google') as HTMLInputElement)?.value.trim() || ''
-    : (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
-  const country = currentScraperPlatform === 'remoterocketship'
-    ? (document.getElementById('scraper-country-rr') as HTMLInputElement)?.value.trim() || ''
-    : (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
-  const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
-  const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
-  const datePosted = (document.getElementById('scraper-date-posted') as HTMLSelectElement)?.value || '';
-  const workType = currentScraperPlatform === 'remoterocketship' ? '' : (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
-  const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
+	const seniority =
+		currentScraperPlatform === 'google'
+			? (document.getElementById('scraper-seniority-google') as HTMLInputElement)?.value.trim() || ''
+			: currentScraperPlatform === 'remoterocketship'
+				? (document.getElementById('scraper-seniority-rr') as HTMLSelectElement)?.value || ''
+				: (document.getElementById('scraper-seniority') as HTMLSelectElement)?.value || '';
+	const employmentType =
+		currentScraperPlatform === 'google'
+			? (document.getElementById('scraper-employment-google') as HTMLInputElement)?.value.trim() || ''
+			: (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+	const country =
+		currentScraperPlatform === 'remoterocketship'
+			? (document.getElementById('scraper-country-rr') as HTMLInputElement)?.value.trim() || ''
+			: (document.getElementById('scraper-country') as HTMLInputElement)?.value.trim() || '';
+	const region = (document.getElementById('scraper-region') as HTMLSelectElement)?.value || '';
+	const currency = (document.getElementById('scraper-currency') as HTMLSelectElement)?.value || '';
+	const datePosted = (document.getElementById('scraper-date-posted') as HTMLSelectElement)?.value || '';
+	const workType =
+		currentScraperPlatform === 'remoterocketship'
+			? ''
+			: (document.getElementById('scraper-work-type') as HTMLSelectElement)?.value || '';
+	const keywords = (document.getElementById('scraper-keywords') as HTMLInputElement)?.value.trim() || '';
 
-  const checkedBoxes = Array.from(document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')) as HTMLInputElement[];
-  const customDomains = currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
+	const checkedBoxes = Array.from(
+		document.querySelectorAll('#domains-checklist input[type="checkbox"]:checked:not(#select-all-domains)')
+	) as HTMLInputElement[];
+	const customDomains =
+		currentScraperPlatform === 'google' ? checkedBoxes.map(cb => cb.value.trim()).filter(Boolean) : undefined;
 
-  const queryPayload = {
-    source: currentScraperPlatform,
-    role,
-    seniority,
-    employmentType,
-    country,
-    region,
-    currency,
-    datePosted,
-    workType,
-    keywords,
-    customDomains,
-  };
+	const queryPayload = {
+		source: currentScraperPlatform,
+		role,
+		seniority,
+		employmentType,
+		country,
+		region,
+		currency,
+		datePosted,
+		workType,
+		keywords,
+		customDomains,
+	};
 
-  closeJobScraperModal();
+	closeJobScraperModal();
 
-  const overlay = document.getElementById('scraper-overlay');
-  const label = document.getElementById('scraper-source-label');
-  const fallbackBtn = document.getElementById('btn-open-results-fallback');
-  if (label) label.textContent = currentScraperPlatform === 'linkedin' ? 'LinkedIn' : currentScraperPlatform === 'google' ? 'Google' : 'Remote Rocketship';
-  if (fallbackBtn) fallbackBtn.style.display = 'none';
-  if (overlay) overlay.style.display = 'flex';
+	const overlay = document.getElementById('scraper-overlay');
+	const label = document.getElementById('scraper-source-label');
+	const fallbackBtn = document.getElementById('btn-open-results-fallback');
+	if (label)
+		label.textContent =
+			currentScraperPlatform === 'linkedin'
+				? 'LinkedIn'
+				: currentScraperPlatform === 'google'
+					? 'Google'
+					: 'Remote Rocketship';
+	if (fallbackBtn) fallbackBtn.style.display = 'none';
+	if (overlay) overlay.style.display = 'flex';
 
-  switchTab('scraping');
-  switchResultsTab(currentScraperPlatform);
+	switchTab('scraping');
+	switchResultsTab(currentScraperPlatform);
 
-  scraperController = new AbortController();
+	scraperController = new AbortController();
 
-  try {
-    const resp = await fetch('/api/scraper/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(queryPayload),
-      signal: scraperController.signal,
-    });
+	try {
+		const resp = await fetch('/api/scraper/start', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(queryPayload),
+			signal: scraperController.signal,
+		});
 
-    if (!resp.ok) {
-      if (overlay) overlay.style.display = 'none';
-      const err = await resp.json();
-      const errMsg = err.error || 'Failed to execute scraper';
-      showToast({ message: 'Scraper error: ' + errMsg, type: 'error' });
-      return;
-    }
+		if (!resp.ok) {
+			if (overlay) overlay.style.display = 'none';
+			const err = await resp.json();
+			const errMsg = err.error || 'Failed to execute scraper';
+			showToast({ message: `Scraper error: ${errMsg}`, type: 'error' });
+			return;
+		}
 
-    const data = await resp.json();
-    // Record the run ID so the poller can match the completed run and hide the
-    // overlay once the results file (and background enrichments) are ready.
-    if (data && data.runId) {
-      currentRunId = data.runId;
-    }
-    payloadsBySource[currentScraperPlatform] = data;
-    
-    // If no results returned, show toast and don't start polling
-    if (!data.results || data.results.length === 0) {
-      if (overlay) overlay.style.display = 'none';
-      showToast({ message: 'No results found for this search.', type: 'warning' });
-      renderScrapingResults();
-      return;
-    }
+		const data = await resp.json();
+		// Record the run ID so the poller can match the completed run and hide the
+		// overlay once the results file (and background enrichments) are ready.
+		if (data && data.runId) {
+			currentRunId = data.runId;
+		}
+		payloadsBySource[currentScraperPlatform] = data;
 
-    extractionStatus[currentScraperPlatform] = 'extracting';
-    sessionStorage.setItem('scraper-results', JSON.stringify(data));
-    localStorage.setItem(getScraperResultsStorageKey(currentScraperPlatform), JSON.stringify(data));
-    refreshScrapingResultsButton();
+		// If no results returned, show toast and don't start polling
+		if (!data.results || data.results.length === 0) {
+			if (overlay) overlay.style.display = 'none';
+			showToast({ message: 'No results found for this search.', type: 'warning' });
+			renderScrapingResults();
+			return;
+		}
 
-    // Show extraction loading state immediately
-    renderScrapingResults();
+		extractionStatus[currentScraperPlatform] = 'extracting';
+		sessionStorage.setItem('scraper-results', JSON.stringify(data));
+		localStorage.setItem(getScraperResultsStorageKey(currentScraperPlatform), JSON.stringify(data));
+		refreshScrapingResultsButton();
 
-    startPolling(currentScraperPlatform);
-  } catch (err: unknown) {
-    if (overlay) overlay.style.display = 'none';
-    if ((err as Error).name !== 'AbortError') {
-      showToast({ message: 'Scraping error: ' + (err as Error).message, type: 'error' });
-    }
-  }
+		// Show extraction loading state immediately
+		renderScrapingResults();
+
+		startPolling(currentScraperPlatform);
+	} catch (err: unknown) {
+		if (overlay) overlay.style.display = 'none';
+		if ((err as Error).name !== 'AbortError') {
+			showToast({ message: `Scraping error: ${(err as Error).message}`, type: 'error' });
+		}
+	}
 }
 
 async function refreshScrapingResultsButton(): Promise<void> {
-  const btn = document.getElementById('btn-open-scraping-results');
-  if (!btn) return;
+	const btn = document.getElementById('btn-open-scraping-results');
+	if (!btn) return;
 
-  const hasResults = await hasSavedScraperResults();
-  btn.style.display = hasResults ? 'block' : 'none';
+	const hasResults = await hasSavedScraperResults();
+	btn.style.display = hasResults ? 'block' : 'none';
 }
 
 async function hasSavedScraperResults(): Promise<boolean> {
-  const sources: Array<'linkedin' | 'google'> = ['linkedin', 'google'];
-  // First check localStorage (results from current session)
-  for (const source of sources) {
-    const savedRaw = localStorage.getItem(getScraperResultsStorageKey(source));
-    if (savedRaw) {
-      try {
-        const parsed = JSON.parse(savedRaw);
-        if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
-          return true;
-        }
-      } catch {
-        // ignore malformed local cache values
-      }
-    }
-  }
-  // Then check server for existing result files on disk
-  for (const source of sources) {
-    try {
-      const resp = await fetch(`/api/scraper/results?source=${source}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data && Array.isArray(data.results) && data.results.length > 0) {
-          // Cache in localStorage for future checks
-          localStorage.setItem(getScraperResultsStorageKey(source), JSON.stringify(data));
-          return true;
-        }
-      }
-    } catch {
-      // ignore network errors
-    }
-  }
-  return false;
+	const sources: Array<'linkedin' | 'google'> = ['linkedin', 'google'];
+	// First check localStorage (results from current session)
+	for (const source of sources) {
+		const savedRaw = localStorage.getItem(getScraperResultsStorageKey(source));
+		if (savedRaw) {
+			try {
+				const parsed = JSON.parse(savedRaw);
+				if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
+					return true;
+				}
+			} catch {
+				// ignore malformed local cache values
+			}
+		}
+	}
+	// Then check server for existing result files on disk
+	for (const source of sources) {
+		try {
+			const resp = await fetch(`/api/scraper/results?source=${source}`);
+			if (resp.ok) {
+				const data = await resp.json();
+				if (data && Array.isArray(data.results) && data.results.length > 0) {
+					// Cache in localStorage for future checks
+					localStorage.setItem(getScraperResultsStorageKey(source), JSON.stringify(data));
+					return true;
+				}
+			}
+		} catch {
+			// ignore network errors
+		}
+	}
+	return false;
 }
 
 function openLatestScrapingResults(): void {
-  const sources: Array<'linkedin' | 'google'> = ['linkedin', 'google'];
-  for (const source of sources) {
-    const savedRaw = localStorage.getItem(getScraperResultsStorageKey(source));
-    if (savedRaw) {
-      try {
-        const parsed = JSON.parse(savedRaw);
-        if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
-          window.open(`/public/findJob.html?source=${source}`, '_blank');
-          return;
-        }
-      } catch {
-        // ignore malformed local cache values
-      }
-    }
-  }
+	const sources: Array<'linkedin' | 'google'> = ['linkedin', 'google'];
+	for (const source of sources) {
+		const savedRaw = localStorage.getItem(getScraperResultsStorageKey(source));
+		if (savedRaw) {
+			try {
+				const parsed = JSON.parse(savedRaw);
+				if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
+					window.open(`/public/findJob.html?source=${source}`, '_blank');
+					return;
+				}
+			} catch {
+				// ignore malformed local cache values
+			}
+		}
+	}
 
-  window.open('/public/findJob.html?source=linkedin', '_blank');
+	window.open('/public/findJob.html?source=linkedin', '_blank');
 }
 
 function cancelScraping(): void {
-  if (scraperController) {
-    scraperController.abort();
-    scraperController = null;
-  }
-  const overlay = document.getElementById('scraper-overlay');
-  if (overlay) overlay.style.display = 'none';
+	if (scraperController) {
+		scraperController.abort();
+		scraperController = null;
+	}
+	const overlay = document.getElementById('scraper-overlay');
+	if (overlay) overlay.style.display = 'none';
 }
 
 // ─── Global Keyboard ─────────────────────────────────────────────────────
 
 document.addEventListener('keydown', (e: KeyboardEvent) => {
-  if (e.key === 'Escape') {
-    const providersModal = document.getElementById('providers-modal');
-    if (providersModal && providersModal.style.display === 'flex') {
-      closeProvidersModal();
-      return;
-    }
-    const scraperModal = document.getElementById('job-scraper-modal');
-    if (scraperModal && scraperModal.style.display !== 'none') {
-      closeJobScraperModal();
-      return;
-    }
+	if (e.key === 'Escape') {
+		const providersModal = document.getElementById('providers-modal');
+		if (providersModal && providersModal.style.display === 'flex') {
+			closeProvidersModal();
+			return;
+		}
+		const scraperModal = document.getElementById('job-scraper-modal');
+		if (scraperModal && scraperModal.style.display !== 'none') {
+			closeJobScraperModal();
+			return;
+		}
 
-    const scraperOverlay = document.getElementById('scraper-overlay');
-    if (scraperOverlay && scraperOverlay.style.display !== 'none') {
-      cancelScraping();
-      return;
-    }
+		const scraperOverlay = document.getElementById('scraper-overlay');
+		if (scraperOverlay && scraperOverlay.style.display !== 'none') {
+			cancelScraping();
+			return;
+		}
 
-    const jdModal = document.getElementById('jd-edit-modal');
-    if (jdModal && jdModal.classList.contains('show')) {
-      closeJdEditModal();
-      return;
-    }
-    const jdCollectionModal = document.getElementById('jd-collection-modal');
-    if (jdCollectionModal && jdCollectionModal.style.display !== 'none') {
-      closeJdCollectionModal();
-      return;
-    }
-    const atsSidebar = document.getElementById('ats-sidebar');
-    if (atsSidebar && atsSidebar.classList.contains('open')) {
-      closeAtsSidebar();
-      return;
-    }
-    const coverLetterModal = document.getElementById('cover-letter-modal');
-    if (coverLetterModal && coverLetterModal.style.display === 'flex') {
-      closeCoverLetterModal();
-      return;
-    }
-  }
+		const jdModal = document.getElementById('jd-edit-modal');
+		if (jdModal && jdModal.classList.contains('show')) {
+			closeJdEditModal();
+			return;
+		}
+		const jdCollectionModal = document.getElementById('jd-collection-modal');
+		if (jdCollectionModal && jdCollectionModal.style.display !== 'none') {
+			closeJdCollectionModal();
+			return;
+		}
+		const atsSidebar = document.getElementById('ats-sidebar');
+		if (atsSidebar && atsSidebar.classList.contains('open')) {
+			closeAtsSidebar();
+			return;
+		}
+		const coverLetterModal = document.getElementById('cover-letter-modal');
+		if (coverLetterModal && coverLetterModal.style.display === 'flex') {
+			closeCoverLetterModal();
+			return;
+		}
+	}
 });
 
 document.addEventListener('click', (e: MouseEvent) => {
-  const target = e.target as HTMLElement | null;
-  if (!target) return;
-  const insideMenu = target.closest('.board-card-menu') || target.closest('.board-card-menu-btn') || target.closest('.board-card-rounds-menu') || target.closest('.board-card-rounds-toggle');
-  if (!insideMenu) {
-    document.querySelectorAll('.board-card-menu.show').forEach((menu) => {
-      menu.classList.remove('show');
-    });
-    document.querySelectorAll('.board-card-rounds-menu.show').forEach((menu) => {
-      menu.classList.remove('show');
-    });
-  }
+	const target = e.target as HTMLElement | null;
+	if (!target) return;
+	const insideMenu =
+		target.closest('.board-card-menu') ||
+		target.closest('.board-card-menu-btn') ||
+		target.closest('.board-card-rounds-menu') ||
+		target.closest('.board-card-rounds-toggle');
+	if (!insideMenu) {
+		document.querySelectorAll('.board-card-menu.show').forEach(menu => {
+			menu.classList.remove('show');
+		});
+		document.querySelectorAll('.board-card-rounds-menu.show').forEach(menu => {
+			menu.classList.remove('show');
+		});
+	}
 });
 
 // ─── AI Providers Modal Functions ───────────────────────────────────
 
 async function loadEnv(): Promise<Record<string, unknown>> {
-  if (cachedConfig) return cachedConfig;
-  try {
-    const resp = await fetch('/config.json');
-    if (resp.ok) {
-      cachedConfig = await resp.json() as Record<string, unknown>;
-      return cachedConfig;
-    }
-  } catch (e) {
-    console.warn('Could not load config.json, using defaults', e);
-  }
-  cachedConfig = {};
-  return cachedConfig;
+	if (cachedConfig) return cachedConfig;
+	try {
+		const resp = await fetch('/config.json');
+		if (resp.ok) {
+			cachedConfig = (await resp.json()) as Record<string, unknown>;
+			return cachedConfig;
+		}
+	} catch (e) {
+		console.warn('Could not load config.json, using defaults', e);
+	}
+	cachedConfig = {};
+	return cachedConfig;
 }
 
 async function openProvidersModal(): Promise<void> {
-  const modal = document.getElementById('providers-modal');
-  if (!modal) return;
+	const modal = document.getElementById('providers-modal');
+	if (!modal) return;
 
-  const env = await loadEnv();
-  const availableProviders = (env.availableProviders as string[]) || [];
-  const currentSelected = localStorage.getItem('selected-ai-provider') || (env.primaryProvider as string) || null;
-  selectedProviderForModal = currentSelected;
+	const env = await loadEnv();
+	const availableProviders = (env.availableProviders as string[]) || [];
+	const currentSelected = localStorage.getItem('selected-ai-provider') || (env.primaryProvider as string) || null;
+	selectedProviderForModal = currentSelected;
 
-  const subtitleEl = document.getElementById('providers-modal-subtitle');
-  const listEl = document.getElementById('providers-list');
-  const emptyMsgEl = document.getElementById('providers-empty-message');
-  const actionsEl = document.getElementById('providers-modal-actions');
-  const cancelBtn = document.getElementById('providers-cancel-btn');
-  const confirmBtn = document.getElementById('providers-confirm-btn');
+	const subtitleEl = document.getElementById('providers-modal-subtitle');
+	const listEl = document.getElementById('providers-list');
+	const emptyMsgEl = document.getElementById('providers-empty-message');
+	const actionsEl = document.getElementById('providers-modal-actions');
+	const cancelBtn = document.getElementById('providers-cancel-btn');
+	const confirmBtn = document.getElementById('providers-confirm-btn');
 
-  if (availableProviders.length === 0) {
-    if (subtitleEl) subtitleEl.style.display = 'none';
-    if (listEl) listEl.style.display = 'none';
-    if (emptyMsgEl) emptyMsgEl.style.display = 'block';
-    if (cancelBtn) cancelBtn.style.display = 'none';
-    if (confirmBtn) {
-      confirmBtn.style.display = 'inline-block';
-      confirmBtn.style.flex = '0 0 auto';
-      confirmBtn.style.alignSelf = 'center';
-      confirmBtn.style.width = 'auto';
-    }
-    if (actionsEl) {
-      actionsEl.style.flexDirection = 'row';
-      actionsEl.style.justifyContent = 'center';
-    }
-  } else {
-    if (subtitleEl) subtitleEl.style.display = 'block';
-    if (listEl) listEl.style.display = 'grid';
-    if (emptyMsgEl) emptyMsgEl.style.display = 'none';
-    if (cancelBtn) cancelBtn.style.display = 'inline-block';
-    if (confirmBtn) {
-      confirmBtn.style.display = 'inline-block';
-      confirmBtn.style.flex = '1';
-      confirmBtn.style.alignSelf = '';
-      confirmBtn.style.width = '';
-    }
-    if (actionsEl) {
-      actionsEl.style.flexDirection = 'row';
-      actionsEl.style.justifyContent = 'stretch';
-    }
-    renderProvidersList(availableProviders, (env.primaryProvider as string) || null);
-  }
+	if (availableProviders.length === 0) {
+		if (subtitleEl) subtitleEl.style.display = 'none';
+		if (listEl) listEl.style.display = 'none';
+		if (emptyMsgEl) emptyMsgEl.style.display = 'block';
+		if (cancelBtn) cancelBtn.style.display = 'none';
+		if (confirmBtn) {
+			confirmBtn.style.display = 'inline-block';
+			confirmBtn.style.flex = '0 0 auto';
+			confirmBtn.style.alignSelf = 'center';
+			confirmBtn.style.width = 'auto';
+		}
+		if (actionsEl) {
+			actionsEl.style.flexDirection = 'row';
+			actionsEl.style.justifyContent = 'center';
+		}
+	} else {
+		if (subtitleEl) subtitleEl.style.display = 'block';
+		if (listEl) listEl.style.display = 'grid';
+		if (emptyMsgEl) emptyMsgEl.style.display = 'none';
+		if (cancelBtn) cancelBtn.style.display = 'inline-block';
+		if (confirmBtn) {
+			confirmBtn.style.display = 'inline-block';
+			confirmBtn.style.flex = '1';
+			confirmBtn.style.alignSelf = '';
+			confirmBtn.style.width = '';
+		}
+		if (actionsEl) {
+			actionsEl.style.flexDirection = 'row';
+			actionsEl.style.justifyContent = 'stretch';
+		}
+		renderProvidersList(availableProviders, (env.primaryProvider as string) || null);
+	}
 
-  modal.style.display = 'flex';
-  actionsEl!.style.display = 'flex';
+	modal.style.display = 'flex';
+	actionsEl!.style.display = 'flex';
 }
 
 function closeProvidersModal(): void {
-  const modal = document.getElementById('providers-modal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
+	const modal = document.getElementById('providers-modal');
+	if (modal) {
+		modal.style.display = 'none';
+	}
 }
 
 function renderProvidersList(providers: string[], selectedProvider: string | null): void {
-  const listEl = document.getElementById('providers-list');
-  if (!listEl) return;
+	const listEl = document.getElementById('providers-list');
+	if (!listEl) return;
 
-  const providerIcons: Record<string, string> = {
-    cohere: '/public/assets/cohere_icon.png',
-    mistral: '/public/assets/mistral_icon.png',
-    gemini: '/public/assets/gemini_icon.png',
-    groq: '/public/assets/groq_icon.png',
-    default: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ctext y="1em" font-size="20"%3E🤖%3C/text%3E%3C/svg%3E',
-  };
+	const providerIcons: Record<string, string> = {
+		cohere: '/public/assets/cohere_icon.png',
+		mistral: '/public/assets/mistral_icon.png',
+		gemini: '/public/assets/gemini_icon.png',
+		groq: '/public/assets/groq_icon.png',
+		default:
+			'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ctext y="1em" font-size="20"%3E🤖%3C/text%3E%3C/svg%3E',
+	};
 
-  const providerModels: Record<string, string> = {
-    cohere: 'command-a-reasoning-08-2025',
-    mistral: 'codestral-2508',
-    gemini: 'gemini-3.6-flash',
-    groq: 'openai/gpt-oss-120b',
-    default: 'Unknown model',
-  };
+	const providerModels: Record<string, string> = {
+		cohere: 'command-a-reasoning-08-2025',
+		mistral: 'codestral-2508',
+		gemini: 'gemini-3.6-flash',
+		groq: 'openai/gpt-oss-120b',
+		default: 'Unknown model',
+	};
 
-  const providerDescriptions: Record<string, string> = {
-    cohere: 'Balanced performance, strong for general tasks',
-    mistral: 'Fast, multilingual, great for reasoning',
-    gemini: 'Google\'s latest model, vision capable',
-    groq: 'Ultra-fast inference, Llama architecture',
-    default: 'AI provider for resume generation',
-  };
+	const providerDescriptions: Record<string, string> = {
+		cohere: 'Balanced performance, strong for general tasks',
+		mistral: 'Fast, multilingual, great for reasoning',
+		gemini: "Google's latest model, vision capable",
+		groq: 'Ultra-fast inference, Llama architecture',
+		default: 'AI provider for resume generation',
+	};
 
-  const currentSelected = localStorage.getItem('selected-ai-provider') || selectedProvider;
+	const currentSelected = localStorage.getItem('selected-ai-provider') || selectedProvider;
 
-  listEl.textContent = '';
+	listEl.textContent = '';
 
-  for (const provider of providers) {
-    const isSelected = provider === currentSelected;
-    const icon = providerIcons[provider] || providerIcons.default;
-    const model = providerModels[provider] || providerModels.default;
-    const desc = providerDescriptions[provider] || providerDescriptions.default;
-    const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
+	for (const provider of providers) {
+		const isSelected = provider === currentSelected;
+		const icon = providerIcons[provider] || providerIcons.default;
+		const model = providerModels[provider] || providerModels.default;
+		const desc = providerDescriptions[provider] || providerDescriptions.default;
+		const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
 
-    const item = document.createElement('div');
-    item.className = 'provider-item';
-    item.dataset.provider = provider;
-    item.addEventListener('click', () => selectProviderInModal(provider));
+		const item = document.createElement('div');
+		item.className = 'provider-item';
+		item.dataset.provider = provider;
+		item.addEventListener('click', () => selectProviderInModal(provider));
 
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.className = 'provider-checkbox';
-    checkbox.checked = isSelected;
-    checkbox.addEventListener('click', (event: Event) => {
-      event.stopPropagation();
-      selectProviderInModal(provider);
-    });
+		const checkbox = document.createElement('input');
+		checkbox.type = 'checkbox';
+		checkbox.className = 'provider-checkbox';
+		checkbox.checked = isSelected;
+		checkbox.addEventListener('click', (event: Event) => {
+			event.stopPropagation();
+			selectProviderInModal(provider);
+		});
 
-    const header = document.createElement('div');
-    header.className = 'provider-header';
+		const header = document.createElement('div');
+		header.className = 'provider-header';
 
-    const img = document.createElement('img');
-    img.src = icon;
-    img.alt = provider;
-    img.className = 'provider-img';
-    img.addEventListener('error', () => { img.style.display = 'none'; });
+		const img = document.createElement('img');
+		img.src = icon;
+		img.alt = provider;
+		img.className = 'provider-img';
+		img.addEventListener('error', () => {
+			img.style.display = 'none';
+		});
 
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'provider-name';
-    nameSpan.textContent = displayName;
+		const nameSpan = document.createElement('span');
+		nameSpan.className = 'provider-name';
+		nameSpan.textContent = displayName;
 
-    header.appendChild(img);
-    header.appendChild(nameSpan);
+		header.appendChild(img);
+		header.appendChild(nameSpan);
 
-    const modelDiv = document.createElement('div');
-    modelDiv.className = 'provider-model';
-    modelDiv.textContent = model;
+		const modelDiv = document.createElement('div');
+		modelDiv.className = 'provider-model';
+		modelDiv.textContent = model;
 
-    const descDiv = document.createElement('div');
-    descDiv.className = 'provider-description';
-    descDiv.textContent = desc;
+		const descDiv = document.createElement('div');
+		descDiv.className = 'provider-description';
+		descDiv.textContent = desc;
 
-    item.appendChild(checkbox);
-    item.appendChild(header);
-    item.appendChild(modelDiv);
-    item.appendChild(descDiv);
+		item.appendChild(checkbox);
+		item.appendChild(header);
+		item.appendChild(modelDiv);
+		item.appendChild(descDiv);
 
-    listEl.appendChild(item);
-  }
+		listEl.appendChild(item);
+	}
 
-  setTimeout(() => {
-    document.querySelectorAll('.provider-item').forEach(item => {
-      if ((item as HTMLElement).dataset.provider === currentSelected) {
-        item.classList.add('selected');
-      }
-    });
-  }, 0);
+	setTimeout(() => {
+		document.querySelectorAll('.provider-item').forEach(item => {
+			if ((item as HTMLElement).dataset.provider === currentSelected) {
+				item.classList.add('selected');
+			}
+		});
+	}, 0);
 }
 
 function selectProviderInModal(provider: string): void {
-  selectedProviderForModal = provider;
-  const items = document.querySelectorAll('.provider-item');
-  items.forEach(item => {
-    item.classList.remove('selected');
-    const checkbox = item.querySelector('.provider-checkbox') as HTMLInputElement;
-    if (checkbox) checkbox.checked = false;
-  });
-  document.querySelectorAll('.provider-item').forEach(item => {
-    const el = item as HTMLElement;
-    if (el.dataset.provider === provider) {
-      el.classList.add('selected');
-      const checkbox = el.querySelector('.provider-checkbox') as HTMLInputElement;
-      if (checkbox) checkbox.checked = true;
-    }
-  });
+	selectedProviderForModal = provider;
+	const items = document.querySelectorAll('.provider-item');
+	items.forEach(item => {
+		item.classList.remove('selected');
+		const checkbox = item.querySelector('.provider-checkbox') as HTMLInputElement;
+		if (checkbox) checkbox.checked = false;
+	});
+	document.querySelectorAll('.provider-item').forEach(item => {
+		const el = item as HTMLElement;
+		if (el.dataset.provider === provider) {
+			el.classList.add('selected');
+			const checkbox = el.querySelector('.provider-checkbox') as HTMLInputElement;
+			if (checkbox) checkbox.checked = true;
+		}
+	});
 }
 
 function confirmProvidersSelection(): void {
-  if (selectedProviderForModal) {
-    localStorage.setItem('selected-ai-provider', selectedProviderForModal);
-  }
-  closeProvidersModal();
+	if (selectedProviderForModal) {
+		localStorage.setItem('selected-ai-provider', selectedProviderForModal);
+	}
+	closeProvidersModal();
 }
 
 function cancelProvidersSelection(): void {
-  closeProvidersModal();
+	closeProvidersModal();
 }
 
 // ─── Global Exports ──────────────────────────────────────────────────────
@@ -3128,93 +3353,94 @@ function cancelProvidersSelection(): void {
 // ─── Init ────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const isLoadingParam = urlParams.get('loading') === 'true';
+	const urlParams = new URLSearchParams(window.location.search);
+	const isLoadingParam = urlParams.get('loading') === 'true';
 
-  if (isLoadingParam) {
-    isLoadingResults = true;
-  }
+	if (isLoadingParam) {
+		isLoadingResults = true;
+	}
 
-  loadSidebarState();
+	loadSidebarState();
 
-  const sourceParam = (urlParams.get('source') || 'linkedin').toLowerCase() as 'linkedin' | 'google' | 'remoterocketship';
-  const runIdParam = urlParams.get('runId');
+	const sourceParam = (urlParams.get('source') || 'linkedin').toLowerCase() as
+		'linkedin' | 'google' | 'remoterocketship';
+	const runIdParam = urlParams.get('runId');
 
-  if (runIdParam) {
-    currentRunId = runIdParam;
-  }
+	if (runIdParam) {
+		currentRunId = runIdParam;
+	}
 
-  if (isLoadingParam) {
-    showLoadingUI(sourceParam);
-    currentSource = sourceParam;
-    updateResultsTabs();
-    startPolling(sourceParam);
-    return;
-  }
+	if (isLoadingParam) {
+		showLoadingUI(sourceParam);
+		currentSource = sourceParam;
+		updateResultsTabs();
+		startPolling(sourceParam);
+		return;
+	}
 
-  switchResultsTab(sourceParam);
+	switchResultsTab(sourceParam);
 
-  // Restore the latest findJob ATS scan (if any) so the sidebar shows it
-  // after navigating back to this page.
-  try {
-    const raw = sessionStorage.getItem('ats-scan-results-findjob');
-    if (raw) {
-      const saved = JSON.parse(raw) as Record<string, unknown>;
-      applyAtsResultsToUI(saved);
-      openAtsSidebar();
-    }
-  } catch {
-    // ignore malformed saved scan
-  }
+	// Restore the latest ATS scan (if any) so the sidebar shows it
+	// after navigating back to this page.
+	try {
+		const raw = localStorage.getItem('ats:scanResults:jobfinder');
+		if (raw) {
+			const saved = JSON.parse(raw) as Record<string, unknown>;
+			applyAtsResultsToUI(saved);
+			openAtsSidebar();
+		}
+	} catch {
+		// ignore malformed saved scan
+	}
 
-  // Check for test mode and show warning banner
-  fetch('/config.json')
-    .then(r => r.json())
-    .then(config => {
-      const isTestMode = config.NODE_ENV === 'test';
-      const warning = document.getElementById('test-data-warning');
-      const clearBtn = document.getElementById('clear-test-data-btn');
-      if (warning && isTestMode) {
-        warning.style.display = 'flex';
-      }
-      if (clearBtn && isTestMode) {
-        clearBtn.style.display = 'inline-flex';
-      }
-    })
-    .catch(() => {
-      // Ignore config fetch errors
-    });
+	// Check for test mode and show warning banner
+	fetch('/config.json')
+		.then(r => r.json())
+		.then(config => {
+			const isTestMode = config.NODE_ENV === 'test';
+			const warning = document.getElementById('test-data-warning');
+			const clearBtn = document.getElementById('clear-test-data-btn');
+			if (warning && isTestMode) {
+				warning.style.display = 'flex';
+			}
+			if (clearBtn && isTestMode) {
+				clearBtn.style.display = 'inline-flex';
+			}
+		})
+		.catch(() => {
+			// Ignore config fetch errors
+		});
 });
 
 async function clearTestData(): Promise<void> {
-  if (!confirm('This will delete ALL dashboard cards. Are you sure?')) return;
+	if (!confirm('This will delete ALL dashboard cards. Are you sure?')) return;
 
-  try {
-    const resp = await fetch('/api/job-data/dashboard/clear-test', { method: 'POST' });
-    if (!resp.ok) throw new Error('Failed to clear test data');
-    showToast({ message: 'Test data cleared', type: 'success' });
-    renderDashboard();
-} catch (err: unknown) {
-    showToast({ message: 'Failed to clear test data: ' + (err as Error).message, type: 'error' });
-  }
+	try {
+		const resp = await fetch('/api/job-data/dashboard/clear-test', { method: 'POST' });
+		if (!resp.ok) throw new Error('Failed to clear test data');
+		showToast({ message: 'Test data cleared', type: 'success' });
+		renderDashboard();
+	} catch (err: unknown) {
+		showToast({ message: `Failed to clear test data: ${(err as Error).message}`, type: 'error' });
+	}
 }
 
 async function clearScraperSource(source: 'linkedin' | 'google' | 'remoterocketship'): Promise<void> {
-  if (!confirm(`This will delete ALL ${source} scraper results. Are you sure?`)) return;
+	if (!confirm(`This will delete ALL ${source} scraper results. Are you sure?`)) return;
 
-  try {
-    const resp = await fetch('/api/scraper/clear-source', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source }),
-    });
-    if (!resp.ok) throw new Error('Failed to clear scraper source');
-    showToast({ message: `${source} scraper results cleared`, type: 'success' });
-    // Reload the current source data
-    if (source === currentSource) {
-      loadDataAndRender(source);
-    }
-  } catch (err: unknown) {
-    showToast({ message: 'Failed to clear scraper source: ' + (err as Error).message, type: 'error' });
-  }
+	try {
+		const resp = await fetch('/api/scraper/clear-source', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ source }),
+		});
+		if (!resp.ok) throw new Error('Failed to clear scraper source');
+		showToast({ message: `${source} scraper results cleared`, type: 'success' });
+		// Reload the current source data
+		if (source === currentSource) {
+			loadDataAndRender(source);
+		}
+	} catch (err: unknown) {
+		showToast({ message: `Failed to clear scraper source: ${(err as Error).message}`, type: 'error' });
+	}
 }

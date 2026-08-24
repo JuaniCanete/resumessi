@@ -2,15 +2,15 @@ import { test, expect } from './test-setup';
 
 test.describe('AI Providers Modal', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.route('**/config.json', async (route) => {
+		await page.route('**/config.json', async route => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify({
 					availableProviders: ['cohere', 'mistral', 'gemini'],
 					primaryProvider: 'cohere',
-					AI_INFERENCE_ORDER: 'cohere,mistral,gemini'
-				})
+					AI_INFERENCE_ORDER: 'cohere,mistral,gemini',
+				}),
 			});
 		});
 	});
@@ -70,9 +70,9 @@ test.describe('AI Providers Modal', () => {
 
 	test('confirm with pre-selected provider saves correctly', async ({ mainPage }) => {
 		await mainPage.page.evaluate(() => localStorage.setItem('selected-ai-provider', 'mistral'));
-		
+
 		await mainPage.openProvidersModal();
-		
+
 		await mainPage.confirmProvidersSelection();
 
 		const stored = await mainPage.getSelectedProviderFromLocalStorage();
@@ -81,7 +81,7 @@ test.describe('AI Providers Modal', () => {
 
 	test('checkbox click properly updates selection', async ({ mainPage }) => {
 		await mainPage.openProvidersModal();
-		
+
 		await mainPage.checkProvider('gemini');
 		await mainPage.confirmProvidersSelection();
 
@@ -102,20 +102,22 @@ test.describe('AI Providers Modal', () => {
 
 		await mainPage.page.waitForResponse('**/api/infer', { timeout: 30000 });
 
-		const providerSent = await mainPage.page.evaluate(() => (window as unknown as Record<string, unknown>).getLastProviderSent);
+		const providerSent = await mainPage.page.evaluate(
+			() => (window as unknown as Record<string, unknown>).getLastProviderSent
+		);
 		if (providerSent) expect(providerSent).toBe('mistral');
 	});
 
 	test('handles empty providers list gracefully', async ({ mainPage }) => {
-		await mainPage.page.route('**/config.json', async (route) => {
+		await mainPage.page.route('**/config.json', async route => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify({
 					availableProviders: [],
 					primaryProvider: null,
-					AI_INFERENCE_ORDER: ''
-				})
+					AI_INFERENCE_ORDER: '',
+				}),
 			});
 		});
 
@@ -134,15 +136,15 @@ test.describe('AI Providers Modal', () => {
 	test('handles stale localStorage entry for unavailable provider', async ({ mainPage }) => {
 		await mainPage.page.evaluate(() => localStorage.setItem('selected-ai-provider', 'openai'));
 
-		await mainPage.page.route('**/config.json', async (route) => {
+		await mainPage.page.route('**/config.json', async route => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify({
 					availableProviders: ['cohere', 'mistral', 'gemini'],
 					primaryProvider: 'cohere',
-					AI_INFERENCE_ORDER: 'cohere,mistral,gemini'
-				})
+					AI_INFERENCE_ORDER: 'cohere,mistral,gemini',
+				}),
 			});
 		});
 
@@ -162,15 +164,15 @@ test.describe('AI Providers Modal', () => {
 	test('uses localStorage value when primaryProvider is null', async ({ mainPage }) => {
 		await mainPage.page.evaluate(() => localStorage.setItem('selected-ai-provider', 'groq'));
 
-		await mainPage.page.route('**/config.json', async (route) => {
+		await mainPage.page.route('**/config.json', async route => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify({
 					availableProviders: ['cohere', 'mistral', 'gemini', 'groq'],
 					primaryProvider: null,
-					AI_INFERENCE_ORDER: 'cohere,mistral,gemini,groq'
-				})
+					AI_INFERENCE_ORDER: 'cohere,mistral,gemini,groq',
+				}),
 			});
 		});
 

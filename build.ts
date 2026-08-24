@@ -26,88 +26,88 @@ const ATS_PROMPT_FILE = path.join(ROOT, 'src', 'prompts', 'ats-scan.txt');
 const HTML_FILE = path.join(ROOT, 'public', 'main.html');
 
 function readPromptBlock(filePath: string): string {
-  const content = fs.readFileSync(filePath, 'utf-8');
-  // Try to extract fenced code block; if not found, use the whole file
-  const match = content.match(/```\r?\n([\s\S]*?)```/);
-  const inner = match && match[1] ? match[1].trim() : content.trim();
-  if (!inner) {
-    throw new Error(`Empty prompt content in ${filePath}`);
-  }
-  // Return as a valid JS string literal using JSON.stringify
-  return JSON.stringify(inner);
+	const content = fs.readFileSync(filePath, 'utf-8');
+	// Try to extract fenced code block; if not found, use the whole file
+	const match = content.match(/```\r?\n([\s\S]*?)```/);
+	const inner = match && match[1] ? match[1].trim() : content.trim();
+	if (!inner) {
+		throw new Error(`Empty prompt content in ${filePath}`);
+	}
+	// Return as a valid JS string literal using JSON.stringify
+	return JSON.stringify(inner);
 }
 
 function replaceLast(content: string, placeholder: string, replacement: string): string | null {
-  const idx = content.lastIndexOf(placeholder);
-  if (idx === -1) return null;
-  return content.substring(0, idx) + replacement + content.substring(idx + placeholder.length);
+	const idx = content.lastIndexOf(placeholder);
+	if (idx === -1) return null;
+	return content.substring(0, idx) + replacement + content.substring(idx + placeholder.length);
 }
 
 function injectPromptLast(filePath: string, placeholder: string, value: string): void {
-  const content = fs.readFileSync(filePath, 'utf-8');
-  const updated = replaceLast(content, placeholder, value);
-  if (!updated) return; // No placeholder — prompts loaded at runtime, which is the default
-  fs.writeFileSync(filePath, updated, 'utf-8');
-  console.log(`Injected prompt into ${path.relative(ROOT, filePath)}`);
+	const content = fs.readFileSync(filePath, 'utf-8');
+	const updated = replaceLast(content, placeholder, value);
+	if (!updated) return; // No placeholder — prompts loaded at runtime, which is the default
+	fs.writeFileSync(filePath, updated, 'utf-8');
+	console.log(`Injected prompt into ${path.relative(ROOT, filePath)}`);
 }
 
 async function buildFrontend(): Promise<void> {
-  const entryPoint = path.join(ROOT, 'public', 'app.ts');
-  const findJobEntryPoint = path.join(ROOT, 'public', 'findJob-app.ts');
-  const outDir = path.join(ROOT, 'public', 'dist');
+	const entryPoint = path.join(ROOT, 'public', 'app.ts');
+	const findJobEntryPoint = path.join(ROOT, 'public', 'findJob-app.ts');
+	const outDir = path.join(ROOT, 'public', 'dist');
 
-  if (!fs.existsSync(outDir)) {
-    fs.mkdirSync(outDir, { recursive: true });
-  }
+	if (!fs.existsSync(outDir)) {
+		fs.mkdirSync(outDir, { recursive: true });
+	}
 
-  try {
-    const entryPoints: string[] = [];
-    if (fs.existsSync(entryPoint)) entryPoints.push(entryPoint);
-    if (fs.existsSync(findJobEntryPoint)) entryPoints.push(findJobEntryPoint);
+	try {
+		const entryPoints: string[] = [];
+		if (fs.existsSync(entryPoint)) entryPoints.push(entryPoint);
+		if (fs.existsSync(findJobEntryPoint)) entryPoints.push(findJobEntryPoint);
 
-    if (entryPoints.length > 0) {
-      await esbuild.build({
-        entryPoints,
-        bundle: true,
-        minify: true,
-        outdir: outDir,
-        format: 'iife',
-        target: 'es2020',
-        platform: 'browser',
-      });
-      console.log(`Built frontend bundles in: ${path.relative(ROOT, outDir)}`);
-    }
-  } catch (err: unknown) {
-    console.error('Frontend build failed:', (err as Error).message);
-    process.exit(1);
-  }
+		if (entryPoints.length > 0) {
+			await esbuild.build({
+				entryPoints,
+				bundle: true,
+				minify: true,
+				outdir: outDir,
+				format: 'iife',
+				target: 'es2020',
+				platform: 'browser',
+			});
+			console.log(`Built frontend bundles in: ${path.relative(ROOT, outDir)}`);
+		}
+	} catch (err: unknown) {
+		console.error('Frontend build failed:', (err as Error).message);
+		process.exit(1);
+	}
 }
 
 function main(): void {
-  const args = process.argv.slice(2);
-  const checkOnly = args.includes('--check');
+	const args = process.argv.slice(2);
+	const checkOnly = args.includes('--check');
 
-  if (checkOnly) {
-    const html = fs.readFileSync(HTML_FILE, 'utf-8');
-    const hasHtmlPlaceholder = html.includes('{{ATS_SCAN_PROMPT}}');
-    if (!hasHtmlPlaceholder) {
-      console.log('No placeholders found — prompts loaded at runtime. Build check passed.');
-      return;
-    }
-    console.log('Placeholders present. Use build.ts without --check to inject.');
-    return;
-  }
+	if (checkOnly) {
+		const html = fs.readFileSync(HTML_FILE, 'utf-8');
+		const hasHtmlPlaceholder = html.includes('{{ATS_SCAN_PROMPT}}');
+		if (!hasHtmlPlaceholder) {
+			console.log('No placeholders found — prompts loaded at runtime. Build check passed.');
+			return;
+		}
+		console.log('Placeholders present. Use build.ts without --check to inject.');
+		return;
+	}
 
-  console.log('Reading prompt sources...');
-  const atsPrompt = readPromptBlock(ATS_PROMPT_FILE);
+	console.log('Reading prompt sources...');
+	const atsPrompt = readPromptBlock(ATS_PROMPT_FILE);
 
-  console.log('Injecting prompts...');
-  injectPromptLast(HTML_FILE, '{{ATS_SCAN_PROMPT}}', atsPrompt);
+	console.log('Injecting prompts...');
+	injectPromptLast(HTML_FILE, '{{ATS_SCAN_PROMPT}}', atsPrompt);
 
-  // Build frontend bundle
-  buildFrontend().then(() => {
-    console.log('\nBuild completed successfully. Run `npm start` to launch the app.');
-  });
+	// Build frontend bundle
+	buildFrontend().then(() => {
+		console.log('\nBuild completed successfully. Run `npm start` to launch the app.');
+	});
 }
 
 main();

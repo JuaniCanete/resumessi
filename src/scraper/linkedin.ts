@@ -6,7 +6,8 @@ import type { ScraperQuery, ScraperResult } from './types';
 import { generateLinkedInStorageState } from '../../scripts/linkedin-auth';
 import { updateJobDescription } from '../storage/jobDataSqlite';
 
-const STORAGE_FILE = process.env.LINKEDIN_STORAGE_FILE || path.join(process.cwd(), 'data', 'storage-state', 'linkedin.json');
+const STORAGE_FILE =
+	process.env.LINKEDIN_STORAGE_FILE || path.join(process.cwd(), 'data', 'storage-state', 'linkedin.json');
 
 // Markers that delimit the job description on a LinkedIn job posting page.
 // The content between these two markers is the actual JD text.
@@ -21,10 +22,10 @@ const MAX_JD_EXTRACTIONS = 10;
 // DOM frequently, so we layer stable fallbacks (data-* attributes, generic
 // list-item patterns) on top of the current class names.
 const LINKEDIN_RESULT_SELECTOR_STRATEGIES: string[] = [
-  '.job-card-container, .base-card, .jobs-search-results__list-item, .job-card-list',
-  'ul.jobs-search__results-list > li',
-  'li[data-occludable-job-id]',
-  'article.job-card, div.job-card',
+	'.job-card-container, .base-card, .jobs-search-results__list-item, .job-card-list',
+	'ul.jobs-search__results-list > li',
+	'li[data-occludable-job-id]',
+	'article.job-card, div.job-card',
 ];
 
 /**
@@ -34,10 +35,10 @@ const LINKEDIN_RESULT_SELECTOR_STRATEGIES: string[] = [
  * re-fetch the login page and recreate the collection misclassification).
  */
 export class LinkedInSessionExpiredError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'LinkedInSessionExpiredError';
-  }
+	constructor(message: string) {
+		super(message);
+		this.name = 'LinkedInSessionExpiredError';
+	}
 }
 
 /**
@@ -52,34 +53,34 @@ export class LinkedInSessionExpiredError extends Error {
  *    rebuilding the URL.
  */
 export function normalizeLinkedInJobUrl(rawUrl: string): string | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    return null;
-  }
+	let parsed: URL;
+	try {
+		parsed = new URL(rawUrl);
+	} catch {
+		return null;
+	}
 
-  if (!parsed.hostname.endsWith('linkedin.com')) return null;
+	if (!parsed.hostname.endsWith('linkedin.com')) return null;
 
-  const pathname = parsed.pathname;
+	const pathname = parsed.pathname;
 
-  // Already canonical: /jobs/view/{id}/
-  const viewMatch = pathname.match(/^\/jobs\/view\/(\d+)\/?$/);
-  if (viewMatch) {
-    return `https://www.linkedin.com/jobs/view/${viewMatch[1]}/`;
-  }
+	// Already canonical: /jobs/view/{id}/
+	const viewMatch = pathname.match(/^\/jobs\/view\/(\d+)\/?$/);
+	if (viewMatch) {
+		return `https://www.linkedin.com/jobs/view/${viewMatch[1]}/`;
+	}
 
-  // Wrapper: /collections/... or /search/... with a currentJobId param
-  const isWrapper = pathname.includes('/collections/') || pathname.includes('/search/');
-  const currentJobId = parsed.searchParams.get('currentJobId');
-  if (isWrapper && currentJobId) {
-    if (!/^\d+$/.test(currentJobId)) {
-      throw new Error(`Invalid LinkedIn currentJobId: ${currentJobId}`);
-    }
-    return `https://www.linkedin.com/jobs/view/${currentJobId}/`;
-  }
+	// Wrapper: /collections/... or /search/... with a currentJobId param
+	const isWrapper = pathname.includes('/collections/') || pathname.includes('/search/');
+	const currentJobId = parsed.searchParams.get('currentJobId');
+	if (isWrapper && currentJobId) {
+		if (!/^\d+$/.test(currentJobId)) {
+			throw new Error(`Invalid LinkedIn currentJobId: ${currentJobId}`);
+		}
+		return `https://www.linkedin.com/jobs/view/${currentJobId}/`;
+	}
 
-  return null;
+	return null;
 }
 
 /**
@@ -88,131 +89,130 @@ export function normalizeLinkedInJobUrl(rawUrl: string): string | null {
  * first strategy that yields any blocks.
  */
 async function extractLinkedInJobCards(page: import('playwright').Page): Promise<import('playwright').ElementHandle[]> {
-  let triedSelectors: string[] = [];
+	const triedSelectors: string[] = [];
 
-  for (const selector of LINKEDIN_RESULT_SELECTOR_STRATEGIES) {
-    triedSelectors.push(selector);
-    try {
-      const cards = await page.$$(selector);
-      if (cards.length > 0) {
-        console.log(`[LinkedIn Scraper] Found ${cards.length} cards using selector: ${selector}`);
-        return cards;
-      }
-    } catch (err: unknown) {
-      console.warn(`[LinkedIn Scraper] Selector failed (${selector}):`, (err as Error).message);
-      continue;
-    }
-  }
+	for (const selector of LINKEDIN_RESULT_SELECTOR_STRATEGIES) {
+		triedSelectors.push(selector);
+		try {
+			const cards = await page.$$(selector);
+			if (cards.length > 0) {
+				console.log(`[LinkedIn Scraper] Found ${cards.length} cards using selector: ${selector}`);
+				return cards;
+			}
+		} catch (err: unknown) {
+			console.warn(`[LinkedIn Scraper] Selector failed (${selector}):`, (err as Error).message);
+			continue;
+		}
+	}
 
-  console.warn(
-    '[LinkedIn Scraper] No cards found with any selector strategy. ' +
-      `Tried: ${triedSelectors.join(' | ')}. ` +
-      'LinkedIn may have changed their DOM structure or blocked automated access. ' +
-      'Update LINKEDIN_RESULT_SELECTOR_STRATEGIES in src/scraper/linkedin.ts.',
-  );
-  return [];
+	console.warn(
+		'[LinkedIn Scraper] No cards found with any selector strategy. ' +
+			`Tried: ${triedSelectors.join(' | ')}. ` +
+			'LinkedIn may have changed their DOM structure or blocked automated access. ' +
+			'Update LINKEDIN_RESULT_SELECTOR_STRATEGIES in src/scraper/linkedin.ts.'
+	);
+	return [];
 }
 
 /**
  * Extract job card postings from LinkedIn with failure diagnostics.
  */
-async function extractLinkedInCards(
-  page: import('playwright').Page,
-  results: ScraperResult[],
-): Promise<void> {
-  const cards = await extractLinkedInJobCards(page);
+async function extractLinkedInCards(page: import('playwright').Page, results: ScraperResult[]): Promise<void> {
+	const cards = await extractLinkedInJobCards(page);
 
-  if (cards.length === 0) {
-    console.warn('[LinkedIn Scraper] Zero cards extracted from page.');
-    try {
-      console.log('[LinkedIn Scraper] Page title:', await page.title());
-      console.log('[LinkedIn Scraper] Current URL:', page.url());
-      const bodyText = await page.evaluate(() => document.body ? document.body.innerText.substring(0, 500) : '');
-      console.log('[LinkedIn Scraper] Body text preview:', JSON.stringify(bodyText));
-    } catch {
-      // ignore diagnostics errors
-    }
-    if (process.env.SCRAPER_DEBUG === 'true') {
-      const screenshotPath = path.join(process.cwd(), 'data', 'scraper-results', 'linkedin-debug.png');
-      try {
-        await page.screenshot({ path: screenshotPath, fullPage: true });
-        console.log('[LinkedIn Scraper] Saved debug screenshot to:', screenshotPath);
-      } catch {
-        // ignore screenshot errors
-      }
-    }
-    return;
-  }
+	if (cards.length === 0) {
+		console.warn('[LinkedIn Scraper] Zero cards extracted from page.');
+		try {
+			console.log('[LinkedIn Scraper] Page title:', await page.title());
+			console.log('[LinkedIn Scraper] Current URL:', page.url());
+			const bodyText = await page.evaluate(() => (document.body ? document.body.innerText.substring(0, 500) : ''));
+			console.log('[LinkedIn Scraper] Body text preview:', JSON.stringify(bodyText));
+		} catch {
+			// ignore diagnostics errors
+		}
+		if (process.env.SCRAPER_DEBUG === 'true') {
+			const screenshotPath = path.join(process.cwd(), 'data', 'scraper-results', 'linkedin-debug.png');
+			try {
+				await page.screenshot({ path: screenshotPath, fullPage: true });
+				console.log('[LinkedIn Scraper] Saved debug screenshot to:', screenshotPath);
+			} catch {
+				// ignore screenshot errors
+			}
+		}
+		return;
+	}
 
-  for (const card of cards) {
-    const titleLink = await card.$('.job-card-list__title--link');
-    const title = titleLink ? (await titleLink.getAttribute('aria-label'))?.trim() || '' : '';
-    const linkElem = await card.$('a[href*="/jobs/"]');
-    const url = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
+	for (const card of cards) {
+		const titleLink = await card.$('.job-card-list__title--link');
+		const title = titleLink ? (await titleLink.getAttribute('aria-label'))?.trim() || '' : '';
+		const linkElem = await card.$('a[href*="/jobs/"]');
+		const url = linkElem ? (await linkElem.getAttribute('href')) || '' : '';
 
-    if (!title || !url) continue;
+		if (!title || !url) continue;
 
-    // Company name: current LinkedIn DOM renders it as an <img alt="<Company> logo">
-    // (or a hashed span) inside the entity lockup — the old
-    // .job-card-container__primary-description / __company-name selectors no longer match.
-    let company = '';
-    try {
-      const logoImg = await card.$('img[alt$=" logo"], img[alt$=" logo "]');
-      if (logoImg) {
-        const alt = (await logoImg.getAttribute('alt')) || '';
-        company = alt.replace(/\s*logo\s*$/i, '').trim();
-      }
-      if (!company) {
-        const lockupSpan = await card.$('.artdeco-entity-lockup__title + * span, .scaffold-layout__list-item span[dir="ltr"]');
-        if (lockupSpan) {
-          company = (await lockupSpan.textContent())?.trim() || '';
-        }
-      }
-    } catch {
-      // ignore company extraction errors
-    }
+		// Company name: current LinkedIn DOM renders it as an <img alt="<Company> logo">
+		// (or a hashed span) inside the entity lockup — the old
+		// .job-card-container__primary-description / __company-name selectors no longer match.
+		let company = '';
+		try {
+			const logoImg = await card.$('img[alt$=" logo"], img[alt$=" logo "]');
+			if (logoImg) {
+				const alt = (await logoImg.getAttribute('alt')) || '';
+				company = alt.replace(/\s*logo\s*$/i, '').trim();
+			}
+			if (!company) {
+				const lockupSpan = await card.$(
+					'.artdeco-entity-lockup__title + * span, .scaffold-layout__list-item span[dir="ltr"]'
+				);
+				if (lockupSpan) {
+					company = (await lockupSpan.textContent())?.trim() || '';
+				}
+			}
+		} catch {
+			// ignore company extraction errors
+		}
 
-    const rawUrl = url.startsWith('http') ? url : `https://www.linkedin.com${url}`;
-    let canonicalUrl = rawUrl;
-    try {
-      canonicalUrl = normalizeLinkedInJobUrl(rawUrl) ?? rawUrl;
-    } catch {
-      // keep raw URL if normalization fails (e.g. non-digit currentJobId)
-    }
+		const rawUrl = url.startsWith('http') ? url : `https://www.linkedin.com${url}`;
+		let canonicalUrl = rawUrl;
+		try {
+			canonicalUrl = normalizeLinkedInJobUrl(rawUrl) ?? rawUrl;
+		} catch {
+			// keep raw URL if normalization fails (e.g. non-digit currentJobId)
+		}
 
-    results.push({
-      title,
-      url: canonicalUrl,
-      snippet: company ? `Company: ${company}` : '',
-      source: 'linkedin',
-      company,
-    });
-  }
+		results.push({
+			title,
+			url: canonicalUrl,
+			snippet: company ? `Company: ${company}` : '',
+			source: 'linkedin',
+			company,
+		});
+	}
 }
 
 export async function validateLinkedInStorageState(): Promise<boolean> {
-  if (!fs.existsSync(STORAGE_FILE)) {
-    return false;
-  }
-  try {
-    const { browser, context } = await launchStealthBrowser({
-      headless: true,
-      storageStatePath: STORAGE_FILE,
-    });
-    const page = await context.newPage();
-    await page.goto('https://www.linkedin.com/feed', { waitUntil: 'domcontentloaded', timeout: 15000 });
-    const url = page.url();
-    await browser.close();
-    // If redirected to login, storage state is invalid
-    return !url.includes('/login') && !url.includes('/checkpoint');
-  } catch {
-    return false;
-  }
+	if (!fs.existsSync(STORAGE_FILE)) {
+		return false;
+	}
+	try {
+		const { browser, context } = await launchStealthBrowser({
+			headless: true,
+			storageStatePath: STORAGE_FILE,
+		});
+		const page = await context.newPage();
+		await page.goto('https://www.linkedin.com/feed', { waitUntil: 'domcontentloaded', timeout: 15000 });
+		const url = page.url();
+		await browser.close();
+		// If redirected to login, storage state is invalid
+		return !url.includes('/login') && !url.includes('/checkpoint');
+	} catch {
+		return false;
+	}
 }
 
 // Deprecated: use buildScraperSearchUrl('linkedin', query) from pagination.ts instead
 export function buildLinkedInSearchUrl(query: ScraperQuery): string {
-  return buildScraperSearchUrl('linkedin', query);
+	return buildScraperSearchUrl('linkedin', query);
 }
 
 /**
@@ -222,17 +222,17 @@ export function buildLinkedInSearchUrl(query: ScraperQuery): string {
  * Check-JD fetch.
  */
 export function extractJdTextFromBody(bodyText: string): string {
-  if (!bodyText) return '';
+	if (!bodyText) return '';
 
-  const startIdx = bodyText.indexOf(JD_START_MARKER);
-  if (startIdx === -1) return '';
+	const startIdx = bodyText.indexOf(JD_START_MARKER);
+	if (startIdx === -1) return '';
 
-  const searchStart = startIdx + JD_START_MARKER.length;
-  const endIdx = bodyText.indexOf(JD_END_MARKER, searchStart);
-  const contentStart = startIdx + JD_START_MARKER.length;
-  const contentEnd = endIdx === -1 ? bodyText.length : endIdx;
+	const searchStart = startIdx + JD_START_MARKER.length;
+	const endIdx = bodyText.indexOf(JD_END_MARKER, searchStart);
+	const contentStart = startIdx + JD_START_MARKER.length;
+	const contentEnd = endIdx === -1 ? bodyText.length : endIdx;
 
-  return bodyText.substring(contentStart, contentEnd).trim();
+	return bodyText.substring(contentStart, contentEnd).trim();
 }
 
 /**
@@ -240,36 +240,33 @@ export function extractJdTextFromBody(bodyText: string): string {
  * description text between the "About the job" and "Set alert for similar
  * jobs" markers.
  */
-async function extractLinkedInJobDescription(
-  page: import('playwright').Page,
-  jobUrl: string,
-): Promise<string> {
-  try {
-    await page.goto(jobUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await randomDelay(1500, 3000);
+async function extractLinkedInJobDescription(page: import('playwright').Page, jobUrl: string): Promise<string> {
+	try {
+		await page.goto(jobUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+		await randomDelay(1500, 3000);
 
-    // Get the full page text content
-    const bodyText = await page.evaluate(() => {
-      const body = document.body;
-      return body ? body.innerText : '';
-    });
+		// Get the full page text content
+		const bodyText = await page.evaluate(() => {
+			const body = document.body;
+			return body ? body.innerText : '';
+		});
 
-    if (!bodyText) {
-      console.warn(`[LinkedIn Scraper] JD extraction: page body text is empty for ${jobUrl}`);
-      return '';
-    }
+		if (!bodyText) {
+			console.warn(`[LinkedIn Scraper] JD extraction: page body text is empty for ${jobUrl}`);
+			return '';
+		}
 
-    const jdText = extractJdTextFromBody(bodyText);
-    console.log(
-      `[LinkedIn Scraper] JD markers for ${jobUrl}: ` +
-      `JD_START_MARKER="${JD_START_MARKER}" ${bodyText.includes(JD_START_MARKER) ? 'FOUND' : 'NOT FOUND'}, ` +
-      `JD_END_MARKER="${JD_END_MARKER}" ${bodyText.includes(JD_END_MARKER) ? 'FOUND' : 'NOT FOUND'}`,
-    );
-    return jdText;
-  } catch (err: unknown) {
-    console.warn(`[LinkedIn Scraper] JD extraction failed for ${jobUrl}:`, (err as Error).message);
-    return '';
-  }
+		const jdText = extractJdTextFromBody(bodyText);
+		console.log(
+			`[LinkedIn Scraper] JD markers for ${jobUrl}: ` +
+				`JD_START_MARKER="${JD_START_MARKER}" ${bodyText.includes(JD_START_MARKER) ? 'FOUND' : 'NOT FOUND'}, ` +
+				`JD_END_MARKER="${JD_END_MARKER}" ${bodyText.includes(JD_END_MARKER) ? 'FOUND' : 'NOT FOUND'}`
+		);
+		return jdText;
+	} catch (err: unknown) {
+		console.warn(`[LinkedIn Scraper] JD extraction failed for ${jobUrl}:`, (err as Error).message);
+		return '';
+	}
 }
 
 /**
@@ -280,12 +277,10 @@ async function extractLinkedInJobDescription(
  * are extracted from the page body.
  */
 export function extractLinkedInJdFromPage(pageUrl: string, bodyText: string): string {
-  if (pageUrl.includes('/login') || pageUrl.includes('/checkpoint')) {
-    throw new LinkedInSessionExpiredError(
-      'LinkedIn session expired. Run: tsx scripts/linkedin-auth.ts',
-    );
-  }
-  return extractJdTextFromBody(bodyText);
+	if (pageUrl.includes('/login') || pageUrl.includes('/checkpoint')) {
+		throw new LinkedInSessionExpiredError('LinkedIn session expired. Run: tsx scripts/linkedin-auth.ts');
+	}
+	return extractJdTextFromBody(bodyText);
 }
 
 /**
@@ -301,46 +296,45 @@ export function extractLinkedInJdFromPage(pageUrl: string, bodyText: string): st
  * the collection misclassification).
  */
 export async function fetchLinkedInJobDescription(rawUrl: string): Promise<string> {
-  const jobUrl = normalizeLinkedInJobUrl(rawUrl);
-  if (!jobUrl) return '';
+	const jobUrl = normalizeLinkedInJobUrl(rawUrl);
+	if (!jobUrl) return '';
 
-  const { browser, context } = await launchStealthBrowser({
-    headless: true,
-    storageStatePath: STORAGE_FILE,
-  });
+	const { browser, context } = await launchStealthBrowser({
+		headless: true,
+		storageStatePath: STORAGE_FILE,
+	});
 
-  try {
-    const page = await context.newPage();
-    await page.goto(jobUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+	try {
+		const page = await context.newPage();
+		await page.goto(jobUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
 
-    // Wait for the JD to render (LinkedIn renders it client-side) instead of a
-    // blind delay. Timeout is non-fatal: extraction below returns '' if absent.
-    await page.waitForFunction(
-      () => document.body && document.body.innerText.includes('About the job'),
-      { timeout: 15000 },
-    ).catch(() => {});
+		// Wait for the JD to render (LinkedIn renders it client-side) instead of a
+		// blind delay. Timeout is non-fatal: extraction below returns '' if absent.
+		await page
+			.waitForFunction(() => document.body && document.body.innerText.includes('About the job'), { timeout: 15000 })
+			.catch(() => {});
 
-    const bodyText = await page.evaluate(() => {
-      const body = document.body;
-      return body ? body.innerText : '';
-    });
+		const bodyText = await page.evaluate(() => {
+			const body = document.body;
+			return body ? body.innerText : '';
+		});
 
-    // Inline session validation: if redirected to login/checkpoint, the stored
-    // session is invalid. Throws so the caller surfaces it instead of falling
-    // back to an unauthenticated fetch.
-    const jd = extractLinkedInJdFromPage(page.url(), bodyText);
+		// Inline session validation: if redirected to login/checkpoint, the stored
+		// session is invalid. Throws so the caller surfaces it instead of falling
+		// back to an unauthenticated fetch.
+		const jd = extractLinkedInJdFromPage(page.url(), bodyText);
 
-    // Persist JD to SQLite so retries don't re-fetch
-    if (jd) {
-      await updateJobDescription(jobUrl, jd).catch(err => {
-        console.warn('[LinkedIn Scraper] Failed to save JD to DB:', (err as Error).message);
-      });
-    }
+		// Persist JD to SQLite so retries don't re-fetch
+		if (jd) {
+			await updateJobDescription(jobUrl, jd).catch(err => {
+				console.warn('[LinkedIn Scraper] Failed to save JD to DB:', (err as Error).message);
+			});
+		}
 
-    return jd;
-  } finally {
-    await browser.close();
-  }
+		return jd;
+	} finally {
+		await browser.close();
+	}
 }
 
 /**
@@ -349,118 +343,120 @@ export async function fetchLinkedInJobDescription(rawUrl: string): Promise<strin
  * and full profile data in the DOM — never persist it unredacted.
  */
 function redactDebugHtml(html: string): string {
-  let redacted = html;
+	let redacted = html;
 
-  // Remove <script> blocks that reference session tokens or user data.
-  redacted = redacted.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, match => {
-    if (/(csrfToken|csrf-token|sessionId|li_at|JSESSIONID|bscookie|voyagerIdentity)/i.test(match)) {
-      return '<!-- [redacted] script block containing session data -->';
-    }
-    return match;
-  });
+	// Remove <script> blocks that reference session tokens or user data.
+	redacted = redacted.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, match => {
+		if (/(csrfToken|csrf-token|sessionId|li_at|JSESSIONID|bscookie|voyagerIdentity)/i.test(match)) {
+			return '<!-- [redacted] script block containing session data -->';
+		}
+		return match;
+	});
 
-  // Remove hidden inputs that carry CSRF tokens.
-  redacted = redacted.replace(/<input[^>]*name=["'][^"']*csrf[^"']*["'][^>]*>/gi, '<!-- [redacted] csrf input -->');
+	// Remove hidden inputs that carry CSRF tokens.
+	redacted = redacted.replace(/<input[^>]*name=["'][^"']*csrf[^"']*["'][^>]*>/gi, '<!-- [redacted] csrf input -->');
 
-  // Redact known session-token values inside the serialized page state.
-  redacted = redacted
-    .replace(/("csrfToken"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2')
-    .replace(/("sessionId"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2')
-    .replace(/("li_at"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2');
+	// Redact known session-token values inside the serialized page state.
+	redacted = redacted
+		.replace(/("csrfToken"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2')
+		.replace(/("sessionId"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2')
+		.replace(/("li_at"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2');
 
-  return redacted;
+	return redacted;
 }
 
 export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult[]> {
-  // Precondition: check state validity
-  let isValid = await validateLinkedInStorageState();
-  if (!isValid) {
-    console.log('[LinkedIn Scraper] Storage state invalid or missing. Auto-regenerating...');
-    await generateLinkedInStorageState();
-    isValid = await validateLinkedInStorageState();
-  }
+	// Precondition: check state validity
+	let isValid = await validateLinkedInStorageState();
+	if (!isValid) {
+		console.log('[LinkedIn Scraper] Storage state invalid or missing. Auto-regenerating...');
+		await generateLinkedInStorageState();
+		isValid = await validateLinkedInStorageState();
+	}
 
-  const { browser, context } = await launchStealthBrowser({
-    headless: true,
-    storageStatePath: fs.existsSync(STORAGE_FILE) ? STORAGE_FILE : undefined,
-  });
+	const { browser, context } = await launchStealthBrowser({
+		headless: true,
+		storageStatePath: fs.existsSync(STORAGE_FILE) ? STORAGE_FILE : undefined,
+	});
 
-  const baseUrl = buildLinkedInSearchUrl(query);
-  const pageCount = query.pageCount ?? 1;
-  const startPage = query.startPage ?? 1;
-  const searchUrls = buildScraperSearchUrls(baseUrl, 'linkedin', pageCount, startPage);
-  console.log(`[LinkedIn Scraper] Scraping ${searchUrls.length} page(s) starting from page ${startPage}: ${searchUrls.join(', ')}`);
+	const baseUrl = buildLinkedInSearchUrl(query);
+	const pageCount = query.pageCount ?? 1;
+	const startPage = query.startPage ?? 1;
+	const searchUrls = buildScraperSearchUrls(baseUrl, 'linkedin', pageCount, startPage);
+	console.log(
+		`[LinkedIn Scraper] Scraping ${searchUrls.length} page(s) starting from page ${startPage}: ${searchUrls.join(', ')}`
+	);
 
-const page = await context.newPage();
-  const results: ScraperResult[] = [];
+	const page = await context.newPage();
+	const results: ScraperResult[] = [];
 
-  try {
-    for (let pageIndex = 0; pageIndex < searchUrls.length; pageIndex++) {
-      const searchUrl = searchUrls[pageIndex];
-      await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await randomDelay(2000, 4000);
+	try {
+		for (let pageIndex = 0; pageIndex < searchUrls.length; pageIndex++) {
+			const searchUrl = searchUrls[pageIndex];
+			await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+			await randomDelay(2000, 4000);
 
-      // Lazy-load all job cards. LinkedIn renders the first ~7 cards and
-      // keeps the remaining result slots as empty skeleton <li> placeholders
-      // that only hydrate when individually scrolled into view (their
-      // IntersectionObserver fires on per-element intersection, not on
-      // container scrollTop). The container-scroll approach below plateaus
-      // at ~7; the per-card scrollIntoView + focus approach hydrates all 25.
-      const hydrated = await page.evaluate(async () => {
-        const cards = document.querySelectorAll(
-          'li[id*="ember"][class*="ember-view"][data-occludable-job-id]'
-        );
-        for (let i = 0; i < cards.length; i++) {
-          const card = cards[i] as HTMLElement;
-          card.scrollIntoView({ block: 'center', inline: 'center' });
-          card.focus();
-          // Yield to the event loop so IntersectionObserver callbacks flush
-          await new Promise(r => setTimeout(r, 550));
-        }
-        return document.querySelectorAll('.job-card-container').length;
-      });
-      console.log(`[LinkedIn Scraper] Hydrated ${hydrated} job cards on page ${searchUrl}`);
+			// Lazy-load all job cards. LinkedIn renders the first ~7 cards and
+			// keeps the remaining result slots as empty skeleton <li> placeholders
+			// that only hydrate when individually scrolled into view (their
+			// IntersectionObserver fires on per-element intersection, not on
+			// container scrollTop). The container-scroll approach below plateaus
+			// at ~7; the per-card scrollIntoView + focus approach hydrates all 25.
+			const hydrated = await page.evaluate(async () => {
+				const cards = document.querySelectorAll('li[id*="ember"][class*="ember-view"][data-occludable-job-id]');
+				for (let i = 0; i < cards.length; i++) {
+					const card = cards[i] as HTMLElement;
+					card.scrollIntoView({ block: 'center', inline: 'center' });
+					card.focus();
+					// Yield to the event loop so IntersectionObserver callbacks flush
+					await new Promise(r => setTimeout(r, 550));
+				}
+				return document.querySelectorAll('.job-card-container').length;
+			});
+			console.log(`[LinkedIn Scraper] Hydrated ${hydrated} job cards on page ${searchUrl}`);
 
-      // Save page HTML for debugging pagination/scroll behavior (opt-in via SCRAPER_DEBUG=true).
-      // The HTML is redacted first to strip session tokens and profile data from disk.
-      if (process.env.SCRAPER_DEBUG === 'true') {
-        try {
-          const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
-          if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-          const html = redactDebugHtml(await page.content());
-          const debugFile = path.join(debugDir, `linkedin-page-${startPage + pageIndex}.html`);
-          fs.writeFileSync(debugFile, html);
-          console.log(`[LinkedIn Scraper] Saved redacted debug HTML to ${debugFile}`);
-        } catch (debugErr: unknown) {
-          console.warn('[LinkedIn Scraper] Failed to save debug HTML:', (debugErr as Error).message);
-        }
-      }
+			// Save page HTML for debugging pagination/scroll behavior (opt-in via SCRAPER_DEBUG=true).
+			// The HTML is redacted first to strip session tokens and profile data from disk.
+			if (process.env.SCRAPER_DEBUG === 'true') {
+				try {
+					const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
+					if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+					const html = redactDebugHtml(await page.content());
+					const debugFile = path.join(debugDir, `linkedin-page-${startPage + pageIndex}.html`);
+					fs.writeFileSync(debugFile, html);
+					console.log(`[LinkedIn Scraper] Saved redacted debug HTML to ${debugFile}`);
+				} catch (debugErr: unknown) {
+					console.warn('[LinkedIn Scraper] Failed to save debug HTML:', (debugErr as Error).message);
+				}
+			}
 
-      // Extract job card postings from LinkedIn with selector strategies and failure diagnostics
-      await extractLinkedInCards(page, results);
+			// Extract job card postings from LinkedIn with selector strategies and failure diagnostics
+			await extractLinkedInCards(page, results);
 
-      console.log(`[LinkedIn Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
-    }
+			console.log(`[LinkedIn Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
+		}
 
-    // Visit individual job pages to extract the full JD
-    if (results.length > 0) {
-      console.log(`[LinkedIn Scraper] Extracting JDs for ${Math.min(results.length, MAX_JD_EXTRACTIONS)} of ${results.length} jobs...`);
-      for (let i = 0; i < Math.min(results.length, MAX_JD_EXTRACTIONS); i++) {
-        const result = results[i];
-        const jdText = await extractLinkedInJobDescription(page, result.url);
-        if (jdText) {
-          // Append JD text to existing snippet (preserve company/location info)
-          const prefix = result.snippet ? `${result.snippet}\n\n` : '';
-          result.snippet = prefix + jdText;
-        }
-        await randomDelay(1000, 2500);
-      }
-    }
-  } catch (err: unknown) {
-    console.error('[LinkedIn Scraper] Error during scraping:', (err as Error).message);
-  } finally {
-    await browser.close();
-  }
+		// Visit individual job pages to extract the full JD
+		if (results.length > 0) {
+			console.log(
+				`[LinkedIn Scraper] Extracting JDs for ${Math.min(results.length, MAX_JD_EXTRACTIONS)} of ${results.length} jobs...`
+			);
+			for (let i = 0; i < Math.min(results.length, MAX_JD_EXTRACTIONS); i++) {
+				const result = results[i];
+				const jdText = await extractLinkedInJobDescription(page, result.url);
+				if (jdText) {
+					// Append JD text to existing snippet (preserve company/location info)
+					const prefix = result.snippet ? `${result.snippet}\n\n` : '';
+					result.snippet = prefix + jdText;
+				}
+				await randomDelay(1000, 2500);
+			}
+		}
+	} catch (err: unknown) {
+		console.error('[LinkedIn Scraper] Error during scraping:', (err as Error).message);
+	} finally {
+		await browser.close();
+	}
 
-  return results;
+	return results;
 }

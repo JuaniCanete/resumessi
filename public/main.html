@@ -1,1489 +1,2248 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>resumessi AI - Home</title>
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐐%3C/text%3E%3C/svg%3E">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #0a0a0a;
-            --secondary: #0a0a0a;
-            --accent: #2563eb;
-            --static: rgba(255, 255, 255, 0.08);
-            --text: #171717;
-            --text-light: #736868;
-            --bg-badge: #f1f5f9;
-            --success: #0ea5e9;
-            --error: #ef4444;
-            --whitetext: #cbd5e1;
-            --left-w: 480px;
-            --right-w-normal: 360px;
-            --right-w-expanded: 50vw;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Comfortaa', sans-serif;
-            background-color: #f8fafc;
-            color: var(--text);
-            font-weight: 500;
-            line-height: 1.5;
-            overflow-x: hidden;
-        }
-
-        .panel {
-            background-color: var(--secondary);
-            color: #fff;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            overflow-y: auto;
-            overflow-x: hidden;
-            z-index: 200;
-        }
-
-        .panel-inner {
-            padding: 20px 22px 28px;
-            min-height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .panel-ctrl-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            flex-shrink: 0;
-        }
-
-        .ctrl-btn {
-            background: rgba(255, 255, 255, 0.08);
-            border: none;
-            color: #ffffff;
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            font-size: 15px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s, color 0.2s;
-            flex-shrink: 0;
-        }
-
-        .ctrl-btn:hover {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .ctrl-btn.active {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .panel-label-row {
-            font-size: 11px;
-            color: #ffffff;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            flex: 1;
-            text-align: center;
-        }
-
-        .p-label {
-            font-size: 11px;
-            font-weight: 600;
-            color: #ffffff;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 6px;
-            display: block;
-        }
-
-        .p-label-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 6px;
-        }
-
-        .p-label-wrapper .p-label {
-            margin-bottom: 0;
-        }
-
-        .info-hover {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 6px;
-            transition: background 0.2s, color 0.2s;
-        }
-
-        .info-hover:hover {
-            background: var(--accent);
-        }
-
-        .info-hover:hover .info-tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        .info-icon {
-            width: 14px;
-            height: 14px;
-            color: #ffffff;
-        }
-
-        .info-tooltip {
-            visibility: hidden;
-            opacity: 0;
-            position: absolute;
-            top: 150%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #0a0a0a;
-            color: #fff;
-            padding: 10px 14px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-            font-family: 'Comfortaa', sans-serif;
-            white-space: normal;
-            width: 220px;
-            line-height: 1.4;
-            border: 1px solid rgba(255,255,255,0.12);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            transition: opacity 0.2s, visibility 0.2s;
-            z-index: 9999;
-        }
-
-        .p-input,
-        .p-textarea {
-            width: 100%;
-            padding: 9px 11px;
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 6px;
-            font-size: 12px;
-            font-family: 'Comfortaa', sans-serif;
-            color: #e2e8f0;
-            transition: border-color 0.2s, background 0.2s;
-        }
-
-        .p-input::placeholder,
-        .p-textarea::placeholder {
-            color: var(--text-light);
-        }
-
-        .p-input:focus,
-        .p-textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            background: rgba(37, 99, 235, 0.08);
-        }
-
-        .p-textarea {
-            resize: vertical;
-            min-height: 180px;
-        }
-
-        .p-group {
-            margin-bottom: 14px;
-        }
-
-        .p-btn {
-            width: 100%;
-            padding: 11px 14px;
-            border: none;
-            border-radius: 7px;
-            font-weight: 700;
-            font-size: 13px;
-            font-family: 'Comfortaa', sans-serif;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s, opacity 0.2s;
-            margin-top: 10px;
-        }
-
-        .p-btn:active {
-            transform: scale(0.98);
-        }
-
-        .p-btn-primary {
-            background: var(--static);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-        }
-
-        .p-btn-primary:hover {
-            background: #1d4ed8;
-        }
-
-        .p-btn-primary:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
-        }
-
-        @keyframes bump {
-
-            0%,
-            100% {
-                transform: scale(1);
-            }
-
-            50% {
-                transform: scale(1.02);
-            }
-        }
-
-        #btn-ai-generate {
-            animation: bump 2s ease-in-out infinite;
-        }
-
-        #btn-download {
-            margin-bottom: 14px;
-        }
-
-        .notif-label {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            color: #1a1a1a;
-            font-size: 10px;
-            font-weight: 800;
-            padding: 2px 6px;
-            border-radius: 12px;
-            margin-left: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
-            display: inline-block;
-            vertical-align: middle;
-            line-height: 1;
-            pointer-events: none;
-        }
-
-        #btn-ai-generate:hover {
-            animation: none;
-            transform: scale(1.02);
-        }
-
-        .p-btn-secondary {
-            background: var(--static);
-            color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-        }
-
-        .p-btn-secondary:hover {
-            background: #1d4ed8;
-            color: #fff;
-        }
-
-
-        #left-sidebar {
-            width: var(--left-w);
-            left: 0;
-            box-shadow: 4px 0 16px rgba(0, 0, 0, 0.25);
-            transition: transform 0.3s cubic-bezier(.4, 0, .2, 1);
-        }
-
-        body.left-collapsed #left-sidebar {
-            transform: translateX(calc(-1 * var(--left-w)));
-        }
-
-        #left-open-stub {
-            position: fixed;
-            top: 14px;
-            left: 0;
-            z-index: 300;
-            width: 26px;
-            height: 44px;
-            background: var(--accent);
-            border: none;
-            border-radius: 0 8px 8px 0;
-            color: #ffffff;
-            font-size: 14px;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 3px 0 8px rgba(0, 0, 0, 0.3);
-            transition: color 0.2s, background 0.2s;
-        }
-
-        #left-open-stub:hover {
-            color: var(--accent);
-            background: #1e293b;
-        }
-
-        body.left-collapsed #left-open-stub {
-            display: flex !important;
-        }
-
-        #btn-refresh-resume {
-            position: absolute;
-            top: 2px;
-            right: 1%;
-            width: 36px;
-            height: 36px;
-            background: var(--accent);
-            border: none;
-            border-radius: 50%;
-            color: #ffffff;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            transition: color 0.2s, background 0.2s;
-            z-index: 601;
-        }
-
-        #btn-refresh-resume:hover {
-            color: var(--accent);
-            background: #1e293b;
-        }
-
-        .btn-refresh-tooltip {
-            visibility: hidden;
-            opacity: 0;
-            position: absolute;
-            top: 150%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #0a0a0a;
-            color: #fff;
-            padding: 10px 14px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-            font-family: 'Comfortaa', sans-serif;
-            white-space: normal;
-            width: 220px;
-            line-height: 1.4;
-            border: 1px solid rgba(255,255,255,0.12);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            transition: opacity 0.2s, visibility 0.2s;
-            z-index: 9999;
-            pointer-events: none;
-        }
-
-        #btn-refresh-resume:hover .btn-refresh-tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        #right-open-stub {
-            position: fixed;
-            top: 50%;
-            right: 0;
-            transform: translateY(-50%);
-            z-index: 300;
-            width: 26px;
-            padding: 18px 0;
-            background: var(--accent);
-            border: none;
-            border-radius: 8px 0 0 8px;
-            color: #ffffff;
-            font-size: 14px;
-            cursor: pointer;
-            display: none !important;
-            align-items: center;
-            justify-content: center;
-            box-shadow: -3px 0 8px rgba(0, 0, 0, 0.3);
-            transition: color 0.2s, background 0.2s;
-            writing-mode: vertical-rl;
-            text-orientation: mixed;
-        }
-
-        #right-open-stub:hover {
-            color: var(--accent);
-            background: #1e293b;
-        }
-
-        #left-loading {
-            display: none;
-            text-align: center;
-            font-size: 12px;
-            color: var(--accent);
-            padding: 10px 0;
-        }
-
-        .dot-anim::after {
-            content: '';
-            animation: dotdot 1.4s infinite;
-        }
-
-        @keyframes dotdot {
-            0% {
-                content: '';
-            }
-
-            33% {
-                content: '.';
-            }
-
-            66% {
-                content: '..';
-            }
-
-            100% {
-                content: '...';
-            }
-        }
-
-        .p-divider {
-            border: none;
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
-            margin: 16px 0;
-        }
-
-        #floating-footer {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 7px;
-            font-weight: 700;
-            font-size: 13px;
-            font-family: 'Comfortaa', sans-serif;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s, opacity 0.2s;
-            margin-top: 10px;
-        }
-
-        #floating-footer a {
-            color: var(--bg-badge);
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        #floating-footer a:hover {
-            color: var(--accent);
-            text-decoration: underline;
-        }
-
-        #right-panel {
-            width: var(--right-w-normal);
-            right: 0;
-            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.25);
-            transform: translateX(100%);
-            transition: transform 0.3s cubic-bezier(.4, 0, .2, 1),
-                width 0.3s cubic-bezier(.4, 0, .2, 1);
-        }
-
-        #right-panel.open {
-            transform: translateX(0);
-        }
-
-        #right-panel.expanded {
-            width: var(--right-w-expanded);
-        }
-
-        .result-score-row {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px 0;
-        }
-
-        .result-score-circle {
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            border: 4px solid var(--success);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--success);
-            background: rgba(14, 165, 233, 0.1);
-            flex-shrink: 0;
-        }
-
-        .result-score-circle.good {
-            border-color: #10b981;
-            color: #10b981;
-            background: rgba(16, 185, 129, 0.1);
-        }
-
-        .result-score-circle.mid {
-            border-color: #f59e0b;
-            color: #f59e0b;
-            background: rgba(245, 158, 11, 0.1);
-        }
-
-        .result-score-circle.low {
-            border-color: #ef4444;
-            color: #ef4444;
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        .result-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #64748b;
-            font-weight: 600;
-        }
-
-        .result-match-text {
-            font-size: 16px;
-            font-weight: 700;
-            color: #38bdf8;
-            margin-top: 2px;
-        }
-
-        .result-section-title {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #64748b;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .result-body {
-            font-size: 12.5px;
-            color: var(--whitetext);
-            line-height: 1.65;
-        }
-
-        .result-keyword {
-            display: inline-block;
-            background: rgba(239, 68, 68, 0.15);
-            color: #fca5a5;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 4px;
-            padding: 2px 7px;
-            font-size: 11px;
-            margin: 3px 3px 0 0;
-        }
-
-        #resume-wrap {
-            position: relative;
-            margin-left: var(--left-w);
-            transition: margin-left 0.3s cubic-bezier(.4, 0, .2, 1),
-                margin-right 0.3s cubic-bezier(.4, 0, .2, 1);
-        }
-
-        body.left-collapsed #resume-wrap {
-            margin-left: 0;
-        }
-
-        body.right-open #resume-wrap {
-            margin-right: var(--right-w-normal);
-        }
-
-        body.right-expanded #resume-wrap {
-            margin-right: var(--right-w-expanded);
-        }
-
-        .resume-container {
-            max-width: 860px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 40px 50px;
-            min-height: 100vh;
-            box-shadow: 0 0 24px rgba(0, 0, 0, 0.06);
-            position: relative;
-            z-index: 20;
-        }
-
-        .resume-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 2px solid var(--bg-badge);
-            padding-bottom: 20px;
-            margin-bottom: 25px;
-            position: relative;
-        }
-
-        .header-main {
-            flex: 0 0 auto;
-            min-width: 120px;
-            max-width: 200px;
-            text-align: center;
-        }
-
-        .header-main h1 {
-            font-size: 30px;
-            font-weight: 700;
-            color: var(--primary);
-            letter-spacing: -0.05em;
-        }
-
-        .header-main .subtitle {
-            font-size: 17px;
-            color: var(--accent);
-            font-weight: 500;
-            margin-top: 4px;
-            white-space: normal;
-            word-break: break-word;
-            overflow-wrap: break-word;
-            max-width: 160px;
-            display: inline-block;
-            line-height: 1.3;
-        }
-
-        .profile-photo-container {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            flex-shrink: 0;
-        }
-
-        .profile-photo {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--accent);
-            background-color: #e2e8f0;
-            display: block;
-        }
-
-        [data-testid="resume-name"] {
-            font-size: 30px;
-            font-weight: 700;
-            color: var(--primary);
-            letter-spacing: -0.05em;
-        }
-
-        .contact-info {
-            flex: 0 1 auto;
-            min-width: 200px;
-            text-align: center;
-            font-size: 13px;
-            color: var(--text);
-        }
-
-        .contact-info p {
-            margin-bottom: 3px;
-        }
-
-        .section-title {
-            font-size: 15px;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--primary);
-            border-bottom: 1px solid var(--primary);
-            padding-bottom: 5px;
-            margin-bottom: 15px;
-            font-weight: 700;
-        }
-
-        .summary-text {
-            font-size: 13.5px;
-            color: var(--text);
-            margin-bottom: 25px;
-            text-align: justify;
-        }
-
-        .columns-container {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 35px;
-        }
-
-        .experience-item {
-            margin-bottom: 20px;
-            page-break-inside: avoid;
-        }
-
-        .exp-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 8px;
-        }
-
-        .exp-title {
-            font-size: 14.5px;
-            font-weight: 700;
-            color: var(--secondary);
-        }
-
-        .exp-company {
-            font-size: 13.5px;
-            color: var(--accent);
-            font-weight: 500;
-        }
-
-        .exp-date {
-            font-size: 12.5px;
-            color: var(--text-light);
-            font-weight: 500;
-        }
-
-        .exp-bullets {
-            list-style-type: square;
-            padding-left: 16px;
-            font-size: 13px;
-            color: var(--text);
-        }
-
-        .exp-bullets li {
-            margin-bottom: 5px;
-            text-align: justify;
-        }
-
-        .skills-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 20px;
-        }
-
-        .skill-badge {
-            background-color: var(--bg-badge);
-            color: var(--primary);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11.5px;
-            font-weight: 500;
-        }
-
-        .skill-badge.expert {
-            border-left: 3px solid var(--accent);
-            background-color: #eff6ff;
-            color: #1e3a8a;
-            font-weight: 600;
-        }
-
-        .cert-link {
-            color: var(--accent);
-            font-size: 12px;
-            font-weight: 600;
-            text-decoration: none;
-        }
-
-        .cert-link:hover {
-            text-decoration: underline;
-        }
-
-        .meta-item {
-            margin-bottom: 12px;
-            font-size: 13px;
-        }
-
-        .meta-label {
-            font-weight: 600;
-            color: var(--primary);
-        }
-
-        .dev-separator {
-            color: #cbd5e1;
-            font-size: 10px;
-        }
-
-        #actions-bar {
-            position: sticky;
-            top: 0;
-            z-index: 600;
-            max-width: 860px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            pointer-events: none;
-            height: 0;
-        }
-
-        #actions-bar .actions-btn-wrapper {
-            position: relative;
-            display: inline-block;
-            pointer-events: auto;
-        }
-
-        .actions-dropdown-trigger {
-            padding: 6px 14px;
-            font-family: 'Comfortaa', sans-serif;
-            font-size: 12px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            border-radius: 6px;
-            background: #0a0a0a;
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-            cursor: pointer;
-            transition: background 0.2s;
-            margin-top: 0;
-        }
-
-        .actions-dropdown-trigger:hover {
-            background: var(--accent);
-            border-color: rgba(255, 255, 255, 0.12);
-        }
-
-        .actions-dropdown-trigger:active {
-            transform: scale(0.98);
-        }
-
-        /* AI-available state for Actions button */
-        .actions-dropdown-trigger.ai-available {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            color: #1a1a1a;
-            border-color: transparent;
-            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
-            animation: bump 2s ease-in-out infinite;
-        }
-
-        .actions-dropdown-trigger.ai-available:hover {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            animation: none;
-            transform: scale(1.02);
-        }
-
-        /* AI-available state for Polish dropdown option */
-        .actions-option.ai-available {
-            position: relative;
-        }
-
-        .actions-option.ai-available:hover {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        /* Golden ! notification dot on Polish option — rendered via ::after pseudo-element */
-        .actions-option.ai-available::after {
-            content: '!';
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            width: 14px;
-            height: 14px;
-            min-width: 14px;
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            color: #1a1a1a;
-            border-radius: 50%;
-            font-size: 9px;
-            font-weight: 900;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 1px 4px rgba(245, 158, 11, 0.5);
-            pointer-events: none;
-            line-height: 1;
-        }
-
-        /* Polish button container — needed for ::after positioning */
-        #btn-polish-dropdown {
-            position: relative;
-        }
-
-        .actions-dropdown {
-            position: absolute;
-            top: calc(100% + 6px);
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 599;
-            background: var(--secondary);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
-            min-width: 220px;
-            padding: 8px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .actions-dropdown.hidden {
-            display: none;
-        }
-
-        .actions-option {
-            align-items: center;
-            gap: 12px;
-            width: 100%;
-            padding: 10px 16px;
-            background: transparent;
-            border: none;
-            color: #fff;
-            font-family: 'Comfortaa', sans-serif;
-            font-weight: 500;
-            cursor: pointer;
-            text-align: left;
-            transition: background 0.15s;
-            white-space: nowrap;
-        }
-
-        .actions-option:hover {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .actions-option-icon {
-            display: inline-block;
-            width: 26px;
-            height: 20px;
-            text-align: center;
-            line-height: 20px;
-            opacity: 0.85;
-            font-size: 14px;
-            vertical-align: middle;
-            margin-right: 12px;
-        }
-
-        .actions-option-text {
-            font-size: 13px;
-            font-weight: 500;
-            vertical-align: middle;
-        }
-
-        body.left-collapsed #left-open-stub {
-            display: flex !important;
-        }
-
-        #providers-list {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .provider-item {
-            padding: 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-            position: relative;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .provider-item:hover {
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateY(-2px);
-        }
-
-        .provider-item.selected {
-            background: rgba(37, 99, 235, 0.2);
-            border-color: var(--accent);
-        }
-
-        .provider-img {
-            width: 24px;
-            height: 24px;
-            object-fit: contain;
-            margin-right: 8px;
-        }
-
-        .provider-checkbox {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            width: 18px;
-            height: 18px;
-            accent-color: var(--accent);
-            cursor: pointer;
-        }
-
-        .provider-model {
-            font-size: 12px;
-            color: #e2e8f0;
-            margin-top: 4px;
-            font-family: monospace;
-        }
-
-        .provider-name {
-            color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .provider-description {
-            font-size: 12px;
-            color: #ffffff;
-            margin-top: 4px;
-            line-height: 1.4;
-        }
-
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-
-            #left-sidebar,
-            #right-panel,
-            #left-open-stub,
-            #right-open-stub,
-            body.left-collapsed #left-open-stub {
-                display: none !important;
-            }
-
-            #resume-wrap {
-                margin-left: 0 !important;
-                margin-right: 0 !important;
-            }
-
-            .resume-container {
-                margin: 0 !important;
-                max-width: 100% !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                min-height: auto !important;
-            }
-
-            .columns-container {
-                display: block !important;
-            }
-
-            .right-column {
-                margin-top: 25px;
-            }
-
-            body {
-                background: #fff;
-                color: #000;
-            }
-
-            .experience-item {
-                page-break-inside: auto;
-                break-inside: auto;
-            }
-
-            .skill-badge {
-                border: 1px solid #cbd5e1 !important;
-                background-color: #fff !important;
-                color: #000 !important;
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-
-            .skill-badge.expert {
-                border: 1px solid var(--accent) !important;
-                background-color: #eff6ff !important;
-                color: #1e40af !important;
-            }
-
-            .section-title {
-                border-bottom: 1px solid #000 !important;
-                color: #000 !important;
-            }
-
-            .summary-text,
-            .exp-bullets,
-            .exp-title,
-            .contact-info,
-            .meta-item {
-                color: #000 !important;
-            }
-
-            .exp-date {
-                color: #333 !important;
-            }
-
-            .exp-bullets li {
-                margin-bottom: 7px !important;
-            }
-
-            .header-main .subtitle {
-                word-break: break-word;
-            }
-        }
-    </style>
-</head>
-
-<body>
-
-    <div id="refresh-message" data-testid="refresh-message" style="display: none; position: fixed; top: 20px; left: 50%; 
-         transform: translateX(-50%); background: var(--accent); color: #fff; padding: 12px 24px; 
-         border-radius: 8px; font-weight: 600; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-    </div>
-
-    <div id="polish-overlay" data-testid="polish-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-         background: rgba(0,0,0,0.65); backdrop-filter: blur(10px); z-index: 9998; align-items: center; justify-content: center; flex-direction: column; gap: 16px;">
-        <p style="color: #fff; font-size: 18px; font-weight: 700; font-family: 'Comfortaa', sans-serif; text-align: center;">
-            ✨ Polishing resume using AI <span class="dot-anim"></span> ✨
-        </p>
-        <button id="btn-cancel-polish" onclick="cancelPolish()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 24px; border-radius: 7px; font-family: 'Comfortaa', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
-            onmouseenter="this.style.background='#ef4444'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">Cancel</button>
-    </div>
-
-    <div id="scraper-overlay" data-testid="scraper-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-         background: rgba(0,0,0,0.65); backdrop-filter: blur(10px); z-index: 9998; align-items: center; justify-content: center; flex-direction: column; gap: 16px;">
-        <p style="color: #fff; font-size: 18px; font-weight: 700; font-family: 'Comfortaa', sans-serif; text-align: center;">
-            🔎 Scraping <span id="scraper-source-label">LinkedIn</span> <span class="dot-anim"></span>
-        </p>
-        <button id="btn-open-results-fallback" onclick="openResultsTabFromOverlay()" style="display: none; background: var(--accent); color: #fff; padding: 10px 24px; border-radius: 7px; font-family: 'Comfortaa', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; border: none; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);">
-            📊 View Scraper Results ↗
-        </button>
-        <button id="btn-cancel-scraper" onclick="cancelScraping()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 24px; border-radius: 7px; font-family: 'Comfortaa', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
-            onmouseenter="this.style.background='#ef4444'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">Cancel</button>
-    </div>
-
-    <aside id="left-sidebar" data-testid="left-sidebar" class="panel no-print">
-        <div class="panel-inner">
-
-            <div class="panel-ctrl-row">
-                <button class="ctrl-btn" data-testid="collapse-sidebar-btn" onclick="toggleLeft()" title="Collapse sidebar"
-                    aria-label="Collapse sidebar">&#9776;</button>
-                <span class="panel-label-row">JD validation</span>
-            </div>
-
-            <div class="p-group" style="flex: 1; display: flex; flex-direction: column;">
-                <div class="p-label-wrapper">
-                    <label class="p-label" for="job-description">Job Description</label>
-                    <div class="info-hover">
-                        <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                        <div class="info-tooltip">Paste full job description here to score your Resume using AI base ATS
-                            system</div>
-                    </div>
-                </div>
-                <textarea id="job-description" data-testid="job-description" class="p-textarea" style="flex:1; min-height: 200px;"
-                    oninput="validateJDInput()"></textarea>
-            </div>
-
-            <div id="left-loading">
-                <span class="dot-anim">Scanning using AI</span>
-            </div>
-
-            <button class="p-btn p-btn-primary" id="btn-run-scan" data-testid="btn-run-scan" onclick="handleScanButtonClick()" disabled>Validate JD
-                using AI</button>
-            <button class="p-btn" id="btn-ai-generate" data-testid="btn-ai-generate" onclick="openAIModal()"
-                style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a1a; font-weight: 700;">Generate
-                resume using AI</button>
-            <button class="p-btn p-btn-secondary" id="btn-download" data-testid="btn-download" onclick="window.print()">Download Resume</button>
-
-            <div id="floating-footer" class="no-print">
-                <span>Developed by Juani Ca&ntilde;ete</span>
-                <span class="dev-separator">&bull;</span>
-                <a href="https://github.com/JuaniCanete?tab=repositories" target="_blank"
-                    rel="noopener noreferrer">GitHub</a>
-                <span class="dev-separator">&bull;</span>
-                <a href="https://www.linkedin.com/in/juanignaciocanete/" target="_blank"
-                    rel="noopener noreferrer">LinkedIn</a>
-            </div>
-        </div>
-    </aside>
-
-    <button id="left-open-stub" data-testid="left-open-stub" class="no-print" onclick="toggleLeft()" title="Open sidebar"
-        aria-label="Open sidebar">&#9776;</button>
-
-    <div id="resume-wrap">
-        <!-- Actions bar: sticky, centered over the resume container -->
-        <div id="actions-bar" class="no-print">
-            <div class="actions-btn-wrapper">
-                <button id="actions-trigger" data-testid="actions-trigger" class="actions-dropdown-trigger" onclick="toggleActions()"
-                    aria-expanded="false" aria-haspopup="true" title="Actions"><span class="actions-label">Actions
-                        ▾</span></button>
-                <div id="actions-dropdown" data-testid="actions-dropdown" class="actions-dropdown hidden" role="menu">
-                    <button class="actions-option" id="btn-find-job-dropdown" data-testid="find-job-button" role="menuitem" onclick="window.location.href='/public/findJob.html?source=linkedin'">
-                        <span class="actions-option-icon">🪏</span>
-                        <span class="actions-option-text">Find a Job</span>
-                    </button>
-                    <button class="actions-option" role="menuitem" onclick="toggleLeft()">
-                        <span class="actions-option-icon">🔍</span>
-                        <span class="actions-option-text">JD Validation</span>
-                    </button>
-                    <button class="actions-option" role="menuitem" onclick="openAtsSidebar()">
-                        <span class="actions-option-icon">📊</span>
-                        <span class="actions-option-text">ATS Results</span>
-                    </button>
-                    <button class="actions-option" role="menuitem" onclick="window.print()">
-                        <span class="actions-option-icon">⬇</span>
-                        <span class="actions-option-text">Download Resume</span>
-                    </button>
-                     <button class="actions-option" id="btn-polish-dropdown" data-testid="polish-button" role="menuitem" onclick="polishResume()"
-                         style="display: none;">
-                         <span class="actions-option-icon">✨</span>
-                         <span class="actions-option-text">Polish using AI</span>
-                     </button>
-                     <button class="actions-option" id="btn-rollback-dropdown" data-testid="rollback-button" role="menuitem" onclick="rollbackPolish()"
-                         style="display: none;">
-                         <span class="actions-option-icon">↩</span>
-                         <span class="actions-option-text">Rollback AI Polish</span>
-                     </button>
-                    <button class="actions-option" id="btn-photo-upload-dropdown" data-testid="photo-upload-trigger" role="menuitem" onclick="openPhotoUploadModal()"
-                          style="display: none;">
-                          <span class="actions-option-icon">📸</span>
-                          <span class="actions-option-text">Upload Profile Photo</span>
-                       </button>
-                      <button class="actions-option" id="btn-providers-dropdown" data-testid="providers-button" role="menuitem" onclick="openProvidersModal()">
-                         <span class="actions-option-icon">🧠</span>
-                         <span class="actions-option-text">AI Providers</span>
-                     </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="resume-container" id="resume-content" data-testid="resume-content">
-            <button id="btn-refresh-resume" data-testid="btn-refresh-resume" class="no-print" onclick="handleRefreshResume()" aria-label="Refresh resume">
-                <span style="line-height: 1;">↻</span>
-                <span class="btn-refresh-tooltip">Refresh resume to apply manual changes from JSON files.</span>
-            </button>
-            <!-- Resume rendered dynamically by renderResume() -->
-        </div>
-    </div>
-
-    <div id="right-panel" data-testid="right-panel" class="panel no-print">
-        <div class="panel-inner">
-            <div class="panel-ctrl-row">
-                <button class="ctrl-btn" id="rp-expand-btn" onclick="expandRight()" title="Expand panel"
-                    aria-label="Expand panel">&#x26F6;</button>
-                <span class="panel-label-row">ATS results</span>
-                <button class="ctrl-btn" onclick="closeAtsSidebar()" title="Collapse results"
-                    aria-label="Collapse results">&#x2716;</button>
-            </div>
-
-            <div class="result-score-row">
-                <div class="result-score-circle" id="rp-score-circle" data-testid="rp-score-circle">--</div>
-                <div>
-                    <div class="result-label">ATS Match</div>
-                    <div class="result-match-text" id="rp-score-text" data-testid="rp-score-text">Pending</div>
-                </div>
-            </div>
-
-            <div id="scan-again-msg" class="result-body"
-                style="color: #fca5a5; margin-top: 6px; margin-bottom: 14px; padding: 12px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 6px;">
-                No results yet. Paste a job description and click Validate JD using AI to get started.
-            </div>
-
-            <div id="rp-breakdown-section" style="display: none; margin-bottom: 14px;">
-                <hr class="p-divider" style="margin: 12px 0;">
-                <div class="result-section-title">The Match Breakdown</div>
-                <div class="result-body"
-                    style="display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">
-                    <div style="display: flex; justify-content: space-between;"><span>Keyword Match:</span><span
-                            id="br-skills" style="font-weight: 700;">--</span></div>
-                    <div style="display: flex; justify-content: space-between;"><span>Experience Alignment:</span><span
-                            id="br-experience" style="font-weight: 700;">--</span></div>
-                    <div style="display: flex; justify-content: space-between;"><span>Education/Cert Fit:</span><span
-                            id="br-education" style="font-weight: 700;">--</span></div>
-                </div>
-            </div>
-
-            <hr class="p-divider">
-
-            <div style="margin-bottom: 16px;">
-                <div class="result-section-title">Feedback</div>
-                <div class="result-body" id="rp-feedback" data-testid="rp-feedback">&mdash;</div>
-            </div>
-
-            <hr class="p-divider">
-
-            <div>
-                <div class="result-section-title">Missing Keywords</div>
-                <div id="rp-keywords" class="result-body">&mdash;</div>
-            </div>
-
-            <hr class="p-divider">
-
-            <div>
-                <div class="result-section-title">AI Results powered by</div>
-                <div id="rp-poweredBy" class="ai-powered-by-provider-model" style="font-size: 13px; color: rgba(255,255,255,0.7);"><span class="ai-powered">&mdash;</span></div>
-            </div>
-
-            <div style="margin-top: 12px;">
-                <button class="p-btn p-btn-secondary" style="width: 100%; padding: 10px; background: var(--static); color: #fff; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; cursor: pointer; margin-bottom: 8px;"
-                    onclick="openCoverLetterModal()">
-                    ✉️ Generate Cover Letter
-                </button>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- AI Generation Modal -->
-    <div id="ai-modal" data-testid="ai-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-         background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;">
-        <div style="background: var(--secondary); padding: 30px; border-radius: 12px; max-width: 500px; 
-             width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); position: relative;">
-            <button onclick="closeAIModal()" style="position: absolute; top: 15px; right: 15px; background: none; 
-                    border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; 
-                    display: flex; align-items: center; justify-content: center; border-radius: 50%; 
-                    background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
-                onmouseenter="this.style.background='var(--accent)'" 
-                onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            <h2 style="color: #fff; margin-bottom: 20px; text-align: center;">AI Resume Generation ✨</h2>
-
-            <!-- Upload Section -->
-            <div id="modal-upload-section"  data-testid="modal-upload-section">
-                <div style="border: 2px dashed rgba(255,255,255,0.2); padding: 40px; text-align: center; 
-                     border-radius: 8px; margin-bottom: 20px; cursor: pointer;"
-                    onclick="document.getElementById('pdf-input').click()">
-                    <p style="color: #fff; font-size: 14px;">📄 Drag & drop your resume PDF here</p>
-                    <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 10px;">or click to browse (1-2
-                        pages recommended)</p>
-                    <input type="file" id="pdf-input" accept=".pdf" style="display: none;"
-                        onchange="handlePDFUpload(this)">
-                </div>
-            </div>
-
-
-            <!-- Error Section -->
-            <div id="modal-error-section" style="display: none; background: rgba(239,68,68,0.1); 
-                 border: 1px solid rgba(239,68,68,0.3); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-                <p id="modal-error-text" style="color: #fca5a5; font-size: 13px;"></p>
-            </div>
-
-            <!-- File Name Display -->
-            <div id="modal-file-name" style="display: none; color: #fff; font-size: 12px; margin-bottom: 10px; text-align: center; word-break: break-all;"></div>
-
-            <!-- Action Buttons -->
-            <div id="modal-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch;">
-                <button id="btn-continue-anyway" class="p-btn p-btn-primary" style="display: none; 
-                     background: #f59e0b; color: #1a1a1a; flex: 1;" onclick="confirmGeneration()">
-                    Continue Anyway
-                </button>
-                <button id="btn-generate" class="p-btn p-btn-primary" style="display: none; 
-                     background: var(--static); color: #fff; flex: 1;" onclick="confirmGeneration()">
-                    ✨ Generate Resume
-                </button>
-                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="closeAIModal()">Cancel</button>
-            </div>
-
-            <!-- Loading State -->
-            <div id="modal-loading" style="display: none; text-align: center; padding: 20px;">
-                <p style="color: var(--accent);" class="dot-anim">Processing using AI</p>
-            </div>
-        </div>
-    </div>
-    
-     <!-- Photo Upload Modal -->
-    <div id="photo-upload-modal" data-testid="photo-upload-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;" class="photo-upload-modal">
-        <div style="background: var(--secondary); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); position: relative;">
-            <button onclick="closePhotoUploadModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; line-height: 1; transition: background 0.2s;"
-                onmouseenter="this.style.background='var(--accent)'"
-                onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            <h2 style="color: #fff; margin-bottom: 20px; text-align: center;">📸 Upload Profile Photo</h2>
-            <div id="photo-upload-section" style="border: 2px dashed rgba(255,255,255,0.2); padding: 40px; text-align: center; border-radius: 8px; margin-bottom: 20px; cursor: pointer;" onclick="document.getElementById('photo-input').click()">
-                <p style="color: #fff; font-size: 14px;">📸 Drag & drop your profile picture here (JPEG/JPG/PNG)</p>
-                <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 10px;">or click to browse</p>
-                <input type="file" id="photo-input" data-testid="photo-input" accept="image/jpeg,image/jpg,image/png" style="display: none;" onchange="handlePhotoUpload(this)">
-            </div>
-            <div id="photo-upload-error" style="display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-                <p id="photo-upload-error-text" style="color: #fca5a5; font-size: 13px;"></p>
-            </div>
-            <div id="photo-upload-file-name" style="display: none; color: #fff; font-size: 12px; margin-bottom: 10px; text-align: center; word-break: break-all;"></div>
-            <div id="photo-upload-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch;">
-                <button id="photo-upload-confirm" data-testid="photo-upload-confirm" class="p-btn p-btn-primary" style="display: none; background: #f59e0b; color: #1a1a1a; flex: 1;" onclick="confirmPhotoUpload()">
-                    Confirm
-                </button>
-                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="closePhotoUploadModal()">
-                    Cancel
-                </button>
-            </div>
-            <div id="photo-upload-loading" style="display: none; text-align: center; padding: 20px;">
-                <p style="color: var(--accent);" class="dot-anim">Processing photo...</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cover Letter Modal -->
-    <div id="cover-letter-modal" data-testid="cover-letter-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 640px; width: 92%; max-height: 88vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(255,255,255,0.12);">
-            <button onclick="closeCoverLetterModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
-                onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            <h2 style="color: #fff; margin-bottom: 4px; text-align: center;">✉️ Cover Letter</h2>
-            <p style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 20px; font-family: 'Comfortaa', sans-serif;">Generate a personalized cover letter based on your resume and the job description</p>
-
-            <!-- Settings Form -->
-            <div id="cover-letter-settings" style="display: flex; flex-direction: column; gap: 14px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                    <div>
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Tone</label>
-                        <select id="cl-tone" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                            <option value="Formal">Formal</option>
-                            <option value="Relaxed">Relaxed</option>
-                            <option value="Cold">Cold</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">English Level</label>
-                        <select id="cl-english-level" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                            <option value="C1">C1</option>
-                            <option value="C2">C2</option>
-                            <option value="Native">Native</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Char Limit</label>
-                        <input type="text" id="cl-char-limit" placeholder="Empty uses default = 400" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                    </div>
-                </div>
-                <div>
-                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Focus Areas (comma-separated)</label>
-                    <input type="text" id="cl-focus" placeholder="e.g. Automation, Playwright, CI/CD" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
-                </div>
-            </div>
-
-            <!-- Loading State -->
-            <div id="cover-letter-loading" style="display: none; text-align: center; padding: 20px;">
-                <p style="color: var(--accent);" class="dot-anim">Generating cover letter using AI</p>
-            </div>
-
-            <!-- Error State -->
-            <div id="cover-letter-error" style="display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-                <p id="cover-letter-error-text" style="color: #fca5a5; font-size: 13px;"></p>
-            </div>
-
-            <!-- Generated Cover Letter -->
-            <div id="cover-letter-result" style="display: none;">
-                <textarea id="cover-letter-text" style="width: 100%; min-height: 300px; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #e2e8f0; font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.5; resize: vertical; outline: none;"></textarea>
-            </div>
-
-            <!-- Modal Actions -->
-            <div id="cover-letter-actions" style="display: flex; gap: 12px; margin-top: 16px;">
-                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="closeCoverLetterModal()">Cancel</button>
-                <button id="btn-generate-cover-letter" class="p-btn p-btn-primary" style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700;" onclick="generateCoverLetter()">
-                    ✨ Generate Cover Letter
-                </button>
-            </div>
-            <div id="cover-letter-result-actions" style="display: none; gap: 12px; margin-top: 16px;">
-                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="copyCoverLetter()">📋 Copy</button>
-                <button class="p-btn p-btn-primary" style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700;" onclick="downloadCoverLetter()">⬇ Download</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- AI Providers Modal -->
-    <div id="providers-modal" data-testid="providers-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;">
-        <div style="background: var(--secondary); padding: 30px; border-radius: 12px; max-width: 520px; width: 92%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); position: relative;">
-            <button onclick="closeProvidersModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
-                onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            <h2 style="color: #fff; margin-bottom: 6px; text-align: center;">🧠 AI Providers</h2>
-            <p id="providers-modal-subtitle" style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 18px; font-family: 'Comfortaa', sans-serif;">Select default provider for LLM API calls</p>
-            <div id="providers-list" data-testid="providers-list"></div>
-            <div id="providers-empty-message" style="display: none; color: #fff; font-size: 13px; text-align: center; padding: 24px 16px; font-family: 'Comfortaa', sans-serif;">
-                There are not LLM providers configured. Please, setup them to chose provider and model.
-            </div>
-            <div id="providers-modal-actions" data-testid="providers-modal-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch; margin-top: 16px;">
-                <button id="providers-cancel-btn" data-testid="providers-cancel-btn" class="p-btn p-btn-secondary" style="flex: 1;" onclick="cancelProvidersSelection()">Cancel</button>
-                <button id="providers-confirm-btn" data-testid="providers-confirm-btn" class="p-btn p-btn-primary" style="flex: 1; background: var(--accent); color: #fff;" onclick="confirmProvidersSelection()">Confirm</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="/public/dist/app.js"></script>
-
-</body>
-
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>resumessi AI - Home</title>
+		<link
+			rel="icon"
+			type="image/svg+xml"
+			href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐐%3C/text%3E%3C/svg%3E"
+		/>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<style>
+			:root {
+				--primary: #0a0a0a;
+				--secondary: #0a0a0a;
+				--accent: #2563eb;
+				--static: rgba(255, 255, 255, 0.08);
+				--text: #171717;
+				--text-light: #736868;
+				--bg-badge: #f1f5f9;
+				--success: #0ea5e9;
+				--error: #ef4444;
+				--whitetext: #cbd5e1;
+				--left-w: 480px;
+				--right-w-normal: 360px;
+				--right-w-expanded: 50vw;
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			body {
+				font-family: 'Comfortaa', sans-serif;
+				background-color: #f8fafc;
+				color: var(--text);
+				font-weight: 500;
+				line-height: 1.5;
+				overflow-x: hidden;
+			}
+
+			.panel {
+				background-color: var(--secondary);
+				color: #fff;
+				height: 100vh;
+				position: fixed;
+				top: 0;
+				overflow-y: auto;
+				overflow-x: hidden;
+				z-index: 200;
+			}
+
+			.panel-inner {
+				padding: 20px 22px 28px;
+				min-height: 100%;
+				display: flex;
+				flex-direction: column;
+			}
+
+			.panel-ctrl-row {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 20px;
+				flex-shrink: 0;
+			}
+
+			.ctrl-btn {
+				background: rgba(255, 255, 255, 0.08);
+				border: none;
+				color: #ffffff;
+				width: 32px;
+				height: 32px;
+				border-radius: 6px;
+				font-size: 15px;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				transition:
+					background 0.2s,
+					color 0.2s;
+				flex-shrink: 0;
+			}
+
+			.ctrl-btn:hover {
+				background: var(--accent);
+				color: #fff;
+			}
+
+			.ctrl-btn.active {
+				background: var(--accent);
+				color: #fff;
+			}
+
+			.panel-label-row {
+				font-size: 11px;
+				color: #ffffff;
+				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.1em;
+				flex: 1;
+				text-align: center;
+			}
+
+			.p-label {
+				font-size: 11px;
+				font-weight: 600;
+				color: #ffffff;
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				margin-bottom: 6px;
+				display: block;
+			}
+
+			.p-label-wrapper {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				margin-bottom: 6px;
+			}
+
+			.p-label-wrapper .p-label {
+				margin-bottom: 0;
+			}
+
+			.info-hover {
+				position: relative;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: 24px;
+				height: 24px;
+				background: rgba(255, 255, 255, 0.08);
+				border-radius: 6px;
+				transition:
+					background 0.2s,
+					color 0.2s;
+			}
+
+			.info-hover:hover {
+				background: var(--accent);
+			}
+
+			.info-hover:hover .info-tooltip {
+				visibility: visible;
+				opacity: 1;
+			}
+
+			.info-icon {
+				width: 14px;
+				height: 14px;
+				color: #ffffff;
+			}
+
+			.info-tooltip {
+				visibility: hidden;
+				opacity: 0;
+				position: absolute;
+				top: 150%;
+				left: 50%;
+				transform: translateX(-50%);
+				background: #0a0a0a;
+				color: #fff;
+				padding: 10px 14px;
+				border-radius: 6px;
+				font-size: 11px;
+				font-weight: 600;
+				font-family: 'Comfortaa', sans-serif;
+				white-space: normal;
+				width: 220px;
+				line-height: 1.4;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+				transition:
+					opacity 0.2s,
+					visibility 0.2s;
+				z-index: 9999;
+			}
+
+			.p-input,
+			.p-textarea {
+				width: 100%;
+				padding: 9px 11px;
+				background: rgba(255, 255, 255, 0.07);
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				border-radius: 6px;
+				font-size: 12px;
+				font-family: 'Comfortaa', sans-serif;
+				color: #e2e8f0;
+				transition:
+					border-color 0.2s,
+					background 0.2s;
+			}
+
+			.p-input::placeholder,
+			.p-textarea::placeholder {
+				color: var(--text-light);
+			}
+
+			.p-input:focus,
+			.p-textarea:focus {
+				outline: none;
+				border-color: var(--accent);
+				background: rgba(37, 99, 235, 0.08);
+			}
+
+			.p-textarea {
+				resize: vertical;
+				min-height: 180px;
+			}
+
+			.p-group {
+				margin-bottom: 14px;
+			}
+
+			.p-btn {
+				width: 100%;
+				padding: 11px 14px;
+				border: none;
+				border-radius: 7px;
+				font-weight: 700;
+				font-size: 13px;
+				font-family: 'Comfortaa', sans-serif;
+				cursor: pointer;
+				transition:
+					background 0.2s,
+					transform 0.1s,
+					opacity 0.2s;
+				margin-top: 10px;
+			}
+
+			.p-btn:active {
+				transform: scale(0.98);
+			}
+
+			.p-btn-primary {
+				background: var(--static);
+				color: #fff;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+			}
+
+			.p-btn-primary:hover {
+				background: #1d4ed8;
+			}
+
+			.p-btn-primary:disabled {
+				opacity: 0.55;
+				cursor: not-allowed;
+			}
+
+			@keyframes bump {
+				0%,
+				100% {
+					transform: scale(1);
+				}
+
+				50% {
+					transform: scale(1.02);
+				}
+			}
+
+			#btn-ai-generate {
+				animation: bump 2s ease-in-out infinite;
+			}
+
+			#btn-download {
+				margin-bottom: 14px;
+			}
+
+			.notif-label {
+				background: linear-gradient(135deg, #fbbf24, #f59e0b);
+				color: #1a1a1a;
+				font-size: 10px;
+				font-weight: 800;
+				padding: 2px 6px;
+				border-radius: 12px;
+				margin-left: 6px;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+				display: inline-block;
+				vertical-align: middle;
+				line-height: 1;
+				pointer-events: none;
+			}
+
+			#btn-ai-generate:hover {
+				animation: none;
+				transform: scale(1.02);
+			}
+
+			.p-btn-secondary {
+				background: var(--static);
+				color: #ffffff;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+			}
+
+			.p-btn-secondary:hover {
+				background: #1d4ed8;
+				color: #fff;
+			}
+
+			#left-sidebar {
+				width: var(--left-w);
+				left: 0;
+				box-shadow: 4px 0 16px rgba(0, 0, 0, 0.25);
+				transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+			}
+
+			body.left-collapsed #left-sidebar {
+				transform: translateX(calc(-1 * var(--left-w)));
+			}
+
+			#left-open-stub {
+				position: fixed;
+				top: 14px;
+				left: 0;
+				z-index: 300;
+				width: 26px;
+				height: 44px;
+				background: var(--accent);
+				border: none;
+				border-radius: 0 8px 8px 0;
+				color: #ffffff;
+				font-size: 14px;
+				cursor: pointer;
+				display: none;
+				align-items: center;
+				justify-content: center;
+				box-shadow: 3px 0 8px rgba(0, 0, 0, 0.3);
+				transition:
+					color 0.2s,
+					background 0.2s;
+			}
+
+			#left-open-stub:hover {
+				color: var(--accent);
+				background: #1e293b;
+			}
+
+			body.left-collapsed #left-open-stub {
+				display: flex !important;
+			}
+
+			#btn-refresh-resume {
+				position: absolute;
+				top: 2px;
+				right: 1%;
+				width: 36px;
+				height: 36px;
+				background: var(--accent);
+				border: none;
+				border-radius: 50%;
+				color: #ffffff;
+				font-size: 16px;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+				transition:
+					color 0.2s,
+					background 0.2s;
+				z-index: 601;
+			}
+
+			#btn-refresh-resume:hover {
+				color: var(--accent);
+				background: #1e293b;
+			}
+
+			.btn-refresh-tooltip {
+				visibility: hidden;
+				opacity: 0;
+				position: absolute;
+				top: 150%;
+				left: 50%;
+				transform: translateX(-50%);
+				background: #0a0a0a;
+				color: #fff;
+				padding: 10px 14px;
+				border-radius: 6px;
+				font-size: 11px;
+				font-weight: 600;
+				font-family: 'Comfortaa', sans-serif;
+				white-space: normal;
+				width: 220px;
+				line-height: 1.4;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+				transition:
+					opacity 0.2s,
+					visibility 0.2s;
+				z-index: 9999;
+				pointer-events: none;
+			}
+
+			#btn-refresh-resume:hover .btn-refresh-tooltip {
+				visibility: visible;
+				opacity: 1;
+			}
+
+			#right-open-stub {
+				position: fixed;
+				top: 50%;
+				right: 0;
+				transform: translateY(-50%);
+				z-index: 300;
+				width: 26px;
+				padding: 18px 0;
+				background: var(--accent);
+				border: none;
+				border-radius: 8px 0 0 8px;
+				color: #ffffff;
+				font-size: 14px;
+				cursor: pointer;
+				display: none !important;
+				align-items: center;
+				justify-content: center;
+				box-shadow: -3px 0 8px rgba(0, 0, 0, 0.3);
+				transition:
+					color 0.2s,
+					background 0.2s;
+				writing-mode: vertical-rl;
+				text-orientation: mixed;
+			}
+
+			#right-open-stub:hover {
+				color: var(--accent);
+				background: #1e293b;
+			}
+
+			#left-loading {
+				display: none;
+				text-align: center;
+				font-size: 12px;
+				color: var(--accent);
+				padding: 10px 0;
+			}
+
+			.dot-anim::after {
+				content: '';
+				animation: dotdot 1.4s infinite;
+			}
+
+			@keyframes dotdot {
+				0% {
+					content: '';
+				}
+
+				33% {
+					content: '.';
+				}
+
+				66% {
+					content: '..';
+				}
+
+				100% {
+					content: '...';
+				}
+			}
+
+			.p-divider {
+				border: none;
+				border-top: 1px solid rgba(0, 0, 0, 0.1);
+				margin: 16px 0;
+			}
+
+			#floating-footer {
+				width: 100%;
+				padding: 14px;
+				border: none;
+				border-radius: 7px;
+				font-weight: 700;
+				font-size: 13px;
+				font-family: 'Comfortaa', sans-serif;
+				cursor: pointer;
+				transition:
+					background 0.2s,
+					transform 0.1s,
+					opacity 0.2s;
+				margin-top: 10px;
+			}
+
+			#floating-footer a {
+				color: var(--bg-badge);
+				text-decoration: none;
+				transition: color 0.2s;
+			}
+
+			#floating-footer a:hover {
+				color: var(--accent);
+				text-decoration: underline;
+			}
+
+			#right-panel {
+				width: var(--right-w-normal);
+				right: 0;
+				box-shadow: -4px 0 16px rgba(0, 0, 0, 0.25);
+				transform: translateX(100%);
+				transition:
+					transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+					width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+			}
+
+			#right-panel.open {
+				transform: translateX(0);
+			}
+
+			#right-panel.expanded {
+				width: var(--right-w-expanded);
+			}
+
+			.result-score-row {
+				display: flex;
+				align-items: center;
+				gap: 16px;
+				padding: 16px 0;
+			}
+
+			.result-score-circle {
+				width: 72px;
+				height: 72px;
+				border-radius: 50%;
+				border: 4px solid var(--success);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 22px;
+				font-weight: 700;
+				color: var(--success);
+				background: rgba(14, 165, 233, 0.1);
+				flex-shrink: 0;
+			}
+
+			.result-score-circle.good {
+				border-color: #10b981;
+				color: #10b981;
+				background: rgba(16, 185, 129, 0.1);
+			}
+
+			.result-score-circle.mid {
+				border-color: #f59e0b;
+				color: #f59e0b;
+				background: rgba(245, 158, 11, 0.1);
+			}
+
+			.result-score-circle.low {
+				border-color: #ef4444;
+				color: #ef4444;
+				background: rgba(239, 68, 68, 0.1);
+			}
+
+			.result-label {
+				font-size: 11px;
+				text-transform: uppercase;
+				letter-spacing: 0.1em;
+				color: #64748b;
+				font-weight: 600;
+			}
+
+			.result-match-text {
+				font-size: 16px;
+				font-weight: 700;
+				color: #38bdf8;
+				margin-top: 2px;
+			}
+
+			.result-section-title {
+				font-size: 11px;
+				text-transform: uppercase;
+				letter-spacing: 0.1em;
+				color: #64748b;
+				font-weight: 600;
+				margin-bottom: 8px;
+			}
+
+			.result-body {
+				font-size: 12.5px;
+				color: var(--whitetext);
+				line-height: 1.65;
+			}
+
+			.result-keyword {
+				display: inline-block;
+				background: rgba(239, 68, 68, 0.15);
+				color: #fca5a5;
+				border: 1px solid rgba(239, 68, 68, 0.3);
+				border-radius: 4px;
+				padding: 2px 7px;
+				font-size: 11px;
+				margin: 3px 3px 0 0;
+			}
+
+			#resume-wrap {
+				position: relative;
+				margin-left: var(--left-w);
+				transition:
+					margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+					margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+			}
+
+			body.left-collapsed #resume-wrap {
+				margin-left: 0;
+			}
+
+			body.right-open #resume-wrap {
+				margin-right: var(--right-w-normal);
+			}
+
+			body.right-expanded #resume-wrap {
+				margin-right: var(--right-w-expanded);
+			}
+
+			.resume-container {
+				max-width: 860px;
+				margin: 0 auto;
+				background: #fff;
+				padding: 40px 50px;
+				min-height: 100vh;
+				box-shadow: 0 0 24px rgba(0, 0, 0, 0.06);
+				position: relative;
+				z-index: 20;
+			}
+
+			.resume-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				border-bottom: 2px solid var(--bg-badge);
+				padding-bottom: 20px;
+				margin-bottom: 25px;
+				position: relative;
+			}
+
+			.header-main {
+				flex: 0 0 auto;
+				min-width: 120px;
+				max-width: 200px;
+				text-align: center;
+			}
+
+			.header-main h1 {
+				font-size: 30px;
+				font-weight: 700;
+				color: var(--primary);
+				letter-spacing: -0.05em;
+			}
+
+			.header-main .subtitle {
+				font-size: 17px;
+				color: var(--accent);
+				font-weight: 500;
+				margin-top: 4px;
+				white-space: normal;
+				word-break: break-word;
+				overflow-wrap: break-word;
+				max-width: 160px;
+				display: inline-block;
+				line-height: 1.3;
+			}
+
+			.profile-photo-container {
+				position: absolute;
+				left: 50%;
+				transform: translateX(-50%);
+				flex-shrink: 0;
+			}
+
+			.profile-photo {
+				width: 100px;
+				height: 100px;
+				border-radius: 50%;
+				object-fit: cover;
+				border: 3px solid var(--accent);
+				background-color: #e2e8f0;
+				display: block;
+			}
+
+			[data-testid='resume-name'] {
+				font-size: 30px;
+				font-weight: 700;
+				color: var(--primary);
+				letter-spacing: -0.05em;
+			}
+
+			.contact-info {
+				flex: 0 1 auto;
+				min-width: 200px;
+				text-align: center;
+				font-size: 13px;
+				color: var(--text);
+			}
+
+			.contact-info p {
+				margin-bottom: 3px;
+			}
+
+			.section-title {
+				font-size: 15px;
+				text-transform: uppercase;
+				letter-spacing: 0.1em;
+				color: var(--primary);
+				border-bottom: 1px solid var(--primary);
+				padding-bottom: 5px;
+				margin-bottom: 15px;
+				font-weight: 700;
+			}
+
+			.summary-text {
+				font-size: 13.5px;
+				color: var(--text);
+				margin-bottom: 25px;
+				text-align: justify;
+			}
+
+			.columns-container {
+				display: grid;
+				grid-template-columns: 2fr 1fr;
+				gap: 35px;
+			}
+
+			.experience-item {
+				margin-bottom: 20px;
+				page-break-inside: avoid;
+			}
+
+			.exp-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: flex-start;
+				margin-bottom: 8px;
+			}
+
+			.exp-title {
+				font-size: 14.5px;
+				font-weight: 700;
+				color: var(--secondary);
+			}
+
+			.exp-company {
+				font-size: 13.5px;
+				color: var(--accent);
+				font-weight: 500;
+			}
+
+			.exp-date {
+				font-size: 12.5px;
+				color: var(--text-light);
+				font-weight: 500;
+			}
+
+			.exp-bullets {
+				list-style-type: square;
+				padding-left: 16px;
+				font-size: 13px;
+				color: var(--text);
+			}
+
+			.exp-bullets li {
+				margin-bottom: 5px;
+				text-align: justify;
+			}
+
+			.skills-grid {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+				margin-bottom: 20px;
+			}
+
+			.skill-badge {
+				background-color: var(--bg-badge);
+				color: var(--primary);
+				padding: 4px 8px;
+				border-radius: 4px;
+				font-size: 11.5px;
+				font-weight: 500;
+			}
+
+			.skill-badge.expert {
+				border-left: 3px solid var(--accent);
+				background-color: #eff6ff;
+				color: #1e3a8a;
+				font-weight: 600;
+			}
+
+			.cert-link {
+				color: var(--accent);
+				font-size: 12px;
+				font-weight: 600;
+				text-decoration: none;
+			}
+
+			.cert-link:hover {
+				text-decoration: underline;
+			}
+
+			.meta-item {
+				margin-bottom: 12px;
+				font-size: 13px;
+			}
+
+			.meta-label {
+				font-weight: 600;
+				color: var(--primary);
+			}
+
+			.dev-separator {
+				color: #cbd5e1;
+				font-size: 10px;
+			}
+
+			#actions-bar {
+				position: sticky;
+				top: 0;
+				z-index: 600;
+				max-width: 860px;
+				margin: 0 auto;
+				display: flex;
+				justify-content: center;
+				align-items: flex-start;
+				pointer-events: none;
+				height: 0;
+			}
+
+			#actions-bar .actions-btn-wrapper {
+				position: relative;
+				display: inline-block;
+				pointer-events: auto;
+			}
+
+			.actions-dropdown-trigger {
+				padding: 6px 14px;
+				font-family: 'Comfortaa', sans-serif;
+				font-size: 12px;
+				font-weight: 500;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				border-radius: 6px;
+				background: #0a0a0a;
+				color: #fff;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+				cursor: pointer;
+				transition: background 0.2s;
+				margin-top: 0;
+			}
+
+			.actions-dropdown-trigger:hover {
+				background: var(--accent);
+				border-color: rgba(255, 255, 255, 0.12);
+			}
+
+			.actions-dropdown-trigger:active {
+				transform: scale(0.98);
+			}
+
+			/* AI-available state for Actions button */
+			.actions-dropdown-trigger.ai-available {
+				background: linear-gradient(135deg, #fbbf24, #f59e0b);
+				color: #1a1a1a;
+				border-color: transparent;
+				box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
+				animation: bump 2s ease-in-out infinite;
+			}
+
+			.actions-dropdown-trigger.ai-available:hover {
+				background: linear-gradient(135deg, #f59e0b, #d97706);
+				animation: none;
+				transform: scale(1.02);
+			}
+
+			/* AI-available state for Polish dropdown option */
+			.actions-option.ai-available {
+				position: relative;
+			}
+
+			.actions-option.ai-available:hover {
+				background: var(--accent);
+				color: #fff;
+			}
+
+			/* Golden ! notification dot on Polish option — rendered via ::after pseudo-element */
+			.actions-option.ai-available::after {
+				content: '!';
+				position: absolute;
+				top: 4px;
+				right: 4px;
+				width: 14px;
+				height: 14px;
+				min-width: 14px;
+				background: linear-gradient(135deg, #fbbf24, #f59e0b);
+				color: #1a1a1a;
+				border-radius: 50%;
+				font-size: 9px;
+				font-weight: 900;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				box-shadow: 0 1px 4px rgba(245, 158, 11, 0.5);
+				pointer-events: none;
+				line-height: 1;
+			}
+
+			/* Polish button container — needed for ::after positioning */
+			#btn-polish-dropdown {
+				position: relative;
+			}
+
+			.actions-dropdown {
+				position: absolute;
+				top: calc(100% + 6px);
+				left: 50%;
+				transform: translateX(-50%);
+				z-index: 599;
+				background: var(--secondary);
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				border-radius: 12px;
+				box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+				min-width: 220px;
+				padding: 8px 0;
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+			}
+
+			.actions-dropdown.hidden {
+				display: none;
+			}
+
+			.actions-option {
+				align-items: center;
+				gap: 12px;
+				width: 100%;
+				padding: 10px 16px;
+				background: transparent;
+				border: none;
+				color: #fff;
+				font-family: 'Comfortaa', sans-serif;
+				font-weight: 500;
+				cursor: pointer;
+				text-align: left;
+				transition: background 0.15s;
+				white-space: nowrap;
+			}
+
+			.actions-option:hover {
+				background: var(--accent);
+				color: #fff;
+			}
+
+			.actions-option-icon {
+				display: inline-block;
+				width: 26px;
+				height: 20px;
+				text-align: center;
+				line-height: 20px;
+				opacity: 0.85;
+				font-size: 14px;
+				vertical-align: middle;
+				margin-right: 12px;
+			}
+
+			.actions-option-text {
+				font-size: 13px;
+				font-weight: 500;
+				vertical-align: middle;
+			}
+
+			body.left-collapsed #left-open-stub {
+				display: flex !important;
+			}
+
+			#providers-list {
+				display: grid;
+				grid-template-columns: repeat(2, 1fr);
+				gap: 12px;
+				margin-bottom: 16px;
+			}
+
+			.provider-item {
+				padding: 16px;
+				border-radius: 12px;
+				cursor: pointer;
+				transition:
+					background 0.2s,
+					transform 0.1s;
+				position: relative;
+				background: rgba(255, 255, 255, 0.04);
+				border: 1px solid rgba(255, 255, 255, 0.1);
+			}
+
+			.provider-item:hover {
+				background: rgba(255, 255, 255, 0.08);
+				transform: translateY(-2px);
+			}
+
+			.provider-item.selected {
+				background: rgba(37, 99, 235, 0.2);
+				border-color: var(--accent);
+			}
+
+			.provider-img {
+				width: 24px;
+				height: 24px;
+				object-fit: contain;
+				margin-right: 8px;
+			}
+
+			.provider-checkbox {
+				position: absolute;
+				top: 12px;
+				right: 12px;
+				width: 18px;
+				height: 18px;
+				accent-color: var(--accent);
+				cursor: pointer;
+			}
+
+			.provider-model {
+				font-size: 12px;
+				color: #e2e8f0;
+				margin-top: 4px;
+				font-family: monospace;
+			}
+
+			.provider-name {
+				color: #fff;
+				font-size: 13px;
+				font-weight: 600;
+			}
+
+			.provider-description {
+				font-size: 12px;
+				color: #ffffff;
+				margin-top: 4px;
+				line-height: 1.4;
+			}
+
+			@media print {
+				.no-print {
+					display: none !important;
+				}
+
+				#left-sidebar,
+				#right-panel,
+				#left-open-stub,
+				#right-open-stub,
+				body.left-collapsed #left-open-stub {
+					display: none !important;
+				}
+
+				#resume-wrap {
+					margin-left: 0 !important;
+					margin-right: 0 !important;
+				}
+
+				.resume-container {
+					margin: 0 !important;
+					max-width: 100% !important;
+					padding: 0 !important;
+					box-shadow: none !important;
+					min-height: auto !important;
+				}
+
+				.columns-container {
+					display: block !important;
+				}
+
+				.right-column {
+					margin-top: 25px;
+				}
+
+				body {
+					background: #fff;
+					color: #000;
+				}
+
+				.experience-item {
+					page-break-inside: auto;
+					break-inside: auto;
+				}
+
+				.skill-badge {
+					border: 1px solid #cbd5e1 !important;
+					background-color: #fff !important;
+					color: #000 !important;
+					print-color-adjust: exact;
+					-webkit-print-color-adjust: exact;
+				}
+
+				.skill-badge.expert {
+					border: 1px solid var(--accent) !important;
+					background-color: #eff6ff !important;
+					color: #1e40af !important;
+				}
+
+				.section-title {
+					border-bottom: 1px solid #000 !important;
+					color: #000 !important;
+				}
+
+				.summary-text,
+				.exp-bullets,
+				.exp-title,
+				.contact-info,
+				.meta-item {
+					color: #000 !important;
+				}
+
+				.exp-date {
+					color: #333 !important;
+				}
+
+				.exp-bullets li {
+					margin-bottom: 7px !important;
+				}
+
+				.header-main .subtitle {
+					word-break: break-word;
+				}
+			}
+		</style>
+	</head>
+
+	<body>
+		<div
+			id="refresh-message"
+			data-testid="refresh-message"
+			style="
+				display: none;
+				position: fixed;
+				top: 20px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: var(--accent);
+				color: #fff;
+				padding: 12px 24px;
+				border-radius: 8px;
+				font-weight: 600;
+				z-index: 10000;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+			"
+		></div>
+
+		<div
+			id="polish-overlay"
+			data-testid="polish-overlay"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.65);
+				backdrop-filter: blur(10px);
+				z-index: 9998;
+				align-items: center;
+				justify-content: center;
+				flex-direction: column;
+				gap: 16px;
+			"
+		>
+			<p
+				style="color: #fff; font-size: 18px; font-weight: 700; font-family: 'Comfortaa', sans-serif; text-align: center"
+			>
+				✨ Polishing resume using AI <span class="dot-anim"></span> ✨
+			</p>
+			<button
+				id="btn-cancel-polish"
+				onclick="cancelPolish()"
+				style="
+					background: rgba(255, 255, 255, 0.08);
+					border: 1px solid rgba(255, 255, 255, 0.2);
+					color: #fff;
+					padding: 10px 24px;
+					border-radius: 7px;
+					font-family: 'Comfortaa', sans-serif;
+					font-size: 13px;
+					font-weight: 600;
+					cursor: pointer;
+					transition: background 0.2s;
+				"
+				onmouseenter="this.style.background = '#ef4444'"
+				onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+			>
+				Cancel
+			</button>
+		</div>
+
+		<div
+			id="scraper-overlay"
+			data-testid="scraper-overlay"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.65);
+				backdrop-filter: blur(10px);
+				z-index: 9998;
+				align-items: center;
+				justify-content: center;
+				flex-direction: column;
+				gap: 16px;
+			"
+		>
+			<p
+				style="color: #fff; font-size: 18px; font-weight: 700; font-family: 'Comfortaa', sans-serif; text-align: center"
+			>
+				🔎 Scraping <span id="scraper-source-label">LinkedIn</span> <span class="dot-anim"></span>
+			</p>
+			<button
+				id="btn-open-results-fallback"
+				onclick="openResultsTabFromOverlay()"
+				style="
+					display: none;
+					background: var(--accent);
+					color: #fff;
+					padding: 10px 24px;
+					border-radius: 7px;
+					font-family: 'Comfortaa', sans-serif;
+					font-size: 13px;
+					font-weight: 700;
+					cursor: pointer;
+					border: none;
+					box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+				"
+			>
+				📊 View Scraper Results ↗
+			</button>
+			<button
+				id="btn-cancel-scraper"
+				onclick="cancelScraping()"
+				style="
+					background: rgba(255, 255, 255, 0.08);
+					border: 1px solid rgba(255, 255, 255, 0.2);
+					color: #fff;
+					padding: 10px 24px;
+					border-radius: 7px;
+					font-family: 'Comfortaa', sans-serif;
+					font-size: 13px;
+					font-weight: 600;
+					cursor: pointer;
+					transition: background 0.2s;
+				"
+				onmouseenter="this.style.background = '#ef4444'"
+				onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+			>
+				Cancel
+			</button>
+		</div>
+
+		<aside id="left-sidebar" data-testid="left-sidebar" class="panel no-print">
+			<div class="panel-inner">
+				<div class="panel-ctrl-row">
+					<button
+						class="ctrl-btn"
+						data-testid="collapse-sidebar-btn"
+						onclick="toggleLeft()"
+						title="Collapse sidebar"
+						aria-label="Collapse sidebar"
+					>
+						&#9776;
+					</button>
+					<span class="panel-label-row">JD validation</span>
+				</div>
+
+				<div class="p-group" style="flex: 1; display: flex; flex-direction: column">
+					<div class="p-label-wrapper">
+						<label class="p-label" for="job-description">Job Description</label>
+						<div class="info-hover">
+							<svg
+								class="info-icon"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<circle cx="12" cy="12" r="10"></circle>
+								<line x1="12" y1="16" x2="12" y2="12"></line>
+								<line x1="12" y1="8" x2="12.01" y2="8"></line>
+							</svg>
+							<div class="info-tooltip">
+								Paste full job description here to score your Resume using AI base ATS system
+							</div>
+						</div>
+					</div>
+					<textarea
+						id="job-description"
+						data-testid="job-description"
+						class="p-textarea"
+						style="flex: 1; min-height: 200px"
+						oninput="validateJDInput()"
+					></textarea>
+				</div>
+
+				<div id="left-loading">
+					<span class="dot-anim">Scanning using AI</span>
+				</div>
+
+				<button
+					class="p-btn p-btn-primary"
+					id="btn-run-scan"
+					data-testid="btn-run-scan"
+					onclick="handleScanButtonClick()"
+					disabled
+				>
+					Validate JD using AI
+				</button>
+				<button
+					class="p-btn"
+					id="btn-ai-generate"
+					data-testid="btn-ai-generate"
+					onclick="openAIModal()"
+					style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a1a; font-weight: 700"
+				>
+					Generate resume using AI
+				</button>
+				<button class="p-btn p-btn-secondary" id="btn-download" data-testid="btn-download" onclick="window.print()">
+					Download Resume
+				</button>
+
+				<div id="floating-footer" class="no-print">
+					<span>Developed by Juani Ca&ntilde;ete</span>
+					<span class="dev-separator">&bull;</span>
+					<a href="https://github.com/JuaniCanete?tab=repositories" target="_blank" rel="noopener noreferrer">GitHub</a>
+					<span class="dev-separator">&bull;</span>
+					<a href="https://www.linkedin.com/in/juanignaciocanete/" target="_blank" rel="noopener noreferrer"
+						>LinkedIn</a
+					>
+				</div>
+			</div>
+		</aside>
+
+		<button
+			id="left-open-stub"
+			data-testid="left-open-stub"
+			class="no-print"
+			onclick="toggleLeft()"
+			title="Open sidebar"
+			aria-label="Open sidebar"
+		>
+			&#9776;
+		</button>
+
+		<div id="resume-wrap">
+			<!-- Actions bar: sticky, centered over the resume container -->
+			<div id="actions-bar" class="no-print">
+				<div class="actions-btn-wrapper">
+					<button
+						id="actions-trigger"
+						data-testid="actions-trigger"
+						class="actions-dropdown-trigger"
+						onclick="toggleActions()"
+						aria-expanded="false"
+						aria-haspopup="true"
+						title="Actions"
+					>
+						<span class="actions-label">Actions ▾</span>
+					</button>
+					<div id="actions-dropdown" data-testid="actions-dropdown" class="actions-dropdown hidden" role="menu">
+						<button
+							class="actions-option"
+							id="btn-find-job-dropdown"
+							data-testid="find-job-button"
+							role="menuitem"
+							onclick="window.location.href = '/public/findJob.html?source=linkedin'"
+						>
+							<span class="actions-option-icon">🪏</span>
+							<span class="actions-option-text">Find a Job</span>
+						</button>
+						<button class="actions-option" role="menuitem" onclick="toggleLeft()">
+							<span class="actions-option-icon">🔍</span>
+							<span class="actions-option-text">JD Validation</span>
+						</button>
+						<button class="actions-option" role="menuitem" onclick="openAtsSidebar()">
+							<span class="actions-option-icon">📊</span>
+							<span class="actions-option-text">ATS Results</span>
+						</button>
+						<button class="actions-option" role="menuitem" onclick="window.print()">
+							<span class="actions-option-icon">⬇</span>
+							<span class="actions-option-text">Download Resume</span>
+						</button>
+						<button
+							class="actions-option"
+							id="btn-polish-dropdown"
+							data-testid="polish-button"
+							role="menuitem"
+							onclick="polishResume()"
+							style="display: none"
+						>
+							<span class="actions-option-icon">✨</span>
+							<span class="actions-option-text">Polish using AI</span>
+						</button>
+						<button
+							class="actions-option"
+							id="btn-rollback-dropdown"
+							data-testid="rollback-button"
+							role="menuitem"
+							onclick="rollbackPolish()"
+							style="display: none"
+						>
+							<span class="actions-option-icon">↩</span>
+							<span class="actions-option-text">Rollback AI Polish</span>
+						</button>
+						<button
+							class="actions-option"
+							id="btn-photo-upload-dropdown"
+							data-testid="photo-upload-trigger"
+							role="menuitem"
+							onclick="openPhotoUploadModal()"
+							style="display: none"
+						>
+							<span class="actions-option-icon">📸</span>
+							<span class="actions-option-text">Upload Profile Photo</span>
+						</button>
+						<button
+							class="actions-option"
+							id="btn-providers-dropdown"
+							data-testid="providers-button"
+							role="menuitem"
+							onclick="openProvidersModal()"
+						>
+							<span class="actions-option-icon">🧠</span>
+							<span class="actions-option-text">AI Providers</span>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="resume-container" id="resume-content" data-testid="resume-content">
+				<button
+					id="btn-refresh-resume"
+					data-testid="btn-refresh-resume"
+					class="no-print"
+					onclick="handleRefreshResume()"
+					aria-label="Refresh resume"
+				>
+					<span style="line-height: 1">↻</span>
+					<span class="btn-refresh-tooltip">Refresh resume to apply manual changes from JSON files.</span>
+				</button>
+				<!-- Resume rendered dynamically by renderResume() -->
+			</div>
+		</div>
+
+		<div id="right-panel" data-testid="right-panel" class="panel no-print">
+			<div class="panel-inner">
+				<div class="panel-ctrl-row">
+					<button
+						class="ctrl-btn"
+						id="rp-expand-btn"
+						onclick="expandRight()"
+						title="Expand panel"
+						aria-label="Expand panel"
+					>
+						&#x26F6;
+					</button>
+					<span class="panel-label-row">ATS results</span>
+					<button class="ctrl-btn" onclick="closeAtsSidebar()" title="Collapse results" aria-label="Collapse results">
+						&#x2716;
+					</button>
+				</div>
+
+				<div class="result-score-row">
+					<div class="result-score-circle" id="rp-score-circle" data-testid="rp-score-circle">--</div>
+					<div>
+						<div class="result-label">ATS Match</div>
+						<div class="result-match-text" id="rp-score-text" data-testid="rp-score-text">Pending</div>
+					</div>
+				</div>
+
+				<div
+					id="scan-again-msg"
+					class="result-body"
+					style="
+						color: #fca5a5;
+						margin-top: 6px;
+						margin-bottom: 14px;
+						padding: 12px;
+						background: rgba(239, 68, 68, 0.1);
+						border: 1px solid rgba(239, 68, 68, 0.25);
+						border-radius: 6px;
+					"
+				>
+					No results yet. Paste a job description and click Validate JD using AI to get started.
+				</div>
+
+				<div id="rp-breakdown-section" style="display: none; margin-bottom: 14px">
+					<hr class="p-divider" style="margin: 12px 0" />
+					<div class="result-section-title">The Match Breakdown</div>
+					<div
+						class="result-body"
+						style="
+							display: flex;
+							flex-direction: column;
+							gap: 8px;
+							background: rgba(255, 255, 255, 0.04);
+							padding: 12px;
+							border-radius: 6px;
+							border: 1px solid rgba(255, 255, 255, 0.08);
+						"
+					>
+						<div style="display: flex; justify-content: space-between">
+							<span>Keyword Match:</span><span id="br-skills" style="font-weight: 700">--</span>
+						</div>
+						<div style="display: flex; justify-content: space-between">
+							<span>Experience Alignment:</span><span id="br-experience" style="font-weight: 700">--</span>
+						</div>
+						<div style="display: flex; justify-content: space-between">
+							<span>Education/Cert Fit:</span><span id="br-education" style="font-weight: 700">--</span>
+						</div>
+					</div>
+				</div>
+
+				<hr class="p-divider" />
+
+				<div style="margin-bottom: 16px">
+					<div class="result-section-title">Feedback</div>
+					<div class="result-body" id="rp-feedback" data-testid="rp-feedback">&mdash;</div>
+				</div>
+
+				<hr class="p-divider" />
+
+				<div>
+					<div class="result-section-title">Missing Keywords</div>
+					<div id="rp-keywords" class="result-body">&mdash;</div>
+				</div>
+
+				<hr class="p-divider" />
+
+				<div>
+					<div class="result-section-title">AI Results powered by</div>
+					<div
+						id="rp-poweredBy"
+						class="ai-powered-by-provider-model"
+						style="font-size: 13px; color: rgba(255, 255, 255, 0.7)"
+					>
+						<span class="ai-powered">&mdash;</span>
+					</div>
+				</div>
+
+				<div style="margin-top: 12px">
+					<button
+						class="p-btn p-btn-secondary"
+						style="
+							width: 100%;
+							padding: 10px;
+							background: var(--static);
+							color: #fff;
+							font-weight: 600;
+							font-size: 12px;
+							text-transform: uppercase;
+							letter-spacing: 0.08em;
+							border: 1px solid rgba(255, 255, 255, 0.12);
+							border-radius: 6px;
+							cursor: pointer;
+							margin-bottom: 8px;
+						"
+						onclick="openCoverLetterModal()"
+					>
+						✉️ Generate Cover Letter
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- AI Generation Modal -->
+		<div
+			id="ai-modal"
+			data-testid="ai-modal"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.7);
+				z-index: 9999;
+				align-items: center;
+				justify-content: center;
+			"
+		>
+			<div
+				style="
+					background: var(--secondary);
+					padding: 30px;
+					border-radius: 12px;
+					max-width: 500px;
+					width: 90%;
+					box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+					position: relative;
+				"
+			>
+				<button
+					onclick="closeAIModal()"
+					style="
+						position: absolute;
+						top: 15px;
+						right: 15px;
+						background: none;
+						border: none;
+						color: #fff;
+						font-size: 28px;
+						cursor: pointer;
+						width: 36px;
+						height: 36px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						border-radius: 50%;
+						background: rgba(255, 255, 255, 0.08);
+						line-height: 1;
+						transition: background 0.2s;
+					"
+					onmouseenter="this.style.background = 'var(--accent)'"
+					onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+				>
+					×
+				</button>
+				<h2 style="color: #fff; margin-bottom: 20px; text-align: center">AI Resume Generation ✨</h2>
+
+				<!-- Upload Section -->
+				<div id="modal-upload-section" data-testid="modal-upload-section">
+					<div
+						style="
+							border: 2px dashed rgba(255, 255, 255, 0.2);
+							padding: 40px;
+							text-align: center;
+							border-radius: 8px;
+							margin-bottom: 20px;
+							cursor: pointer;
+						"
+						onclick="document.getElementById('pdf-input').click()"
+					>
+						<p style="color: #fff; font-size: 14px">📄 Drag & drop your resume PDF here</p>
+						<p style="color: rgba(255, 255, 255, 0.5); font-size: 12px; margin-top: 10px">
+							or click to browse (1-2 pages recommended)
+						</p>
+						<input type="file" id="pdf-input" accept=".pdf" style="display: none" onchange="handlePDFUpload(this)" />
+					</div>
+				</div>
+
+				<!-- Error Section -->
+				<div
+					id="modal-error-section"
+					style="
+						display: none;
+						background: rgba(239, 68, 68, 0.1);
+						border: 1px solid rgba(239, 68, 68, 0.3);
+						padding: 15px;
+						border-radius: 6px;
+						margin-bottom: 15px;
+					"
+				>
+					<p id="modal-error-text" style="color: #fca5a5; font-size: 13px"></p>
+				</div>
+
+				<!-- File Name Display -->
+				<div
+					id="modal-file-name"
+					style="
+						display: none;
+						color: #fff;
+						font-size: 12px;
+						margin-bottom: 10px;
+						text-align: center;
+						word-break: break-all;
+					"
+				></div>
+
+				<!-- Action Buttons -->
+				<div id="modal-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch">
+					<button
+						id="btn-continue-anyway"
+						class="p-btn p-btn-primary"
+						style="display: none; background: #f59e0b; color: #1a1a1a; flex: 1"
+						onclick="confirmGeneration()"
+					>
+						Continue Anyway
+					</button>
+					<button
+						id="btn-generate"
+						class="p-btn p-btn-primary"
+						style="display: none; background: var(--static); color: #fff; flex: 1"
+						onclick="confirmGeneration()"
+					>
+						✨ Generate Resume
+					</button>
+					<button class="p-btn p-btn-secondary" style="flex: 1" onclick="closeAIModal()">Cancel</button>
+				</div>
+
+				<!-- Loading State -->
+				<div id="modal-loading" style="display: none; text-align: center; padding: 20px">
+					<p style="color: var(--accent)" class="dot-anim">Processing using AI</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Photo Upload Modal -->
+		<div
+			id="photo-upload-modal"
+			data-testid="photo-upload-modal"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.7);
+				z-index: 9999;
+				align-items: center;
+				justify-content: center;
+			"
+			class="photo-upload-modal"
+		>
+			<div
+				style="
+					background: var(--secondary);
+					padding: 30px;
+					border-radius: 12px;
+					max-width: 500px;
+					width: 90%;
+					box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+					position: relative;
+				"
+			>
+				<button
+					onclick="closePhotoUploadModal()"
+					style="
+						position: absolute;
+						top: 15px;
+						right: 15px;
+						background: none;
+						border: none;
+						color: #fff;
+						font-size: 28px;
+						cursor: pointer;
+						width: 36px;
+						height: 36px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						border-radius: 50%;
+						line-height: 1;
+						transition: background 0.2s;
+					"
+					onmouseenter="this.style.background = 'var(--accent)'"
+					onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+				>
+					×
+				</button>
+				<h2 style="color: #fff; margin-bottom: 20px; text-align: center">📸 Upload Profile Photo</h2>
+				<div
+					id="photo-upload-section"
+					style="
+						border: 2px dashed rgba(255, 255, 255, 0.2);
+						padding: 40px;
+						text-align: center;
+						border-radius: 8px;
+						margin-bottom: 20px;
+						cursor: pointer;
+					"
+					onclick="document.getElementById('photo-input').click()"
+				>
+					<p style="color: #fff; font-size: 14px">📸 Drag & drop your profile picture here (JPEG/JPG/PNG)</p>
+					<p style="color: rgba(255, 255, 255, 0.5); font-size: 12px; margin-top: 10px">or click to browse</p>
+					<input
+						type="file"
+						id="photo-input"
+						data-testid="photo-input"
+						accept="image/jpeg,image/jpg,image/png"
+						style="display: none"
+						onchange="handlePhotoUpload(this)"
+					/>
+				</div>
+				<div
+					id="photo-upload-error"
+					style="
+						display: none;
+						background: rgba(239, 68, 68, 0.1);
+						border: 1px solid rgba(239, 68, 68, 0.3);
+						padding: 15px;
+						border-radius: 6px;
+						margin-bottom: 15px;
+					"
+				>
+					<p id="photo-upload-error-text" style="color: #fca5a5; font-size: 13px"></p>
+				</div>
+				<div
+					id="photo-upload-file-name"
+					style="
+						display: none;
+						color: #fff;
+						font-size: 12px;
+						margin-bottom: 10px;
+						text-align: center;
+						word-break: break-all;
+					"
+				></div>
+				<div id="photo-upload-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch">
+					<button
+						id="photo-upload-confirm"
+						data-testid="photo-upload-confirm"
+						class="p-btn p-btn-primary"
+						style="display: none; background: #f59e0b; color: #1a1a1a; flex: 1"
+						onclick="confirmPhotoUpload()"
+					>
+						Confirm
+					</button>
+					<button class="p-btn p-btn-secondary" style="flex: 1" onclick="closePhotoUploadModal()">Cancel</button>
+				</div>
+				<div id="photo-upload-loading" style="display: none; text-align: center; padding: 20px">
+					<p style="color: var(--accent)" class="dot-anim">Processing photo...</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Cover Letter Modal -->
+		<div
+			id="cover-letter-modal"
+			data-testid="cover-letter-modal"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.75);
+				z-index: 9999;
+				align-items: center;
+				justify-content: center;
+				backdrop-filter: blur(4px);
+			"
+		>
+			<div
+				style="
+					background: var(--secondary);
+					padding: 28px;
+					border-radius: 14px;
+					max-width: 640px;
+					width: 92%;
+					max-height: 88vh;
+					overflow-y: auto;
+					box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+					position: relative;
+					border: 1px solid rgba(255, 255, 255, 0.12);
+				"
+			>
+				<button
+					onclick="closeCoverLetterModal()"
+					style="
+						position: absolute;
+						top: 15px;
+						right: 15px;
+						background: none;
+						border: none;
+						color: #fff;
+						font-size: 28px;
+						cursor: pointer;
+						width: 36px;
+						height: 36px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						border-radius: 50%;
+						background: rgba(255, 255, 255, 0.08);
+						line-height: 1;
+						transition: background 0.2s;
+					"
+					onmouseenter="this.style.background = 'var(--accent)'"
+					onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+				>
+					×
+				</button>
+				<h2 style="color: #fff; margin-bottom: 4px; text-align: center">✉️ Cover Letter</h2>
+				<p
+					style="
+						color: rgba(255, 255, 255, 0.65);
+						font-size: 12px;
+						text-align: center;
+						margin-bottom: 20px;
+						font-family: 'Comfortaa', sans-serif;
+					"
+				>
+					Generate a personalized cover letter based on your resume and the job description
+				</p>
+
+				<!-- Settings Form -->
+				<div id="cover-letter-settings" style="display: flex; flex-direction: column; gap: 14px">
+					<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+						<div>
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Tone</label
+							>
+							<select
+								id="cl-tone"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="Formal">Formal</option>
+								<option value="Relaxed">Relaxed</option>
+								<option value="Cold">Cold</option>
+							</select>
+						</div>
+						<div>
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>English Level</label
+							>
+							<select
+								id="cl-english-level"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="C1">C1</option>
+								<option value="C2">C2</option>
+								<option value="Native">Native</option>
+							</select>
+						</div>
+					</div>
+					<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+						<div>
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Include Salutation & Sign-off</label
+							>
+							<select
+								id="cl-salutation-signoff"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="true">Yes</option>
+								<option value="false">No</option>
+							</select>
+						</div>
+						<div>
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Char Limit</label
+							>
+							<input
+								type="text"
+								id="cl-char-limit"
+								placeholder="Empty uses default = 400"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.3);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							/>
+						</div>
+					</div>
+					<div>
+						<label
+							style="
+								display: block;
+								font-size: 11px;
+								font-weight: 600;
+								color: #ffffff;
+								text-transform: uppercase;
+								letter-spacing: 0.08em;
+								margin-bottom: 5px;
+							"
+							>Focus Areas (comma-separated)</label
+						>
+						<input
+							type="text"
+							id="cl-focus"
+							placeholder="e.g. Automation, Playwright, CI/CD"
+							style="
+								width: 100%;
+								padding: 10px 12px;
+								background: rgba(0, 0, 0, 0.3);
+								border: 1px solid rgba(255, 255, 255, 0.15);
+								border-radius: 7px;
+								color: #fff;
+								font-family: 'Comfortaa', sans-serif;
+								font-size: 13px;
+								outline: none;
+							"
+						/>
+					</div>
+				</div>
+
+				<!-- Loading State -->
+				<div id="cover-letter-loading" style="display: none; text-align: center; padding: 20px">
+					<p style="color: var(--accent)" class="dot-anim">Generating cover letter using AI</p>
+				</div>
+
+				<!-- Error State -->
+				<div
+					id="cover-letter-error"
+					style="
+						display: none;
+						background: rgba(239, 68, 68, 0.1);
+						border: 1px solid rgba(239, 68, 68, 0.3);
+						padding: 15px;
+						border-radius: 6px;
+						margin-bottom: 15px;
+					"
+				>
+					<p id="cover-letter-error-text" style="color: #fca5a5; font-size: 13px"></p>
+				</div>
+
+				<!-- Generated Cover Letter -->
+				<div id="cover-letter-result" style="display: none">
+					<textarea
+						id="cover-letter-text"
+						style="
+							width: 100%;
+							min-height: 300px;
+							padding: 12px;
+							background: rgba(0, 0, 0, 0.3);
+							border: 1px solid rgba(255, 255, 255, 0.15);
+							border-radius: 7px;
+							color: #e2e8f0;
+							font-family: 'Inter', sans-serif;
+							font-size: 13px;
+							line-height: 1.5;
+							resize: vertical;
+							outline: none;
+						"
+					></textarea>
+				</div>
+
+				<!-- Modal Actions -->
+				<div id="cover-letter-actions" style="display: flex; gap: 12px; margin-top: 16px">
+					<button class="p-btn p-btn-secondary" style="flex: 1" onclick="closeCoverLetterModal()">Cancel</button>
+					<button
+						id="btn-generate-cover-letter"
+						class="p-btn p-btn-primary"
+						style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700"
+						onclick="generateCoverLetter()"
+					>
+						✨ Generate Cover Letter
+					</button>
+				</div>
+				<div id="cover-letter-result-actions" style="display: none; gap: 12px; margin-top: 16px">
+					<button class="p-btn p-btn-secondary" style="flex: 1" onclick="copyCoverLetter()">📋 Copy</button>
+					<button
+						class="p-btn p-btn-primary"
+						style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700"
+						onclick="downloadCoverLetter()"
+					>
+						⬇ Download
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- AI Providers Modal -->
+		<div
+			id="providers-modal"
+			data-testid="providers-modal"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.7);
+				z-index: 9999;
+				align-items: center;
+				justify-content: center;
+			"
+		>
+			<div
+				style="
+					background: var(--secondary);
+					padding: 30px;
+					border-radius: 12px;
+					max-width: 520px;
+					width: 92%;
+					box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+					position: relative;
+				"
+			>
+				<button
+					onclick="closeProvidersModal()"
+					style="
+						position: absolute;
+						top: 15px;
+						right: 15px;
+						background: none;
+						border: none;
+						color: #fff;
+						font-size: 28px;
+						cursor: pointer;
+						width: 36px;
+						height: 36px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						border-radius: 50%;
+						background: rgba(255, 255, 255, 0.08);
+						line-height: 1;
+						transition: background 0.2s;
+					"
+					onmouseenter="this.style.background = 'var(--accent)'"
+					onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+				>
+					×
+				</button>
+				<h2 style="color: #fff; margin-bottom: 6px; text-align: center">🧠 AI Providers</h2>
+				<p
+					id="providers-modal-subtitle"
+					style="
+						color: rgba(255, 255, 255, 0.65);
+						font-size: 12px;
+						text-align: center;
+						margin-bottom: 18px;
+						font-family: 'Comfortaa', sans-serif;
+					"
+				>
+					Select default provider for LLM API calls
+				</p>
+				<div id="providers-list" data-testid="providers-list"></div>
+				<div
+					id="providers-empty-message"
+					style="
+						display: none;
+						color: #fff;
+						font-size: 13px;
+						text-align: center;
+						padding: 24px 16px;
+						font-family: 'Comfortaa', sans-serif;
+					"
+				>
+					There are not LLM providers configured. Please, setup them to chose provider and model.
+				</div>
+				<div
+					id="providers-modal-actions"
+					data-testid="providers-modal-actions"
+					style="display: none; gap: 10px; flex-direction: row; justify-content: stretch; margin-top: 16px"
+				>
+					<button
+						id="providers-cancel-btn"
+						data-testid="providers-cancel-btn"
+						class="p-btn p-btn-secondary"
+						style="flex: 1"
+						onclick="cancelProvidersSelection()"
+					>
+						Cancel
+					</button>
+					<button
+						id="providers-confirm-btn"
+						data-testid="providers-confirm-btn"
+						class="p-btn p-btn-primary"
+						style="flex: 1; background: var(--accent); color: #fff"
+						onclick="confirmProvidersSelection()"
+					>
+						Confirm
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<script src="/public/dist/app.js"></script>
+	</body>
 </html>

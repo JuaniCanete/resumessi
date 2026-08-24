@@ -1,2368 +1,3812 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>resumessi - Job Finder</title>
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐐%3C/text%3E%3C/svg%3E">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
-
-    <style>
-        :root {
-            --primary: #0a0a0a;
-            --secondary: #0a0a0a;
-            --accent: #2563eb;
-            --text: #171717;
-            --text-light: #404040;
-            --bg-badge: #f1f5f9;
-            --success: #0ea5e9;
-            --whitetext: #f8fafc;
-            --ats-w: 360px;
-            --sidebar-w: 400px;
-            --static: rgba(255, 255, 255, 0.08);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Comfortaa', sans-serif;
-            background: #0d0f12;
-            color: var(--whitetext);
-            min-height: 100vh;
-            transition: padding-left 0.3s cubic-bezier(.4, 0, .2, 1), padding-right 0.3s cubic-bezier(.4, 0, .2, 1);
-            padding-left: var(--sidebar-w);
-        }
-
-        body.sidebar-collapsed {
-            padding-left: 0;
-        }
-
-        body.sidebar-collapsed #sidebar-open-stub {
-            display: flex !important;
-        }
-
-        /* ── Shared Button Styles ────────────────────────── */
-        .p-btn {
-            width: 100%;
-            padding: 11px 14px;
-            border: none;
-            border-radius: 7px;
-            font-weight: 700;
-            font-size: 13px;
-            font-family: 'Comfortaa', sans-serif;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s, opacity 0.2s;
-            margin-top: 10px;
-        }
-
-        .p-btn:active {
-            transform: scale(0.98);
-        }
-
-        .p-btn-primary {
-            background: var(--static);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-        }
-
-        .p-btn-primary:hover {
-            background: #1d4ed8;
-        }
-
-        .p-btn-primary:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
-        }
-
-        .p-btn-secondary {
-            background: var(--static);
-            color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-        }
-
-        .p-btn-secondary:hover {
-            background: #1d4ed8;
-            color: #fff;
-        }
-
-        .dot-anim::after {
-            content: '';
-            animation: dotdot 1.4s infinite;
-        }
-
-        @keyframes dotdot {
-            0% {
-                content: '';
-            }
-
-            33% {
-                content: '.';
-            }
-
-            66% {
-                content: '..';
-            }
-
-            100% {
-                content: '...';
-            }
-        }
-
-        body.ats-open {
-            padding-right: var(--ats-w);
-        }
-
-        /* ── Sidebar ────────────────────────────────────── */
-        #findjob-sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: var(--sidebar-w);
-            height: 100vh;
-            background: var(--secondary);
-            color: #fff;
-            z-index: 200;
-            box-shadow: 4px 0 16px rgba(0, 0, 0, 0.25);
-            transition: transform 0.3s cubic-bezier(.4, 0, .2, 1);
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #findjob-sidebar.collapsed {
-            transform: translateX(calc(-1 * var(--sidebar-w)));
-        }
-
-        .sidebar-inner {
-            padding: 20px 22px 28px;
-            min-height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sidebar-ctrl-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            flex-shrink: 0;
-        }
-
-        .sidebar-label {
-            font-size: 11px;
-            color: #ffffff;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            flex: 1;
-            text-align: center;
-        }
-
-        .ctrl-btn {
-            background: rgba(255, 255, 255, 0.08);
-            border: none;
-            color: #ffffff;
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            font-size: 15px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s, color 0.2s;
-            flex-shrink: 0;
-        }
-
-        .ctrl-btn:hover {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .sidebar-tabs {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            flex: 1;
-        }
-
-        .sidebar-tab {
-            width: 100%;
-            padding: 12px 14px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.04);
-            color: rgba(255, 255, 255, 0.8);
-            font-family: 'Comfortaa', sans-serif;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            transition: background 0.2s, color 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .sidebar-tab:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #fff;
-        }
-
-        .sidebar-tab.active {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .sidebar-tab .tab-icon {
-            font-size: 16px;
-            width: 24px;
-            text-align: center;
-        }
-
-        /* ── Main Content ──────────────────────────────── */
-        .main-content {
-            min-height: 100vh;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 1300px;
-            margin: 0 auto;
-            padding: 30px 20px;
-        }
-
-        body.sidebar-collapsed .container {
-            max-width: 1600px;
-        }
-
-        .header {
-            background: #161920;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
-            padding: 24px 30px;
-            margin-bottom: 24px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        }
-
-        .header-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-        }
-
-        .title {
-            font-family: 'Comfortaa', sans-serif;
-            font-size: 24px;
-            font-weight: 700;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .meta-row {
-            display: flex;
-            gap: 20px;
-            font-size: 13px;
-            color: #94a3b8;
-            flex-wrap: wrap;
-        }
-
-        .meta-item span {
-            color: #e2e8f0;
-            font-weight: 600;
-        }
-
-        .meta-item a {
-            color: #60a5fa;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .meta-item a:hover {
-            text-decoration: underline;
-        }
-
-        .results-list {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .result-card {
-            background: #161920;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 20px;
-            transition: transform 0.15s, border-color 0.15s, max-height 0.3s ease;
-            overflow: hidden;
-            cursor: pointer;
-            max-height: 120px;
-        }
-
-        .result-card.expanded {
-            max-height: 800px;
-            border-color: rgba(37, 99, 235, 0.4);
-        }
-
-        .result-card:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .result-card.expanded:hover {
-            border-color: rgba(37, 99, 235, 0.5);
-        }
-
-        .result-card-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
-
-        .result-card-header-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-
-        .result-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: #fff;
-            text-decoration: none;
-            line-height: 1.3;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            word-break: break-word;
-            flex: 1;
-        }
-
-        .result-title:hover {
-            color: var(--accent);
-        }
-
-        .result-source-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            flex-shrink: 0;
-        }
-
-        .result-source-badge.linkedin {
-            background: rgba(10, 102, 194, 0.2);
-            color: #70b5f9;
-            border: 1px solid rgba(10, 102, 194, 0.3);
-        }
-
-        .result-source-badge.google {
-            background: rgba(234, 67, 53, 0.15);
-            color: #f87171;
-            border: 1px solid rgba(234, 67, 53, 0.25);
-        }
-
-        .result-card-body {
-            display: none;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .result-card.expanded .result-card-body {
-            display: block;
-        }
-
-        .result-snippet {
-            font-size: 13.5px;
-            color: #cbd5e1;
-            line-height: 1.55;
-            margin-bottom: 12px;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-
-        .result-ai-summary {
-            font-size: 13px;
-            line-height: 1.6;
-            color: #e2e8f0;
-            margin-bottom: 12px;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-
-        .result-ai-summary h1,
-        .result-ai-summary h2,
-        .result-ai-summary h3,
-        .result-ai-summary h4 {
-            font-family: 'Comfortaa', sans-serif;
-            color: #fff;
-            margin: 12px 0 8px 0;
-            font-weight: 700;
-        }
-
-        .result-ai-summary h1 {
-            font-size: 15px;
-        }
-
-        .result-ai-summary h2 {
-            font-size: 14px;
-        }
-
-        .result-ai-summary h3 {
-            font-size: 13px;
-        }
-
-        .result-ai-summary h4 {
-            font-size: 12px;
-        }
-
-        .result-ai-summary p {
-            margin: 6px 0;
-        }
-
-        .result-ai-summary ul,
-        .result-ai-summary ol {
-            margin: 6px 0 6px 20px;
-            padding-left: 20px;
-        }
-
-        .result-ai-summary li {
-            margin: 3px 0;
-        }
-
-        .result-ai-summary strong {
-            color: #60a5fa;
-            font-weight: 700;
-        }
-
-        .result-ai-summary code {
-            background: rgba(255, 255, 255, 0.08);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-        }
-
-        .result-parameters {
-            font-size: 12.5px;
-            color: #cbd5e1;
-            line-height: 1.55;
-            margin-bottom: 12px;
-            margin-top: 10px;
-            padding: 8px 12px;
-            background: rgba(37, 99, 235, 0.08);
-            border: 1px solid rgba(37, 99, 235, 0.2);
-            border-radius: 6px;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-
-        .result-footer {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 12px;
-            color: #64748b;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .result-footer-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .result-link-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            color: #60a5fa;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 12.5px;
-        }
-
-        .result-link-btn:hover {
-            text-decoration: underline;
-        }
-
-        .result-card-header-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-shrink: 0;
-        }
-
-        .result-company {
-            font-size: 12px;
-            color: #94a3b8;
-        }
-
-        .result-posted-date {
-            font-size: 11px;
-            color: #64748b;
-        }
-
-        .result-site-label {
-            font-size: 11px;
-            color: #94a3b8;
-            background: rgba(37, 99, 235, 0.12);
-            border: 1px solid rgba(37, 99, 235, 0.25);
-            padding: 1px 6px;
-            border-radius: 4px;
-            max-width: 160px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .card-action-btn--disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        .card-action-btn--disabled:hover {
-            background: rgba(255, 255, 255, 0.06) !important;
-        }
-
-        .pagination {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-top: 28px;
-            padding: 16px 20px;
-            background: #161920;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .page-btn {
-            padding: 8px 18px;
-            border-radius: 7px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            background: rgba(255, 255, 255, 0.06);
-            color: #fff;
-            font-family: 'Comfortaa', sans-serif;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-
-        .page-btn:disabled {
-            opacity: 0.35;
-            cursor: not-allowed;
-        }
-
-        .page-btn:not(:disabled):hover {
-            background: var(--accent);
-            border-color: var(--accent);
-        }
-
-        .page-info {
-            font-size: 13px;
-            color: #94a3b8;
-        }
-
-        .no-results {
-            text-align: center;
-            padding: 60px 20px;
-            background: #161920;
-            border-radius: 14px;
-            border: 1px dashed rgba(255, 255, 255, 0.15);
-        }
-
-        .no-results h3 {
-            font-family: 'Comfortaa', sans-serif;
-            font-size: 18px;
-            color: #94a3b8;
-            margin-bottom: 8px;
-        }
-
-        .scrape-error {
-            text-align: center;
-            padding: 60px 20px;
-            background: #161920;
-            border-radius: 14px;
-            border: 1px solid rgba(239, 68, 68, 0.35);
-        }
-
-        .scrape-error h3 {
-            font-family: 'Comfortaa', sans-serif;
-            font-size: 18px;
-            color: #fca5a5;
-            margin-bottom: 8px;
-        }
-
-        .scrape-error p {
-            font-size: 13px;
-            color: #94a3b8;
-            line-height: 1.6;
-            margin-bottom: 18px;
-        }
-
-        .scrape-error .retry-hint {
-            display: inline-block;
-            padding: 8px 18px;
-            background: rgba(239, 68, 68, 0.12);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 20px;
-            color: #fca5a5;
-            font-size: 12.5px;
-            font-weight: 600;
-        }
-
-        /* Source tabs (LinkedIn / Google) */
-        .source-tabs {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .result-tab-btn {
-            padding: 6px 14px;
-            border-radius: 7px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            background: transparent;
-            color: rgba(255, 255, 255, 0.7);
-            font-family: 'Comfortaa', sans-serif;
-            font-weight: 700;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        .result-tab-btn.active {
-            background: var(--accent) !important;
-            color: #fff !important;
-        }
-
-        /* ── Sidebar Open Stub ─────────────────────────── */
-        #sidebar-open-stub {
-            position: fixed;
-            top: 14px;
-            left: 0;
-            z-index: 300;
-            width: 26px;
-            height: 44px;
-            background: var(--accent);
-            border: none;
-            border-radius: 0 8px 8px 0;
-            color: #ffffff;
-            font-size: 14px;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 3px 0 8px rgba(0, 0, 0, 0.3);
-            transition: color 0.2s, background 0.2s;
-        }
-
-        #sidebar-open-stub:hover {
-            color: var(--accent);
-            background: #1e293b;
-        }
-
-        /* ── ATS Sidebar Open Stub ─────────────────────────── */
-        #ats-open-stub {
-            position: fixed;
-            top: 14px;
-            right: 0;
-            z-index: 300;
-            width: 26px;
-            height: 44px;
-            background: var(--accent);
-            border: none;
-            border-radius: 8px 0 0 8px;
-            color: #ffffff;
-            font-size: 14px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: -3px 0 8px rgba(0, 0, 0, 0.3);
-            transition: color 0.2s, background 0.2s;
-        }
-
-        #ats-open-stub:hover {
-            color: var(--accent);
-            background: #1e293b;
-        }
-
-        body.ats-open #ats-open-stub {
-            display: none !important;
-        }
-
-        /* ── Action buttons on cards ───────────────────── */
-        .result-card-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-shrink: 0;
-            flex-wrap: wrap;
-        }
-
-        .card-action-btn {
-            padding: 5px 12px;
-            border-radius: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            background: rgba(255, 255, 255, 0.06);
-            color: #fff;
-            font-family: 'Comfortaa', sans-serif;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            white-space: nowrap;
-        }
-
-        .card-action-btn:hover {
-            background: rgba(251, 146, 60, 0.15);
-        }
-
-        .card-action-btn.runATS {
-            border-color: rgba(251, 146, 60, 0.4);
-            color: #fb923c;
-        }
-
-        .card-action-btn.runATS:hover {
-            background: rgba(251, 191, 36, 0.2);
-        }
-
-        .card-action-btn.save {
-            border-color: rgba(16, 185, 129, 0.4);
-            color: #34d399;
-        }
-
-        .card-action-btn.save:hover {
-            background: rgba(16, 185, 129, 0.15);
-        }
-
-        .card-action-btn.remove {
-            border-color: rgba(239, 68, 68, 0.4);
-            color: #f87171;
-        }
-
-        .card-action-btn.remove:hover {
-            background: rgba(239, 68, 68, 0.15);
-        }
-
-        .card-action-btn.apply {
-            border-color: rgba(37, 99, 235, 0.4);
-            color: #60a5fa;
-        }
-
-        .card-action-btn.apply:hover {
-            background: rgba(37, 99, 235, 0.15);
-        }
-
-        .card-action-btn.unsave {
-            border-color: rgba(245, 158, 11, 0.4);
-            color: #fbbf24;
-        }
-
-        .card-action-btn.unsave:hover {
-            background: rgba(245, 158, 11, 0.15);
-        }
-
-        /* ── ATS Sidebar ─────────────────────────────── */
-        #ats-sidebar {
-            position: fixed;
-            top: 0;
-            right: 0;
-            width: var(--ats-w);
-            height: 100vh;
-            background: var(--secondary);
-            color: #fff;
-            z-index: 200;
-            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.25);
-            transform: translateX(100%);
-            transition: transform 0.3s cubic-bezier(.4, 0, .2, 1);
-            overflow-y: auto;
-        }
-
-        #ats-sidebar.open {
-            transform: translateX(0);
-        }
-
-        #ats-sidebar .panel-inner {
-            padding: 20px 22px 28px;
-            min-height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #ats-sidebar .panel-ctrl-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            flex-shrink: 0;
-        }
-
-        #ats-sidebar .ctrl-btn {
-            background: rgba(255, 255, 255, 0.08);
-            border: none;
-            color: #ffffff;
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            font-size: 15px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s, color 0.2s;
-            flex-shrink: 0;
-        }
-
-        #ats-sidebar .ctrl-btn:hover {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        #ats-sidebar .panel-label-row {
-            font-size: 11px;
-            color: #ffffff;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            flex: 1;
-            text-align: center;
-        }
-
-        #ats-sidebar .result-score-row {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px 0;
-        }
-
-        #ats-sidebar .result-score-circle {
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            border: 4px solid var(--success);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--success);
-            background: rgba(14, 165, 233, 0.1);
-            flex-shrink: 0;
-        }
-
-        #ats-sidebar .result-score-circle.good {
-            border-color: #10b981;
-            color: #10b981;
-            background: rgba(16, 185, 129, 0.1);
-        }
-
-        #ats-sidebar .result-score-circle.mid {
-            border-color: #f59e0b;
-            color: #f59e0b;
-            background: rgba(245, 158, 11, 0.1);
-        }
-
-        #ats-sidebar .result-score-circle.low {
-            border-color: #ef4444;
-            color: #ef4444;
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        #ats-sidebar .result-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #64748b;
-            font-weight: 600;
-        }
-
-        #ats-sidebar .result-match-text {
-            font-size: 16px;
-            font-weight: 700;
-            color: #38bdf8;
-            margin-top: 2px;
-        }
-
-        #ats-sidebar .result-section-title {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #64748b;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        #ats-sidebar .result-body {
-            font-size: 12.5px;
-            color: var(--whitetext);
-            line-height: 1.65;
-        }
-
-        #ats-sidebar .result-keyword {
-            display: inline-block;
-            background: rgba(239, 68, 68, 0.15);
-            color: #fca5a5;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 4px;
-            padding: 2px 7px;
-            font-size: 11px;
-            margin: 3px 3px 0 0;
-        }
-
-        #ats-sidebar .p-divider {
-            border: none;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            margin: 16px 0;
-        }
-
-        #ats-sidebar .ats-loading {
-            display: none;
-            text-align: center;
-            font-size: 12px;
-            color: var(--accent);
-            padding: 20px 0;
-        }
-
-        #ats-sidebar .ats-loading.show {
-            display: block;
-        }
-
-        /* ── JD Edit Modal ────────────────────────────── */
-        #jd-edit-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            z-index: 9999;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(4px);
-        }
-
-        #jd-edit-modal.show {
-            display: flex;
-        }
-
-        #jd-edit-modal .modal-content {
-            background: var(--secondary);
-            padding: 28px;
-            border-radius: 14px;
-            max-width: 640px;
-            width: 92%;
-            max-height: 88vh;
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
-            position: relative;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            display: flex;
-            flex-direction: column;
-        }
-
-        #jd-edit-modal .modal-close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 28px;
-            cursor: pointer;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.08);
-            line-height: 1;
-            transition: background 0.2s;
-        }
-
-        #jd-edit-modal .modal-close:hover {
-            background: var(--accent);
-        }
-
-        #jd-edit-modal h2 {
-            color: #fff;
-            margin-bottom: 8px;
-            text-align: center;
-            font-family: 'Comfortaa', sans-serif;
-        }
-
-        #jd-edit-modal p.desc {
-            color: rgba(255, 255, 255, 0.65);
-            font-size: 12px;
-            text-align: center;
-            margin-bottom: 16px;
-        }
-
-        #jd-edit-modal textarea {
-            width: 100%;
-            min-height: 250px;
-            flex: 1;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 7px;
-            color: #e2e8f0;
-            font-family: 'Inter', sans-serif;
-            font-size: 13px;
-            line-height: 1.5;
-            resize: vertical;
-            outline: none;
-            overflow-y: auto;
-        }
-
-        #jd-edit-modal textarea:focus {
-            border-color: var(--accent);
-        }
-
-        #jd-edit-modal .modal-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 16px;
-        }
-
-        #jd-edit-modal .modal-actions button {
-            flex: 1;
-            padding: 11px 14px;
-            border: none;
-            border-radius: 7px;
-            font-weight: 700;
-            font-size: 13px;
-            font-family: 'Comfortaa', sans-serif;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-        }
-
-        #jd-edit-modal .modal-actions button:active {
-            transform: scale(0.98);
-        }
-
-        #jd-edit-modal .btn-cancel {
-            background: rgba(255, 255, 255, 0.08);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            padding: 4px 10px;
-            font-size: 11px;
-            font-weight: 600;
-            font-family: 'Comfortaa', sans-serif;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        #jd-edit-modal .btn-cancel:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        #jd-edit-modal .btn-scan {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        #jd-edit-modal .btn-scan:hover {
-            background: #1d4ed8;
-        }
-
-        #jd-edit-modal .btn-scan:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
-        }
-
-        #jd-edit-modal .jd-fetch-loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-            color: var(--accent);
-            font-size: 13px;
-        }
-
-        #jd-edit-modal .jd-fetch-loading.show {
-            display: block;
-        }
-
-        /* ── Job Dashboard Board ──────────────────────── */
-        .board-container {
-            display: flex;
-            gap: 16px;
-            overflow-x: auto;
-            padding: 10px 4px 20px 4px;
-            align-items: flex-start;
-            min-height: 300px;
-            width: 100%;
-        }
-
-        .board-list {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            flex: 1 1 220px;
-            max-width: none;
-            min-width: 200px;
-            max-height: 65vh;
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-        }
-
-        body.sidebar-collapsed .board-list {
-            flex: 1 1 260px;
-            min-width: 240px;
-        }
-
-        #tab-dashboard .container {
-            max-width: none;
-            padding: 0;
-        }
-
-        #tab-dashboard .header {
-            border-radius: 0;
-            border-left: none;
-            border-right: none;
-            border-top: none;
-        }
-
-        .board-list-header {
-            padding: 14px 16px;
-            font-weight: 700;
-            font-size: 13px;
-            color: #fff;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .board-list-count {
-            background: rgba(255, 255, 255, 0.08);
-            color: #94a3b8;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .board-card-rounds {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            z-index: 9999;
-            flex-shrink: 0;
-        }
-
-        .board-card-rounds-toggle {
-            background: rgba(255, 255, 255, 0.08);
-            color: #94a3b8;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 12px;
-            width: 22px;
-            height: 22px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 15px;
-            line-height: 1;
-            padding: 0;
-            position: relative;
-        }
-
-        .board-card-rounds-toggle:hover {
-            background: var(--accent);
-            color: #fff;
-            border-color: var(--accent);
-        }
-
-        .board-card-rounds-toggle:hover .board-card-rounds-tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        .board-card-rounds-tooltip {
-            visibility: hidden;
-            opacity: 0;
-            position: fixed;
-            background: #0a0a0a;
-            color: #fff;
-            padding: 10px 14px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-            font-family: 'Comfortaa', sans-serif;
-            white-space: normal;
-            width: 220px;
-            line-height: 1.4;
-            border: 1px solid rgba(255,255,255,0.12);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            transition: opacity 0.2s, visibility 0.2s;
-            z-index: 9999;
-            pointer-events: none;
-        }
-
-        .board-card-rounds-count {
-            background: rgba(37, 99, 235, 0.2);
-            color: #60a5fa;
-            border: 1px solid rgba(37, 99, 235, 0.3);
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: 700;
-            line-height: 1;
-        }
-
-        .board-card-rounds-menu {
-            position: fixed;
-            background: #0d0f12;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 6px;
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-            min-width: 110px;
-            z-index: 10000;
-        }
-
-        .board-card-rounds-menu.show {
-            display: flex;
-        }
-
-        .board-card-rounds-menu-item {
-            background: transparent;
-            border: none;
-            color: #e2e8f0;
-            font-family: 'Comfortaa', sans-serif;
-            font-size: 11px;
-            padding: 8px 12px;
-            cursor: pointer;
-            text-align: left;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .board-card-rounds-menu-item:hover {
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .board-card-rounds-menu-item.danger {
-            color: #f87171;
-        }
-
-        .board-card-rounds-menu-item.danger:hover {
-            background: rgba(239, 68, 68, 0.12);
-        }
-
-        .board-card-rounds-menu-item.disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-
-        .board-cards-container {
-            padding: 10px;
-            overflow-y: auto;
-            flex: 1;
-            min-height: 80px;
-        }
-
-        .board-container::-webkit-scrollbar,
-        .board-cards-container::-webkit-scrollbar {
-            height: 6px;
-            width: 6px;
-        }
-
-        .board-container::-webkit-scrollbar-track,
-        .board-cards-container::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 3px;
-        }
-
-        .board-container::-webkit-scrollbar-thumb,
-        .board-cards-container::-webkit-scrollbar-thumb,
-        #job-scraper-content::-webkit-scrollbar-thumb,
-        #jd-edit-modal textarea::-webkit-scrollbar-thumb,
-        #jd-view-body::-webkit-scrollbar-thumb {
-            background: var(--accent);
-            border-radius: 3px;
-        }
-
-        .board-container,
-        .board-cards-container,
-        #job-scraper-content,
-        #jd-edit-modal textarea,
-        #jd-view-body {
-            scrollbar-width: thin;
-            scrollbar-color: var(--accent) rgba(255, 255, 255, 0.05);
-        }
-
-        .board-card {
-            display: flex;
-            flex-direction: column;
-            background: #161920;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 10px;
-            cursor: grab;
-            font-size: 13px;
-            color: #e2e8f0;
-            word-wrap: break-word;
-            user-select: none;
-            transition: background 0.2s, border-color 0.2s;
-            min-height: 100px;
-        }
-
-        .board-card:hover {
-            background: #1c1f2a;
-            border-color: rgba(37, 99, 235, 0.35);
-        }
-
-        .board-card.dragging {
-            opacity: 0.5;
-        }
-
-        .board-card-title {
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 6px;
-            margin-left: 3px;
-            line-height: 1.3;
-            padding-right: 36px;
-        }
-
-        .board-card-meta {
-            font-size: 11px;
-            color: #64748b;
-            margin-bottom: 4px;
-        }
-
-        .board-card-company {
-            font-size: 11px;
-            color: #94a3b8;
-            margin-bottom: 8px;
-        }
-
-        .board-card-footer {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            margin-top: auto;
-        }
-
-        .board-card-rounds {
-            position: absolute;
-            top: 6px;
-            right: 6px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            z-index: 9999;
-        }
-
-        .board-card-source {
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-
-        .board-card-source.linkedin {
-            background: rgba(10, 102, 194, 0.2);
-            color: #70b5f9;
-            border: 1px solid rgba(10, 102, 194, 0.3);
-        }
-
-        .board-card-source.google {
-            background: rgba(234, 67, 53, 0.15);
-            color: #f87171;
-            border: 1px solid rgba(234, 67, 53, 0.25);
-        }
-
-        .board-card-source.user {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .board-add-card-btn {
-            background: transparent;
-            border: none;
-            color: #64748b;
-            padding: 10px 12px;
-            text-align: left;
-            border-radius: 0 0 10px 10px;
-            cursor: pointer;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: background 0.2s, color 0.2s;
-            font-family: 'Comfortaa', sans-serif;
-        }
-
-        .board-add-card-btn:hover {
-            background: rgba(255, 255, 255, 0.06);
-            color: #e2e8f0;
-        }
-
-        .board-card-composer {
-            padding: 0 10px 10px;
-            display: none;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .board-card-composer textarea {
-            width: 100%;
-            height: 60px;
-            background: rgba(0, 0, 0, 0.25);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 8px;
-            padding: 8px;
-            resize: none;
-            font-size: 13px;
-            color: #e2e8f0;
-            font-family: 'Comfortaa', sans-serif;
-            outline: none;
-        }
-
-        .board-card-composer textarea:focus {
-            border-color: var(--accent);
-        }
-
-        .board-composer-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .board-btn-confirm {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 700;
-            font-family: 'Comfortaa', sans-serif;
-        }
-
-        .board-btn-confirm:hover {
-            background: #1d4ed8;
-        }
-
-        .board-btn-cancel {
-            background: transparent;
-            border: none;
-            color: #64748b;
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
-            transition: background 0.2s, color 0.2s;
-        }
-
-        .board-btn-cancel:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #e2e8f0;
-        }
-
-        .board-empty-state {
-            padding: 40px 20px;
-            text-align: center;
-            color: #64748b;
-            font-size: 13px;
-        }
-
-        .board-card-menu-btn {
-            background: transparent;
-            border: none;
-            color: #64748b;
-            cursor: pointer;
-            font-size: 18px;
-            line-height: 1;
-            padding: 2px 6px;
-            border-radius: 4px;
-            transition: background 0.2s, color 0.2s;
-            flex-shrink: 0;
-            margin-right: -6px;
-        }
-
-        .board-card-menu-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #e2e8f0;
-        }
-
-        .board-card-menu {
-            position: fixed;
-            background: #0d0f12;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 8px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-            z-index: 50;
-            min-width: 140px;
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .board-card-menu.show {
-            display: flex;
-            z-index: 10001;
-         }
-
-        .board-card-menu-item {
-            background: transparent;
-            border: none;
-            color: #e2e8f0;
-            font-family: 'Comfortaa', sans-serif;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            padding: 10px 14px;
-            transition: background 0.15s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .board-card-menu-item:hover {
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .board-card-menu-item.danger {
-            color: #f87171;
-        }
-
-        .board-card-menu-item.danger:hover {
-            background: rgba(239, 68, 68, 0.12);
-        }
-
-        .board-card {
-            position: relative;
-        }
-
-        /* ── AI Providers Modal ──────────────────────────── */
-        #providers-list {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .provider-item {
-            padding: 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-            position: relative;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .provider-item:hover {
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateY(-2px);
-        }
-
-        .provider-item.selected {
-            background: rgba(37, 99, 235, 0.2);
-            border-color: var(--accent);
-        }
-
-        .provider-img {
-            width: 24px;
-            height: 24px;
-            object-fit: contain;
-            margin-right: 8px;
-        }
-
-        .provider-checkbox {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            width: 18px;
-            height: 18px;
-            accent-color: var(--accent);
-            cursor: pointer;
-        }
-
-        .provider-model {
-            font-size: 12px;
-            color: #e2e8f0;
-            margin-top: 4px;
-            font-family: monospace;
-        }
-
-        .provider-name {
-            color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .provider-description {
-            font-size: 12px;
-            color: #ffffff;
-            margin-top: 4px;
-            line-height: 1.4;
-        }
-
-        #floating-footer {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 7px;
-            font-weight: 700;
-            font-size: 13px;
-            font-family: 'Comfortaa', sans-serif;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s, opacity 0.2s;
-            margin-top: 10px;
-        }
-
-        #floating-footer a {
-            color: var(--bg-badge);
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        #floating-footer a:hover {
-            color: var(--accent);
-            text-decoration: underline;
-        }
-
-        /* Actions Dropdown (mirrored from main.html) */
-        .actions-btn-wrapper {
-            position: relative;
-            display: inline-block;
-            pointer-events: auto;
-        }
-
-        .actions-dropdown-trigger {
-            padding: 10px 14px;
-            font-family: 'Comfortaa', sans-serif;
-            font-size: 12px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            border-radius: 6px;
-            background: #0a0a0a;
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .actions-dropdown-trigger:hover {
-            background: var(--accent);
-            border-color: rgba(255, 255, 255, 0.12);
-        }
-
-        .actions-dropdown-trigger:active {
-            transform: scale(0.98);
-        }
-
-        .actions-dropdown {
-            position: absolute;
-            top: calc(100% + 6px);
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 599;
-            background: var(--secondary);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
-            min-width: 220px;
-            padding: 8px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .actions-dropdown.hidden {
-            display: none;
-        }
-
-        .actions-option {
-            align-items: center;
-            gap: 12px;
-            width: 100%;
-            padding: 10px 16px;
-            background: transparent;
-            border: none;
-            color: #fff;
-            font-family: 'Comfortaa', sans-serif;
-            font-weight: 500;
-            cursor: pointer;
-            text-align: left;
-            transition: background 0.15s;
-            white-space: nowrap;
-        }
-
-        .actions-option:hover {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .actions-option.active {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .actions-option-icon {
-            display: inline-block;
-            width: 26px;
-            height: 20px;
-            text-align: center;
-            line-height: 20px;
-            opacity: 0.85;
-            font-size: 14px;
-            vertical-align: middle;
-            margin-right: 12px;
-        }
-
-        .actions-option-text {
-            font-size: 13px;
-            font-weight: 500;
-            vertical-align: middle;
-        }
-    </style>
-</head>
-
-<body>
-
-    <!-- ATS Sidebar Open Stub -->
-    <button id="ats-open-stub" onclick="openAtsSidebar()" title="ATS Results" aria-label="ATS Results">&#9776;</button>
-
-    <!-- Sidebar Open Stub -->
-    <button id="sidebar-open-stub" onclick="toggleSidebar()" title="Open sidebar" aria-label="Open sidebar">&#9776;</button>
-
-    <!-- Sidebar -->
-    <aside id="findjob-sidebar" class="no-print">
-        <div class="sidebar-inner">
-            <div class="sidebar-ctrl-row">
-                <button class="ctrl-btn" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Collapse sidebar">&#9776;</button>
-                <span class="sidebar-label">Job Finder</span>
-            </div>
-
-            <div class="sidebar-tabs">
-                <button class="sidebar-tab" data-tab="resume" onclick="window.location.href='/public/main.html'">
-                    <span class="tab-icon">📄</span>
-                    Resume view
-                </button>
-                <button class="sidebar-tab active" data-tab="scraping" onclick="switchTab('scraping')">
-                    <span class="tab-icon">🔎</span>
-                    Scraping Results
-                </button>
-                <button class="sidebar-tab" data-tab="saved" onclick="switchTab('saved')">
-                    <span class="tab-icon">💾</span>
-                    Saved Jobs
-                </button>
-                <button class="sidebar-tab" data-tab="dashboard" data-testid="sidebar-tab-dashboard" onclick="switchTab('dashboard')">
-                    <span class="tab-icon">🗃️</span>
-                    Job Dashboard
-                </button>
-                <button class="sidebar-tab" data-tab="start-scraping" onclick="openJobScraperModal()">
-                    <span class="tab-icon">🚀</span>
-                    Start scraping
-                </button>
-                <button class="sidebar-tab" data-tab="providers" onclick="openProvidersModal()">
-                    <span class="tab-icon">🧠</span>
-                    AI Providers
-                </button>
-            </div>
-            <div id="floating-footer" class="no-print">
-                <span>Developed by Juani Ca&ntilde;ete</span>
-                <span class="dev-separator">&bull;</span>
-                <a href="https://github.com/JuaniCanete?tab=repositories" target="_blank"
-                    rel="noopener noreferrer">GitHub</a>
-                <span class="dev-separator">&bull;</span>
-                <a href="https://www.linkedin.com/in/juanignaciocanete/" target="_blank"
-                    rel="noopener noreferrer">LinkedIn</a>
-            </div>
-        </div>
-    </aside>
-
-    <div id="refresh-message" data-testid="refresh-message" style="display: none; position: fixed; top: 20px; left: 50%; 
-         transform: translateX(-50%); background: var(--accent); color: #fff; padding: 12px 24px; 
-         border-radius: 8px; font-weight: 600; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-    </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <div class="container">
-            <!-- Scraping Results Tab -->
-            <div id="tab-scraping" class="tab-content">
-                <div class="header">
-                    <div class="header-top">
-                        <div class="title">
-                            Scraping Results
-                        </div>
-                        <div class="source-tabs">
-                            <div class="actions-btn-wrapper">
-                                <button id="findjob-actions-trigger" data-testid="findjob-actions-trigger" class="actions-dropdown-trigger" onclick="toggleFindJobActions()"
-                                    aria-expanded="false" aria-haspopup="true" title="Actions"><span class="actions-label">Scraping sources ▾</span></button>
-                                <div id="findjob-actions-dropdown" data-testid="findjob-actions-dropdown" class="actions-dropdown hidden" role="menu">
-                                    <button class="actions-option" data-testid="source-option-linkedin" onclick="switchResultsTab('linkedin')" role="menuitem">
-                                        <span class="actions-option-icon">🔗</span>
-                                        <span class="actions-option-text">LinkedIn</span>
-                                    </button>
-                                    <button class="actions-option" data-testid="source-option-google" onclick="switchResultsTab('google')" role="menuitem">
-                                        <span class="actions-option-icon">🔍</span>
-                                        <span class="actions-option-text">Google</span>
-                                    </button>
-                                    <button class="actions-option" data-testid="source-option-remoterocketship" onclick="switchResultsTab('remoterocketship')" role="menuitem">
-                                        <span class="actions-option-icon">🚀</span>
-                                        <span class="actions-option-text">Remote Rocketship</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                <div class="meta-row">
-                    <div class="meta-item">Scanned: <span id="meta-timestamp" data-testid="meta-timestamp">No results</span></div>
-                    <div class="meta-item">Total Findings: <span id="meta-total" data-testid="meta-total">N/A</span></div>
-                    <div class="meta-item">Query: <span id="meta-query" data-testid="meta-query">N/A</span><span id="query-link-wrapper" data-testid="query-link-wrapper" style="display: none;">. <a id="query-link" href="#" target="_blank" rel="noopener noreferrer">Link</a></span></div>
-                    <div class="meta-item">Source: <span id="meta-source" data-testid="meta-source">LinkedIn</span></div>
-                </div>
-            </div>
-
-            <div id="extraction-loading" style="display: none; padding: 14px 18px; margin-bottom: 14px; background: rgba(37, 99, 235, 0.12); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 8px; font-size: 13px; font-weight: 600; color: #93c5fd;">
-                ⏳ Metadata extraction is in progress, this process usually takes one minute per page.
-            </div>
-
-            <div id="results-list" data-testid="results-list" class="results-list"></div>
-
-                <div id="no-results" data-testid="no-results" class="no-results" style="display: none;">
-                    <h3>There are no scraping results available</h3>
-                    <p style="font-size: 13px; color: #64748b;">Results will appear here.</p>
-                </div>
-
-                <div id="scrape-error" class="scrape-error" style="display: none;">
-                    <h3>⚠️ Scraping Failed</h3>
-                    <p id="scrape-error-message">The scraping process could not be completed. Please try again.</p>
-                    <div>
-                        <span class="retry-hint">Go back to the main tab, adjust your query, and retry.</span>
-                    </div>
-                </div>
-
-                <div id="pagination" data-testid="pagination" class="pagination" style="display: none;">
-                    <button id="btn-prev-page" class="page-btn" onclick="prevPage()">◀ Previous</button>
-                    <span id="page-info" class="page-info">Page 1 of 1</span>
-                    <button id="btn-next-page" class="page-btn" onclick="nextPage()">Next ▶</button>
-                </div>
-            </div>
-
-            <!-- Saved Jobs Tab -->
-            <div id="tab-saved" class="tab-content" style="display: none;">
-                <div class="header">
-                    <div class="header-top">
-                        <div class="title">Saved Jobs</div>
-                    </div>
-                    <div class="meta-row">
-                        <div class="meta-item">Total Saved: <span id="saved-meta-total">0</span></div>
-                        <div class="meta-item">Sources: <span id="saved-meta-sources">None</span></div>
-                    </div>
-                </div>
-                <div id="saved-results-list" class="results-list"></div>
-                <div id="saved-no-results" class="no-results" style="display: none;">
-                    <h3>No saved jobs yet</h3>
-                    <p style="font-size: 13px; color: #64748b;">Save jobs from Scraping Results to see them here.</p>
-                </div>
-            </div>
-
-            <!-- Job Dashboard Tab -->
-            <div id="tab-dashboard" class="tab-content" style="display: none;">
-                <div class="header">
-                    <div class="header-top">
-                        <div class="title">Job Dashboard</div>
-                    </div>
-                    <p style="font-size: 13px; color: #94a3b8; margin-bottom: 12px;">Mark jobs as "Applied?" from Scraping Results or Saved Jobs pages to track them here or create jobs manually using "+ Add a card".</p>
-                    <div id="test-data-warning" style="display: none; padding: 10px 14px; margin-bottom: 12px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; font-size: 12px; color: #fbbf24; align-items: center; gap: 10px;">
-                        <span>⚠ Test mode active — dashboard may show test data</span>
-                        <button id="clear-test-data-btn" class="p-btn p-btn-secondary" style="margin-top: 0; padding: 6px 12px; font-size: 11px;" onclick="clearTestData()">Clear Test Data</button>
-                    </div>
-                    <div class="meta-row">
-                        <div class="meta-item">Total Applications: <span id="dashboard-meta-total">0</span></div>
-                        <div class="meta-item">Statuses: <span id="dashboard-meta-statuses">None</span></div>
-                    </div>
-                </div>
-                <div id="dashboard-board" data-testid="dashboard-board" class="board-container"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ATS Sidebar -->
-    <div id="ats-sidebar">
-        <div class="panel-inner">
-            <div class="panel-ctrl-row">
-                <span class="panel-label-row">ATS results</span>
-                <button class="ctrl-btn" onclick="closeAtsSidebar()" title="Close ATS results"
-                    aria-label="Close ATS results">&#x2716;</button>
-            </div>
-
-            <div class="result-score-row">
-                <div class="result-score-circle" id="ats-score-circle">--</div>
-                <div>
-                    <div class="result-label">ATS Match</div>
-                    <div class="result-match-text" id="ats-score-text">Pending</div>
-                </div>
-            </div>
-
-            <div id="ats-job-title" class="result-job-title" style="display: none; font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; word-break: break-word;"></div>
-
-            <div id="ats-scan-again-msg" class="result-body"
-                style="color: #fca5a5; margin-top: 6px; margin-bottom: 14px; padding: 12px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 6px;">
-                Click "Check JD" on a job card to start an ATS scan.
-            </div>
-
-            <div id="ats-breakdown-section" style="display: none; margin-bottom: 14px;">
-                <hr class="p-divider" style="margin: 12px 0;">
-                <div class="result-section-title">The Match Breakdown</div>
-                <div class="result-body"
-                    style="display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">
-                    <div style="display: flex; justify-content: space-between;"><span>Keyword Match:</span><span
-                            id="ats-br-skills" style="font-weight: 700;">--</span></div>
-                    <div style="display: flex; justify-content: space-between;"><span>Experience Alignment:</span><span
-                            id="ats-br-experience" style="font-weight: 700;">--</span></div>
-                    <div style="display: flex; justify-content: space-between;"><span>Education/Cert Fit:</span><span
-                            id="ats-br-education" style="font-weight: 700;">--</span></div>
-                </div>
-            </div>
-
-            <hr class="p-divider">
-
-            <div style="margin-bottom: 16px;">
-                <div class="result-section-title">Feedback</div>
-                <div class="result-body" id="ats-feedback">&mdash;</div>
-            </div>
-
-            <hr class="p-divider">
-
-            <div>
-                <div class="result-section-title">Missing Keywords</div>
-                <div id="ats-keywords" class="result-body">&mdash;</div>
-            </div>
-
-            <hr class="p-divider">
-
-            <div>
-                <div class="result-section-title">AI Results powered by</div>
-                <div id="ats-poweredBy" class="result-body">&mdash;</div>
-            </div>
-
-            <div class="ats-loading" id="ats-loading">
-                <span class="dot-anim">Scanning using AI</span>
-            </div>
-
-            <button onclick="openCoverLetterModal()" style="width: 100%; padding: 10px; background: var(--static); color: #fff; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; cursor: pointer; margin-top: 12px;">
-                ✉️ Generate Cover Letter
-            </button>
-        </div>
-    </div>
-
-    <!-- Cover Letter Modal -->
-    <div id="cover-letter-modal" data-testid="cover-letter-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(146, 178, 219, 0.129); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 640px; width: 92%; max-height: 88vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(255,255,255,0.12);">
-            <button onclick="closeCoverLetterModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
-                onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            <h2 style="color: #fff; margin-bottom: 4px; text-align: center;">✉️ Cover Letter</h2>
-            <p style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 20px; font-family: 'Comfortaa', sans-serif;">Generate a personalized cover letter based on your resume and the job description</p>
-
-            <!-- Settings Form -->
-            <div id="cover-letter-settings" style="display: flex; flex-direction: column; gap: 14px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                    <div>
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Tone</label>
-                        <select id="cl-tone" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                            <option value="Formal">Formal</option>
-                            <option value="Relaxed">Relaxed</option>
-                            <option value="Cold">Cold</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">English Level</label>
-                        <select id="cl-english-level" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                            <option value="C1">C1</option>
-                            <option value="C2">C2</option>
-                            <option value="Native">Native</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Char Limit</label>
-                        <input type="text" id="cl-char-limit" placeholder="Empty uses default = 400" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                    </div>
-                </div>
-                <div>
-                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Focus Areas (comma-separated)</label>
-                    <input type="text" id="cl-focus" placeholder="e.g. Automation, Playwright, CI/CD" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
-                </div>
-            </div>
-
-            <!-- Loading State -->
-            <div id="cover-letter-loading" style="display: none; text-align: center; padding: 20px;">
-                <p style="color: var(--accent);" class="dot-anim">Generating cover letter using AI</p>
-            </div>
-
-            <!-- Error State -->
-            <div id="cover-letter-error" style="display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-                <p id="cover-letter-error-text" style="color: #fca5a5; font-size: 13px;"></p>
-            </div>
-
-            <!-- Generated Cover Letter -->
-            <div id="cover-letter-result" style="display: none;">
-                <textarea id="cover-letter-text" style="width: 100%; min-height: 300px; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #e2e8f0; font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.5; resize: vertical; outline: none;"></textarea>
-            </div>
-
-            <!-- Modal Actions -->
-            <div id="cover-letter-actions" style="display: flex; gap: 12px; margin-top: 16px;">
-                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="closeCoverLetterModal()">Cancel</button>
-                <button id="btn-generate-cover-letter" class="p-btn p-btn-primary" style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700;" onclick="generateCoverLetter()">
-                    ✨ Generate Cover Letter
-                </button>
-            </div>
-            <div id="cover-letter-result-actions" style="display: none; gap: 12px; margin-top: 16px;">
-                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="copyCoverLetter()">📋 Copy</button>
-                <button class="p-btn p-btn-primary" style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700;" onclick="downloadCoverLetter()">⬇ Download</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- JD View Modal (Feature 1: Show JD) -->
-    <div id="jd-view-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(146, 178, 219, 0.129); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 640px; width: 92%; max-height: 80vh; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(37, 99, 235, 0.4); display: flex; flex-direction: column;">
-            <button onclick="closeJdViewModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
-                onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            <h2 id="jd-view-title" style="color: #fff; margin-bottom: 12px; font-family: 'Comfortaa', sans-serif;">Job Description</h2>
-            <div id="jd-view-loading" style="display: none; color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 12px;">
-                <span class="dot-anim">Loading job description...</span>
-            </div>
-            <div id="jd-view-body" style="color: rgba(255,255,255,0.9); font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; flex: 1; overflow-y: auto;"></div>
-        </div>
-    </div>
-
-    <!-- JD Collection Error Modal -->
-    <div id="jd-collection-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(146, 178, 219, 0.129); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 480px; width: 92%; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(245, 158, 11, 0.5); text-align: center;">
-            <button onclick="closeJdCollectionModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
-                onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            <h2 style="color: #fff; margin-bottom: 12px; text-align: center; font-family: 'Comfortaa', sans-serif;">⚠️ Job Collection Detected</h2>
-            <p id="jd-collection-message" style="color: rgba(255, 255, 255, 0.85); font-size: 14px; text-align: center; margin-bottom: 20px; line-height: 1.5;">
-                ATS is not possible as the link belongs to a collection of jobs instead of a job with unique JD. Enter the link to gather JD or apply is recommended.
-            </p>
-            <button onclick="closeJdCollectionModal()" style="padding: 11px 24px; border: none; border-radius: 7px; font-weight: 700; font-size: 13px; font-family: 'Comfortaa', sans-serif; cursor: pointer; background: #f59e0b; color: #1a1a1a; transition: background 0.2s;"
-                onmouseenter="this.style.background='#d97706'" onmouseleave="this.style.background='#f59e0b'">Ok</button>
-        </div>
-    </div>
-
-    <!-- JD Edit Modal -->
-    <div id="jd-edit-modal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeJdEditModal()">×</button>
-            <h2>Review Job Description</h2>
-            <p class="desc">Edit the fetched JD text below to remove unrelated content (benefits, navigation, etc.), then scan with ATS.</p>
-            <div id="jd-saved-indicator" style="display: none; padding: 8px 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #10b981; font-size: 12px; font-weight: 600; margin-bottom: 12px; align-items: center; justify-content: space-between;">
-                <span>✓ Using saved JD from database</span>
-                <button id="jd-refresh-btn" onclick="refreshJd()" style="padding: 4px 10px; background: var(--accent); color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">Fetch JD again using AI</button>
-            </div>
-            <div id="jd-clean-indicator" style="display: none; padding: 8px 12px; background: rgba(37, 99, 235, 0.15); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 6px; color: #60a5fa; font-size: 12px; font-weight: 600; margin-bottom: 12px; align-items: center; justify-content: space-between;">
-                <span>No saved JD — click to clean using AI</span>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button id="jd-clean-btn" onclick="cleanJdUsingAi()" style="padding: 4px 10px; background: var(--accent); color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">Clean JD using AI</button>
-                    <button id="jd-stop-btn" class="btn-cancel" onclick="stopCleanJd()" style="display: none;">Stop</button>
-                </div>
-            </div>
-            <div class="jd-fetch-loading" id="jd-fetch-loading">
-                <span class="dot-anim">Fetching job description...</span>
-            </div>
-            <textarea id="jd-edit-textarea" placeholder="Job description text will appear here after fetching..."></textarea>
-            <div class="modal-actions">
-                <button class="btn-cancel" onclick="closeJdEditModal()">Cancel</button>
-                <!-- For Remote Rocketship: show Fetch JD and Run ATS buttons -->
-                <div id="jd-actions-rr" style="display: none;">
-                    <button class="btn-scan" id="jd-fetch-btn" onclick="fetchJdForAts()">🔄 Fetch JD</button>
-                    <button class="btn-scan" id="btn-scan-jd" onclick="runAtsScanFromResults()">🔍 Validate with ATS</button>
-                </div>
-                <!-- For other sources: show single Run ATS button -->
-                <button class="btn-scan" id="btn-scan-jd-default" onclick="runAtsScanFromResults()">🔍 Validate with ATS</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scraper Overlay -->
-    <div id="scraper-overlay" data-testid="scraper-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-         background: rgba(146, 178, 219, 0.129); backdrop-filter: blur(10px); z-index: 9998; align-items: center; justify-content: center; flex-direction: column; gap: 16px;">
-        <p style="color: #fff; font-size: 18px; font-weight: 700; font-family: 'Comfortaa', sans-serif; text-align: center;">
-            🔎 Scraping <span id="scraper-source-label">LinkedIn</span> <span class="dot-anim"></span>
-        </p>
-        <button id="btn-cancel-scraper" onclick="cancelScraping()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 24px; border-radius: 7px; font-family: 'Comfortaa', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
-            onmouseenter="this.style.background='#ef4444'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">Cancel</button>
-    </div>
-
-<!-- Job Scraper Modal -->
-    <div id="job-scraper-modal" data-testid="job-scraper-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(146, 178, 219, 0.129); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div id="job-scraper-content" style="background: var(--secondary); padding: 28px; border-radius: 14px; max-width: 580px; width: 92%; max-height: 88vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,0.6); position: relative; border: 1px solid rgba(255,255,255,0.12);">
-            <button onclick="closeJobScraperModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
-                onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            <h2 style="color: #fff; margin-bottom: 4px; text-align: center;">🔎 Find a Job</h2>
-            <p style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 20px; font-family: 'Comfortaa', sans-serif;">Start scraping sites using AI query builder</p>
-
-            <!-- Platform Toggle -->
-            <div style="display: flex; gap: 10px; margin-bottom: 20px; background: rgba(0,0,0,0.25); padding: 5px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.08);">
-                <button id="toggle-platform-linkedin" onclick="switchScraperPlatform('linkedin')" style="flex: 1; padding: 10px; border-radius: 7px; border: none; background: var(--accent); color: #fff; font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
-                    🔗 LinkedIn
-                </button>
-                <button id="toggle-platform-google" onclick="switchScraperPlatform('google')" style="flex: 1; padding: 10px; border-radius: 7px; border: none; background: transparent; color: rgba(255,255,255,0.7); font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
-                    🔍 Google
-                </button>
-                <button id="toggle-platform-remoterocketship" onclick="switchScraperPlatform('remoterocketship')" style="flex: 1; padding: 10px; border-radius: 7px; border: none; background: transparent; color: rgba(255,255,255,0.7); font-family: 'Comfortaa', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
-                    🚀 Remote Rocketship
-                </button>
-            </div>
-
-            <!-- Query Builder Fields -->
-            <div style="display: flex; flex-direction: column; gap: 14px;">
-                <div>
-                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Role / Title <span style="color: #ef4444;">*</span></label>
-                    <input type="text" id="scraper-role" placeholder="e.g. Fullstack Engineer, Frontend Developer" oninput="updateQueryPreview(); clearRoleError()" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
-                    <span id="scraper-role-error" style="display: none; font-size: 11px; color: #ef4444; margin-top: 4px; font-family: 'Comfortaa', sans-serif;">This field is mandatory.</span>
-                </div>
-                <div>
-                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Tech / Skills / Keywords</label>
-                    <input type="text" id="scraper-keywords" placeholder="e.g. Python, AWS, Docker, React" oninput="updateQueryPreview()" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 13px; outline: none;">
-                </div>
-
-                <div id="scraper-row-linkedin-1" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div id="scraper-field-seniority">
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Seniority</label>
-                        <select id="scraper-seniority" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                            <option value="">Any</option>
-                            <option value="Internship">Internship</option>
-                            <option value="Entry">Entry level</option>
-                            <option value="Associate">Associate</option>
-                            <option value="Mid">Mid-senior level</option>
-                            <option value="Director">Director</option>
-                            <option value="Executive">Executive</option>
-                        </select>
-                    </div>
-                    <div id="scraper-field-date-posted">
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Date Posted</label>
-                        <select id="scraper-date-posted" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                            <option value="">Any</option>
-                            <option value="week" selected>Past Week</option>
-                            <option value="day">Past 24h</option>
-                            <option value="month">Past Month</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="scraper-row-linkedin-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div id="scraper-field-work-type">
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Work Type</label>
-                        <select id="scraper-work-type" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                            <option value="">Any</option>
-                            <option value="remote">Remote</option>
-                            <option value="hybrid">Hybrid</option>
-                            <option value="onsite">On-site</option>
-                        </select>
-                    </div>
-                    <div id="scraper-field-employment">
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Employment</label>
-                        <select id="scraper-employment" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                            <option value="">Any</option>
-                            <option value="fulltime">Full-time</option>
-                            <option value="parttime">Part-time</option>
-                            <option value="contractor">Contractor</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Remote Rocketship fields (Remote Rocketship view only) -->
-                <div id="remoterocketship-fields" style="display: none;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <div id="scraper-field-country-rr">
-                            <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Country / Locations</label>
-                            <input type="text" id="scraper-country-rr" placeholder="e.g. Argentina" oninput="updateQueryPreview()" style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12.5px; outline: none;">
-                        </div>
-                        <div id="scraper-field-seniority-rr">
-                            <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Seniority</label>
-                            <select id="scraper-seniority-rr" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                                <option value="">Any</option>
-                                <option value="entry-level">Entry-level (0 years)</option>
-                                <option value="junior">Junior (1-2 years)</option>
-                                <option value="mid">Mid-level (3-6 years)</option>
-                                <option value="senior">Senior (7+ years)</option>
-                                <option value="expert">Leadership positions</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="scraper-field-country">
-                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Country</label>
-                    <input type="text" id="scraper-country" placeholder="e.g. Argentina" oninput="updateQueryPreview()" style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12.5px; outline: none;">
-                </div>
-
-                <!-- Google Target Domains (Google view only) -->
-                <div id="google-domains-section" style="display: none; background: rgba(0,0,0,0.2); padding: 14px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.08);">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                        <label style="font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">Target Domains</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer; margin-bottom: 8px;">
-                            <input type="checkbox" id="select-all-domains" onchange="toggleAllDomains(this)"> Select All / Deselect All
-                        </label>
-                    </div>
-                    <div id="domains-checklist" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 96px; overflow-y: auto; margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="myworkdayjobs.com" onchange="updateQueryPreview()"> myworkdayjobs.com</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="jobs.ashbyhq.com" onchange="updateQueryPreview()"> ashbyhq.com</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="teamtailor.com" onchange="updateQueryPreview()"> teamtailor.com</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="greenhouse.io" onchange="updateQueryPreview()"> greenhouse.io</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="lever.co" onchange="updateQueryPreview()"> lever.co</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="bamboohr.com" onchange="updateQueryPreview()"> bamboohr.com</label>
-                        <label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex;"><input type="checkbox" value="torre.ai" onchange="updateQueryPreview()"> torre.ai</label>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" id="custom-domain-input" placeholder="Add custom domain (e.g. recruitee.com)" style="flex: 1; padding: 7px 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 12px; outline: none;">
-                        <button onclick="addCustomDomain()" style="padding: 7px 14px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; font-size: 12px; cursor: pointer; font-family: 'Comfortaa', sans-serif;">+ Add</button>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div id="scraper-field-region">
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Region</label>
-                        <select id="scraper-region" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                            <option value="">Worldwide</option>
-                            <option value="LATAM">LATAM</option>
-                            <option value="US">US</option>
-                            <option value="EU">EU</option>
-                            <option value="Remote">Remote</option>
-                        </select>
-                    </div>
-                    <div id="scraper-field-currency">
-                        <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Currency</label>
-                        <select id="scraper-currency" onchange="updateQueryPreview()" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: #fff; font-family: 'Comfortaa', sans-serif; font-size: 12px; outline: none;">
-                            <option value="">Any</option>
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                            <option value="ARS">ARS</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Generated URL Preview & Open -->
-                <div>
-                    <label style="display: block; font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">Query Preview</label>
-                    <div id="query-url-preview" style="background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.12); padding: 10px 12px; border-radius: 7px; font-family: monospace; font-size: 11.5px; color: #a5f3fc; word-break: break-all; max-height: 70px; overflow-y: auto;">
-                        https://www.linkedin.com/jobs/search/?keywords=
-                    </div>
-                    <button id="btn-try-yourself" onclick="openQueryInBrowser()" style="margin-top: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 7px 14px; border-radius: 6px; font-family: 'Comfortaa', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; gap: 6px;"
-                        onmouseenter="this.style.background='rgba(255,255,255,0.16)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">
-                        ↗ Try yourself
-                    </button>
-                </div>
-            </div>
-
-            <!-- Modal Actions -->
-            <div style="display: flex; gap: 12px; margin-top: 24px;">
-                <button class="p-btn p-btn-secondary" style="flex: 1;" onclick="closeJobScraperModal()">Cancel</button>
-                <button id="btn-start-scraping" class="p-btn p-btn-primary" style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700;" onclick="startScraping()">
-                    🔎 Start Scraping
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Remote Rocketship Confirm Modal -->
-    <div id="remoterocketship-confirm-modal" data-testid="remoterocketship-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(22, 22, 26, 0.8); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div class="modal-content" style="max-width: 520px; width: 92%; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; background: var(--secondary); border-radius: 14px; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 12px 48px rgba(0,0,0,0.6);">
-            <!-- Top bar with close X -->
-            <div style="display: flex; justify-content: flex-end; padding: 12px 16px 0 16px;">
-                <button data-testid="remoterocketship-confirm-close" onclick="closeRemoteRocketshipConfirm()" aria-label="Close" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
-                    onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            </div>
-            
-            <!-- Message -->
-            <div style="flex: 1; padding: 0 24px 24px 24px; display: flex; flex-direction: column; justify-content: center;">
-                <p style="color: rgba(255, 255, 255, 0.85); font-size: 14px; text-align: center; line-height: 1.7; font-family: 'Comfortaa', sans-serif; margin: 0;">
-                    Remote Rocketship jobs will not show an option to apply unless you have a valid subscription. You will need to find the company by clicking the Website button on the scraping result page, and then find the company careers page (usually at the footer section of their home pages) and there find the opening and follow the usual application process.
-                </p>
-                
-                <!-- Don't show again checkbox -->
-                <label style="display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 24px; cursor: pointer; font-family: 'Comfortaa', sans-serif; font-size: 13px; color: rgba(255,255,255,0.7);">
-                    <input type="checkbox" id="rr-dont-show-again" style="width: 18px; height: 18px; accent-color: var(--accent);">
-                    <span>Don't show this again</span>
-                </label>
-            </div>
-            
-            <!-- Confirm button at bottom -->
-            <div style="padding: 0 24px 24px 24px; display: flex; justify-content: center;">
-                <button data-testid="remoterocketship-confirm-btn" onclick="confirmRemoteRocketship()" class="p-btn p-btn-primary" style="min-width: 160px; background: var(--accent); color: #fff; padding: 14px 32px; border-radius: 8px; font-family: 'Comfortaa', sans-serif; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: background 0.2s;"
-                    onmouseenter="this.style.background='#1d4ed8'" onmouseleave="this.style.background='var(--accent)'">
-                    Confirm
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- AI Providers Modal -->
-    <div id="providers-modal" data-testid="providers-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(146, 178, 219, 0.129); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div style="background: var(--secondary); padding: 30px; border-radius: 12px; max-width: 520px; width: 92%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); position: relative;">
-            <button onclick="closeProvidersModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); line-height: 1; transition: background 0.2s;"
-                onmouseenter="this.style.background='var(--accent)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
-            <h2 style="color: #fff; margin-bottom: 6px; text-align: center;">🧠 AI Providers</h2>
-            <p id="providers-modal-subtitle" style="color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; margin-bottom: 18px; font-family: 'Comfortaa', sans-serif;">Select default provider for LLM API calls</p>
-            <div id="providers-list" data-testid="providers-list"></div>
-            <div id="providers-empty-message" style="display: none; color: #fff; font-size: 13px; text-align: center; padding: 24px 16px; font-family: 'Comfortaa', sans-serif;">
-                There are not LLM providers configured. Please, setup them to chose provider and model.
-            </div>
-            <div id="providers-modal-actions" data-testid="providers-modal-actions" style="display: none; gap: 10px; flex-direction: row; justify-content: stretch; margin-top: 16px;">
-                <button id="providers-cancel-btn" data-testid="providers-cancel-btn" class="p-btn p-btn-secondary" style="flex: 1;" onclick="cancelProvidersSelection()">Cancel</button>
-                <button id="providers-confirm-btn" data-testid="providers-confirm-btn" class="p-btn p-btn-primary" style="flex: 1; background: var(--accent); color: #fff;" onclick="confirmProvidersSelection()">Confirm</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="/public/dist/findJob-app.js"></script>
-</body>
-
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>resumessi - Job Finder</title>
+		<link
+			rel="icon"
+			type="image/svg+xml"
+			href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐐%3C/text%3E%3C/svg%3E"
+		/>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+
+		<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+
+		<style>
+			:root {
+				--primary: #0a0a0a;
+				--secondary: #0a0a0a;
+				--accent: #2563eb;
+				--text: #171717;
+				--text-light: #404040;
+				--bg-badge: #f1f5f9;
+				--success: #0ea5e9;
+				--whitetext: #f8fafc;
+				--ats-w: 360px;
+				--sidebar-w: 400px;
+				--static: rgba(255, 255, 255, 0.08);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			body {
+				font-family: 'Comfortaa', sans-serif;
+				background: #0d0f12;
+				color: var(--whitetext);
+				min-height: 100vh;
+				transition:
+					padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+					padding-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+				padding-left: var(--sidebar-w);
+			}
+
+			body.sidebar-collapsed {
+				padding-left: 0;
+			}
+
+			body.sidebar-collapsed #sidebar-open-stub {
+				display: flex !important;
+			}
+
+			/* ── Shared Button Styles ────────────────────────── */
+			.p-btn {
+				width: 100%;
+				padding: 11px 14px;
+				border: none;
+				border-radius: 7px;
+				font-weight: 700;
+				font-size: 13px;
+				font-family: 'Comfortaa', sans-serif;
+				cursor: pointer;
+				transition:
+					background 0.2s,
+					transform 0.1s,
+					opacity 0.2s;
+				margin-top: 10px;
+			}
+
+			.p-btn:active {
+				transform: scale(0.98);
+			}
+
+			.p-btn-primary {
+				background: var(--static);
+				color: #fff;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+			}
+
+			.p-btn-primary:hover {
+				background: #1d4ed8;
+			}
+
+			.p-btn-primary:disabled {
+				opacity: 0.55;
+				cursor: not-allowed;
+			}
+
+			.p-btn-secondary {
+				background: var(--static);
+				color: #ffffff;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+			}
+
+			.p-btn-secondary:hover {
+				background: #1d4ed8;
+				color: #fff;
+			}
+
+			.dot-anim::after {
+				content: '';
+				animation: dotdot 1.4s infinite;
+			}
+
+			@keyframes dotdot {
+				0% {
+					content: '';
+				}
+
+				33% {
+					content: '.';
+				}
+
+				66% {
+					content: '..';
+				}
+
+				100% {
+					content: '...';
+				}
+			}
+
+			body.ats-open {
+				padding-right: var(--ats-w);
+			}
+
+			/* ── Sidebar ────────────────────────────────────── */
+			#findjob-sidebar {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: var(--sidebar-w);
+				height: 100vh;
+				background: var(--secondary);
+				color: #fff;
+				z-index: 200;
+				box-shadow: 4px 0 16px rgba(0, 0, 0, 0.25);
+				transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+				overflow-y: auto;
+				display: flex;
+				flex-direction: column;
+			}
+
+			#findjob-sidebar.collapsed {
+				transform: translateX(calc(-1 * var(--sidebar-w)));
+			}
+
+			.sidebar-inner {
+				padding: 20px 22px 28px;
+				min-height: 100%;
+				display: flex;
+				flex-direction: column;
+			}
+
+			.sidebar-ctrl-row {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 20px;
+				flex-shrink: 0;
+			}
+
+			.sidebar-label {
+				font-size: 11px;
+				color: #ffffff;
+				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.1em;
+				flex: 1;
+				text-align: center;
+			}
+
+			.ctrl-btn {
+				background: rgba(255, 255, 255, 0.08);
+				border: none;
+				color: #ffffff;
+				width: 32px;
+				height: 32px;
+				border-radius: 6px;
+				font-size: 15px;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				transition:
+					background 0.2s,
+					color 0.2s;
+				flex-shrink: 0;
+			}
+
+			.ctrl-btn:hover {
+				background: var(--accent);
+				color: #fff;
+			}
+
+			.sidebar-tabs {
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+				flex: 1;
+			}
+
+			.sidebar-tab {
+				width: 100%;
+				padding: 12px 14px;
+				border: none;
+				border-radius: 8px;
+				background: rgba(255, 255, 255, 0.04);
+				color: rgba(255, 255, 255, 0.8);
+				font-family: 'Comfortaa', sans-serif;
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				text-align: left;
+				transition:
+					background 0.2s,
+					color 0.2s;
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+
+			.sidebar-tab:hover {
+				background: rgba(255, 255, 255, 0.08);
+				color: #fff;
+			}
+
+			.sidebar-tab.active {
+				background: var(--accent);
+				color: #fff;
+			}
+
+			.sidebar-tab .tab-icon {
+				font-size: 16px;
+				width: 24px;
+				text-align: center;
+			}
+
+			/* ── Main Content ──────────────────────────────── */
+			.main-content {
+				min-height: 100vh;
+			}
+
+			.container {
+				width: 100%;
+				max-width: 1300px;
+				margin: 0 auto;
+				padding: 30px 20px;
+			}
+
+			body.sidebar-collapsed .container {
+				max-width: 1600px;
+			}
+
+			.header {
+				background: #161920;
+				border: 1px solid rgba(255, 255, 255, 0.1);
+				border-radius: 14px;
+				padding: 24px 30px;
+				margin-bottom: 24px;
+				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+			}
+
+			.header-top {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 12px;
+			}
+
+			.title {
+				font-family: 'Comfortaa', sans-serif;
+				font-size: 24px;
+				font-weight: 700;
+				color: #fff;
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+
+			.meta-row {
+				display: flex;
+				gap: 20px;
+				font-size: 13px;
+				color: #94a3b8;
+				flex-wrap: wrap;
+			}
+
+			.meta-item span {
+				color: #e2e8f0;
+				font-weight: 600;
+			}
+
+			.meta-item a {
+				color: #60a5fa;
+				text-decoration: none;
+				font-weight: 600;
+			}
+
+			.meta-item a:hover {
+				text-decoration: underline;
+			}
+
+			.results-list {
+				display: flex;
+				flex-direction: column;
+				gap: 14px;
+			}
+
+			.result-card {
+				background: #161920;
+				border: 1px solid rgba(255, 255, 255, 0.08);
+				border-radius: 12px;
+				padding: 20px;
+				transition:
+					transform 0.15s,
+					border-color 0.15s,
+					max-height 0.3s ease;
+				overflow: hidden;
+				cursor: pointer;
+				max-height: 120px;
+			}
+
+			.result-card.expanded {
+				max-height: 800px;
+				border-color: rgba(37, 99, 235, 0.4);
+			}
+
+			.result-card:hover {
+				border-color: rgba(255, 255, 255, 0.2);
+			}
+
+			.result-card.expanded:hover {
+				border-color: rgba(37, 99, 235, 0.5);
+			}
+
+			.result-card-header {
+				display: flex;
+				align-items: flex-start;
+				justify-content: space-between;
+				gap: 12px;
+				margin-bottom: 8px;
+			}
+
+			.result-card-header-right {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				flex-shrink: 0;
+			}
+
+			.result-title {
+				font-size: 16px;
+				font-weight: 700;
+				color: #fff;
+				text-decoration: none;
+				line-height: 1.3;
+				word-wrap: break-word;
+				overflow-wrap: break-word;
+				word-break: break-word;
+				flex: 1;
+			}
+
+			.result-title:hover {
+				color: var(--accent);
+			}
+
+			.result-source-badge {
+				display: inline-block;
+				padding: 2px 8px;
+				border-radius: 4px;
+				font-size: 10px;
+				font-weight: 700;
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+				flex-shrink: 0;
+			}
+
+			.result-source-badge.linkedin {
+				background: rgba(10, 102, 194, 0.2);
+				color: #70b5f9;
+				border: 1px solid rgba(10, 102, 194, 0.3);
+			}
+
+			.result-source-badge.google {
+				background: rgba(234, 67, 53, 0.15);
+				color: #f87171;
+				border: 1px solid rgba(234, 67, 53, 0.25);
+			}
+
+			.result-card-body {
+				display: none;
+				margin-top: 12px;
+				padding-top: 12px;
+				border-top: 1px solid rgba(255, 255, 255, 0.08);
+			}
+
+			.result-card.expanded .result-card-body {
+				display: block;
+			}
+
+			.result-snippet {
+				font-size: 13.5px;
+				color: #cbd5e1;
+				line-height: 1.55;
+				margin-bottom: 12px;
+				word-wrap: break-word;
+				overflow-wrap: break-word;
+			}
+
+			.result-ai-summary {
+				font-size: 13px;
+				line-height: 1.6;
+				color: #e2e8f0;
+				margin-bottom: 12px;
+				word-wrap: break-word;
+				overflow-wrap: break-word;
+			}
+
+			.result-ai-summary h1,
+			.result-ai-summary h2,
+			.result-ai-summary h3,
+			.result-ai-summary h4 {
+				font-family: 'Comfortaa', sans-serif;
+				color: #fff;
+				margin: 12px 0 8px 0;
+				font-weight: 700;
+			}
+
+			.result-ai-summary h1 {
+				font-size: 15px;
+			}
+
+			.result-ai-summary h2 {
+				font-size: 14px;
+			}
+
+			.result-ai-summary h3 {
+				font-size: 13px;
+			}
+
+			.result-ai-summary h4 {
+				font-size: 12px;
+			}
+
+			.result-ai-summary p {
+				margin: 6px 0;
+			}
+
+			.result-ai-summary ul,
+			.result-ai-summary ol {
+				margin: 6px 0 6px 20px;
+				padding-left: 20px;
+			}
+
+			.result-ai-summary li {
+				margin: 3px 0;
+			}
+
+			.result-ai-summary strong {
+				color: #60a5fa;
+				font-weight: 700;
+			}
+
+			.result-ai-summary code {
+				background: rgba(255, 255, 255, 0.08);
+				padding: 2px 6px;
+				border-radius: 4px;
+				font-family: 'Courier New', monospace;
+				font-size: 12px;
+			}
+
+			.result-parameters {
+				font-size: 12.5px;
+				color: #cbd5e1;
+				line-height: 1.55;
+				margin-bottom: 12px;
+				margin-top: 10px;
+				padding: 8px 12px;
+				background: rgba(37, 99, 235, 0.08);
+				border: 1px solid rgba(37, 99, 235, 0.2);
+				border-radius: 6px;
+				word-wrap: break-word;
+				overflow-wrap: break-word;
+			}
+
+			.result-footer {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				font-size: 12px;
+				color: #64748b;
+				gap: 12px;
+				flex-wrap: wrap;
+			}
+
+			.result-footer-left {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				flex-wrap: wrap;
+			}
+
+			.result-link-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				color: #60a5fa;
+				text-decoration: none;
+				font-weight: 600;
+				font-size: 12.5px;
+			}
+
+			.result-link-btn:hover {
+				text-decoration: underline;
+			}
+
+			.result-card-header-actions {
+				display: flex;
+				gap: 8px;
+				align-items: center;
+				flex-shrink: 0;
+			}
+
+			.result-company {
+				font-size: 12px;
+				color: #94a3b8;
+			}
+
+			.result-posted-date {
+				font-size: 11px;
+				color: #64748b;
+			}
+
+			.result-site-label {
+				font-size: 11px;
+				color: #94a3b8;
+				background: rgba(37, 99, 235, 0.12);
+				border: 1px solid rgba(37, 99, 235, 0.25);
+				padding: 1px 6px;
+				border-radius: 4px;
+				max-width: 160px;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+
+			.card-action-btn--disabled {
+				opacity: 0.4;
+				cursor: not-allowed;
+			}
+
+			.card-action-btn--disabled:hover {
+				background: rgba(255, 255, 255, 0.06) !important;
+			}
+
+			.pagination {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-top: 28px;
+				padding: 16px 20px;
+				background: #161920;
+				border-radius: 12px;
+				border: 1px solid rgba(255, 255, 255, 0.08);
+			}
+
+			.page-btn {
+				padding: 8px 18px;
+				border-radius: 7px;
+				border: 1px solid rgba(255, 255, 255, 0.15);
+				background: rgba(255, 255, 255, 0.06);
+				color: #fff;
+				font-family: 'Comfortaa', sans-serif;
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: background 0.15s;
+			}
+
+			.page-btn:disabled {
+				opacity: 0.35;
+				cursor: not-allowed;
+			}
+
+			.page-btn:not(:disabled):hover {
+				background: var(--accent);
+				border-color: var(--accent);
+			}
+
+			.page-info {
+				font-size: 13px;
+				color: #94a3b8;
+			}
+
+			.no-results {
+				text-align: center;
+				padding: 60px 20px;
+				background: #161920;
+				border-radius: 14px;
+				border: 1px dashed rgba(255, 255, 255, 0.15);
+			}
+
+			.no-results h3 {
+				font-family: 'Comfortaa', sans-serif;
+				font-size: 18px;
+				color: #94a3b8;
+				margin-bottom: 8px;
+			}
+
+			.scrape-error {
+				text-align: center;
+				padding: 60px 20px;
+				background: #161920;
+				border-radius: 14px;
+				border: 1px solid rgba(239, 68, 68, 0.35);
+			}
+
+			.scrape-error h3 {
+				font-family: 'Comfortaa', sans-serif;
+				font-size: 18px;
+				color: #fca5a5;
+				margin-bottom: 8px;
+			}
+
+			.scrape-error p {
+				font-size: 13px;
+				color: #94a3b8;
+				line-height: 1.6;
+				margin-bottom: 18px;
+			}
+
+			.scrape-error .retry-hint {
+				display: inline-block;
+				padding: 8px 18px;
+				background: rgba(239, 68, 68, 0.12);
+				border: 1px solid rgba(239, 68, 68, 0.3);
+				border-radius: 20px;
+				color: #fca5a5;
+				font-size: 12.5px;
+				font-weight: 600;
+			}
+
+			/* Source tabs (LinkedIn / Google) */
+			.source-tabs {
+				display: flex;
+				gap: 8px;
+				align-items: center;
+			}
+
+			.result-tab-btn {
+				padding: 6px 14px;
+				border-radius: 7px;
+				border: 1px solid rgba(255, 255, 255, 0.15);
+				background: transparent;
+				color: rgba(255, 255, 255, 0.7);
+				font-family: 'Comfortaa', sans-serif;
+				font-weight: 700;
+				font-size: 12px;
+				cursor: pointer;
+			}
+
+			.result-tab-btn.active {
+				background: var(--accent) !important;
+				color: #fff !important;
+			}
+
+			/* ── Sidebar Open Stub ─────────────────────────── */
+			#sidebar-open-stub {
+				position: fixed;
+				top: 14px;
+				left: 0;
+				z-index: 300;
+				width: 26px;
+				height: 44px;
+				background: var(--accent);
+				border: none;
+				border-radius: 0 8px 8px 0;
+				color: #ffffff;
+				font-size: 14px;
+				cursor: pointer;
+				display: none;
+				align-items: center;
+				justify-content: center;
+				box-shadow: 3px 0 8px rgba(0, 0, 0, 0.3);
+				transition:
+					color 0.2s,
+					background 0.2s;
+			}
+
+			#sidebar-open-stub:hover {
+				color: var(--accent);
+				background: #1e293b;
+			}
+
+			/* ── ATS Sidebar Open Stub ─────────────────────────── */
+			#ats-open-stub {
+				position: fixed;
+				top: 14px;
+				right: 0;
+				z-index: 300;
+				width: 26px;
+				height: 44px;
+				background: var(--accent);
+				border: none;
+				border-radius: 8px 0 0 8px;
+				color: #ffffff;
+				font-size: 14px;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				box-shadow: -3px 0 8px rgba(0, 0, 0, 0.3);
+				transition:
+					color 0.2s,
+					background 0.2s;
+			}
+
+			#ats-open-stub:hover {
+				color: var(--accent);
+				background: #1e293b;
+			}
+
+			body.ats-open #ats-open-stub {
+				display: none !important;
+			}
+
+			/* ── Action buttons on cards ───────────────────── */
+			.result-card-actions {
+				display: flex;
+				gap: 8px;
+				align-items: center;
+				flex-shrink: 0;
+				flex-wrap: wrap;
+			}
+
+			.card-action-btn {
+				padding: 5px 12px;
+				border-radius: 6px;
+				border: 1px solid rgba(255, 255, 255, 0.15);
+				background: rgba(255, 255, 255, 0.06);
+				color: #fff;
+				font-family: 'Comfortaa', sans-serif;
+				font-size: 11px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: background 0.2s;
+				white-space: nowrap;
+			}
+
+			.card-action-btn:hover {
+				background: rgba(251, 146, 60, 0.15);
+			}
+
+			.card-action-btn.runATS {
+				border-color: rgba(251, 146, 60, 0.4);
+				color: #fb923c;
+			}
+
+			.card-action-btn.runATS:hover {
+				background: rgba(251, 191, 36, 0.2);
+			}
+
+			.card-action-btn.save {
+				border-color: rgba(16, 185, 129, 0.4);
+				color: #34d399;
+			}
+
+			.card-action-btn.save:hover {
+				background: rgba(16, 185, 129, 0.15);
+			}
+
+			.card-action-btn.remove {
+				border-color: rgba(239, 68, 68, 0.4);
+				color: #f87171;
+			}
+
+			.card-action-btn.remove:hover {
+				background: rgba(239, 68, 68, 0.15);
+			}
+
+			.card-action-btn.apply {
+				border-color: rgba(37, 99, 235, 0.4);
+				color: #60a5fa;
+			}
+
+			.card-action-btn.apply:hover {
+				background: rgba(37, 99, 235, 0.15);
+			}
+
+			.card-action-btn.unsave {
+				border-color: rgba(245, 158, 11, 0.4);
+				color: #fbbf24;
+			}
+
+			.card-action-btn.unsave:hover {
+				background: rgba(245, 158, 11, 0.15);
+			}
+
+			/* ── ATS Sidebar ─────────────────────────────── */
+			#ats-sidebar {
+				position: fixed;
+				top: 0;
+				right: 0;
+				width: var(--ats-w);
+				height: 100vh;
+				background: var(--secondary);
+				color: #fff;
+				z-index: 200;
+				box-shadow: -4px 0 16px rgba(0, 0, 0, 0.25);
+				transform: translateX(100%);
+				transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+				overflow-y: auto;
+			}
+
+			#ats-sidebar.open {
+				transform: translateX(0);
+			}
+
+			#ats-sidebar .panel-inner {
+				padding: 20px 22px 28px;
+				min-height: 100%;
+				display: flex;
+				flex-direction: column;
+			}
+
+			#ats-sidebar .panel-ctrl-row {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 20px;
+				flex-shrink: 0;
+			}
+
+			#ats-sidebar .ctrl-btn {
+				background: rgba(255, 255, 255, 0.08);
+				border: none;
+				color: #ffffff;
+				width: 32px;
+				height: 32px;
+				border-radius: 6px;
+				font-size: 15px;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				transition:
+					background 0.2s,
+					color 0.2s;
+				flex-shrink: 0;
+			}
+
+			#ats-sidebar .ctrl-btn:hover {
+				background: var(--accent);
+				color: #fff;
+			}
+
+			#ats-sidebar .panel-label-row {
+				font-size: 11px;
+				color: #ffffff;
+				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.1em;
+				flex: 1;
+				text-align: center;
+			}
+
+			#ats-sidebar .result-score-row {
+				display: flex;
+				align-items: center;
+				gap: 16px;
+				padding: 16px 0;
+			}
+
+			#ats-sidebar .result-score-circle {
+				width: 72px;
+				height: 72px;
+				border-radius: 50%;
+				border: 4px solid var(--success);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 22px;
+				font-weight: 700;
+				color: var(--success);
+				background: rgba(14, 165, 233, 0.1);
+				flex-shrink: 0;
+			}
+
+			#ats-sidebar .result-score-circle.good {
+				border-color: #10b981;
+				color: #10b981;
+				background: rgba(16, 185, 129, 0.1);
+			}
+
+			#ats-sidebar .result-score-circle.mid {
+				border-color: #f59e0b;
+				color: #f59e0b;
+				background: rgba(245, 158, 11, 0.1);
+			}
+
+			#ats-sidebar .result-score-circle.low {
+				border-color: #ef4444;
+				color: #ef4444;
+				background: rgba(239, 68, 68, 0.1);
+			}
+
+			#ats-sidebar .result-label {
+				font-size: 11px;
+				text-transform: uppercase;
+				letter-spacing: 0.1em;
+				color: #64748b;
+				font-weight: 600;
+			}
+
+			#ats-sidebar .result-match-text {
+				font-size: 16px;
+				font-weight: 700;
+				color: #38bdf8;
+				margin-top: 2px;
+			}
+
+			#ats-sidebar .result-section-title {
+				font-size: 11px;
+				text-transform: uppercase;
+				letter-spacing: 0.1em;
+				color: #64748b;
+				font-weight: 600;
+				margin-bottom: 8px;
+			}
+
+			#ats-sidebar .result-body {
+				font-size: 12.5px;
+				color: var(--whitetext);
+				line-height: 1.65;
+			}
+
+			#ats-sidebar .result-keyword {
+				display: inline-block;
+				background: rgba(239, 68, 68, 0.15);
+				color: #fca5a5;
+				border: 1px solid rgba(239, 68, 68, 0.3);
+				border-radius: 4px;
+				padding: 2px 7px;
+				font-size: 11px;
+				margin: 3px 3px 0 0;
+			}
+
+			#ats-sidebar .p-divider {
+				border: none;
+				border-top: 1px solid rgba(255, 255, 255, 0.1);
+				margin: 16px 0;
+			}
+
+			#ats-sidebar .ats-loading {
+				display: none;
+				text-align: center;
+				font-size: 12px;
+				color: var(--accent);
+				padding: 20px 0;
+			}
+
+			#ats-sidebar .ats-loading.show {
+				display: block;
+			}
+
+			/* ── JD Edit Modal ────────────────────────────── */
+			#jd-edit-modal {
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.75);
+				z-index: 9999;
+				align-items: center;
+				justify-content: center;
+				backdrop-filter: blur(4px);
+			}
+
+			#jd-edit-modal.show {
+				display: flex;
+			}
+
+			#jd-edit-modal .modal-content {
+				background: var(--secondary);
+				padding: 28px;
+				border-radius: 14px;
+				max-width: 640px;
+				width: 92%;
+				max-height: 88vh;
+				box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+				position: relative;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				display: flex;
+				flex-direction: column;
+			}
+
+			#jd-edit-modal .modal-close {
+				position: absolute;
+				top: 15px;
+				right: 15px;
+				background: none;
+				border: none;
+				color: #fff;
+				font-size: 28px;
+				cursor: pointer;
+				width: 36px;
+				height: 36px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border-radius: 50%;
+				background: rgba(255, 255, 255, 0.08);
+				line-height: 1;
+				transition: background 0.2s;
+			}
+
+			#jd-edit-modal .modal-close:hover {
+				background: var(--accent);
+			}
+
+			#jd-edit-modal h2 {
+				color: #fff;
+				margin-bottom: 8px;
+				text-align: center;
+				font-family: 'Comfortaa', sans-serif;
+			}
+
+			#jd-edit-modal p.desc {
+				color: rgba(255, 255, 255, 0.65);
+				font-size: 12px;
+				text-align: center;
+				margin-bottom: 16px;
+			}
+
+			#jd-edit-modal textarea {
+				width: 100%;
+				min-height: 250px;
+				flex: 1;
+				padding: 12px;
+				background: rgba(0, 0, 0, 0.3);
+				border: 1px solid rgba(255, 255, 255, 0.15);
+				border-radius: 7px;
+				color: #e2e8f0;
+				font-family: 'Inter', sans-serif;
+				font-size: 13px;
+				line-height: 1.5;
+				resize: vertical;
+				outline: none;
+				overflow-y: auto;
+			}
+
+			#jd-edit-modal textarea:focus {
+				border-color: var(--accent);
+			}
+
+			#jd-edit-modal .modal-actions {
+				display: flex;
+				gap: 12px;
+				margin-top: 16px;
+			}
+
+			#jd-edit-modal .modal-actions button {
+				flex: 1;
+				padding: 11px 14px;
+				border: none;
+				border-radius: 7px;
+				font-weight: 700;
+				font-size: 13px;
+				font-family: 'Comfortaa', sans-serif;
+				cursor: pointer;
+				transition:
+					background 0.2s,
+					transform 0.1s;
+			}
+
+			#jd-edit-modal .modal-actions button:active {
+				transform: scale(0.98);
+			}
+
+			#jd-edit-modal .btn-cancel {
+				background: rgba(255, 255, 255, 0.08);
+				color: #fff;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				padding: 4px 10px;
+				font-size: 11px;
+				font-weight: 600;
+				font-family: 'Comfortaa', sans-serif;
+				border-radius: 4px;
+				cursor: pointer;
+				transition: background 0.2s;
+			}
+
+			#jd-edit-modal .btn-cancel:hover {
+				background: rgba(255, 255, 255, 0.15);
+			}
+
+			#jd-edit-modal .btn-scan {
+				background: var(--accent);
+				color: #fff;
+			}
+
+			#jd-edit-modal .btn-scan:hover {
+				background: #1d4ed8;
+			}
+
+			#jd-edit-modal .btn-scan:disabled {
+				opacity: 0.55;
+				cursor: not-allowed;
+			}
+
+			#jd-edit-modal .jd-fetch-loading {
+				display: none;
+				text-align: center;
+				padding: 20px;
+				color: var(--accent);
+				font-size: 13px;
+			}
+
+			#jd-edit-modal .jd-fetch-loading.show {
+				display: block;
+			}
+
+			/* ── Job Dashboard Board ──────────────────────── */
+			.board-container {
+				display: flex;
+				gap: 16px;
+				overflow-x: auto;
+				padding: 10px 4px 20px 4px;
+				align-items: flex-start;
+				min-height: 300px;
+				width: 100%;
+			}
+
+			.board-list {
+				background: rgba(255, 255, 255, 0.04);
+				border: 1px solid rgba(255, 255, 255, 0.08);
+				border-radius: 12px;
+				flex: 1 1 220px;
+				max-width: none;
+				min-width: 200px;
+				max-height: 65vh;
+				display: flex;
+				flex-direction: column;
+				flex-shrink: 0;
+			}
+
+			body.sidebar-collapsed .board-list {
+				flex: 1 1 260px;
+				min-width: 240px;
+			}
+
+			#tab-dashboard .container {
+				max-width: none;
+				padding: 0;
+			}
+
+			#tab-dashboard .header {
+				border-radius: 0;
+				border-left: none;
+				border-right: none;
+				border-top: none;
+			}
+
+			.board-list-header {
+				padding: 14px 16px;
+				font-weight: 700;
+				font-size: 13px;
+				color: #fff;
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+			}
+
+			.board-list-count {
+				background: rgba(255, 255, 255, 0.08);
+				color: #94a3b8;
+				padding: 2px 8px;
+				border-radius: 12px;
+				font-size: 11px;
+				font-weight: 600;
+			}
+
+			.board-card-rounds {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 2px;
+				z-index: 9999;
+				flex-shrink: 0;
+			}
+
+			.board-card-rounds-toggle {
+				background: rgba(255, 255, 255, 0.08);
+				color: #94a3b8;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				border-radius: 12px;
+				width: 22px;
+				height: 22px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				font-size: 15px;
+				line-height: 1;
+				padding: 0;
+				position: relative;
+			}
+
+			.board-card-rounds-toggle:hover {
+				background: var(--accent);
+				color: #fff;
+				border-color: var(--accent);
+			}
+
+			.board-card-rounds-toggle:hover .board-card-rounds-tooltip {
+				visibility: visible;
+				opacity: 1;
+			}
+
+			.board-card-rounds-tooltip {
+				visibility: hidden;
+				opacity: 0;
+				position: fixed;
+				background: #0a0a0a;
+				color: #fff;
+				padding: 10px 14px;
+				border-radius: 6px;
+				font-size: 11px;
+				font-weight: 600;
+				font-family: 'Comfortaa', sans-serif;
+				white-space: normal;
+				width: 220px;
+				line-height: 1.4;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+				transition:
+					opacity 0.2s,
+					visibility 0.2s;
+				z-index: 9999;
+				pointer-events: none;
+			}
+
+			.board-card-rounds-count {
+				background: rgba(37, 99, 235, 0.2);
+				color: #60a5fa;
+				border: 1px solid rgba(37, 99, 235, 0.3);
+				padding: 2px 6px;
+				border-radius: 10px;
+				font-size: 10px;
+				font-weight: 700;
+				line-height: 1;
+			}
+
+			.board-card-rounds-menu {
+				position: fixed;
+				background: #0d0f12;
+				border: 1px solid rgba(255, 255, 255, 0.15);
+				border-radius: 6px;
+				display: none;
+				flex-direction: column;
+				overflow: hidden;
+				min-width: 110px;
+				z-index: 10000;
+			}
+
+			.board-card-rounds-menu.show {
+				display: flex;
+			}
+
+			.board-card-rounds-menu-item {
+				background: transparent;
+				border: none;
+				color: #e2e8f0;
+				font-family: 'Comfortaa', sans-serif;
+				font-size: 11px;
+				padding: 8px 12px;
+				cursor: pointer;
+				text-align: left;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			.board-card-rounds-menu-item:hover {
+				background: rgba(255, 255, 255, 0.08);
+			}
+
+			.board-card-rounds-menu-item.danger {
+				color: #f87171;
+			}
+
+			.board-card-rounds-menu-item.danger:hover {
+				background: rgba(239, 68, 68, 0.12);
+			}
+
+			.board-card-rounds-menu-item.disabled {
+				opacity: 0.4;
+				cursor: not-allowed;
+				pointer-events: none;
+			}
+
+			.board-cards-container {
+				padding: 10px;
+				overflow-y: auto;
+				flex: 1;
+				min-height: 80px;
+			}
+
+			.board-container::-webkit-scrollbar,
+			.board-cards-container::-webkit-scrollbar {
+				height: 6px;
+				width: 6px;
+			}
+
+			.board-container::-webkit-scrollbar-track,
+			.board-cards-container::-webkit-scrollbar-track {
+				background: rgba(255, 255, 255, 0.05);
+				border-radius: 3px;
+			}
+
+			.board-container::-webkit-scrollbar-thumb,
+			.board-cards-container::-webkit-scrollbar-thumb,
+			#job-scraper-content::-webkit-scrollbar-thumb,
+			#jd-edit-modal textarea::-webkit-scrollbar-thumb,
+			#jd-view-body::-webkit-scrollbar-thumb {
+				background: var(--accent);
+				border-radius: 3px;
+			}
+
+			.board-container,
+			.board-cards-container,
+			#job-scraper-content,
+			#jd-edit-modal textarea,
+			#jd-view-body {
+				scrollbar-width: thin;
+				scrollbar-color: var(--accent) rgba(255, 255, 255, 0.05);
+			}
+
+			.board-card {
+				display: flex;
+				flex-direction: column;
+				background: #161920;
+				border: 1px solid rgba(255, 255, 255, 0.08);
+				border-radius: 10px;
+				padding: 12px;
+				margin-bottom: 10px;
+				cursor: grab;
+				font-size: 13px;
+				color: #e2e8f0;
+				word-wrap: break-word;
+				user-select: none;
+				transition:
+					background 0.2s,
+					border-color 0.2s;
+				min-height: 100px;
+			}
+
+			.board-card:hover {
+				background: #1c1f2a;
+				border-color: rgba(37, 99, 235, 0.35);
+			}
+
+			.board-card.dragging {
+				opacity: 0.5;
+			}
+
+			.board-card-title {
+				font-weight: 700;
+				color: #fff;
+				margin-bottom: 6px;
+				margin-left: 3px;
+				line-height: 1.3;
+				padding-right: 36px;
+			}
+
+			.board-card-meta {
+				font-size: 11px;
+				color: #64748b;
+				margin-bottom: 4px;
+			}
+
+			.board-card-company {
+				font-size: 11px;
+				color: #94a3b8;
+				margin-bottom: 8px;
+			}
+
+			.board-card-footer {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 8px;
+				margin-top: auto;
+			}
+
+			.board-card-rounds {
+				position: absolute;
+				top: 6px;
+				right: 6px;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 2px;
+				z-index: 9999;
+			}
+
+			.board-card-source {
+				font-size: 10px;
+				font-weight: 700;
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+				padding: 2px 6px;
+				border-radius: 4px;
+			}
+
+			.board-card-source.linkedin {
+				background: rgba(10, 102, 194, 0.2);
+				color: #70b5f9;
+				border: 1px solid rgba(10, 102, 194, 0.3);
+			}
+
+			.board-card-source.google {
+				background: rgba(234, 67, 53, 0.15);
+				color: #f87171;
+				border: 1px solid rgba(234, 67, 53, 0.25);
+			}
+
+			.board-card-source.user {
+				background: rgba(16, 185, 129, 0.2);
+				color: #34d399;
+				border: 1px solid rgba(16, 185, 129, 0.3);
+			}
+
+			.board-add-card-btn {
+				background: transparent;
+				border: none;
+				color: #64748b;
+				padding: 10px 12px;
+				text-align: left;
+				border-radius: 0 0 10px 10px;
+				cursor: pointer;
+				font-size: 13px;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				transition:
+					background 0.2s,
+					color 0.2s;
+				font-family: 'Comfortaa', sans-serif;
+			}
+
+			.board-add-card-btn:hover {
+				background: rgba(255, 255, 255, 0.06);
+				color: #e2e8f0;
+			}
+
+			.board-card-composer {
+				padding: 0 10px 10px;
+				display: none;
+				flex-direction: column;
+				gap: 8px;
+			}
+
+			.board-card-composer textarea {
+				width: 100%;
+				height: 60px;
+				background: rgba(0, 0, 0, 0.25);
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				border-radius: 8px;
+				padding: 8px;
+				resize: none;
+				font-size: 13px;
+				color: #e2e8f0;
+				font-family: 'Comfortaa', sans-serif;
+				outline: none;
+			}
+
+			.board-card-composer textarea:focus {
+				border-color: var(--accent);
+			}
+
+			.board-composer-actions {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			.board-btn-confirm {
+				background: var(--accent);
+				color: #fff;
+				border: none;
+				padding: 6px 12px;
+				border-radius: 6px;
+				cursor: pointer;
+				font-size: 12px;
+				font-weight: 700;
+				font-family: 'Comfortaa', sans-serif;
+			}
+
+			.board-btn-confirm:hover {
+				background: #1d4ed8;
+			}
+
+			.board-btn-cancel {
+				background: transparent;
+				border: none;
+				color: #64748b;
+				font-size: 18px;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: 28px;
+				height: 28px;
+				border-radius: 6px;
+				transition:
+					background 0.2s,
+					color 0.2s;
+			}
+
+			.board-btn-cancel:hover {
+				background: rgba(255, 255, 255, 0.08);
+				color: #e2e8f0;
+			}
+
+			.board-empty-state {
+				padding: 40px 20px;
+				text-align: center;
+				color: #64748b;
+				font-size: 13px;
+			}
+
+			.board-card-menu-btn {
+				background: transparent;
+				border: none;
+				color: #64748b;
+				cursor: pointer;
+				font-size: 18px;
+				line-height: 1;
+				padding: 2px 6px;
+				border-radius: 4px;
+				transition:
+					background 0.2s,
+					color 0.2s;
+				flex-shrink: 0;
+				margin-right: -6px;
+			}
+
+			.board-card-menu-btn:hover {
+				background: rgba(255, 255, 255, 0.08);
+				color: #e2e8f0;
+			}
+
+			.board-card-menu {
+				position: fixed;
+				background: #0d0f12;
+				border: 1px solid rgba(255, 255, 255, 0.15);
+				border-radius: 8px;
+				box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+				z-index: 50;
+				min-width: 140px;
+				display: none;
+				flex-direction: column;
+				overflow: hidden;
+			}
+
+			.board-card-menu.show {
+				display: flex;
+				z-index: 10001;
+			}
+
+			.board-card-menu-item {
+				background: transparent;
+				border: none;
+				color: #e2e8f0;
+				font-family: 'Comfortaa', sans-serif;
+				font-size: 12px;
+				font-weight: 600;
+				cursor: pointer;
+				text-align: left;
+				padding: 10px 14px;
+				transition: background 0.15s;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			.board-card-menu-item:hover {
+				background: rgba(255, 255, 255, 0.08);
+			}
+
+			.board-card-menu-item.danger {
+				color: #f87171;
+			}
+
+			.board-card-menu-item.danger:hover {
+				background: rgba(239, 68, 68, 0.12);
+			}
+
+			.board-card {
+				position: relative;
+			}
+
+			/* ── AI Providers Modal ──────────────────────────── */
+			#providers-list {
+				display: grid;
+				grid-template-columns: repeat(2, 1fr);
+				gap: 12px;
+				margin-bottom: 16px;
+			}
+
+			.provider-item {
+				padding: 16px;
+				border-radius: 12px;
+				cursor: pointer;
+				transition:
+					background 0.2s,
+					transform 0.1s;
+				position: relative;
+				background: rgba(255, 255, 255, 0.04);
+				border: 1px solid rgba(255, 255, 255, 0.1);
+			}
+
+			.provider-item:hover {
+				background: rgba(255, 255, 255, 0.08);
+				transform: translateY(-2px);
+			}
+
+			.provider-item.selected {
+				background: rgba(37, 99, 235, 0.2);
+				border-color: var(--accent);
+			}
+
+			.provider-img {
+				width: 24px;
+				height: 24px;
+				object-fit: contain;
+				margin-right: 8px;
+			}
+
+			.provider-checkbox {
+				position: absolute;
+				top: 12px;
+				right: 12px;
+				width: 18px;
+				height: 18px;
+				accent-color: var(--accent);
+				cursor: pointer;
+			}
+
+			.provider-model {
+				font-size: 12px;
+				color: #e2e8f0;
+				margin-top: 4px;
+				font-family: monospace;
+			}
+
+			.provider-name {
+				color: #fff;
+				font-size: 13px;
+				font-weight: 600;
+			}
+
+			.provider-description {
+				font-size: 12px;
+				color: #ffffff;
+				margin-top: 4px;
+				line-height: 1.4;
+			}
+
+			#floating-footer {
+				width: 100%;
+				padding: 14px;
+				border: none;
+				border-radius: 7px;
+				font-weight: 700;
+				font-size: 13px;
+				font-family: 'Comfortaa', sans-serif;
+				cursor: pointer;
+				transition:
+					background 0.2s,
+					transform 0.1s,
+					opacity 0.2s;
+				margin-top: 10px;
+			}
+
+			#floating-footer a {
+				color: var(--bg-badge);
+				text-decoration: none;
+				transition: color 0.2s;
+			}
+
+			#floating-footer a:hover {
+				color: var(--accent);
+				text-decoration: underline;
+			}
+
+			/* Actions Dropdown (mirrored from main.html) */
+			.actions-btn-wrapper {
+				position: relative;
+				display: inline-block;
+				pointer-events: auto;
+			}
+
+			.actions-dropdown-trigger {
+				padding: 10px 14px;
+				font-family: 'Comfortaa', sans-serif;
+				font-size: 12px;
+				font-weight: 500;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				border-radius: 6px;
+				background: #0a0a0a;
+				color: #fff;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+				cursor: pointer;
+				transition: background 0.2s;
+			}
+
+			.actions-dropdown-trigger:hover {
+				background: var(--accent);
+				border-color: rgba(255, 255, 255, 0.12);
+			}
+
+			.actions-dropdown-trigger:active {
+				transform: scale(0.98);
+			}
+
+			.actions-dropdown {
+				position: absolute;
+				top: calc(100% + 6px);
+				left: 50%;
+				transform: translateX(-50%);
+				z-index: 599;
+				background: var(--secondary);
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				border-radius: 12px;
+				box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+				min-width: 220px;
+				padding: 8px 0;
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+			}
+
+			.actions-dropdown.hidden {
+				display: none;
+			}
+
+			.actions-option {
+				align-items: center;
+				gap: 12px;
+				width: 100%;
+				padding: 10px 16px;
+				background: transparent;
+				border: none;
+				color: #fff;
+				font-family: 'Comfortaa', sans-serif;
+				font-weight: 500;
+				cursor: pointer;
+				text-align: left;
+				transition: background 0.15s;
+				white-space: nowrap;
+			}
+
+			.actions-option:hover {
+				background: var(--accent);
+				color: #fff;
+			}
+
+			.actions-option.active {
+				background: var(--accent);
+				color: #fff;
+			}
+
+			.actions-option-icon {
+				display: inline-block;
+				width: 26px;
+				height: 20px;
+				text-align: center;
+				line-height: 20px;
+				opacity: 0.85;
+				font-size: 14px;
+				vertical-align: middle;
+				margin-right: 12px;
+			}
+
+			.actions-option-text {
+				font-size: 13px;
+				font-weight: 500;
+				vertical-align: middle;
+			}
+		</style>
+	</head>
+
+	<body>
+		<!-- ATS Sidebar Open Stub -->
+		<button id="ats-open-stub" onclick="openAtsSidebar()" title="ATS Results" aria-label="ATS Results">&#9776;</button>
+
+		<!-- Sidebar Open Stub -->
+		<button id="sidebar-open-stub" onclick="toggleSidebar()" title="Open sidebar" aria-label="Open sidebar">
+			&#9776;
+		</button>
+
+		<!-- Sidebar -->
+		<aside id="findjob-sidebar" class="no-print">
+			<div class="sidebar-inner">
+				<div class="sidebar-ctrl-row">
+					<button class="ctrl-btn" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Collapse sidebar">
+						&#9776;
+					</button>
+					<span class="sidebar-label">Job Finder</span>
+				</div>
+
+				<div class="sidebar-tabs">
+					<button class="sidebar-tab" data-tab="resume" onclick="window.location.href = '/public/main.html'">
+						<span class="tab-icon">📄</span>
+						Resume view
+					</button>
+					<button class="sidebar-tab active" data-tab="scraping" onclick="switchTab('scraping')">
+						<span class="tab-icon">🔎</span>
+						Scraping Results
+					</button>
+					<button class="sidebar-tab" data-tab="saved" onclick="switchTab('saved')">
+						<span class="tab-icon">💾</span>
+						Saved Jobs
+					</button>
+					<button
+						class="sidebar-tab"
+						data-tab="dashboard"
+						data-testid="sidebar-tab-dashboard"
+						onclick="switchTab('dashboard')"
+					>
+						<span class="tab-icon">🗃️</span>
+						Job Dashboard
+					</button>
+					<button class="sidebar-tab" data-tab="start-scraping" onclick="openJobScraperModal()">
+						<span class="tab-icon">🚀</span>
+						Start scraping
+					</button>
+					<button class="sidebar-tab" data-tab="providers" onclick="openProvidersModal()">
+						<span class="tab-icon">🧠</span>
+						AI Providers
+					</button>
+				</div>
+				<div id="floating-footer" class="no-print">
+					<span>Developed by Juani Ca&ntilde;ete</span>
+					<span class="dev-separator">&bull;</span>
+					<a href="https://github.com/JuaniCanete?tab=repositories" target="_blank" rel="noopener noreferrer">GitHub</a>
+					<span class="dev-separator">&bull;</span>
+					<a href="https://www.linkedin.com/in/juanignaciocanete/" target="_blank" rel="noopener noreferrer"
+						>LinkedIn</a
+					>
+				</div>
+			</div>
+		</aside>
+
+		<div
+			id="refresh-message"
+			data-testid="refresh-message"
+			style="
+				display: none;
+				position: fixed;
+				top: 20px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: var(--accent);
+				color: #fff;
+				padding: 12px 24px;
+				border-radius: 8px;
+				font-weight: 600;
+				z-index: 10000;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+			"
+		></div>
+
+		<!-- Main Content -->
+		<div class="main-content">
+			<div class="container">
+				<!-- Scraping Results Tab -->
+				<div id="tab-scraping" class="tab-content">
+					<div class="header">
+						<div class="header-top">
+							<div class="title">Scraping Results</div>
+							<div class="source-tabs">
+								<div class="actions-btn-wrapper">
+									<button
+										id="findjob-actions-trigger"
+										data-testid="findjob-actions-trigger"
+										class="actions-dropdown-trigger"
+										onclick="toggleFindJobActions()"
+										aria-expanded="false"
+										aria-haspopup="true"
+										title="Actions"
+									>
+										<span class="actions-label">Scraping sources ▾</span>
+									</button>
+									<div
+										id="findjob-actions-dropdown"
+										data-testid="findjob-actions-dropdown"
+										class="actions-dropdown hidden"
+										role="menu"
+									>
+										<button
+											class="actions-option"
+											data-testid="source-option-linkedin"
+											onclick="switchResultsTab('linkedin')"
+											role="menuitem"
+										>
+											<span class="actions-option-icon">🔗</span>
+											<span class="actions-option-text">LinkedIn</span>
+										</button>
+										<button
+											class="actions-option"
+											data-testid="source-option-google"
+											onclick="switchResultsTab('google')"
+											role="menuitem"
+										>
+											<span class="actions-option-icon">🔍</span>
+											<span class="actions-option-text">Google</span>
+										</button>
+										<button
+											class="actions-option"
+											data-testid="source-option-remoterocketship"
+											onclick="switchResultsTab('remoterocketship')"
+											role="menuitem"
+										>
+											<span class="actions-option-icon">🚀</span>
+											<span class="actions-option-text">Remote Rocketship</span>
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="meta-row">
+							<div class="meta-item">
+								Scanned: <span id="meta-timestamp" data-testid="meta-timestamp">No results</span>
+							</div>
+							<div class="meta-item">Total Findings: <span id="meta-total" data-testid="meta-total">N/A</span></div>
+							<div class="meta-item">
+								Query: <span id="meta-query" data-testid="meta-query">N/A</span
+								><span id="query-link-wrapper" data-testid="query-link-wrapper" style="display: none"
+									>. <a id="query-link" href="#" target="_blank" rel="noopener noreferrer">Link</a></span
+								>
+							</div>
+							<div class="meta-item">Source: <span id="meta-source" data-testid="meta-source">LinkedIn</span></div>
+						</div>
+					</div>
+
+					<div
+						id="extraction-loading"
+						style="
+							display: none;
+							padding: 14px 18px;
+							margin-bottom: 14px;
+							background: rgba(37, 99, 235, 0.12);
+							border: 1px solid rgba(37, 99, 235, 0.3);
+							border-radius: 8px;
+							font-size: 13px;
+							font-weight: 600;
+							color: #93c5fd;
+						"
+					>
+						⏳ Metadata extraction is in progress, this process usually takes one minute per page.
+					</div>
+
+					<div id="results-list" data-testid="results-list" class="results-list"></div>
+
+					<div id="no-results" data-testid="no-results" class="no-results" style="display: none">
+						<h3>There are no scraping results available</h3>
+						<p style="font-size: 13px; color: #64748b">Results will appear here.</p>
+					</div>
+
+					<div id="scrape-error" class="scrape-error" style="display: none">
+						<h3>⚠️ Scraping Failed</h3>
+						<p id="scrape-error-message">The scraping process could not be completed. Please try again.</p>
+						<div>
+							<span class="retry-hint">Go back to the main tab, adjust your query, and retry.</span>
+						</div>
+					</div>
+
+					<div id="pagination" data-testid="pagination" class="pagination" style="display: none">
+						<button id="btn-prev-page" class="page-btn" onclick="prevPage()">◀ Previous</button>
+						<span id="page-info" class="page-info">Page 1 of 1</span>
+						<button id="btn-next-page" class="page-btn" onclick="nextPage()">Next ▶</button>
+					</div>
+				</div>
+
+				<!-- Saved Jobs Tab -->
+				<div id="tab-saved" class="tab-content" style="display: none">
+					<div class="header">
+						<div class="header-top">
+							<div class="title">Saved Jobs</div>
+						</div>
+						<div class="meta-row">
+							<div class="meta-item">Total Saved: <span id="saved-meta-total">0</span></div>
+							<div class="meta-item">Sources: <span id="saved-meta-sources">None</span></div>
+						</div>
+					</div>
+					<div id="saved-results-list" class="results-list"></div>
+					<div id="saved-no-results" class="no-results" style="display: none">
+						<h3>No saved jobs yet</h3>
+						<p style="font-size: 13px; color: #64748b">Save jobs from Scraping Results to see them here.</p>
+					</div>
+				</div>
+
+				<!-- Job Dashboard Tab -->
+				<div id="tab-dashboard" class="tab-content" style="display: none">
+					<div class="header">
+						<div class="header-top">
+							<div class="title">Job Dashboard</div>
+						</div>
+						<p style="font-size: 13px; color: #94a3b8; margin-bottom: 12px">
+							Mark jobs as "Applied?" from Scraping Results or Saved Jobs pages to track them here or create jobs
+							manually using "+ Add a card".
+						</p>
+						<div
+							id="test-data-warning"
+							style="
+								display: none;
+								padding: 10px 14px;
+								margin-bottom: 12px;
+								background: rgba(245, 158, 11, 0.15);
+								border: 1px solid rgba(245, 158, 11, 0.4);
+								border-radius: 8px;
+								font-size: 12px;
+								color: #fbbf24;
+								align-items: center;
+								gap: 10px;
+							"
+						>
+							<span>⚠ Test mode active — dashboard may show test data</span>
+							<button
+								id="clear-test-data-btn"
+								class="p-btn p-btn-secondary"
+								style="margin-top: 0; padding: 6px 12px; font-size: 11px"
+								onclick="clearTestData()"
+							>
+								Clear Test Data
+							</button>
+						</div>
+						<div class="meta-row">
+							<div class="meta-item">Total Applications: <span id="dashboard-meta-total">0</span></div>
+							<div class="meta-item">Statuses: <span id="dashboard-meta-statuses">None</span></div>
+						</div>
+					</div>
+					<div id="dashboard-board" data-testid="dashboard-board" class="board-container"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ATS Sidebar -->
+		<div id="ats-sidebar">
+			<div class="panel-inner">
+				<div class="panel-ctrl-row">
+					<span class="panel-label-row">ATS results</span>
+					<button class="ctrl-btn" onclick="closeAtsSidebar()" title="Close ATS results" aria-label="Close ATS results">
+						&#x2716;
+					</button>
+				</div>
+
+				<div class="result-score-row">
+					<div class="result-score-circle" id="ats-score-circle">--</div>
+					<div>
+						<div class="result-label">ATS Match</div>
+						<div class="result-match-text" id="ats-score-text">Pending</div>
+					</div>
+				</div>
+
+				<div
+					id="ats-job-title"
+					class="result-job-title"
+					style="
+						display: none;
+						font-size: 14px;
+						font-weight: 700;
+						color: #fff;
+						margin-bottom: 12px;
+						word-break: break-word;
+					"
+				></div>
+
+				<div
+					id="ats-scan-again-msg"
+					class="result-body"
+					style="
+						color: #fca5a5;
+						margin-top: 6px;
+						margin-bottom: 14px;
+						padding: 12px;
+						background: rgba(239, 68, 68, 0.1);
+						border: 1px solid rgba(239, 68, 68, 0.25);
+						border-radius: 6px;
+					"
+				>
+					Click "Check JD" on a job card to start an ATS scan.
+				</div>
+
+				<div id="ats-breakdown-section" style="display: none; margin-bottom: 14px">
+					<hr class="p-divider" style="margin: 12px 0" />
+					<div class="result-section-title">The Match Breakdown</div>
+					<div
+						class="result-body"
+						style="
+							display: flex;
+							flex-direction: column;
+							gap: 8px;
+							background: rgba(255, 255, 255, 0.04);
+							padding: 12px;
+							border-radius: 6px;
+							border: 1px solid rgba(255, 255, 255, 0.08);
+						"
+					>
+						<div style="display: flex; justify-content: space-between">
+							<span>Keyword Match:</span><span id="ats-br-skills" style="font-weight: 700">--</span>
+						</div>
+						<div style="display: flex; justify-content: space-between">
+							<span>Experience Alignment:</span><span id="ats-br-experience" style="font-weight: 700">--</span>
+						</div>
+						<div style="display: flex; justify-content: space-between">
+							<span>Education/Cert Fit:</span><span id="ats-br-education" style="font-weight: 700">--</span>
+						</div>
+					</div>
+				</div>
+
+				<hr class="p-divider" />
+
+				<div style="margin-bottom: 16px">
+					<div class="result-section-title">Feedback</div>
+					<div class="result-body" id="ats-feedback">&mdash;</div>
+				</div>
+
+				<hr class="p-divider" />
+
+				<div>
+					<div class="result-section-title">Missing Keywords</div>
+					<div id="ats-keywords" class="result-body">&mdash;</div>
+				</div>
+
+				<hr class="p-divider" />
+
+				<div>
+					<div class="result-section-title">AI Results powered by</div>
+					<div id="ats-poweredBy" class="result-body">&mdash;</div>
+				</div>
+
+				<div class="ats-loading" id="ats-loading">
+					<span class="dot-anim">Scanning using AI</span>
+				</div>
+
+				<button
+					onclick="openCoverLetterModal()"
+					style="
+						width: 100%;
+						padding: 10px;
+						background: var(--static);
+						color: #fff;
+						font-weight: 600;
+						font-size: 12px;
+						text-transform: uppercase;
+						letter-spacing: 0.08em;
+						border: 1px solid rgba(255, 255, 255, 0.12);
+						border-radius: 6px;
+						cursor: pointer;
+						margin-top: 12px;
+					"
+				>
+					✉️ Generate Cover Letter
+				</button>
+			</div>
+		</div>
+
+		<!-- Cover Letter Modal -->
+		<div
+			id="cover-letter-modal"
+			data-testid="cover-letter-modal"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(146, 178, 219, 0.129);
+				z-index: 9999;
+				align-items: center;
+				justify-content: center;
+				backdrop-filter: blur(4px);
+			"
+		>
+			<div
+				style="
+					background: var(--secondary);
+					padding: 28px;
+					border-radius: 14px;
+					max-width: 640px;
+					width: 92%;
+					max-height: 88vh;
+					overflow-y: auto;
+					box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+					position: relative;
+					border: 1px solid rgba(255, 255, 255, 0.12);
+				"
+			>
+				<button
+					onclick="closeCoverLetterModal()"
+					style="
+						position: absolute;
+						top: 15px;
+						right: 15px;
+						background: none;
+						border: none;
+						color: #fff;
+						font-size: 28px;
+						cursor: pointer;
+						width: 36px;
+						height: 36px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						border-radius: 50%;
+						background: rgba(255, 255, 255, 0.08);
+						line-height: 1;
+						transition: background 0.2s;
+					"
+					onmouseenter="this.style.background = 'var(--accent)'"
+					onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+				>
+					×
+				</button>
+				<h2 style="color: #fff; margin-bottom: 4px; text-align: center">✉️ Cover Letter</h2>
+				<p
+					style="
+						color: rgba(255, 255, 255, 0.65);
+						font-size: 12px;
+						text-align: center;
+						margin-bottom: 20px;
+						font-family: 'Comfortaa', sans-serif;
+					"
+				>
+					Generate a personalized cover letter based on your resume and the job description
+				</p>
+
+				<!-- Settings Form -->
+				<div id="cover-letter-settings" style="display: flex; flex-direction: column; gap: 14px">
+					<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+						<div>
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Tone</label
+							>
+							<select
+								id="cl-tone"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="Formal">Formal</option>
+								<option value="Relaxed">Relaxed</option>
+								<option value="Cold">Cold</option>
+							</select>
+						</div>
+						<div>
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>English Level</label
+							>
+							<select
+								id="cl-english-level"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="C1">C1</option>
+								<option value="C2">C2</option>
+								<option value="Native">Native</option>
+							</select>
+						</div>
+					</div>
+					<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+						<div>
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Include Salutation & Sign-off</label
+							>
+							<select
+								id="cl-salutation-signoff"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="true">Yes</option>
+								<option value="false">No</option>
+							</select>
+						</div>
+						<div>
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Char Limit</label
+							>
+							<input
+								type="text"
+								id="cl-char-limit"
+								placeholder="Empty uses default = 400"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.3);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							/>
+						</div>
+					</div>
+					<div>
+						<label
+							style="
+								display: block;
+								font-size: 11px;
+								font-weight: 600;
+								color: #ffffff;
+								text-transform: uppercase;
+								letter-spacing: 0.08em;
+								margin-bottom: 5px;
+							"
+							>Focus Areas (comma-separated)</label
+						>
+						<input
+							type="text"
+							id="cl-focus"
+							placeholder="e.g. Automation, Playwright, CI/CD"
+							style="
+								width: 100%;
+								padding: 10px 12px;
+								background: rgba(0, 0, 0, 0.3);
+								border: 1px solid rgba(255, 255, 255, 0.15);
+								border-radius: 7px;
+								color: #fff;
+								font-family: 'Comfortaa', sans-serif;
+								font-size: 13px;
+								outline: none;
+							"
+						/>
+					</div>
+				</div>
+
+				<!-- Loading State -->
+				<div id="cover-letter-loading" style="display: none; text-align: center; padding: 20px">
+					<p style="color: var(--accent)" class="dot-anim">Generating cover letter using AI</p>
+				</div>
+
+				<!-- Error State -->
+				<div
+					id="cover-letter-error"
+					style="
+						display: none;
+						background: rgba(239, 68, 68, 0.1);
+						border: 1px solid rgba(239, 68, 68, 0.3);
+						padding: 15px;
+						border-radius: 6px;
+						margin-bottom: 15px;
+					"
+				>
+					<p id="cover-letter-error-text" style="color: #fca5a5; font-size: 13px"></p>
+				</div>
+
+				<!-- Generated Cover Letter -->
+				<div id="cover-letter-result" style="display: none">
+					<textarea
+						id="cover-letter-text"
+						style="
+							width: 100%;
+							min-height: 300px;
+							padding: 12px;
+							background: rgba(0, 0, 0, 0.3);
+							border: 1px solid rgba(255, 255, 255, 0.15);
+							border-radius: 7px;
+							color: #e2e8f0;
+							font-family: 'Inter', sans-serif;
+							font-size: 13px;
+							line-height: 1.5;
+							resize: vertical;
+							outline: none;
+						"
+					></textarea>
+				</div>
+
+				<!-- Modal Actions -->
+				<div id="cover-letter-actions" style="display: flex; gap: 12px; margin-top: 16px">
+					<button class="p-btn p-btn-secondary" style="flex: 1" onclick="closeCoverLetterModal()">Cancel</button>
+					<button
+						id="btn-generate-cover-letter"
+						class="p-btn p-btn-primary"
+						style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700"
+						onclick="generateCoverLetter()"
+					>
+						✨ Generate Cover Letter
+					</button>
+				</div>
+				<div id="cover-letter-result-actions" style="display: none; gap: 12px; margin-top: 16px">
+					<button class="p-btn p-btn-secondary" style="flex: 1" onclick="copyCoverLetter()">📋 Copy</button>
+					<button
+						class="p-btn p-btn-primary"
+						style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700"
+						onclick="downloadCoverLetter()"
+					>
+						⬇ Download
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- JD View Modal (Feature 1: Show JD) -->
+		<div
+			id="jd-view-modal"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(146, 178, 219, 0.129);
+				z-index: 10000;
+				align-items: center;
+				justify-content: center;
+				backdrop-filter: blur(4px);
+			"
+		>
+			<div
+				style="
+					background: var(--secondary);
+					padding: 28px;
+					border-radius: 14px;
+					max-width: 640px;
+					width: 92%;
+					max-height: 80vh;
+					box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+					position: relative;
+					border: 1px solid rgba(37, 99, 235, 0.4);
+					display: flex;
+					flex-direction: column;
+				"
+			>
+				<button
+					onclick="closeJdViewModal()"
+					style="
+						position: absolute;
+						top: 15px;
+						right: 15px;
+						background: none;
+						border: none;
+						color: #fff;
+						font-size: 28px;
+						cursor: pointer;
+						width: 36px;
+						height: 36px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						border-radius: 50%;
+						background: rgba(255, 255, 255, 0.08);
+						line-height: 1;
+						transition: background 0.2s;
+					"
+					onmouseenter="this.style.background = 'var(--accent)'"
+					onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+				>
+					×
+				</button>
+				<h2 id="jd-view-title" style="color: #fff; margin-bottom: 12px; font-family: 'Comfortaa', sans-serif">
+					Job Description
+				</h2>
+				<div
+					id="jd-view-loading"
+					style="display: none; color: rgba(255, 255, 255, 0.7); font-size: 14px; margin-bottom: 12px"
+				>
+					<span class="dot-anim">Loading job description...</span>
+				</div>
+				<div
+					id="jd-view-body"
+					style="
+						color: rgba(255, 255, 255, 0.9);
+						font-size: 14px;
+						line-height: 1.6;
+						white-space: pre-wrap;
+						word-break: break-word;
+						flex: 1;
+						overflow-y: auto;
+					"
+				></div>
+			</div>
+		</div>
+
+		<!-- JD Collection Error Modal -->
+		<div
+			id="jd-collection-modal"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(146, 178, 219, 0.129);
+				z-index: 10000;
+				align-items: center;
+				justify-content: center;
+				backdrop-filter: blur(4px);
+			"
+		>
+			<div
+				style="
+					background: var(--secondary);
+					padding: 28px;
+					border-radius: 14px;
+					max-width: 480px;
+					width: 92%;
+					box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+					position: relative;
+					border: 1px solid rgba(245, 158, 11, 0.5);
+					text-align: center;
+				"
+			>
+				<button
+					onclick="closeJdCollectionModal()"
+					style="
+						position: absolute;
+						top: 15px;
+						right: 15px;
+						background: none;
+						border: none;
+						color: #fff;
+						font-size: 28px;
+						cursor: pointer;
+						width: 36px;
+						height: 36px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						border-radius: 50%;
+						background: rgba(255, 255, 255, 0.08);
+						line-height: 1;
+						transition: background 0.2s;
+					"
+					onmouseenter="this.style.background = 'var(--accent)'"
+					onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+				>
+					×
+				</button>
+				<h2 style="color: #fff; margin-bottom: 12px; text-align: center; font-family: 'Comfortaa', sans-serif">
+					⚠️ Job Collection Detected
+				</h2>
+				<p
+					id="jd-collection-message"
+					style="
+						color: rgba(255, 255, 255, 0.85);
+						font-size: 14px;
+						text-align: center;
+						margin-bottom: 20px;
+						line-height: 1.5;
+					"
+				>
+					ATS is not possible as the link belongs to a collection of jobs instead of a job with unique JD. Enter the
+					link to gather JD or apply is recommended.
+				</p>
+				<button
+					onclick="closeJdCollectionModal()"
+					style="
+						padding: 11px 24px;
+						border: none;
+						border-radius: 7px;
+						font-weight: 700;
+						font-size: 13px;
+						font-family: 'Comfortaa', sans-serif;
+						cursor: pointer;
+						background: #f59e0b;
+						color: #1a1a1a;
+						transition: background 0.2s;
+					"
+					onmouseenter="this.style.background = '#d97706'"
+					onmouseleave="this.style.background = '#f59e0b'"
+				>
+					Ok
+				</button>
+			</div>
+		</div>
+
+		<!-- JD Edit Modal -->
+		<div id="jd-edit-modal">
+			<div class="modal-content">
+				<button class="modal-close" onclick="closeJdEditModal()">×</button>
+				<h2>Review Job Description</h2>
+				<p class="desc">
+					Edit the fetched JD text below to remove unrelated content (benefits, navigation, etc.), then scan with ATS.
+				</p>
+				<div
+					id="jd-saved-indicator"
+					style="
+						display: none;
+						padding: 8px 12px;
+						background: rgba(16, 185, 129, 0.15);
+						border: 1px solid rgba(16, 185, 129, 0.3);
+						border-radius: 6px;
+						color: #10b981;
+						font-size: 12px;
+						font-weight: 600;
+						margin-bottom: 12px;
+						align-items: center;
+						justify-content: space-between;
+					"
+				>
+					<span>✓ Using saved JD from database</span>
+					<button
+						id="jd-refresh-btn"
+						onclick="refreshJd()"
+						style="
+							padding: 4px 10px;
+							background: var(--accent);
+							color: #fff;
+							border: none;
+							border-radius: 4px;
+							font-size: 11px;
+							font-weight: 600;
+							cursor: pointer;
+						"
+					>
+						Fetch JD again using AI
+					</button>
+				</div>
+				<div
+					id="jd-clean-indicator"
+					style="
+						display: none;
+						padding: 8px 12px;
+						background: rgba(37, 99, 235, 0.15);
+						border: 1px solid rgba(37, 99, 235, 0.3);
+						border-radius: 6px;
+						color: #60a5fa;
+						font-size: 12px;
+						font-weight: 600;
+						margin-bottom: 12px;
+						align-items: center;
+						justify-content: space-between;
+					"
+				>
+					<span>Click to clean using AI</span>
+					<div style="display: flex; gap: 8px; align-items: center">
+						<button
+							id="jd-clean-btn"
+							onclick="cleanJdUsingAi()"
+							style="
+								padding: 4px 10px;
+								background: var(--accent);
+								color: #fff;
+								border: none;
+								border-radius: 4px;
+								font-size: 11px;
+								font-weight: 600;
+								cursor: pointer;
+							"
+						>
+							Clean JD using AI
+						</button>
+						<button id="jd-stop-btn" class="btn-cancel" onclick="stopCleanJd()" style="display: none">Stop</button>
+					</div>
+				</div>
+				<div class="jd-fetch-loading" id="jd-fetch-loading">
+					<span class="dot-anim">Fetching job description...</span>
+				</div>
+				<textarea
+					id="jd-edit-textarea"
+					placeholder="Job description text will appear here after fetching..."
+				></textarea>
+				<div class="modal-actions" style="display: flex; gap: 8px; flex-wrap: wrap">
+					<button
+						class="btn-cancel"
+						onclick="closeJdEditModal()"
+						style="flex: 1 1 auto; min-width: 120px; padding: 8px 16px"
+					>
+						Cancel
+					</button>
+					<!-- For Google & Remote Rocketship: show Fetch JD and Run ATS buttons -->
+					<div id="jd-actions-fetch" style="display: none; gap: 8px">
+						<button
+							class="btn-scan"
+							id="jd-fetch-btn"
+							onclick="fetchJdForAts()"
+							style="flex: 1 1 auto; min-width: 120px; padding: 8px 16px"
+						>
+							🔄 Fetch JD
+						</button>
+						<button
+							class="btn-scan"
+							id="btn-scan-jd"
+							onclick="runAtsScanFromResults()"
+							style="flex: 1 1 auto; min-width: 120px; padding: 8px 16px"
+						>
+							🔍 Validate with ATS
+						</button>
+					</div>
+					<!-- For LinkedIn: show single Run ATS button -->
+					<button
+						class="btn-scan"
+						id="btn-scan-jd-default"
+						onclick="runAtsScanFromResults()"
+						style="flex: 1 1 auto; justify-content: center; min-width: 120px; padding: 8px 16px"
+					>
+						🔍 Validate with ATS
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Scraper Overlay -->
+		<div
+			id="scraper-overlay"
+			data-testid="scraper-overlay"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(146, 178, 219, 0.129);
+				backdrop-filter: blur(10px);
+				z-index: 9998;
+				align-items: center;
+				justify-content: center;
+				flex-direction: column;
+				gap: 16px;
+			"
+		>
+			<p
+				style="color: #fff; font-size: 18px; font-weight: 700; font-family: 'Comfortaa', sans-serif; text-align: center"
+			>
+				🔎 Scraping <span id="scraper-source-label">LinkedIn</span> <span class="dot-anim"></span>
+			</p>
+			<button
+				id="btn-cancel-scraper"
+				onclick="cancelScraping()"
+				style="
+					background: rgba(255, 255, 255, 0.08);
+					border: 1px solid rgba(255, 255, 255, 0.2);
+					color: #fff;
+					padding: 10px 24px;
+					border-radius: 7px;
+					font-family: 'Comfortaa', sans-serif;
+					font-size: 13px;
+					font-weight: 600;
+					cursor: pointer;
+					transition: background 0.2s;
+				"
+				onmouseenter="this.style.background = '#ef4444'"
+				onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+			>
+				Cancel
+			</button>
+		</div>
+
+		<!-- Job Scraper Modal -->
+		<div
+			id="job-scraper-modal"
+			data-testid="job-scraper-modal"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(146, 178, 219, 0.129);
+				z-index: 9999;
+				align-items: center;
+				justify-content: center;
+				backdrop-filter: blur(4px);
+			"
+		>
+			<div
+				id="job-scraper-content"
+				style="
+					background: var(--secondary);
+					padding: 28px;
+					border-radius: 14px;
+					max-width: 580px;
+					width: 92%;
+					max-height: 88vh;
+					overflow-y: auto;
+					box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+					position: relative;
+					border: 1px solid rgba(255, 255, 255, 0.12);
+				"
+			>
+				<button
+					onclick="closeJobScraperModal()"
+					style="
+						position: absolute;
+						top: 15px;
+						right: 15px;
+						background: none;
+						border: none;
+						color: #fff;
+						font-size: 28px;
+						cursor: pointer;
+						width: 36px;
+						height: 36px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						border-radius: 50%;
+						background: rgba(255, 255, 255, 0.08);
+						line-height: 1;
+						transition: background 0.2s;
+					"
+					onmouseenter="this.style.background = 'var(--accent)'"
+					onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+				>
+					×
+				</button>
+				<h2 style="color: #fff; margin-bottom: 4px; text-align: center">🔎 Find a Job</h2>
+				<p
+					style="
+						color: rgba(255, 255, 255, 0.65);
+						font-size: 12px;
+						text-align: center;
+						margin-bottom: 20px;
+						font-family: 'Comfortaa', sans-serif;
+					"
+				>
+					Start scraping sites using AI query builder
+				</p>
+
+				<!-- Platform Toggle -->
+				<div
+					style="
+						display: flex;
+						gap: 10px;
+						margin-bottom: 20px;
+						background: rgba(0, 0, 0, 0.25);
+						padding: 5px;
+						border-radius: 9px;
+						border: 1px solid rgba(255, 255, 255, 0.08);
+					"
+				>
+					<button
+						id="toggle-platform-linkedin"
+						onclick="switchScraperPlatform('linkedin')"
+						style="
+							flex: 1;
+							padding: 10px;
+							border-radius: 7px;
+							border: none;
+							background: var(--accent);
+							color: #fff;
+							font-family: 'Comfortaa', sans-serif;
+							font-weight: 700;
+							font-size: 13px;
+							cursor: pointer;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							gap: 8px;
+							transition: background 0.2s;
+						"
+					>
+						🔗 LinkedIn
+					</button>
+					<button
+						id="toggle-platform-google"
+						onclick="switchScraperPlatform('google')"
+						style="
+							flex: 1;
+							padding: 10px;
+							border-radius: 7px;
+							border: none;
+							background: transparent;
+							color: rgba(255, 255, 255, 0.7);
+							font-family: 'Comfortaa', sans-serif;
+							font-weight: 700;
+							font-size: 13px;
+							cursor: pointer;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							gap: 8px;
+							transition: background 0.2s;
+						"
+					>
+						🔍 Google
+					</button>
+					<button
+						id="toggle-platform-remoterocketship"
+						onclick="switchScraperPlatform('remoterocketship')"
+						style="
+							flex: 1;
+							padding: 10px;
+							border-radius: 7px;
+							border: none;
+							background: transparent;
+							color: rgba(255, 255, 255, 0.7);
+							font-family: 'Comfortaa', sans-serif;
+							font-weight: 700;
+							font-size: 13px;
+							cursor: pointer;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							gap: 8px;
+							transition: background 0.2s;
+						"
+					>
+						🚀 Remote Rocketship
+					</button>
+				</div>
+
+				<!-- Query Builder Fields -->
+				<div style="display: flex; flex-direction: column; gap: 14px">
+					<div>
+						<label
+							style="
+								display: block;
+								font-size: 11px;
+								font-weight: 600;
+								color: #ffffff;
+								text-transform: uppercase;
+								letter-spacing: 0.08em;
+								margin-bottom: 5px;
+							"
+							>Role / Title <span style="color: #ef4444">*</span></label
+						>
+						<input
+							type="text"
+							id="scraper-role"
+							placeholder="e.g. Fullstack Engineer, Frontend Developer"
+							oninput="
+								updateQueryPreview();
+								clearRoleError();
+							"
+							style="
+								width: 100%;
+								padding: 10px 12px;
+								background: rgba(0, 0, 0, 0.3);
+								border: 1px solid rgba(255, 255, 255, 0.15);
+								border-radius: 7px;
+								color: #fff;
+								font-family: 'Comfortaa', sans-serif;
+								font-size: 13px;
+								outline: none;
+							"
+						/>
+						<span
+							id="scraper-role-error"
+							style="
+								display: none;
+								font-size: 11px;
+								color: #ef4444;
+								margin-top: 4px;
+								font-family: 'Comfortaa', sans-serif;
+							"
+							>This field is mandatory.</span
+						>
+					</div>
+					<div>
+						<label
+							style="
+								display: block;
+								font-size: 11px;
+								font-weight: 600;
+								color: #ffffff;
+								text-transform: uppercase;
+								letter-spacing: 0.08em;
+								margin-bottom: 5px;
+							"
+							>Tech / Skills / Keywords</label
+						>
+						<input
+							type="text"
+							id="scraper-keywords"
+							placeholder="e.g. Python, AWS, Docker, React"
+							oninput="updateQueryPreview()"
+							style="
+								width: 100%;
+								padding: 10px 12px;
+								background: rgba(0, 0, 0, 0.3);
+								border: 1px solid rgba(255, 255, 255, 0.15);
+								border-radius: 7px;
+								color: #fff;
+								font-family: 'Comfortaa', sans-serif;
+								font-size: 13px;
+								outline: none;
+							"
+						/>
+					</div>
+
+					<div id="scraper-row-linkedin-1" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+						<div id="scraper-field-seniority">
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Seniority</label
+							>
+							<select
+								id="scraper-seniority"
+								onchange="updateQueryPreview()"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="">Any</option>
+								<option value="Internship">Internship</option>
+								<option value="Entry">Entry level</option>
+								<option value="Associate">Associate</option>
+								<option value="Mid">Mid-senior level</option>
+								<option value="Director">Director</option>
+								<option value="Executive">Executive</option>
+							</select>
+						</div>
+						<div id="scraper-field-date-posted">
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Date Posted</label
+							>
+							<select
+								id="scraper-date-posted"
+								onchange="updateQueryPreview()"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="">Any</option>
+								<option value="week" selected>Past Week</option>
+								<option value="day">Past 24h</option>
+								<option value="month">Past Month</option>
+							</select>
+						</div>
+					</div>
+
+					<div id="scraper-row-linkedin-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+						<div id="scraper-field-work-type">
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Work Type</label
+							>
+							<select
+								id="scraper-work-type"
+								onchange="updateQueryPreview()"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="">Any</option>
+								<option value="remote">Remote</option>
+								<option value="hybrid">Hybrid</option>
+								<option value="onsite">On-site</option>
+							</select>
+						</div>
+						<div id="scraper-field-employment">
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Employment</label
+							>
+							<select
+								id="scraper-employment"
+								onchange="updateQueryPreview()"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="">Any</option>
+								<option value="fulltime">Full-time</option>
+								<option value="parttime">Part-time</option>
+								<option value="contractor">Contractor</option>
+							</select>
+						</div>
+					</div>
+
+					<!-- Remote Rocketship fields (Remote Rocketship view only) -->
+					<div id="remoterocketship-fields" style="display: none">
+						<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+							<div id="scraper-field-country-rr">
+								<label
+									style="
+										display: block;
+										font-size: 11px;
+										font-weight: 600;
+										color: #ffffff;
+										text-transform: uppercase;
+										letter-spacing: 0.08em;
+										margin-bottom: 5px;
+									"
+									>Country / Locations</label
+								>
+								<input
+									type="text"
+									id="scraper-country-rr"
+									placeholder="e.g. Argentina"
+									oninput="updateQueryPreview()"
+									style="
+										width: 100%;
+										padding: 9px 12px;
+										background: rgba(0, 0, 0, 0.3);
+										border: 1px solid rgba(255, 255, 255, 0.15);
+										border-radius: 7px;
+										color: #fff;
+										font-family: 'Comfortaa', sans-serif;
+										font-size: 12.5px;
+										outline: none;
+									"
+								/>
+							</div>
+							<div id="scraper-field-seniority-rr">
+								<label
+									style="
+										display: block;
+										font-size: 11px;
+										font-weight: 600;
+										color: #ffffff;
+										text-transform: uppercase;
+										letter-spacing: 0.08em;
+										margin-bottom: 5px;
+									"
+									>Seniority</label
+								>
+								<select
+									id="scraper-seniority-rr"
+									onchange="updateQueryPreview()"
+									style="
+										width: 100%;
+										padding: 9px;
+										background: rgba(0, 0, 0, 0.4);
+										border: 1px solid rgba(255, 255, 255, 0.15);
+										border-radius: 7px;
+										color: #fff;
+										font-family: 'Comfortaa', sans-serif;
+										font-size: 12px;
+										outline: none;
+									"
+								>
+									<option value="">Any</option>
+									<option value="entry-level">Entry-level (0 years)</option>
+									<option value="junior">Junior (1-2 years)</option>
+									<option value="mid">Mid-level (3-6 years)</option>
+									<option value="senior">Senior (7+ years)</option>
+									<option value="expert">Leadership positions</option>
+								</select>
+							</div>
+						</div>
+					</div>
+
+					<div id="scraper-field-country">
+						<label
+							style="
+								display: block;
+								font-size: 11px;
+								font-weight: 600;
+								color: #ffffff;
+								text-transform: uppercase;
+								letter-spacing: 0.08em;
+								margin-bottom: 5px;
+							"
+							>Country</label
+						>
+						<input
+							type="text"
+							id="scraper-country"
+							placeholder="e.g. Argentina"
+							oninput="updateQueryPreview()"
+							style="
+								width: 100%;
+								padding: 9px 12px;
+								background: rgba(0, 0, 0, 0.3);
+								border: 1px solid rgba(255, 255, 255, 0.15);
+								border-radius: 7px;
+								color: #fff;
+								font-family: 'Comfortaa', sans-serif;
+								font-size: 12.5px;
+								outline: none;
+							"
+						/>
+					</div>
+
+					<!-- Google Target Domains (Google view only) -->
+					<div
+						id="google-domains-section"
+						style="
+							display: none;
+							background: rgba(0, 0, 0, 0.2);
+							padding: 14px;
+							border-radius: 9px;
+							border: 1px solid rgba(255, 255, 255, 0.08);
+						"
+					>
+						<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px">
+							<label
+								style="
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 8px;
+								"
+								>Target Domains</label
+							>
+							<label style="font-size: 12px; color: #ddd; cursor: pointer; margin-bottom: 8px">
+								<input type="checkbox" id="select-all-domains" onchange="toggleAllDomains(this)" /> Select All /
+								Deselect All
+							</label>
+						</div>
+						<div
+							id="domains-checklist"
+							style="
+								display: grid;
+								grid-template-columns: repeat(3, 1fr);
+								gap: 6px;
+								max-height: 96px;
+								overflow-y: auto;
+								margin-bottom: 10px;
+							"
+						>
+							<label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex"
+								><input type="checkbox" value="jobs.lever.co" onchange="updateQueryPreview()" /> jobs.lever.co</label
+							>
+							<label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex"
+								><input type="checkbox" value="jobs.ashbyhq.com" onchange="updateQueryPreview()" />
+								jobs.ashbyhq.com</label
+							>
+							<label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex"
+								><input type="checkbox" value="myworkdayjobs.com" onchange="updateQueryPreview()" />
+								myworkdayjobs.com</label
+							>
+							<label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex"
+								><input type="checkbox" value="teamtailor.com" onchange="updateQueryPreview()" /> teamtailor.com</label
+							>
+							<label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex"
+								><input type="checkbox" value="boards.greenhouse.io" onchange="updateQueryPreview()" />
+								boards.greenhouse.io</label
+							>
+							<label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex"
+								><input type="checkbox" value="bamboohr.com" onchange="updateQueryPreview()" /> bamboohr.com</label
+							>
+							<label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex"
+								><input type="checkbox" value="torre.ai" onchange="updateQueryPreview()" /> torre.ai</label
+							>
+							<label style="font-size: 12px; color: #ddd; cursor: pointer; display: flex"
+								><input type="checkbox" value="jobs.dayforcehcm.com" onchange="updateQueryPreview()" />
+								jobs.dayforcehcm.com</label
+							>
+						</div>
+						<div style="display: flex; gap: 8px">
+							<input
+								type="text"
+								id="custom-domain-input"
+								placeholder="Add custom domain (e.g. recruitee.com)"
+								style="
+									flex: 1;
+									padding: 7px 10px;
+									background: rgba(0, 0, 0, 0.3);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 6px;
+									color: #fff;
+									font-size: 12px;
+									outline: none;
+								"
+							/>
+							<button
+								onclick="addCustomDomain()"
+								style="
+									padding: 7px 14px;
+									background: rgba(255, 255, 255, 0.12);
+									border: 1px solid rgba(255, 255, 255, 0.2);
+									border-radius: 6px;
+									color: #fff;
+									font-size: 12px;
+									cursor: pointer;
+									font-family: 'Comfortaa', sans-serif;
+								"
+							>
+								+ Add
+							</button>
+						</div>
+					</div>
+
+					<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+						<div id="scraper-field-region">
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Region</label
+							>
+							<select
+								id="scraper-region"
+								onchange="updateQueryPreview()"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="">Worldwide</option>
+								<option value="LATAM">LATAM</option>
+								<option value="US">US</option>
+								<option value="EU">EU</option>
+								<option value="Remote">Remote</option>
+							</select>
+						</div>
+						<div id="scraper-field-currency">
+							<label
+								style="
+									display: block;
+									font-size: 11px;
+									font-weight: 600;
+									color: #ffffff;
+									text-transform: uppercase;
+									letter-spacing: 0.08em;
+									margin-bottom: 5px;
+								"
+								>Currency</label
+							>
+							<select
+								id="scraper-currency"
+								onchange="updateQueryPreview()"
+								style="
+									width: 100%;
+									padding: 9px;
+									background: rgba(0, 0, 0, 0.4);
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									border-radius: 7px;
+									color: #fff;
+									font-family: 'Comfortaa', sans-serif;
+									font-size: 12px;
+									outline: none;
+								"
+							>
+								<option value="">Any</option>
+								<option value="USD">USD</option>
+								<option value="EUR">EUR</option>
+								<option value="ARS">ARS</option>
+							</select>
+						</div>
+					</div>
+
+					<!-- Generated URL Preview & Open -->
+					<div>
+						<label
+							style="
+								display: block;
+								font-size: 11px;
+								font-weight: 600;
+								color: #ffffff;
+								text-transform: uppercase;
+								letter-spacing: 0.08em;
+								margin-bottom: 5px;
+							"
+							>Query Preview</label
+						>
+						<div
+							id="query-url-preview"
+							style="
+								background: rgba(0, 0, 0, 0.45);
+								border: 1px solid rgba(255, 255, 255, 0.12);
+								padding: 10px 12px;
+								border-radius: 7px;
+								font-family: monospace;
+								font-size: 11.5px;
+								color: #a5f3fc;
+								word-break: break-all;
+								max-height: 70px;
+								overflow-y: auto;
+							"
+						>
+							https://www.linkedin.com/jobs/search/?keywords=
+						</div>
+						<button
+							id="btn-try-yourself"
+							onclick="openQueryInBrowser()"
+							style="
+								margin-top: 8px;
+								background: rgba(255, 255, 255, 0.08);
+								border: 1px solid rgba(255, 255, 255, 0.2);
+								color: #fff;
+								padding: 7px 14px;
+								border-radius: 6px;
+								font-family: 'Comfortaa', sans-serif;
+								font-size: 12px;
+								font-weight: 600;
+								cursor: pointer;
+								transition: background 0.2s;
+								display: inline-flex;
+								align-items: center;
+								gap: 6px;
+							"
+							onmouseenter="this.style.background = 'rgba(255,255,255,0.16)'"
+							onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+						>
+							↗ Try yourself
+						</button>
+					</div>
+				</div>
+
+				<!-- Modal Actions -->
+				<div style="display: flex; gap: 12px; margin-top: 24px">
+					<button class="p-btn p-btn-secondary" style="flex: 1" onclick="closeJobScraperModal()">Cancel</button>
+					<button
+						id="btn-start-scraping"
+						class="p-btn p-btn-primary"
+						style="flex: 1.5; background: var(--accent); color: #fff; font-weight: 700"
+						onclick="startScraping()"
+					>
+						🔎 Start Scraping
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Remote Rocketship Confirm Modal -->
+		<div
+			id="remoterocketship-confirm-modal"
+			data-testid="remoterocketship-confirm-modal"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(22, 22, 26, 0.8);
+				z-index: 9999;
+				align-items: center;
+				justify-content: center;
+				backdrop-filter: blur(4px);
+			"
+		>
+			<div
+				class="modal-content"
+				style="
+					max-width: 520px;
+					width: 92%;
+					max-height: 80vh;
+					overflow-y: auto;
+					display: flex;
+					flex-direction: column;
+					background: var(--secondary);
+					border-radius: 14px;
+					border: 1px solid rgba(255, 255, 255, 0.12);
+					box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+				"
+			>
+				<!-- Top bar with close X -->
+				<div style="display: flex; justify-content: flex-end; padding: 12px 16px 0 16px">
+					<button
+						data-testid="remoterocketship-confirm-close"
+						onclick="closeRemoteRocketshipConfirm()"
+						aria-label="Close"
+						style="
+							background: none;
+							border: none;
+							color: #fff;
+							font-size: 24px;
+							cursor: pointer;
+							width: 32px;
+							height: 32px;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							border-radius: 50%;
+							background: rgba(255, 255, 255, 0.08);
+							line-height: 1;
+							transition: background 0.2s;
+						"
+						onmouseenter="this.style.background = 'rgba(255,255,255,0.2)'"
+						onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+					>
+						×
+					</button>
+				</div>
+
+				<!-- Message -->
+				<div style="flex: 1; padding: 0 24px 24px 24px; display: flex; flex-direction: column; justify-content: center">
+					<p
+						style="
+							color: rgba(255, 255, 255, 0.85);
+							font-size: 14px;
+							text-align: center;
+							line-height: 1.7;
+							font-family: 'Comfortaa', sans-serif;
+							margin: 0;
+						"
+					>
+						Remote Rocketship jobs will not show an option to apply unless you have a valid subscription. You will need
+						to find the company by clicking the Website button on the scraping result page, and then find the company
+						careers page (usually at the footer section of their home pages) and there find the opening and follow the
+						usual application process.
+					</p>
+
+					<!-- Don't show again checkbox -->
+					<label
+						style="
+							display: flex;
+							align-items: center;
+							gap: 10px;
+							justify-content: center;
+							margin-top: 24px;
+							cursor: pointer;
+							font-family: 'Comfortaa', sans-serif;
+							font-size: 13px;
+							color: rgba(255, 255, 255, 0.7);
+						"
+					>
+						<input
+							type="checkbox"
+							id="rr-dont-show-again"
+							style="width: 18px; height: 18px; accent-color: var(--accent)"
+						/>
+						<span>Don't show this again</span>
+					</label>
+				</div>
+
+				<!-- Confirm button at bottom -->
+				<div style="padding: 0 24px 24px 24px; display: flex; justify-content: center">
+					<button
+						data-testid="remoterocketship-confirm-btn"
+						onclick="confirmRemoteRocketship()"
+						class="p-btn p-btn-primary"
+						style="
+							min-width: 160px;
+							background: var(--accent);
+							color: #fff;
+							padding: 14px 32px;
+							border-radius: 8px;
+							font-family: 'Comfortaa', sans-serif;
+							font-weight: 600;
+							font-size: 14px;
+							cursor: pointer;
+							border: none;
+							transition: background 0.2s;
+						"
+						onmouseenter="this.style.background = '#1d4ed8'"
+						onmouseleave="this.style.background = 'var(--accent)'"
+					>
+						Confirm
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- AI Providers Modal -->
+		<div
+			id="providers-modal"
+			data-testid="providers-modal"
+			style="
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(146, 178, 219, 0.129);
+				z-index: 9999;
+				align-items: center;
+				justify-content: center;
+				backdrop-filter: blur(4px);
+			"
+		>
+			<div
+				style="
+					background: var(--secondary);
+					padding: 30px;
+					border-radius: 12px;
+					max-width: 520px;
+					width: 92%;
+					box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+					position: relative;
+				"
+			>
+				<button
+					onclick="closeProvidersModal()"
+					style="
+						position: absolute;
+						top: 15px;
+						right: 15px;
+						background: none;
+						border: none;
+						color: #fff;
+						font-size: 28px;
+						cursor: pointer;
+						width: 36px;
+						height: 36px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						border-radius: 50%;
+						background: rgba(255, 255, 255, 0.08);
+						line-height: 1;
+						transition: background 0.2s;
+					"
+					onmouseenter="this.style.background = 'var(--accent)'"
+					onmouseleave="this.style.background = 'rgba(255,255,255,0.08)'"
+				>
+					×
+				</button>
+				<h2 style="color: #fff; margin-bottom: 6px; text-align: center">🧠 AI Providers</h2>
+				<p
+					id="providers-modal-subtitle"
+					style="
+						color: rgba(255, 255, 255, 0.65);
+						font-size: 12px;
+						text-align: center;
+						margin-bottom: 18px;
+						font-family: 'Comfortaa', sans-serif;
+					"
+				>
+					Select default provider for LLM API calls
+				</p>
+				<div id="providers-list" data-testid="providers-list"></div>
+				<div
+					id="providers-empty-message"
+					style="
+						display: none;
+						color: #fff;
+						font-size: 13px;
+						text-align: center;
+						padding: 24px 16px;
+						font-family: 'Comfortaa', sans-serif;
+					"
+				>
+					There are not LLM providers configured. Please, setup them to chose provider and model.
+				</div>
+				<div
+					id="providers-modal-actions"
+					data-testid="providers-modal-actions"
+					style="display: none; gap: 10px; flex-direction: row; justify-content: stretch; margin-top: 16px"
+				>
+					<button
+						id="providers-cancel-btn"
+						data-testid="providers-cancel-btn"
+						class="p-btn p-btn-secondary"
+						style="flex: 1"
+						onclick="cancelProvidersSelection()"
+					>
+						Cancel
+					</button>
+					<button
+						id="providers-confirm-btn"
+						data-testid="providers-confirm-btn"
+						class="p-btn p-btn-primary"
+						style="flex: 1; background: var(--accent); color: #fff"
+						onclick="confirmProvidersSelection()"
+					>
+						Confirm
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<script src="/public/dist/findJob-app.js"></script>
+	</body>
 </html>

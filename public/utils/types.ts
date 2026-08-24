@@ -8,25 +8,29 @@ import { ScraperResult } from '../../src/types/scraper';
 export type { ScraperResult };
 
 export interface JobData {
-  scrapingResults: {
-    linkedin: ScraperResult[];
-    google: ScraperResult[];
-  };
-  savedJobs: {
-    linkedin: ScraperResult[];
-    google: ScraperResult[];
-  };
-  jobDashboard: ScraperResult[];
+	scrapingResults: {
+		linkedin: ScraperResult[];
+		google: ScraperResult[];
+	};
+	savedJobs: {
+		linkedin: ScraperResult[];
+		google: ScraperResult[];
+	};
+	jobDashboard: ScraperResult[];
 }
 
 export interface SidebarState {
-  open: boolean;
-  activeTab: 'scraping' | 'saved' | 'dashboard';
+	open: boolean;
+	activeTab: 'scraping' | 'saved' | 'dashboard';
 }
 
 export const LOCALSTORAGE_KEYS = {
-  scrapingResults: (source: 'linkedin' | 'google') => `jobData:scrapingResults:${source}`,
-  savedJobs: (source: 'linkedin' | 'google') => `jobData:savedJobs:${source}`,
-  jobDashboard: 'jobData:jobDashboard',
-  sidebarState: 'findJob:sidebarState',
+	scrapingResults: (source: 'linkedin' | 'google') => `jobData:scrapingResults:${source}`,
+	savedJobs: (source: 'linkedin' | 'google') => `jobData:savedJobs:${source}`,
+	jobDashboard: 'jobData:jobDashboard',
+	sidebarState: 'findJob:sidebarState',
+	atsScanResults: {
+		resume: 'ats:scanResults:resume',
+		jobfinder: 'ats:scanResults:jobfinder',
+	},
 } as const;

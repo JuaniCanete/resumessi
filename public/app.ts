@@ -110,7 +110,7 @@ function expandRight(): void {
 // ─── Scan Results Persistence ───────────────────────────────────────
 function saveScanResults(screening: Record<string, unknown>): void {
 	try {
-		sessionStorage.setItem('ats-scan-results', JSON.stringify(screening));
+		import('./utils/storage.js').then(m => m.saveAtsScanResults(screening, 'resume'));
 	} catch (e) {
 		console.warn('Could not save scan results:', e);
 	}
@@ -118,9 +118,12 @@ function saveScanResults(screening: Record<string, unknown>): void {
 
 function loadScanResults(): Record<string, unknown> | null {
 	try {
-		const raw = sessionStorage.getItem('ats-scan-results');
-		if (!raw) return null;
-		return JSON.parse(raw) as Record<string, unknown>;
+		// Use synchronous localStorage for now (will be async after import)
+		if (typeof window !== 'undefined') {
+			const raw = localStorage.getItem('ats:scanResults:resume');
+			if (raw) return JSON.parse(raw) as Record<string, unknown>;
+		}
+		return null;
 	} catch (e) {
 		console.warn('Could not load scan results:', e);
 		return null;
@@ -129,7 +132,9 @@ function loadScanResults(): Record<string, unknown> | null {
 
 function clearScanResults(): void {
 	try {
-		sessionStorage.removeItem('ats-scan-results');
+		if (typeof window !== 'undefined') {
+			localStorage.removeItem('ats:scanResults:resume');
+		}
 	} catch {
 		// ignore
 	}
@@ -1958,6 +1963,8 @@ async function generateCoverLetter(): Promise<void> {
 	const focusAreas = (document.getElementById('cl-focus') as HTMLInputElement).value.trim();
 	const charLimitInput = (document.getElementById('cl-char-limit') as HTMLInputElement).value.trim();
 	const charLimit = charLimitInput === '' ? undefined : parseInt(charLimitInput, 10);
+	const includeSalutationSignOff =
+		(document.getElementById('cl-salutation-signoff') as HTMLSelectElement).value === 'true';
 
 	// Show loading, hide other sections
 	document.getElementById('cover-letter-settings')!.style.display = 'none';
@@ -1992,6 +1999,7 @@ async function generateCoverLetter(): Promise<void> {
 				atsTier,
 				atsMissingKeywords,
 				atsFeedback,
+				includeSalutationSignOff,
 			}),
 		});
 

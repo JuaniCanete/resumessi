@@ -69,14 +69,14 @@ test.describe('Resume Display', () => {
 	});
 
 	test('should render LinkedIn and GitHub links with correct URLs', async ({ mainPage, page }) => {
-		await page.route('**/src/resume/output/resume-data.json', async (route) => {
+		await page.route('**/src/resume/output/resume-data.json', async route => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify(resumeWithLinks),
 			});
 		});
-		await page.route('**/src/resume/output/resume-data-AI-polished.json', async (route) => {
+		await page.route('**/src/resume/output/resume-data-AI-polished.json', async route => {
 			await route.fulfill({ status: 404 });
 		});
 		await page.reload();
@@ -92,14 +92,14 @@ test.describe('Resume Display', () => {
 	});
 
 	test('should render certification and talk links with correct URLs', async ({ mainPage, page }) => {
-		await page.route('**/src/resume/output/resume-data.json', async (route) => {
+		await page.route('**/src/resume/output/resume-data.json', async route => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify(resumeWithLinks),
 			});
 		});
-		await page.route('**/src/resume/output/resume-data-AI-polished.json', async (route) => {
+		await page.route('**/src/resume/output/resume-data-AI-polished.json', async route => {
 			await route.fulfill({ status: 404 });
 		});
 		await page.reload();
@@ -114,21 +114,24 @@ test.describe('Resume Display', () => {
 		await expect(talkLink).toHaveText('Watch recording');
 	});
 
-	test('should fallback to JSON file when localStorage has stale data (missing linkedin/github)', async ({ mainPage, page }) => {
+	test('should fallback to JSON file when localStorage has stale data (missing linkedin/github)', async ({
+		mainPage,
+		page,
+	}) => {
 		// Set stale localStorage data BEFORE reload
-		await page.evaluate((data) => {
+		await page.evaluate(data => {
 			localStorage.setItem('resume-data', JSON.stringify(data));
 		}, staleResumeData);
 
 		// Mock JSON file with correct links
-		await page.route('**/src/resume/output/resume-data.json*', async (route) => {
+		await page.route('**/src/resume/output/resume-data.json*', async route => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify(resumeWithLinks),
 			});
 		});
-		await page.route('**/src/resume/output/resume-data-AI-polished.json*', async (route) => {
+		await page.route('**/src/resume/output/resume-data-AI-polished.json*', async route => {
 			await route.fulfill({ status: 404 });
 		});
 

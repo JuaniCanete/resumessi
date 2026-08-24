@@ -4,26 +4,26 @@ import { join } from 'node:path';
 const TEST_DB_PATH = join(__dirname, '..', 'data', 'test', 'jobdata-test.db');
 
 export default defineConfig({
-  timeout: 60000,
-  testDir: './e2e',
-  outputDir: './test-results',
-  workers: 2,
-  reporter: [['html', { open: 'on-failure' },] , ['list']],
-  use: {
-    baseURL: 'http://localhost:3001',
-    screenshot: 'only-on-failure',
-    trace: 'retain-on-failure',
-    video: 'retain-on-failure',
-  },
-  projects: [
-    { name: 'chromium', use: { browserName: 'chromium' } },
-  ],
-  webServer: {
-    command: `cmd.exe /c "set PORT=3001&& set NODE_ENV=test&& set JOB_DATA_DB_PATH=${TEST_DB_PATH}&& npx tsx start.ts --no-open"`,
-    url: 'http://localhost:3001/public/main.html',
-    reuseExistingServer: false,
-    timeout: 60000,
-    cwd: '..',
-  },
-  globalTeardown: './global-teardown.ts',
+	timeout: 60000,
+	testDir: './e2e',
+	outputDir: './test-results',
+	workers: 2,
+	reporter: [['html', { open: 'on-failure' }], ['list']],
+	use: {
+		baseURL: 'http://localhost:3001',
+		screenshot: 'only-on-failure',
+		trace: 'retain-on-failure',
+		video: 'retain-on-failure',
+	},
+	projects: [
+		{ name: 'chromium', use: { browserName: 'chromium' } },
+	],
+	webServer: {
+		command: `cmd.exe /c "set PORT=3001&& set NODE_ENV=test&& set JOB_DATA_DB_PATH=${TEST_DB_PATH}&& npx tsx start.ts --no-open"`,
+		url: 'http://localhost:3001/public/main.html',
+		reuseExistingServer: true,
+		timeout: 60000,
+		cwd: '..',
+	},
+	globalTeardown: './global-teardown.ts',
 });
