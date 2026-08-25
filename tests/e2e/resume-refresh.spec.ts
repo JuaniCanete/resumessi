@@ -1,26 +1,21 @@
 import { test, expect } from './test-setup';
 
-// Refresh button: shows a toast on click AND triggers a fetch to the
-// resume data JSON file (the "API call" that reloads manual JSON edits).
 test.describe('Resume Refresh Button', () => {
-	// ─── Toast Feedback ───────────────────────────────────────────────
-
 	test('clicking refresh shows the "Applying changes" toast and auto-hides it', async ({ mainPage }) => {
 		await mainPage.clickRefresh();
 
-		// Toast appears with the expected message
 		await expect(mainPage.refreshMessage).toBeVisible({ timeout: 5000 });
 		const text = await mainPage.getRefreshMessageText();
 		expect(text).toContain('Applying changes');
 
-		// It auto-hides after ~2s
 		await expect(mainPage.refreshMessage).toBeHidden({ timeout: 4000 });
 	});
 
-	// ─── API Call (resume JSON fetch) ──────────────────────────────────
-
 	test('clicking refresh triggers a fetch to the resume data JSON file', async ({ mainPage, page }) => {
 		let resumeFetchCount = 0;
+
+		await page.unroute('**/src/resume/output/resume-data.json');
+		await page.unroute('**/src/resume/output/resume-data-AI-polished.json');
 
 		await page.route('**/src/resume/output/resume-data.json', async route => {
 			resumeFetchCount++;
@@ -46,14 +41,20 @@ test.describe('Resume Refresh Button', () => {
 			});
 		});
 
-		// The initial page load already fetched the file; count starts at 0 for our route.
+		await page.route('**/src/resume/output/resume-data-AI-polished.json', async route => {
+			resumeFetchCount++;
+			await route.fulfill({
+				status: 404,
+				contentType: 'application/json',
+				body: '{}',
+			});
+		});
+
 		const before = resumeFetchCount;
 		await mainPage.clickRefresh();
 
-		// The refresh click must have issued a fresh fetch to the resume JSON
 		expect(resumeFetchCount).toBeGreaterThan(before);
 
-		// And the toast should be visible as feedback for that refresh
 		await expect(mainPage.refreshMessage).toBeVisible({ timeout: 5000 });
 	});
 });

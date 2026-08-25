@@ -252,24 +252,18 @@ export class FindJobPage {
 		await this.sharedModal.waitFor({ state: 'hidden', timeout: 5000 });
 	}
 
-	async clickChangeSourceOnCard(cardIndex: number, columnId: string, newSource: string): Promise<void> {
+	async clickChangeSourceOnCard(cardIndex: number, columnId: string): Promise<void> {
 		await this.openCardMenu(cardIndex, columnId);
 		const cards = this.getCardsInColumn(columnId);
 		const card = cards.nth(cardIndex);
 		const sourceItem = card.locator('.board-card-menu-item').filter({ hasText: 'Change Source' });
 		await sourceItem.click();
+	}
 
-		// Wait for source dropdown/modal and select new source
-		const sourceOption = this.page.locator(`[data-source="${newSource.toLowerCase()}"]`);
-		await sourceOption.waitFor({ state: 'visible', timeout: 5000 });
-		if ((await sourceOption.count()) > 0) {
-			await sourceOption.click();
-		} else {
-			// Fallback: click menu item with source name
-			const sourceMenuItem = this.page.locator(`.board-card-menu-item:has-text("${newSource}")`);
-			await sourceMenuItem.waitFor({ state: 'visible', timeout: 5000 });
-			await sourceMenuItem.click();
-		}
+	async getCardSource(cardIndex: number, columnId: string): Promise<string> {
+		const cards = this.getCardsInColumn(columnId);
+		const card = cards.nth(cardIndex);
+		return (await card.locator('.board-card-source').textContent()) || '';
 	}
 
 	getToastByMessage(message: string): Locator {

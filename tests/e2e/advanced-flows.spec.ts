@@ -166,8 +166,6 @@ test.describe('Advanced Flows', () => {
 		// Check refresh message (it's shown briefly, then hidden after 2s)
 		const refreshMsg = mainPage.refreshMessage;
 		const refreshText = (await refreshMsg.textContent()) ?? '';
-		console.info('Refresh message text:', refreshText);
-		console.info('Refresh message display:', await refreshMsg.evaluate(el => getComputedStyle(el).display));
 		expect(refreshText).toBeTruthy();
 		expect(refreshText.toLowerCase()).toContain('applying changes');
 	});

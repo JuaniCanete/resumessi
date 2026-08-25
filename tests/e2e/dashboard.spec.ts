@@ -294,11 +294,10 @@ test.describe('Dashboard View — Full Coverage', () => {
 			]);
 			await findJobPage.switchToDashboard();
 
-			// Change source from LinkedIn to Google
-			await findJobPage.clickChangeSourceOnCard(0, 'applied', 'Google');
+			// Change source from LinkedIn to Google (cycles to next source)
+			await findJobPage.clickChangeSourceOnCard(0, 'applied');
 
-			// Verify API was called (mock returns success)
-			// Verify badge updated
+			// Verify badge updated to Google
 			await expect(findJobPage.getCardsInColumn('applied').first().locator('.board-card-source')).toHaveText('Google');
 		});
 	});
