@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -e
 
+# Ensure 6gb of memory allocation for the pre-commit process
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=6144}"
+
 BRANCH="${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
 echo "Running pre-push validations on $BRANCH..."
   npm run build:check

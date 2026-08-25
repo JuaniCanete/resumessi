@@ -3,7 +3,7 @@ set -e
 
 echo "Running pre-commit validations..."
 
-# Prevent eslint OOM kills (KILLED) when lint-staged lints large batches
+# Ensure 6gb of memory allocation for the pre-commit process
 export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=6144}"
 
 npx lint-staged --concurrent false
