@@ -3,10 +3,11 @@
 	"rules": {
 		"attr-case": ["error", { "style": "lowercase" }],
 		"attr-pattern": "off",
+		"doctype-style": ["error", { "style": "lowercase" }],
 		"no-dup-class": "error",
 		"no-trailing-spaces": "off",
 		"spec-charref": "off",
-		"void-style": "error",
+		"void-style": ["error", { "style": "selfclosing" }],
 		"id-pattern": ["error", { "pattern": "^[a-zA-Z0-9\\-_]+$" }],
 		"class-pattern": ["error", { "pattern": "^[a-zA-Z0-9\\-_]+$" }],
 		"no-inline-style": "off",
