@@ -41,10 +41,8 @@ AGENTS_LOCAL.md
 .cursor/
 .kilo/
 .roo/
-.devin/
 .github/copilot-instructions.md
 .cursorignore
-.devinignore
 
 # AI artifacts
 code-review/
