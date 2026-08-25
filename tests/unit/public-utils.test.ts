@@ -13,7 +13,6 @@ import {
 	validateJDInput,
 	formatDate,
 	renderSkills,
-	getDuration,
 	getPhotoPath,
 	stripMarkdown,
 	buildQueryUrl,
@@ -129,36 +128,6 @@ test('renderSkills - returns empty string for non-array', () => {
 
 test('renderSkills - wraps each skill in a span', () => {
 	assert.equal(renderSkills(['JavaScript', 'TypeScript']), '<span>JavaScript</span><span>TypeScript</span>');
-});
-
-test('getDuration - calculates months correctly', () => {
-	assert.equal(getDuration('2023-01-01', '2023-06-01'), '5mo');
-});
-
-test('getDuration - calculates years correctly', () => {
-	assert.equal(getDuration('2022-01-01', '2023-01-01'), '1yr');
-	assert.equal(getDuration('2021-01-01', '2023-06-01'), '2yr 5mo');
-});
-
-test('getDuration - returns empty string for invalid start date', () => {
-	assert.equal(getDuration('invalid'), '');
-});
-
-test('renderSkills - returns empty string for empty array', () => {
-	assert.equal(renderSkills([]), '');
-});
-
-test('renderSkills - returns empty string for non-array', () => {
-	assert.equal(renderSkills(null as unknown as string[]), '');
-	assert.equal(renderSkills(undefined as unknown as string[]), '');
-});
-
-test('renderSkills - wraps each skill in a span', () => {
-	assert.equal(renderSkills(['JavaScript', 'TypeScript']), '<span>JavaScript</span><span>TypeScript</span>');
-});
-
-test('getPhotoPath - returns uploaded photo when present', () => {
-	assert.equal(getPhotoPath('custom.jpg'), 'custom.jpg');
 });
 
 test('getPhotoPath - returns resume photo path when no upload', () => {

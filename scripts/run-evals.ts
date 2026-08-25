@@ -204,19 +204,19 @@ async function evaluatePromptType(
 	const systemPrompt = getSystemPrompt(promptType);
 
 	if (!schema) {
-		console.log(`  ⚠ No schema for ${promptType}, skipping`);
+		console.warn(`  ⚠ No schema for ${promptType}, skipping`);
 		return { results: [], runMetrics: [] };
 	}
 
 	if (!systemPrompt) {
-		console.log(`  ⚠ No system prompt for ${promptType}, skipping`);
+		console.warn(`  ⚠ No system prompt for ${promptType}, skipping`);
 		return { results: [], runMetrics: [] };
 	}
 
 	const results: GoldenEvalResult[] = [];
 	const runMetrics: RunMetrics[] = [];
 
-	console.log(`\n📋 Evaluating ${promptType} (${goldens.length} goldens)...`);
+	console.info(`\n📋 Evaluating ${promptType} (${goldens.length} goldens)...`);
 
 	for (const golden of goldens) {
 		const { id, input, expected } = golden;
@@ -294,22 +294,22 @@ async function evaluatePromptType(
 			});
 
 			const status = passed ? '✓' : '✗';
-			console.log(
+			console.info(
 				`  ${status} ${id}: schema=${schemaResult.valid ? 'pass' : 'fail'} faithfulness=${semanticMetrics.faithfulness.score.toFixed(2)} hallucination=${semanticMetrics.hallucination.score.toFixed(2)} relevance=${semanticMetrics.relevance.score.toFixed(2)} completeness=${semanticMetrics.completeness.score.toFixed(2)}`
 			);
 
 			if (!schemaResult.valid) {
-				console.log(`    Schema errors: ${schemaResult.errors.join(', ')}`);
+				console.error(`    Schema errors: ${schemaResult.errors.join(', ')}`);
 			}
 			if (regression && regression.regressions.length > 0) {
 				for (const reg of regression.regressions) {
-					console.log(
+					console.error(
 						`    🔴 REGRESSION: ${reg.metric} ${reg.baselineScore.toFixed(2)} → ${reg.currentScore.toFixed(2)} (${reg.severity})`
 					);
 				}
 			}
 		} catch (error) {
-			console.log(`  ✗ ${id}: ERROR - ${(error as Error).message}`);
+			console.error(`  ✗ ${id}: ERROR - ${(error as Error).message}`);
 			results.push({
 				goldenId: id,
 				schemaValid: false,
@@ -337,13 +337,13 @@ async function evaluatePromptType(
 }
 
 async function runEvals(context: EvalContext): Promise<boolean> {
-	console.log('╔══════════════════════════════════════════════════════════════╗');
-	console.log('║                   Running LLM Evals                          ║');
-	console.log('╚══════════════════════════════════════════════════════════════╝');
-	console.log(`Mode: ${context.mode}`);
-	console.log(`Prompt types: ${context.promptTypes.join(', ')}`);
-	if (context.baselineVersion) console.log(`Baseline: ${context.baselineVersion}`);
-	console.log('');
+	console.info('╔══════════════════════════════════════════════════════════════╗');
+	console.info('║                   Running LLM Evals                          ║');
+	console.info('╚══════════════════════════════════════════════════════════════╝');
+	console.info(`Mode: ${context.mode}`);
+	console.info(`Prompt types: ${context.promptTypes.join(', ')}`);
+	if (context.baselineVersion) console.info(`Baseline: ${context.baselineVersion}`);
+	console.info('');
 
 	let allPassed = true;
 	let totalTests = 0;
@@ -359,7 +359,7 @@ async function runEvals(context: EvalContext): Promise<boolean> {
 		const goldens = goldensMap.get(promptType) || [];
 
 		if (goldens.length === 0) {
-			console.log(`⚠ No goldens found for ${promptType}, skipping`);
+			console.info(`⚠ No goldens found for ${promptType}, skipping`);
 			continue;
 		}
 
@@ -378,22 +378,22 @@ async function runEvals(context: EvalContext): Promise<boolean> {
 	}
 
 	// Print summary
-	console.log('\n╔══════════════════════════════════════════════════════════════╗');
-	console.log('║                        Summary                                ║');
-	console.log('╚══════════════════════════════════════════════════════════════╝');
-	console.log(`Total: ${totalTests} | Passed: ${passedTests} | Failed: ${totalTests - passedTests}`);
+	console.info('\n╔══════════════════════════════════════════════════════════════╗');
+	console.info('║                        Summary                                ║');
+	console.info('╚══════════════════════════════════════════════════════════════╝');
+	console.info(`Total: ${totalTests} | Passed: ${passedTests} | Failed: ${totalTests - passedTests}`);
 
 	if (allRunMetrics.length > 0) {
-		console.log('\n💰 Cost/Latency Report:');
-		console.log(generateCostReport(allRunMetrics));
+		console.info('\n💰 Cost/Latency Report:');
+		console.info(generateCostReport(allRunMetrics));
 	}
 
 	if (!allPassed && context.failOnRegression) {
-		console.log('\n✗ Evals failed (regression or quality threshold not met)');
+		console.error('\n✗ Evals failed (regression or quality threshold not met)');
 	} else if (!allPassed) {
-		console.log('\n⚠ Evals completed with warnings');
+		console.warn('\n⚠ Evals completed with warnings');
 	} else {
-		console.log('\n✓ All evals passed!');
+		console.info('\n✓ All evals passed!');
 	}
 
 	return allPassed;
@@ -437,9 +437,9 @@ function parseArgs(): EvalContext {
 			printHelp();
 			process.exit(0);
 		} else if (arg === 'list') {
-			console.log('Available prompt types:');
+			console.info('Available prompt types:');
 			for (const pt of listAvailablePromptTypes()) {
-				console.log(`  ${pt}`);
+				console.info(`  ${pt}`);
 			}
 			process.exit(0);
 		}
@@ -449,7 +449,7 @@ function parseArgs(): EvalContext {
 }
 
 function printHelp(): void {
-	console.log(`
+	console.info(`
 Usage: tsx scripts/run-evals.ts [options]
 
 Options:

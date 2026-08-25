@@ -44,7 +44,7 @@ export default [
     rules: {
       ...ts.configs.recommended.rules,
       "no-unused-vars": "off",
-      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "no-undef": "error",
       "semi": ["error", "always"],
       "quotes": ["error", "single", { avoidEscape: true }],

@@ -818,7 +818,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 									}) as ScraperResult
 							)
 						);
-						console.log('[Scraper API] Background summarization & parameter extraction completed.');
+						console.info('[Scraper API] Background summarization & parameter extraction completed.');
 					} catch (err: unknown) {
 						console.warn('[Scraper API] Background summarization failed:', (err as Error).message);
 					}
@@ -2167,10 +2167,10 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
 server.listen(PORT, () => {
 	const url = `http://localhost:${PORT}/public/main.html`;
-	console.log('');
-	console.log(`  Serving:  ${url}`);
-	console.log('  Press Ctrl+C to stop.');
-	console.log('');
+	console.info('');
+	console.info(`  Serving:  ${url}`);
+	console.info('  Press Ctrl+C to stop.');
+	console.info('');
 
 	const shouldOpen = !process.argv.includes('--no-open') && process.env.NODE_ENV !== 'test' && !process.env.CI;
 	if (shouldOpen) {

@@ -144,7 +144,7 @@ export function generateCostReport(metrics: RunMetrics[]): string {
 
 export function printCostReport(days: number = 7): void {
 	const metrics = loadMetrics(days);
-	console.log('\n📊 Cost/Latency Report (Last 7 Days)');
-	console.log('═══════════════════════════════════════');
-	console.log(generateCostReport(metrics));
+	console.info('\n📊 Cost/Latency Report (Last 7 Days)');
+	console.info('═══════════════════════════════════════');
+	console.info(generateCostReport(metrics));
 }

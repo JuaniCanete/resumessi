@@ -48,7 +48,7 @@ function injectPromptLast(filePath: string, placeholder: string, value: string):
 	const updated = replaceLast(content, placeholder, value);
 	if (!updated) return; // No placeholder — prompts loaded at runtime, which is the default
 	fs.writeFileSync(filePath, updated, 'utf-8');
-	console.log(`Injected prompt into ${path.relative(ROOT, filePath)}`);
+	console.info(`Injected prompt into ${path.relative(ROOT, filePath)}`);
 }
 
 async function buildFrontend(): Promise<void> {
@@ -75,7 +75,7 @@ async function buildFrontend(): Promise<void> {
 				target: 'es2020',
 				platform: 'browser',
 			});
-			console.log(`Built frontend bundles in: ${path.relative(ROOT, outDir)}`);
+			console.info(`Built frontend bundles in: ${path.relative(ROOT, outDir)}`);
 		}
 	} catch (err: unknown) {
 		console.error('Frontend build failed:', (err as Error).message);
@@ -91,22 +91,22 @@ function main(): void {
 		const html = fs.readFileSync(HTML_FILE, 'utf-8');
 		const hasHtmlPlaceholder = html.includes('{{ATS_SCAN_PROMPT}}');
 		if (!hasHtmlPlaceholder) {
-			console.log('No placeholders found — prompts loaded at runtime. Build check passed.');
+			console.info('No placeholders found — prompts loaded at runtime. Build check passed.');
 			return;
 		}
-		console.log('Placeholders present. Use build.ts without --check to inject.');
+		console.info('Placeholders present. Use build.ts without --check to inject.');
 		return;
 	}
 
-	console.log('Reading prompt sources...');
+	console.info('Reading prompt sources...');
 	const atsPrompt = readPromptBlock(ATS_PROMPT_FILE);
 
-	console.log('Injecting prompts...');
+	console.info('Injecting prompts...');
 	injectPromptLast(HTML_FILE, '{{ATS_SCAN_PROMPT}}', atsPrompt);
 
 	// Build frontend bundle
 	buildFrontend().then(() => {
-		console.log('\nBuild completed successfully. Run `npm start` to launch the app.');
+		console.info('\nBuild completed successfully. Run `npm start` to launch the app.');
 	});
 }
 

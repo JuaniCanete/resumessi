@@ -117,7 +117,7 @@ async function callProvider(
 		if (!ok && errorMsg) {
 			(record as Record<string, unknown>).error = errorMsg;
 		}
-		console.log(JSON.stringify(record));
+		console.info(JSON.stringify(record));
 	}
 }
 

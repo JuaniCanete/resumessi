@@ -107,7 +107,7 @@ export function saveBaseline(
 
 	const filePath = join(BASELINE_DIR, `${promptType}-${version}.json`);
 	writeFileSync(filePath, JSON.stringify(baseline, null, 2));
-	console.log(`  💾 Saved baseline: ${filePath}`);
+	console.info(`  💾 Saved baseline: ${filePath}`);
 }
 
 export function loadBaseline(version: string, promptType: string): Baseline | null {

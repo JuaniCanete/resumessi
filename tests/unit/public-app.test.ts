@@ -35,7 +35,7 @@ test('public/app.ts - formatDate utility (mirrored from utils)', () => {
 });
 
 test('public/app.ts - getDuration utility (mirrored from utils)', () => {
-	function getDuration(startDate: string, endDate?: string): string {
+	function _getDuration(startDate: string, endDate?: string): string {
 		const start = new Date(startDate);
 		const end = endDate ? new Date(endDate) : new Date();
 		if (isNaN(start.getTime())) return '';
@@ -47,10 +47,10 @@ test('public/app.ts - getDuration utility (mirrored from utils)', () => {
 		return `${years}yr ${rem}mo`;
 	}
 
-	assert.equal(getDuration('2023-01-01', '2023-06-01'), '5mo');
-	assert.equal(getDuration('2022-01-01', '2023-01-01'), '1yr');
-	assert.equal(getDuration('2021-01-01', '2023-06-01'), '2yr 5mo');
-	assert.equal(getDuration('invalid'), '');
+	assert.equal(_getDuration('2023-01-01', '2023-06-01'), '5mo');
+	assert.equal(_getDuration('2022-01-01', '2023-01-01'), '1yr');
+	assert.equal(_getDuration('2021-01-01', '2023-06-01'), '2yr 5mo');
+	assert.equal(_getDuration('invalid'), '');
 });
 
 test('public/app.ts - renderSkills utility (mirrored from utils)', () => {

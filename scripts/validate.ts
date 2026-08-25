@@ -46,12 +46,12 @@ function check(relPath: string): void {
 	if (content.includes('\r\n') && content.includes('\n') && !content.includes('\r\n\n')) {
 		console.warn(`⚠  Mixed line endings detected in: ${relPath}`);
 	}
-	console.log(`✔  ${relPath}`);
+	console.info(`✔  ${relPath}`);
 }
 
 const skipEvals = process.argv.includes('--skip-evals');
 
-console.log('Validating prompt files...');
+console.info('Validating prompt files...');
 REQUIRED_PROMPTS.forEach(check);
 
 if (hasErrors) {
@@ -59,10 +59,10 @@ if (hasErrors) {
 	process.exit(1);
 }
 
-console.log('\nAll prompt files are valid.');
+console.info('\nAll prompt files are valid.');
 
 if (!skipEvals) {
-	console.log('\nRunning LLM evals...');
+	console.info('\nRunning LLM evals...');
 	const evalContext: EvalContext = {
 		mode: 'mock',
 		promptTypes: [],
@@ -82,7 +82,7 @@ if (!skipEvals) {
 			process.exit(1);
 		}
 
-		console.log('\nAll validations passed. Project is ready to build.');
+		console.info('\nAll validations passed. Project is ready to build.');
 	}
 
 	runValidation().catch(error => {
@@ -90,6 +90,6 @@ if (!skipEvals) {
 		process.exit(1);
 	});
 } else {
-	console.log('\nSkipping LLM evals (--skip-evals).');
-	console.log('\nAll validations passed. Project is ready to build.');
+	console.info('\nSkipping LLM evals (--skip-evals).');
+	console.info('\nAll validations passed. Project is ready to build.');
 }

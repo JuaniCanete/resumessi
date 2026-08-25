@@ -1481,8 +1481,15 @@ function createJobCard(item: ScraperResult, view: 'scraping' | 'saved' | 'dashbo
 	// Source badge
 	const sourceBadge = document.createElement('span');
 	sourceBadge.className = `result-source-badge ${item.source}`;
-	//juani
-	sourceBadge.textContent = item.source === 'linkedin' ? 'LinkedIn' : 'Google';
+	const sourceLabel =
+		item.source === 'linkedin'
+			? 'LinkedIn'
+			: item.source === 'google'
+				? 'Google'
+				: item.source === 'remoterocketship'
+					? 'Remote Rocketship'
+					: 'User';
+	sourceBadge.textContent = sourceLabel;
 	headerActions.appendChild(sourceBadge);
 
 	// Status badge (dashboard only)

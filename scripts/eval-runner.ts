@@ -92,7 +92,7 @@ export async function runEvalInference<T>(
 	}
 
 	if (mode === 'record') {
-		console.log('  📝 Recording mode: will save actual output as new golden');
+		console.info('  📝 Recording mode: will save actual output as new golden');
 	}
 
 	const env = buildEnv();
@@ -159,7 +159,7 @@ export async function runEvalInference<T>(
 				2
 			)
 		);
-		console.log(`  💾 Recorded to ${filename}`);
+		console.info(`  💾 Recorded to ${filename}`);
 	}
 
 	return {

@@ -57,7 +57,7 @@ export async function scrapeRemoteRocketship(
 	const startPage = query.startPage ?? 1;
 	const searchUrls = buildScraperSearchUrls(baseUrl, 'remoterocketship', pageCount, startPage);
 
-	console.log(`[RemoteRocketship Scraper] Scraping ${searchUrls.length} page(s) starting from page ${startPage}`);
+	console.info(`[RemoteRocketship Scraper] Scraping ${searchUrls.length} page(s) starting from page ${startPage}`);
 
 	const page = await context.newPage();
 	const results: ScraperResult[] = [];
@@ -77,7 +77,7 @@ export async function scrapeRemoteRocketship(
 
 			// Extract job cards using the card container selector
 			const cards = await extractJobCards(page);
-			console.log(`[RemoteRocketship Scraper] Found ${cards.length} cards on page ${pageIndex + 1}`);
+			console.info(`[RemoteRocketship Scraper] Found ${cards.length} cards on page ${pageIndex + 1}`);
 
 			// Save page HTML for debugging (opt-in via SCRAPER_DEBUG=true)
 			if (process.env.SCRAPER_DEBUG === 'true') {
@@ -87,7 +87,7 @@ export async function scrapeRemoteRocketship(
 					const html = await page.content();
 					const debugFile = path.join(debugDir, `remoterocketship-page-${startPage + pageIndex}.html`);
 					fs.writeFileSync(debugFile, html);
-					console.log(`[RemoteRocketship Scraper] Saved debug HTML to ${debugFile}`);
+					console.info(`[RemoteRocketship Scraper] Saved debug HTML to ${debugFile}`);
 				} catch (debugErr: unknown) {
 					console.warn('[RemoteRocketship Scraper] Failed to save debug HTML:', (debugErr as Error).message);
 				}
@@ -100,7 +100,7 @@ export async function scrapeRemoteRocketship(
 				}
 			}
 
-			console.log(`[RemoteRocketship Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
+			console.info(`[RemoteRocketship Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
 		}
 	} catch (err: unknown) {
 		if (err instanceof RemoteRocketshipError) {
@@ -128,7 +128,7 @@ export async function extractJobCards(page: import('playwright').Page): Promise<
 		try {
 			const cards = await page.$$(selector);
 			if (cards.length > 0) {
-				console.log(`[RemoteRocketship Scraper] Found ${cards.length} cards using selector: ${selector}`);
+				console.info(`[RemoteRocketship Scraper] Found ${cards.length} cards using selector: ${selector}`);
 				return cards;
 			}
 		} catch {

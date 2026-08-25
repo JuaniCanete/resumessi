@@ -99,7 +99,7 @@ export function loadAllGoldens(): Map<string, Golden<unknown, unknown>[]> {
 		const goldens = loadGoldens<unknown, unknown>(promptType);
 		if (goldens.length > 0) {
 			goldensMap.set(promptType, goldens);
-			console.log(`  ✓ Loaded ${goldens.length} goldens for ${promptType}`);
+			console.info(`  ✓ Loaded ${goldens.length} goldens for ${promptType}`);
 		}
 	}
 

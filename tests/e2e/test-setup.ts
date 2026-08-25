@@ -148,7 +148,16 @@ const test = playwrightTest.extend<{ mainPage: MainPage; findJobPage: FindJobPag
 					status: 200,
 					contentType: 'application/json',
 					body: JSON.stringify({
-						basics: { name: 'Test User', email: 'test@example.com', phone: '+1234567890', location: 'Test City', title: 'Software Engineer', linkedin: 'https://linkedin.com/in/test', github: 'https://github.com/test', photo: null },
+						basics: {
+							name: 'Test User',
+							email: 'test@example.com',
+							phone: '+1234567890',
+							location: 'Test City',
+							title: 'Software Engineer',
+							linkedin: 'https://linkedin.com/in/test',
+							github: 'https://github.com/test',
+							photo: null,
+						},
 						summary: 'Test summary',
 						experience: [],
 						education: [],
@@ -201,10 +210,15 @@ const test = playwrightTest.extend<{ mainPage: MainPage; findJobPage: FindJobPag
 });
 
 // Clear localStorage and sessionStorage after each test to avoid state bleed
+// Preserve resume-data so user's resume isn't lost during test runs
 test.afterEach(async ({ page }) => {
 	await page.evaluate(() => {
+		const resumeData = localStorage.getItem('resume-data');
 		localStorage.clear();
 		sessionStorage.clear();
+		if (resumeData) {
+			localStorage.setItem('resume-data', resumeData);
+		}
 	});
 });
 

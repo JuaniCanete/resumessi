@@ -82,7 +82,6 @@ test.describe('Advanced Flows', () => {
 
 		// Mock the polish API endpoints
 		await mainPage.page.route('**/api/polish-resume', async route => {
-			console.log('[TEST] /api/polish-resume mock hit, method:', route.request().method());
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -94,7 +93,6 @@ test.describe('Advanced Flows', () => {
 		});
 
 		await mainPage.page.route('**/api/save-polished', async route => {
-			console.log('[TEST] /api/save-polished mock hit, method:', route.request().method());
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -131,17 +129,8 @@ test.describe('Advanced Flows', () => {
 		await mainPage.page.reload();
 		await mainPage.waitForResumeLoaded();
 
-		// Debug: check button state
-		const button = mainPage.polishButton;
-		const displayStyle = await button.evaluate(el => getComputedStyle(el).display);
-		const inlineStyle = await button.getAttribute('style');
-		const classAttr = await button.getAttribute('class');
-		console.log('Button display (computed):', displayStyle);
-		console.log('Button inline style:', inlineStyle);
-		console.log('Button class:', classAttr);
-
 		// Call polishResume directly via evaluate with more logging
-		const evalResult = await mainPage.page.evaluate(() => {
+		const _evalResult = await mainPage.page.evaluate(() => {
 			try {
 				const btn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement | null;
 				const overlay = document.getElementById('polish-overlay');
@@ -170,7 +159,6 @@ test.describe('Advanced Flows', () => {
 				return { error: String(e) };
 			}
 		});
-		console.log('[TEST] evaluate returned:', evalResult);
 
 		// Wait for the async function to complete and refresh message to appear
 		await mainPage.page.waitForTimeout(500);
@@ -178,8 +166,8 @@ test.describe('Advanced Flows', () => {
 		// Check refresh message (it's shown briefly, then hidden after 2s)
 		const refreshMsg = mainPage.refreshMessage;
 		const refreshText = (await refreshMsg.textContent()) ?? '';
-		console.log('Refresh message text:', refreshText);
-		console.log('Refresh message display:', await refreshMsg.evaluate(el => getComputedStyle(el).display));
+		console.info('Refresh message text:', refreshText);
+		console.info('Refresh message display:', await refreshMsg.evaluate(el => getComputedStyle(el).display));
 		expect(refreshText).toBeTruthy();
 		expect(refreshText.toLowerCase()).toContain('applying changes');
 	});

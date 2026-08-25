@@ -226,44 +226,7 @@ test('POST /api/scraper/start with valid source returns run payload with results
 		process.env.LINKEDIN_2FA_SECRET
 	);
 	if (!hasLinkedInCreds) {
-		console.log('[SKIP] LinkedIn credentials not set, skipping scraper integration test');
-		return;
-	}
-
-	const res = await httpJson('POST', '/api/scraper/start', {
-		source: 'linkedin',
-		role: 'Engineer',
-		seniority: 'Senior',
-	});
-	assert.ok([200, 500].includes(res.status), `Expected 200 or 500, got ${res.status}`);
-	if (res.status === 200) {
-		const data = res.data as { source: string; totalResults: number; results: unknown[] };
-		assert.equal(data.source, 'linkedin');
-		assert.ok(typeof data.totalResults === 'number');
-		assert.ok(Array.isArray(data.results));
-	}
-});
-
-// ─── Scraper /api/scraper/start → /api/scraper/results roundtrip ─────────
-
-test('GET /api/scraper/results returns empty results before any scraper run', async () => {
-	const res = await httpJson('GET', '/api/scraper/results?source=linkedin');
-	assert.equal(res.status, 200);
-	const data = res.data as { source: string; results: unknown[] };
-	assert.equal(data.source, 'linkedin');
-	assert.ok(Array.isArray(data.results));
-});
-
-test('POST /api/scraper/start with valid source returns run payload with results array', async () => {
-	// Integration test: requires real LinkedIn credentials.
-	// Skip if no credentials to avoid 90s+ timeout from real scraper call.
-	const hasLinkedInCreds = !!(
-		process.env.LINKEDIN_EMAIL &&
-		process.env.LINKEDIN_PASSWORD &&
-		process.env.LINKEDIN_2FA_SECRET
-	);
-	if (!hasLinkedInCreds) {
-		console.log('[SKIP] LinkedIn credentials not set, skipping scraper integration test');
+		console.info('[SKIP] LinkedIn credentials not set, skipping scraper integration test');
 		return;
 	}
 

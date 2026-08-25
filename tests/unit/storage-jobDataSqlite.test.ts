@@ -24,6 +24,10 @@ function ensureTestDbDir(): void {
 
 before(() => {
 	ensureTestDbDir();
+	// Set default test database path to avoid leaking to production
+	const defaultTestDb = `${TEST_DB_BASE}-default.db`;
+	setDbPathForTesting(defaultTestDb);
+	initStorage();
 });
 
 after(() => {
@@ -39,6 +43,9 @@ after(() => {
 			}
 		});
 	}
+	// Clean up default test database
+	const defaultTestDb = `${TEST_DB_BASE}-default.db`;
+	cleanupTestDb(defaultTestDb);
 });
 
 function makeTestDb(): string {

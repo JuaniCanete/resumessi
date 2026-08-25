@@ -132,26 +132,26 @@ async function main(): Promise<void> {
 			process.exit(1);
 		}
 		userInput = fs.readFileSync(path.resolve(filePath), 'utf-8');
-		console.log(`Reading from ${filePath} (${userInput.length} chars)`);
+		console.info(`Reading from ${filePath} (${userInput.length} chars)`);
 	} else if (!process.stdin.isTTY) {
 		// Piped input
 		const chunks: Buffer[] = [];
 		for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
 		userInput = Buffer.concat(chunks).toString('utf-8');
-		console.log(`Reading piped input (${userInput.length} chars)`);
+		console.info(`Reading piped input (${userInput.length} chars)`);
 	} else {
 		// Interactive — read from prompt.txt
 		const promptFile = path.join(__dirname, 'prompt.txt');
 		const exampleFile = path.join(__dirname, 'prompt.txt.example');
 		if (!fs.existsSync(promptFile) && fs.existsSync(exampleFile)) {
 			fs.copyFileSync(exampleFile, promptFile);
-			console.log('Created src/resume/prompt.txt from prompt.txt.example');
+			console.info('Created src/resume/prompt.txt from prompt.txt.example');
 		}
 		if (fs.existsSync(promptFile)) {
 			userInput = fs.readFileSync(promptFile, 'utf-8');
-			console.log(`Using prompt.txt (${userInput.length} chars)`);
-			console.log('   Fill in your data in prompt.txt and re-run.');
-			console.log('   Or pipe raw text: cat resume.txt | tsx generate-resume.ts');
+			console.info(`Using prompt.txt (${userInput.length} chars)`);
+			console.info('   Fill in your data in prompt.txt and re-run.');
+			console.info('   Or pipe raw text: cat resume.txt | tsx generate-resume.ts');
 		} else {
 			console.error('No input provided. Options:');
 			console.error('   tsx generate-resume.ts --input file.txt');
@@ -160,7 +160,7 @@ async function main(): Promise<void> {
 		}
 	}
 
-	console.log('Calling AI...');
+	console.info('Calling AI...');
 	try {
 		const result = await callAI(
 			RESUME_PROMPT || '',
@@ -205,11 +205,11 @@ async function main(): Promise<void> {
 
 		// Write output
 		fs.writeFileSync(OUTPUT_FILE, JSON.stringify(result, null, 2), 'utf-8');
-		console.log('Generated src/resume/output/resume-data.json');
-		console.log(`   Name: ${result.basics.name}`);
-		console.log(`   Roles: ${result.experience ? result.experience.length : 0}`);
-		console.log(`   Skills categories: ${Object.keys(result.skills || {}).length}`);
-		console.log(`   Certs: ${result.certifications ? result.certifications.length : 0}`);
+		console.info('Generated src/resume/output/resume-data.json');
+		console.info(`   Name: ${result.basics.name}`);
+		console.info(`   Roles: ${result.experience ? result.experience.length : 0}`);
+		console.info(`   Skills categories: ${Object.keys(result.skills || {}).length}`);
+		console.info(`   Certs: ${result.certifications ? result.certifications.length : 0}`);
 	} catch (err: unknown) {
 		console.error('Error:', (err as Error).message);
 		process.exit(1);

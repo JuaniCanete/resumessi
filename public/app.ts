@@ -313,7 +313,7 @@ async function runAtsScan(): Promise<void> {
 		saveScanResults(screening);
 	} catch (err: unknown) {
 		if ((err as Error).name === 'AbortError') {
-			console.log('Scan cancelled by user.');
+			console.warn('Scan cancelled by user.');
 		} else {
 			modelErrorMsg.textContent = `API response: ${(err as Error).message}.`;
 			modelErrorMsg.style.color = 'var(--error)';
@@ -604,6 +604,20 @@ async function loadResumeData(): Promise<void> {
 		}
 	}
 
+	// Fallback to localStorage if no file found
+	const local = localStorage.getItem('resume-data');
+	if (local) {
+		try {
+			const data = JSON.parse(local) as Record<string, unknown>;
+			renderResume(data);
+			currentDataSource = 'generated';
+			updatePolishButton();
+			return;
+		} catch {
+			// Invalid localStorage data, fall through to placeholder
+		}
+	}
+
 	currentDataSource = 'placeholder';
 	renderResume(PLACEHOLDER_DATA);
 	updatePolishButton();
@@ -659,6 +673,37 @@ async function updatePolishButton(): Promise<void> {
 	}
 }
 
+// Set demo JD in textarea only when resume is the demo one (Messi)
+function maybeSetDemoJobDescription(): void {
+	if (currentDataSource !== 'demo') return;
+	const jdTextarea = document.getElementById('job-description') as HTMLTextAreaElement;
+	if (!jdTextarea) return;
+	const demoJd = `# Legendary Football Forward - GOAT
+
+## Company: Global Football Legacy Inc.
+**Location:** Rosario, Argentina → Worldwide  
+**Period:** 2004 – Present
+
+## Key Achievements
+- All-time top scorer in professional football history with 850+ career goals
+- Won 8 Ballon d'Or awards (most in history)
+- Led Argentina to FIFA World Cup 2022 victory
+- Scored 778 goals in 778 games for FC Barcelona
+- 10x La Liga champion, 4x UEFA Champions League winner
+- Transformed Inter Miami CF, leading to first playoff appearance
+
+## Core Skills
+- Elite dribbling and ball control
+- Exceptional vision and playmaking
+- Clutch performance under pressure
+- Global brand ambassador
+
+## Looking For
+A forward position requiring world-class goal-scoring ability, leadership, and proven track record at the highest level of professional football.`;
+	jdTextarea.value = demoJd;
+	validateJDInput();
+}
+
 function showRefreshMessage(): void {
 	const msg = document.getElementById('refresh-message')!;
 	msg.textContent = 'Applying changes . . .';
@@ -671,16 +716,16 @@ function showRefreshMessage(): void {
 
 // ─── Polish Resume ──────────────────────────────────────────────────
 async function polishResume(): Promise<void> {
-	console.log('[polishResume] START - called from click');
+	console.info('[polishResume] START - called from click');
 	const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
 	if (dropdownBtn.disabled) return;
 
 	dropdownBtn.disabled = true;
-	console.log('[polishResume] Setting overlay display to flex');
+	console.info('[polishResume] Setting overlay display to flex');
 	const overlay = document.getElementById('polish-overlay');
 	if (overlay) {
 		overlay.style.display = 'flex';
-		console.log('[polishResume] Overlay display set to:', overlay.style.display);
+		console.info('[polishResume] Overlay display set to:', overlay.style.display);
 	} else {
 		console.error('[polishResume] ERROR: Overlay element not found!');
 	}
@@ -757,7 +802,7 @@ async function polishResume(): Promise<void> {
 		}, 1000);
 	} catch (err: unknown) {
 		if ((err as Error).name === 'AbortError') {
-			console.log('Polish cancelled by user.');
+			console.warn('Polish cancelled by user.');
 		} else {
 			document.getElementById('polish-overlay')!.style.display = 'none';
 			showToast({ message: `Polish failed: ${(err as Error).message}`, type: 'error' });
@@ -1108,7 +1153,7 @@ async function confirmGeneration(): Promise<void> {
 		localStorage.setItem('resume-data', JSON.stringify(resumeData));
 	} catch (err: unknown) {
 		if ((err as Error).name === 'AbortError') {
-			console.log('Generation cancelled by user.');
+			console.warn('Generation cancelled by user.');
 		} else {
 			showToast({ message: `Error generating resume: ${(err as Error).message}`, type: 'error' });
 			console.error(err);
@@ -1480,6 +1525,7 @@ if (photoModal) {
 	applyColors(env);
 
 	await loadResumeData();
+	maybeSetDemoJobDescription();
 
 	const savedScan = loadScanResults();
 	if (savedScan) {

@@ -50,7 +50,7 @@ Create a code review file following this template:
 
 **Date:** YYYY-MM-DD
 **Reviewed by:** <Agent Name>
-**Author:** Juani / <Agent>
+**Author:** <Human> / <Agent>
 
 ## Summary
 
@@ -89,4 +89,4 @@ The reviewer should sign their contribution at the end of the file, such as: Rev
 
 ---
 
-*Updated: 2025-07-28*
+_Updated: 2025-07-28_

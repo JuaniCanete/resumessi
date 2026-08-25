@@ -96,7 +96,7 @@ async function extractLinkedInJobCards(page: import('playwright').Page): Promise
 		try {
 			const cards = await page.$$(selector);
 			if (cards.length > 0) {
-				console.log(`[LinkedIn Scraper] Found ${cards.length} cards using selector: ${selector}`);
+				console.info(`[LinkedIn Scraper] Found ${cards.length} cards using selector: ${selector}`);
 				return cards;
 			}
 		} catch (err: unknown) {
@@ -123,10 +123,10 @@ async function extractLinkedInCards(page: import('playwright').Page, results: Sc
 	if (cards.length === 0) {
 		console.warn('[LinkedIn Scraper] Zero cards extracted from page.');
 		try {
-			console.log('[LinkedIn Scraper] Page title:', await page.title());
-			console.log('[LinkedIn Scraper] Current URL:', page.url());
+			console.info('[LinkedIn Scraper] Page title:', await page.title());
+			console.info('[LinkedIn Scraper] Current URL:', page.url());
 			const bodyText = await page.evaluate(() => (document.body ? document.body.innerText.substring(0, 500) : ''));
-			console.log('[LinkedIn Scraper] Body text preview:', JSON.stringify(bodyText));
+			console.info('[LinkedIn Scraper] Body text preview:', JSON.stringify(bodyText));
 		} catch {
 			// ignore diagnostics errors
 		}
@@ -134,7 +134,7 @@ async function extractLinkedInCards(page: import('playwright').Page, results: Sc
 			const screenshotPath = path.join(process.cwd(), 'data', 'scraper-results', 'linkedin-debug.png');
 			try {
 				await page.screenshot({ path: screenshotPath, fullPage: true });
-				console.log('[LinkedIn Scraper] Saved debug screenshot to:', screenshotPath);
+				console.info('[LinkedIn Scraper] Saved debug screenshot to:', screenshotPath);
 			} catch {
 				// ignore screenshot errors
 			}
@@ -257,7 +257,7 @@ async function extractLinkedInJobDescription(page: import('playwright').Page, jo
 		}
 
 		const jdText = extractJdTextFromBody(bodyText);
-		console.log(
+		console.info(
 			`[LinkedIn Scraper] JD markers for ${jobUrl}: ` +
 				`JD_START_MARKER="${JD_START_MARKER}" ${bodyText.includes(JD_START_MARKER) ? 'FOUND' : 'NOT FOUND'}, ` +
 				`JD_END_MARKER="${JD_END_MARKER}" ${bodyText.includes(JD_END_MARKER) ? 'FOUND' : 'NOT FOUND'}`
@@ -376,7 +376,7 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
 	// Precondition: check state validity
 	let isValid = await validateLinkedInStorageState();
 	if (!isValid) {
-		console.log('[LinkedIn Scraper] Storage state invalid or missing. Auto-regenerating...');
+		console.info('[LinkedIn Scraper] Storage state invalid or missing. Auto-regenerating...');
 		await generateLinkedInStorageState();
 		isValid = await validateLinkedInStorageState();
 	}
@@ -390,7 +390,7 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
 	const pageCount = query.pageCount ?? 1;
 	const startPage = query.startPage ?? 1;
 	const searchUrls = buildScraperSearchUrls(baseUrl, 'linkedin', pageCount, startPage);
-	console.log(
+	console.info(
 		`[LinkedIn Scraper] Scraping ${searchUrls.length} page(s) starting from page ${startPage}: ${searchUrls.join(', ')}`
 	);
 
@@ -420,7 +420,7 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
 				}
 				return document.querySelectorAll('.job-card-container').length;
 			});
-			console.log(`[LinkedIn Scraper] Hydrated ${hydrated} job cards on page ${searchUrl}`);
+			console.info(`[LinkedIn Scraper] Hydrated ${hydrated} job cards on page ${searchUrl}`);
 
 			// Save page HTML for debugging pagination/scroll behavior (opt-in via SCRAPER_DEBUG=true).
 			// The HTML is redacted first to strip session tokens and profile data from disk.
@@ -431,7 +431,7 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
 					const html = redactDebugHtml(await page.content());
 					const debugFile = path.join(debugDir, `linkedin-page-${startPage + pageIndex}.html`);
 					fs.writeFileSync(debugFile, html);
-					console.log(`[LinkedIn Scraper] Saved redacted debug HTML to ${debugFile}`);
+					console.info(`[LinkedIn Scraper] Saved redacted debug HTML to ${debugFile}`);
 				} catch (debugErr: unknown) {
 					console.warn('[LinkedIn Scraper] Failed to save debug HTML:', (debugErr as Error).message);
 				}
@@ -440,12 +440,12 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
 			// Extract job card postings from LinkedIn with selector strategies and failure diagnostics
 			await extractLinkedInCards(page, results);
 
-			console.log(`[LinkedIn Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
+			console.info(`[LinkedIn Scraper] Page ${searchUrl} yielded ${results.length} results so far`);
 		}
 
 		// Visit individual job pages to extract the full JD
 		if (results.length > 0) {
-			console.log(
+			console.info(
 				`[LinkedIn Scraper] Extracting JDs for ${Math.min(results.length, MAX_JD_EXTRACTIONS)} of ${results.length} jobs...`
 			);
 			for (let i = 0; i < Math.min(results.length, MAX_JD_EXTRACTIONS); i++) {

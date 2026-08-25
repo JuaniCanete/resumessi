@@ -62,7 +62,7 @@ export async function scrapeGoogle(
 	const startPage = query.startPage ?? 1;
 	let totalItemsCollected = 0;
 
-	console.log(
+	console.info(
 		`[Google Scraper] Scraping up to ${pageCount} page(s) starting from page ${startPage} of SerpAPI for query: "${searchQuery}" (max ${MAX_TOTAL_ITEMS} items)`
 	);
 
@@ -89,7 +89,7 @@ export async function scrapeGoogle(
 
 			const data = await response.json();
 			const items = data.organic_results || [];
-			console.log(`[Google Scraper] Received ${items.length} items from SerpAPI for page ${page + 1}`);
+			console.info(`[Google Scraper] Received ${items.length} items from SerpAPI for page ${page + 1}`);
 
 			// Save SerpAPI response for debugging pagination behavior (opt-in via SCRAPER_DEBUG=true)
 			if (process.env.SCRAPER_DEBUG === 'true') {
@@ -98,7 +98,7 @@ export async function scrapeGoogle(
 					if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
 					const debugFile = path.join(debugDir, `google-page-${startPage + page}.json`);
 					fs.writeFileSync(debugFile, JSON.stringify(data, null, 2));
-					console.log(`[Google Scraper] Saved debug response to ${debugFile}`);
+					console.info(`[Google Scraper] Saved debug response to ${debugFile}`);
 				} catch (debugErr: unknown) {
 					console.warn('[Google Scraper] Failed to save debug response:', (debugErr as Error).message);
 				}
@@ -164,7 +164,7 @@ export async function scrapeGoogle(
 					const pathname = parsedUrl.pathname.toLowerCase();
 					const looksLikeJob = JOB_PATH_PATTERNS.some(p => pathname.includes(p));
 					if (!looksLikeJob) {
-						console.log(`[Google Scraper] Skipping non-listing result (${url})`);
+						console.info(`[Google Scraper] Skipping non-listing result (${url})`);
 						continue;
 					}
 				}
@@ -180,7 +180,7 @@ export async function scrapeGoogle(
 
 				// Stop if we've collected max items
 				if (totalItemsCollected >= MAX_TOTAL_ITEMS) {
-					console.log(`[Google Scraper] Reached max items (${MAX_TOTAL_ITEMS}), stopping pagination`);
+					console.info(`[Google Scraper] Reached max items (${MAX_TOTAL_ITEMS}), stopping pagination`);
 					break;
 				}
 			}
