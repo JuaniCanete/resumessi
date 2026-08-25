@@ -1,5 +1,5 @@
-import { test, expect } from './test-setup';
 import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
+import { test, expect } from './test-setup';
 
 const resumeWithLinks = {
 	basics: {

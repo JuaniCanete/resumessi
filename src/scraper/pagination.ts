@@ -80,8 +80,10 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
 	}
 
 	if (source === 'remoterocketship') {
-		// Build Remote Rocketship search URL
-		// New URL pattern: https://www.remoterocketship.com/jobs/full-time/?jobsInput=full-time&page=1&sort=DateAdded&employmentType=full-time&jobTitle=...&keywords=...&locations=...&seniority=...
+		// Remote Rocketship URL pattern:
+		// Host https://www.remoterocketship.com
+		// Slugs: /jobs/full-time/
+		// Parameters: ?jobsInput=full-time&page=1&sort=DateAdded&employmentType=full-time&jobTitle=...&keywords=...&locations=...&seniority=...
 
 		const params = new URLSearchParams();
 		params.set('jobsInput', 'full-time');

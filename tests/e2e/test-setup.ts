@@ -1,6 +1,6 @@
-import { test as playwrightTest, expect } from '@playwright/test';
-import { MainPage } from '../pages/MainPage';
 import { FindJobPage } from '../pages/FindJobPage';
+import { MainPage } from '../pages/MainPage';
+import { test as playwrightTest, expect } from '@playwright/test';
 
 // Small delay so UI loading states are visible before mocked responses resolve
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

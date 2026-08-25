@@ -1,28 +1,28 @@
 {
-  "extends": ["stylelint-config-standard"],
-  "rules": {
-    "selector-max-id": 1,
-    "no-duplicate-selectors": null,
-    "color-function-notation": null,
-    "alpha-value-notation": null,
-    "font-family-name-quotes": null,
-    "declaration-block-no-duplicate-properties": null,
-    "selector-class-pattern": null,
-    "value-keyword-case": null,
-    "selector-id-pattern": null,
-    "custom-property-pattern": null,
-    "shorthand-property-no-redundant-values": null,
-    "declaration-block-no-redundant-longhand-properties": null,
-    "color-hex-length": null,
-    "no-descending-specificity": null,
-    "rule-empty-line-before": null,
-    "import-notation": null,
-    "media-feature-range-notation": null
-  },
-  "overrides": [
-    {
-      "files": ["**/*.html"],
-      "customSyntax": "postcss-html"
-    }
-  ]
+	"extends": ["stylelint-config-standard"],
+	"rules": {
+		"selector-max-id": 1,
+		"no-duplicate-selectors": null,
+		"color-function-notation": null,
+		"alpha-value-notation": null,
+		"font-family-name-quotes": null,
+		"declaration-block-no-duplicate-properties": null,
+		"selector-class-pattern": null,
+		"value-keyword-case": null,
+		"selector-id-pattern": null,
+		"custom-property-pattern": null,
+		"shorthand-property-no-redundant-values": null,
+		"declaration-block-no-redundant-longhand-properties": null,
+		"color-hex-length": null,
+		"no-descending-specificity": null,
+		"rule-empty-line-before": null,
+		"import-notation": null,
+		"media-feature-range-notation": null
+	},
+	"overrides": [
+		{
+			"files": ["**/*.html"],
+			"customSyntax": "postcss-html"
+		}
+	]
 }

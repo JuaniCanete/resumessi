@@ -1,7 +1,7 @@
-import { test, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { TextEncoder } from 'node:util';
+import assert from 'node:assert/strict';
+import { test, beforeEach, afterEach } from 'node:test';
 
 // Polyfill for JSDOM
 global.TextEncoder = TextEncoder;
@@ -170,7 +170,7 @@ test('showConfirmModal - confirm callback fires on confirm button', async () => 
 	showConfirmModal({
 		title: 'Test',
 		message: 'Test',
-		onConfirm: async () => {
+		onConfirm: () => {
 			confirmed = true;
 		},
 	});
@@ -231,7 +231,7 @@ test('showConfirmModal - Enter key triggers confirm', async () => {
 	showConfirmModal({
 		title: 'Test',
 		message: 'Test',
-		onConfirm: async () => {
+		onConfirm: () => {
 			confirmed = true;
 		},
 	});

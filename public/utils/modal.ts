@@ -150,8 +150,8 @@ export function showConfirmModal(options: ModalOptions): void {
       border-radius: 50%;
       background: rgba(255, 255, 255, 0.08);
       line-height: 1;
-      transition: background 0.2s;
-    " onmouseenter="this.style.background='var(--accent, #2563eb)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
+      transition: background 0.2s;"
+	  onmouseenter="this.style.background='var(--accent, #2563eb)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
     <h2 style="color: #fff; margin-bottom: 8px; text-align: center; font-family: 'Comfortaa', sans-serif;">${styles.icon} ${title}</h2>
     <p style="color: rgba(255, 255, 255, 0.85); font-size: 14px; text-align: center; margin-bottom: 20px; line-height: 1.5;">${message}</p>
     <div style="display: flex; gap: 12px; justify-content: center;">
@@ -167,8 +167,9 @@ export function showConfirmModal(options: ModalOptions): void {
         transition: background 0.2s, transform 0.1s;
         background: rgba(255, 255, 255, 0.08);
         color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-      " onmouseenter="this.style.background='rgba(255,255,255,0.15)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">${cancelText}</button>
+        border: 1px solid rgba(255, 255, 255, 0.12);" 
+		onmouseenter="this.style.background='rgba(255,255,255,0.15)'" 
+	  	onmouseleave="this.style.background='rgba(255,255,255,0.08)'">${cancelText}</button>
       <button class="btn-confirm" style="
         flex: 1;
         padding: 11px 14px;
@@ -180,8 +181,9 @@ export function showConfirmModal(options: ModalOptions): void {
         cursor: pointer;
         transition: background 0.2s, transform 0.1s;
         background: ${styles.confirmBg};
-        color: ${variant === 'warning' ? '#1a1a1a' : '#fff'};
-      " onmouseenter="this.style.background='${styles.confirmHover}'" onmouseleave="this.style.background='${styles.confirmBg}'">${confirmText}</button>
+        color: ${variant === 'warning' ? '#1a1a1a' : '#fff'};" 
+		onmouseenter="this.style.background='${styles.confirmHover}'" 
+		onmouseleave="this.style.background='${styles.confirmBg}'">${confirmText}</button>
     </div>
   `;
 
@@ -381,10 +383,13 @@ export function showApplyModal(options: ApplyModalOptions): void {
       border-radius: 50%;
       background: rgba(255, 255, 255, 0.08);
       line-height: 1;
-      transition: background 0.2s;
-    " onmouseenter="this.style.background='var(--accent, #2563eb)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
+      transition: background 0.2s;" 
+	  onmouseenter="this.style.background='var(--accent, #2563eb)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
     <h2 style="color: #fff; margin-bottom: 8px; text-align: center; font-family: 'Comfortaa', sans-serif;">📌 Add to Dashboard</h2>
-    <p style="color: rgba(255, 255, 255, 0.85); font-size: 14px; text-align: center; margin-bottom: 4px; line-height: 1.5;">Name card for dashboard. eg: Netflix - AI Engineer</p>
+    <p style="
+	  color: rgba(255, 255, 255, 0.85); 
+	  font-size: 14px; text-align: center; 
+	  margin-bottom: 4px; line-height: 1.5;">Name card for dashboard. eg: Netflix - AI Engineer</p>
     <input type="text" class="apply-name-input" value="${suggestedName.replace(/"/g, '&quot;')}" style="
       width: 100%;
       padding: 11px 14px;

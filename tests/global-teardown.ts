@@ -3,7 +3,7 @@ import { existsSync, rmSync } from 'node:fs';
 
 const TEST_DB_PATH = join(__dirname, '..', 'data', 'test', 'jobdata-test.db');
 
-export default async function globalTeardown(): Promise<void> {
+export default function globalTeardown(): void {
 	// Clean up test database after all tests
 	const files = [
 		TEST_DB_PATH,

@@ -1,57 +1,81 @@
 {
-  "name": "John Smith",
-  "contact": {
-    "email": "john.smith@email.com",
-    "phone": "+1-555-0101",
-    "location": "San Francisco, CA",
-    "linkedin": "linkedin.com/in/johnsmith",
-    "github": "github.com/johnsmith"
-  },
-  "experience": [
-    {
-      "company": "TechCorp Inc",
-      "role": "Senior Software Engineer",
-      "duration": "2020 - Present",
-      "highlights": [
-        "Led redesign of payment processing system handling $10M+ daily transactions",
-        "Built microservices platform using Go and gRPC, reducing latency by 60%",
-        "Mentored team of 5 engineers, established code review and testing standards",
-        "Designed and implemented event-driven architecture with Kafka"
-      ]
-    },
-    {
-      "company": "DataSystems LLC",
-      "role": "Software Engineer",
-      "duration": "2017 - 2020",
-      "highlights": [
-        "Developed real-time analytics pipeline processing 1B+ events/day",
-        "Built internal tools and APIs using Python and Flask",
-        "Implemented automated testing and deployment pipelines",
-        "Optimized database queries, reducing query time by 80%"
-      ]
-    },
-    {
-      "company": "StartupXYZ",
-      "role": "Junior Developer",
-      "duration": "2015 - 2017",
-      "highlights": [
-        "Built customer-facing features for SaaS platform",
-        "Worked with React, Node.js, and PostgreSQL",
-        "Participated in agile development process"
-      ]
-    }
-  ],
-  "skills": ["Go", "Python", "JavaScript", "TypeScript", "SQL", "Bash", "Gin", "Flask", "React", "gRPC", "GraphQL", "PostgreSQL", "Redis", "MongoDB", "Cassandra", "AWS", "GCP", "Docker", "Kubernetes", "Terraform", "Prometheus", "Grafana", "Kafka"],
-  "education": [
-    {
-      "institution": "Stanford University",
-      "degree": "Master of Science in Computer Science",
-      "year": "2015"
-    },
-    {
-      "institution": "UC Berkeley",
-      "degree": "Bachelor of Science in Computer Science",
-      "year": "2013"
-    }
-  ]
+	"name": "John Smith",
+	"contact": {
+		"email": "john.smith@email.com",
+		"phone": "+1-555-0101",
+		"location": "San Francisco, CA",
+		"linkedin": "linkedin.com/in/johnsmith",
+		"github": "github.com/johnsmith"
+	},
+	"experience": [
+		{
+			"company": "TechCorp Inc",
+			"role": "Senior Software Engineer",
+			"duration": "2020 - Present",
+			"highlights": [
+				"Led redesign of payment processing system handling $10M+ daily transactions",
+				"Built microservices platform using Go and gRPC, reducing latency by 60%",
+				"Mentored team of 5 engineers, established code review and testing standards",
+				"Designed and implemented event-driven architecture with Kafka"
+			]
+		},
+		{
+			"company": "DataSystems LLC",
+			"role": "Software Engineer",
+			"duration": "2017 - 2020",
+			"highlights": [
+				"Developed real-time analytics pipeline processing 1B+ events/day",
+				"Built internal tools and APIs using Python and Flask",
+				"Implemented automated testing and deployment pipelines",
+				"Optimized database queries, reducing query time by 80%"
+			]
+		},
+		{
+			"company": "StartupXYZ",
+			"role": "Junior Developer",
+			"duration": "2015 - 2017",
+			"highlights": [
+				"Built customer-facing features for SaaS platform",
+				"Worked with React, Node.js, and PostgreSQL",
+				"Participated in agile development process"
+			]
+		}
+	],
+	"skills": [
+		"Go",
+		"Python",
+		"JavaScript",
+		"TypeScript",
+		"SQL",
+		"Bash",
+		"Gin",
+		"Flask",
+		"React",
+		"gRPC",
+		"GraphQL",
+		"PostgreSQL",
+		"Redis",
+		"MongoDB",
+		"Cassandra",
+		"AWS",
+		"GCP",
+		"Docker",
+		"Kubernetes",
+		"Terraform",
+		"Prometheus",
+		"Grafana",
+		"Kafka"
+	],
+	"education": [
+		{
+			"institution": "Stanford University",
+			"degree": "Master of Science in Computer Science",
+			"year": "2015"
+		},
+		{
+			"institution": "UC Berkeley",
+			"degree": "Bachelor of Science in Computer Science",
+			"year": "2013"
+		}
+	]
 }

@@ -6,8 +6,8 @@
  */
 'use strict';
 
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 
 // NOTE: public/app.ts contains DOM-dependent code (uses document, window, etc.)
 // These tests focus on pure utility functions that can be tested in isolation.

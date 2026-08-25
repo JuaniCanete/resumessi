@@ -165,11 +165,15 @@ async function main(): Promise<void> {
 	} else {
 		if (!isSilent) {
 			console.warn('');
-			console.warn('⚠️                                                                                                      ⚠️');
+			console.warn(
+				'⚠️                                                                                                      ⚠️'
+			);
 			console.warn('\t.env file already exists.');
 			console.warn('\tYour existing keys will be PRESERVED (including SerpAPI, scraper settings, theme colors).');
 			console.warn('\tOnly AI provider keys/models and inference order will be updated.');
-			console.warn('⚠️                                                                                                      ⚠️');
+			console.warn(
+				'⚠️                                                                                                      ⚠️'
+			);
 			console.warn('');
 			const confirm = await ask('Type "continue" to proceed: ');
 			if (confirm !== 'continue') {
@@ -198,7 +202,11 @@ async function main(): Promise<void> {
 			.map(s => s.trim().toLowerCase())
 			.filter(s => validIds.has(s));
 		if (currentOrder.length === 0) {
-			currentOrder.push(...DEFAULT_AI_INFERENCE_ORDER.split(',').map(s => s.trim().toLowerCase()).filter(s => validIds.has(s)));
+			currentOrder.push(
+				...DEFAULT_AI_INFERENCE_ORDER.split(',')
+					.map(s => s.trim().toLowerCase())
+					.filter(s => validIds.has(s))
+			);
 		}
 		for (let i = 0; i < currentOrder.length; i++) {
 			const p = PROVIDERS.find(prov => prov.id === currentOrder[i]);

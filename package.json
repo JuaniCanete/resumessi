@@ -11,7 +11,6 @@
 		"validate": "tsx scripts/validate.ts",
 		"prebuild": "npm run validate",
 		"build": "tsx build.ts",
-		"build:check": "tsx build.ts --check",
 		"prestart": "npm run build",
 		"start": "tsx start.ts",
 		"generate": "tsx src/resume/generate-resume.ts",

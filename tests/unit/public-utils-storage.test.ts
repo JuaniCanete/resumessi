@@ -1,6 +1,6 @@
-import { test, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
+import assert from 'node:assert/strict';
+import { test, beforeEach, afterEach } from 'node:test';
 
 // Setup JSDOM with localStorage
 const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
@@ -235,7 +235,7 @@ test('scheduleLocalStorageSync - debounces writes', async () => {
 	assert.equal(result[0].title, 'Test');
 });
 
-test('flushLocalStorageSync - forces immediate write', async () => {
+test('flushLocalStorageSync - forces immediate write', () => {
 	scheduleLocalStorageSync({
 		scrapingResults: {
 			linkedin: [

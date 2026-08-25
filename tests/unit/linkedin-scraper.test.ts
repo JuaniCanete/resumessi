@@ -1,7 +1,7 @@
-import { test } from 'node:test';
+import type { ScraperQuery } from '../../src/scraper/types';
 import assert from 'node:assert/strict';
 import { buildLinkedInSearchUrl } from '../../src/scraper/linkedin';
-import type { ScraperQuery } from '../../src/scraper/types';
+import { test } from 'node:test';
 
 test('buildLinkedInSearchUrl returns base URL when no query parts are provided', () => {
 	const query: ScraperQuery = { source: 'linkedin' };

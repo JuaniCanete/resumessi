@@ -5,9 +5,9 @@
  */
 
 import Database from 'better-sqlite3';
-import { join, dirname } from 'node:path';
-import { mkdirSync } from 'node:fs';
 import { ScraperResult } from '../types/scraper';
+import { mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 
 export type { ScraperResult };
 
@@ -386,9 +386,7 @@ export function initStorage(): void {}
 
 // --- Scraping Results (Scraper) ---
 
-export async function getScrapingRun(
-	source: 'linkedin' | 'google' | 'remoterocketship'
-): Promise<ScraperRunPayload | null> {
+export function getScrapingRun(source: 'linkedin' | 'google' | 'remoterocketship'): ScraperRunPayload | null {
 	const cached = getCachedRun(source);
 	if (cached) return cached;
 	const database = getDb();
@@ -423,7 +421,7 @@ export async function getScrapingRun(
 	return payload;
 }
 
-export async function setScrapingRun(
+export function setScrapingRun(
 	source: 'linkedin' | 'google' | 'remoterocketship',
 	run: {
 		timestamp: string;
@@ -431,7 +429,7 @@ export async function setScrapingRun(
 		runId: string;
 		results: ScraperResult[];
 	}
-): Promise<void> {
+): void {
 	const database = getDb();
 	const dbTransaction = database.transaction(() => {
 		const insertRun = database.prepare(`
@@ -459,8 +457,11 @@ export async function setScrapingRun(
 		);
 		const upsertResult = database.prepare(`
       INSERT INTO scraping_results
-        (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, extractionDone, site, jobDescription, isCollectionUrl)
+        (
+	  		url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
+         	saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes,
+		 	jobId, runId, timestamp, extractionDone, site, jobDescription, isCollectionUrl
+		)
       VALUES
         (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
          @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
@@ -539,11 +540,11 @@ export async function setScrapingRun(
 	});
 }
 
-export async function updateScrapingResultSummary(
+export function updateScrapingResultSummary(
 	source: 'linkedin' | 'google' | 'remoterocketship',
 	updates: { summary?: string; provider?: string; metadataExtractionStatus?: 'done' },
 	results: ScraperResult[]
-): Promise<void> {
+): void {
 	const database = getDb();
 	const dbTransaction = database.transaction(() => {
 		const updateRun = database.prepare(`
@@ -564,8 +565,11 @@ export async function updateScrapingResultSummary(
     `);
 		const upsertResult = database.prepare(`
       INSERT INTO scraping_results
-        (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, extractionDone, site, jobDescription, isCollectionUrl)
+        (
+	  		url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
+         	saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, 
+			runId, timestamp, extractionDone, site, jobDescription, isCollectionUrl
+		)
       VALUES
         (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
          @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
@@ -667,7 +671,7 @@ export function loadSidebarState(): SidebarState | null {
 	}
 }
 
-export async function loadJobData(): Promise<JobData> {
+export function loadJobData(): JobData {
 	const database = getDb();
 	const linkedinResults = database
 		.prepare("SELECT * FROM scraping_results WHERE source = 'linkedin' AND removed = 0")
@@ -724,13 +728,16 @@ function parseSavedRowFromSqlite(row: Record<string, unknown>): ScraperResult {
 	};
 }
 
-export async function saveJobData(data: JobData): Promise<void> {
+export function saveJobData(data: JobData): void {
 	const database = getDb();
 	const dbTransaction = database.transaction(() => {
 		const insertScraping = database.prepare(`
       INSERT OR REPLACE INTO scraping_results
-        (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, site, jobDescription, isCollectionUrl)
+        (
+	  		url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
+        	saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, 
+		 	runId, timestamp, site, jobDescription, isCollectionUrl
+		)
       VALUES
         (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
          @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
@@ -803,7 +810,7 @@ function formatSavedRowForSqlite(
 	};
 }
 
-export async function getScrapingResults(source: 'linkedin' | 'google' | 'remoterocketship'): Promise<ScraperResult[]> {
+export function getScrapingResults(source: 'linkedin' | 'google' | 'remoterocketship'): ScraperResult[] {
 	const database = getDb();
 	const rows = database
 		.prepare('SELECT * FROM scraping_results WHERE source = ? AND removed = 0')
@@ -811,10 +818,7 @@ export async function getScrapingResults(source: 'linkedin' | 'google' | 'remote
 	return rows.map(parseRowFromSqlite);
 }
 
-export async function setScrapingResults(
-	source: 'linkedin' | 'google' | 'remoterocketship',
-	results: ScraperResult[]
-): Promise<void> {
+export function setScrapingResults(source: 'linkedin' | 'google' | 'remoterocketship', results: ScraperResult[]): void {
 	const database = getDb();
 	const dbTransaction = database.transaction(() => {
 		const checkExisting = database.prepare(
@@ -822,8 +826,11 @@ export async function setScrapingResults(
 		);
 		const upsertResult = database.prepare(`
       INSERT INTO scraping_results
-        (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, runId, timestamp, site, jobDescription, isCollectionUrl)
+        (
+	  		url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
+        	saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, 
+			runId, timestamp, site, jobDescription, isCollectionUrl
+		)
       VALUES
         (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
          @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
@@ -875,14 +882,14 @@ export async function setScrapingResults(
 	clearCachedRun();
 }
 
-export async function markScrapingResultRemoved(source: 'linkedin' | 'google', url: string): Promise<void> {
+export function markScrapingResultRemoved(source: 'linkedin' | 'google', url: string): void {
 	const database = getDb();
 	const updateStmt = database.prepare('UPDATE scraping_results SET removed = 1 WHERE url = ? AND source = ?');
 	updateStmt.run(url, source);
 	clearCachedRun(source);
 }
 
-export async function saveJobFromScraping(result: ScraperResult, source: 'linkedin' | 'google'): Promise<void> {
+export function saveJobFromScraping(result: ScraperResult, source: 'linkedin' | 'google'): void {
 	const database = getDb();
 	const dbTransaction = database.transaction(() => {
 		const savedJob = {
@@ -927,7 +934,7 @@ export async function saveJobFromScraping(result: ScraperResult, source: 'linked
 	}
 }
 
-export async function unsaveJob(source: 'linkedin' | 'google', url: string): Promise<void> {
+export function unsaveJob(source: 'linkedin' | 'google', url: string): void {
 	const database = getDb();
 	const dbTransaction = database.transaction(() => {
 		database.prepare('DELETE FROM saved_jobs WHERE url = ? AND source = ?').run(url, source);
@@ -939,7 +946,7 @@ export async function unsaveJob(source: 'linkedin' | 'google', url: string): Pro
 	clearCachedRun();
 }
 
-export async function getSavedJobs(source?: 'linkedin' | 'google'): Promise<ScraperResult[]> {
+export function getSavedJobs(source?: 'linkedin' | 'google'): ScraperResult[] {
 	const database = getDb();
 	if (source) {
 		const rows = database.prepare('SELECT * FROM saved_jobs WHERE source = ?').all(source) as Record<string, unknown>[];
@@ -949,11 +956,11 @@ export async function getSavedJobs(source?: 'linkedin' | 'google'): Promise<Scra
 	return rows.map(parseSavedRowFromSqlite);
 }
 
-export async function applyToJob(
+export function applyToJob(
 	result: ScraperResult,
 	source: 'linkedin' | 'google' | 'remoterocketship',
 	customTitle?: string
-): Promise<void> {
+): void {
 	const database = getDb();
 	const title = customTitle?.trim() || result.title || 'Untitled Job';
 
@@ -1012,7 +1019,7 @@ export async function applyToJob(
 	clearCachedRun();
 }
 
-export async function getJobDashboard(): Promise<ScraperResult[]> {
+export function getJobDashboard(): ScraperResult[] {
 	const database = getDb();
 	const rows = database.prepare('SELECT rowid, * FROM job_dashboard').all() as (Record<string, unknown> & {
 		rowid: number;
@@ -1074,11 +1081,7 @@ export async function getJobDashboard(): Promise<ScraperResult[]> {
 	return results;
 }
 
-export async function updateDashboardJob(
-	url?: string,
-	updates: Partial<ScraperResult> = {},
-	id?: string
-): Promise<void> {
+export function updateDashboardJob(url?: string, updates: Partial<ScraperResult> = {}, id?: string): void {
 	const database = getDb();
 	const setParts: string[] = [];
 	const values: unknown[] = [];
@@ -1108,7 +1111,7 @@ export async function updateDashboardJob(
 	}
 }
 
-export async function insertDashboardJob(job: ScraperResult): Promise<ScraperResult> {
+export function insertDashboardJob(job: ScraperResult): ScraperResult {
 	const database = getDb();
 	const status = (job.status || 'No News') as 'No News' | 'Interviewing' | 'Offer' | 'Rejected' | 'Hired';
 	const dashboardJob: ScraperResult = {
@@ -1136,7 +1139,7 @@ export async function insertDashboardJob(job: ScraperResult): Promise<ScraperRes
 	return dashboardJob;
 }
 
-export async function removeDashboardJob(url?: string, id?: string): Promise<void> {
+export function removeDashboardJob(url?: string, id?: string): void {
 	const database = getDb();
 	if (url && id) {
 		database.prepare('DELETE FROM job_dashboard WHERE url = ? AND jobId = ?').run(url, id);
@@ -1147,20 +1150,20 @@ export async function removeDashboardJob(url?: string, id?: string): Promise<voi
 	}
 }
 
-export async function clearTestDashboardData(): Promise<void> {
+export function clearTestDashboardData(): void {
 	const database = getDb();
 	database.prepare('DELETE FROM job_dashboard').run();
 	clearCachedRun();
 }
 
-export async function clearScraperResultsBySource(source: string): Promise<void> {
+export function clearScraperResultsBySource(source: string): void {
 	const database = getDb();
 	database.prepare('DELETE FROM scraper_runs WHERE source = ?').run(source);
 	database.prepare('DELETE FROM scraping_results WHERE source = ?').run(source);
 	clearCachedRun();
 }
 
-export async function updateJobDescription(url: string, jobDescription: string): Promise<void> {
+export function updateJobDescription(url: string, jobDescription: string): void {
 	const database = getDb();
 	const dbTransaction = database.transaction(() => {
 		database.prepare('UPDATE scraping_results SET jobDescription = ? WHERE url = ?').run(jobDescription, url);

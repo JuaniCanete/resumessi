@@ -1,3 +1,4 @@
+import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import {
 	stripMarkdown,
 	buildQueryUrl,
@@ -6,9 +7,8 @@ import {
 	showToast,
 	showApplyModal,
 	isCollectionUrl,
+	type ScraperResult,
 } from './utils';
-import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
-import type { ScraperResult } from './utils';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -318,7 +318,14 @@ function showLoadingUI(source: 'linkedin' | 'google' | 'remoterocketship'): void
         <p style="font-size: 13.5px; color: #94a3b8; max-width: 500px; margin: 0 auto 20px auto; line-height: 1.6;">
           Extracting job listings, parsing company information, and generating AI relevance summaries ...
         </p>
-        <div style="display: inline-block; padding: 8px 18px; background: rgba(37,99,235,0.15); border: 1px solid rgba(37,99,235,0.3); border-radius: 20px; color: #60a5fa; font-size: 12.5px; font-weight: 600;">
+        <div style="
+		display: inline-block; 
+		padding: 8px 18px; 
+		background: rgba(37,99,235,0.15); 
+		border: 1px solid rgba(37,99,235,0.3);
+		border-radius: 20px; color: #60a5fa; 
+		font-size: 12.5px; 
+		font-weight: 600;">
           Please keep this tab open
         </div>
       </div>
@@ -1378,7 +1385,7 @@ function initBoardDragAndDrop(): void {
 				? (document.querySelector(`.board-card[data-url="${draggedCardUrl}"]`) as HTMLElement | null)
 				: (document.querySelector(`.board-card[data-id="${draggedCardId}"]`) as HTMLElement | null);
 			if (!card) return;
-			if (afterElement == null) {
+			if (afterElement === null) {
 				container.appendChild(card);
 			} else {
 				container.insertBefore(card, afterElement);
@@ -1674,10 +1681,7 @@ function handleRemove(item: ScraperResult, source: 'linkedin' | 'google' | 'remo
 	});
 }
 
-async function handleApply(
-	item: ScraperResult,
-	source: 'linkedin' | 'google' | 'remoterocketship' | 'user'
-): Promise<void> {
+function handleApply(item: ScraperResult, source: 'linkedin' | 'google' | 'remoterocketship' | 'user'): void {
 	showApplyModal({
 		item,
 		onConfirm: async (name: string) => {

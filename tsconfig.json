@@ -1,36 +1,36 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
-    "types": ["node"],
-    "lib": ["ES2022", "DOM"],
-    "outDir": "./dist",
-    "rootDir": ".",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "allowJs": false,
-    "checkJs": false,
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false
-  },
-  "include": [
-    "./src/**/*.ts",
-    "./public/**/*.ts",
-    "./scripts/**/*.ts",
-    "./tests/**/*.ts",
-    "./start.ts",
-    "./build.ts",
-    "./setup.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "public/dist"
-  ]
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"ignoreDeprecations": "6.0",
+		"types": ["node"],
+		"lib": ["ES2022", "DOM"],
+		"outDir": "./dist",
+		"rootDir": ".",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"allowJs": false,
+		"checkJs": false,
+		"declaration": false,
+		"declarationMap": false,
+		"sourceMap": false
+	},
+	"include": [
+		"./src/**/*.ts",
+		"./public/**/*.ts",
+		"./scripts/**/*.ts",
+		"./tests/**/*.ts",
+		"./start.ts",
+		"./build.ts",
+		"./setup.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"public/dist"
+	]
 }

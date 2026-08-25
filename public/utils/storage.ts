@@ -3,8 +3,7 @@
  * localStorage helpers with fallback for instant UI updates
  */
 
-import type { JobData, ScraperResult, SidebarState } from './types';
-import { LOCALSTORAGE_KEYS } from './types';
+import { LOCALSTORAGE_KEYS, type JobData, type ScraperResult, type SidebarState } from './types';
 
 // Re-export for convenience
 export { LOCALSTORAGE_KEYS };

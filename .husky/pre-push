@@ -2,10 +2,13 @@
 set -e
 
 BRANCH="${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
-if [ "$BRANCH" = "main" ]; then
-  echo "Running pre-push validations on $BRANCH..."
+echo "Running pre-push validations on $BRANCH..."
   npm run build:check
+if [ "$BRANCH" = "main" ]; then
   npm run validate
+else
+  npm run validate -- --skip-evals
+fi
   npm run typecheck
   npm run lint
   npm run test:unit
@@ -13,5 +16,5 @@ if [ "$BRANCH" = "main" ]; then
   npm run css:validate
   npm run build
   npm run test:e2e
-  echo "All pre-push validations passed ✅"
-fi
+
+echo "All pre-push validations passed ✅"

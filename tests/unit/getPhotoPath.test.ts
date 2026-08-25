@@ -11,8 +11,8 @@
  */
 'use strict';
 
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 
 /**
  * Mirror of the photo resolution logic from public/main.html.
@@ -23,28 +23,28 @@ import assert from 'node:assert/strict';
 import { getPhotoPath } from '../../public/utils';
 
 test('getPhotoPath returns uploaded photo when present', () => {
-  const uploadedPhoto = 'data:image/png;base64,abc';
-  const resumeData = { basics: { photo: 'photo.jpg' } };
-  assert.equal(getPhotoPath(uploadedPhoto, resumeData), 'data:image/png;base64,abc');
+	const uploadedPhoto = 'data:image/png;base64,abc';
+	const resumeData = { basics: { photo: 'photo.jpg' } };
+	assert.equal(getPhotoPath(uploadedPhoto, resumeData), 'data:image/png;base64,abc');
 });
 
 test('getPhotoPath returns resume photo path when no upload', () => {
-  const resumeData = { basics: { photo: 'myphoto.jpg' } };
-  assert.equal(getPhotoPath(null, resumeData), 'public/assets/photos/myphoto.jpg');
+	const resumeData = { basics: { photo: 'myphoto.jpg' } };
+	assert.equal(getPhotoPath(null, resumeData), 'public/assets/photos/myphoto.jpg');
 });
 
 test('getPhotoPath returns demo fallback when basics.photo is missing', () => {
-  const resumeData = { basics: {} };
-  assert.equal(getPhotoPath(null, resumeData), '/demo/goat.jpg');
+	const resumeData = { basics: {} };
+	assert.equal(getPhotoPath(null, resumeData), '/demo/goat.jpg');
 });
 
 test('getPhotoPath returns demo fallback when basics is missing entirely', () => {
-  const resumeData = {};
-  assert.equal(getPhotoPath(null, resumeData), '/demo/goat.jpg');
+	const resumeData = {};
+	assert.equal(getPhotoPath(null, resumeData), '/demo/goat.jpg');
 });
 
 test('getPhotoPath uploaded photo takes priority over resume photo', () => {
-  const uploadedPhoto = 'data:image/jpeg;base64,xyz';
-  const resumeData = { basics: { photo: 'other.jpg' } };
-  assert.equal(getPhotoPath(uploadedPhoto, resumeData), 'data:image/jpeg;base64,xyz');
+	const uploadedPhoto = 'data:image/jpeg;base64,xyz';
+	const resumeData = { basics: { photo: 'other.jpg' } };
+	assert.equal(getPhotoPath(uploadedPhoto, resumeData), 'data:image/jpeg;base64,xyz');
 });

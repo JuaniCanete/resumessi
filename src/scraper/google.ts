@@ -1,7 +1,7 @@
-import { buildScraperSearchUrl, DEFAULT_TARGET_DOMAINS } from './pagination';
-import type { ScraperQuery, ScraperResult } from './types';
 import fs from 'fs';
 import path from 'path';
+import type { ScraperQuery, ScraperResult } from './types';
+import { buildScraperSearchUrl, DEFAULT_TARGET_DOMAINS } from './pagination';
 
 export { DEFAULT_TARGET_DOMAINS };
 
@@ -63,7 +63,10 @@ export async function scrapeGoogle(
 	let totalItemsCollected = 0;
 
 	console.info(
-		`[Google Scraper] Scraping up to ${pageCount} page(s) starting from page ${startPage} of SerpAPI for query: "${searchQuery}" (max ${MAX_TOTAL_ITEMS} items)`
+		`
+		[Google Scraper] Scraping up to ${pageCount} page(s) starting from page ${startPage} of SerpAPI for query: 
+		"${searchQuery}" (max ${MAX_TOTAL_ITEMS} items)
+		`
 	);
 
 	for (let page = 0; page < pageCount; page++) {

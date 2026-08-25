@@ -1,36 +1,36 @@
 {
-  "basics": {
-    "name": "David Kim",
-    "email": "david.kim@email.com",
-    "phone": "+1-555-1111",
-    "location": "Seattle, WA",
-    "summary": "Software engineer with experience in web development. Looking for new opportunities.",
-    "url": "https://linkedin.com/in/davidkim"
-  },
-  "experience": [
-    {
-      "title": "Software Engineer",
-      "company": "Tech Company",
-      "location": "Seattle, WA",
-      "startDate": "2020-01-01",
-      "endDate": "present",
-      "description": "Work on various projects",
-      "highlights": [
-        "Built features",
-        "Fixed bugs",
-        "Wrote tests"
-      ]
-    }
-  ],
-  "education": [
-    {
-      "institution": "University of Washington",
-      "degree": "BS Computer Science",
-      "endDate": "2019-06-01"
-    }
-  ],
-  "skills": {
-    "Programming": ["JavaScript", "Python", "Java"],
-    "Frameworks": ["React", "Spring Boot"]
-  }
+	"basics": {
+		"name": "David Kim",
+		"email": "david.kim@email.com",
+		"phone": "+1-555-1111",
+		"location": "Seattle, WA",
+		"summary": "Software engineer with experience in web development. Looking for new opportunities.",
+		"url": "https://linkedin.com/in/davidkim"
+	},
+	"experience": [
+		{
+			"title": "Software Engineer",
+			"company": "Tech Company",
+			"location": "Seattle, WA",
+			"startDate": "2020-01-01",
+			"endDate": "present",
+			"description": "Work on various projects",
+			"highlights": [
+				"Built features",
+				"Fixed bugs",
+				"Wrote tests"
+			]
+		}
+	],
+	"education": [
+		{
+			"institution": "University of Washington",
+			"degree": "BS Computer Science",
+			"endDate": "2019-06-01"
+		}
+	],
+	"skills": {
+		"Programming": ["JavaScript", "Python", "Java"],
+		"Frameworks": ["React", "Spring Boot"]
+	}
 }

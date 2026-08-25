@@ -1,58 +1,58 @@
 {
-  "jd": "We are hiring a DevOps Engineer with 5+ years experience. Must have: Kubernetes, Docker, AWS/GCP, Terraform, CI/CD pipelines, Python/Go scripting, monitoring (Prometheus/Grafana), Linux administration. You will manage our cloud infrastructure, build deployment pipelines, and ensure system reliability. On-call rotation required. Excellent compensation, equity, full remote.",
-  "resume": {
-    "basics": {
-      "name": "Maria Rodriguez",
-      "email": "maria.rodriguez@email.com",
-      "phone": "+1-555-0789",
-      "location": "Miami, FL",
-      "summary": "Frontend Developer with 3 years experience building user interfaces with React and Vue. Passionate about clean code and user experience.",
-      "url": "https://linkedin.com/in/mariarodriguez"
-    },
-    "experience": [
-      {
-        "title": "Frontend Developer",
-        "company": "Creative Studio",
-        "location": "Miami, FL",
-        "startDate": "2021-02-01",
-        "endDate": "present",
-        "description": "Building marketing websites and web applications",
-        "highlights": [
-          "Developed 20+ responsive websites using React and Vue",
-          "Implemented animations with Framer Motion and GSAP",
-          "Collaborated with designers using Figma",
-          "Optimized website performance and SEO"
-        ]
-      },
-      {
-        "title": "Junior Web Developer",
-        "company": "Local Agency",
-        "location": "Miami, FL",
-        "startDate": "2019-06-01",
-        "endDate": "2021-01-31",
-        "description": "Built WordPress sites and custom themes",
-        "highlights": [
-          "Created custom WordPress themes and plugins",
-          "Maintained client websites and performed updates",
-          "Basic PHP and MySQL experience"
-        ]
-      }
-    ],
-    "education": [
-      {
-        "institution": "Miami Dade College",
-        "degree": "Associate Degree",
-        "field": "Web Development",
-        "endDate": "2019-05-31"
-      }
-    ],
-    "skills": {
-      "Frontend": ["React", "Vue.js", "JavaScript", "TypeScript", "HTML/CSS", "Tailwind CSS", "Framer Motion"],
-      "Tools": ["Git", "VS Code", "Figma", "Chrome DevTools"],
-      "Other": ["WordPress", "PHP", "SEO", "Responsive Design"]
-    },
-    "projects": [],
-    "certifications": [],
-    "languages": ["English (Native)", "Spanish (Native)"]
-  }
+	"jd": "We are hiring a DevOps Engineer with 5+ years experience. Must have: Kubernetes, Docker, AWS/GCP, Terraform, CI/CD pipelines, Python/Go scripting, monitoring (Prometheus/Grafana), Linux administration. You will manage our cloud infrastructure, build deployment pipelines, and ensure system reliability. On-call rotation required. Excellent compensation, equity, full remote.",
+	"resume": {
+		"basics": {
+			"name": "Maria Rodriguez",
+			"email": "maria.rodriguez@email.com",
+			"phone": "+1-555-0789",
+			"location": "Miami, FL",
+			"summary": "Frontend Developer with 3 years experience building user interfaces with React and Vue. Passionate about clean code and user experience.",
+			"url": "https://linkedin.com/in/mariarodriguez"
+		},
+		"experience": [
+			{
+				"title": "Frontend Developer",
+				"company": "Creative Studio",
+				"location": "Miami, FL",
+				"startDate": "2021-02-01",
+				"endDate": "present",
+				"description": "Building marketing websites and web applications",
+				"highlights": [
+					"Developed 20+ responsive websites using React and Vue",
+					"Implemented animations with Framer Motion and GSAP",
+					"Collaborated with designers using Figma",
+					"Optimized website performance and SEO"
+				]
+			},
+			{
+				"title": "Junior Web Developer",
+				"company": "Local Agency",
+				"location": "Miami, FL",
+				"startDate": "2019-06-01",
+				"endDate": "2021-01-31",
+				"description": "Built WordPress sites and custom themes",
+				"highlights": [
+					"Created custom WordPress themes and plugins",
+					"Maintained client websites and performed updates",
+					"Basic PHP and MySQL experience"
+				]
+			}
+		],
+		"education": [
+			{
+				"institution": "Miami Dade College",
+				"degree": "Associate Degree",
+				"field": "Web Development",
+				"endDate": "2019-05-31"
+			}
+		],
+		"skills": {
+			"Frontend": ["React", "Vue.js", "JavaScript", "TypeScript", "HTML/CSS", "Tailwind CSS", "Framer Motion"],
+			"Tools": ["Git", "VS Code", "Figma", "Chrome DevTools"],
+			"Other": ["WordPress", "PHP", "SEO", "Responsive Design"]
+		},
+		"projects": [],
+		"certifications": [],
+		"languages": ["English (Native)", "Spanish (Native)"]
+	}
 }

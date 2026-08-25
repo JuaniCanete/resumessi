@@ -129,6 +129,8 @@ function buildRequest(
 	key: string,
 	params: Record<string, unknown> = {}
 ): BuildRequestResult {
+	// API parameter names must match provider specs (snake_case)
+	/* eslint-disable camelcase */
 	const { temperature, max_tokens, top_p } = params;
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
@@ -201,6 +203,7 @@ function buildRequest(
 			// Greedy sampling requires top_p = 1
 			body.top_p = 1;
 		}
+		/* eslint-enable camelcase */
 
 		const baseUrl =
 			provider === 'mistral'
@@ -476,7 +479,7 @@ function validateInferenceRequest(body: Record<string, unknown>): string[] {
 	}
 	if (
 		body.provider !== undefined &&
-		body.provider != null &&
+		body.provider !== null &&
 		(typeof body.provider !== 'string' || body.provider.trim().length < 1)
 	) {
 		errors.push('provider must be a non-empty string when provided');

@@ -1,18 +1,18 @@
 {
-  "jobs": [
-    {
-      "title": "Senior Frontend Engineer",
-      "company": "TechCorp Inc",
-      "location": "Remote",
-      "snippet": "Senior Frontend role at TechCorp requiring React, TypeScript, 5+ years exp. Remote friendly.",
-      "url": "https://linkedin.com/jobs/view/123456"
-    },
-    {
-      "title": "Frontend Engineer",
-      "company": "StartupXYZ",
-      "location": "New York, NY (Hybrid)",
-      "snippet": "Frontend Engineer at StartupXYZ, React/TypeScript, 3+ years, hybrid NYC.",
-      "url": "https://linkedin.com/jobs/view/789012"
-    }
-  ]
+	"jobs": [
+		{
+			"title": "Senior Frontend Engineer",
+			"company": "TechCorp Inc",
+			"location": "Remote",
+			"snippet": "Senior Frontend role at TechCorp requiring React, TypeScript, 5+ years exp. Remote friendly.",
+			"url": "https://linkedin.com/jobs/view/123456"
+		},
+		{
+			"title": "Frontend Engineer",
+			"company": "StartupXYZ",
+			"location": "New York, NY (Hybrid)",
+			"snippet": "Frontend Engineer at StartupXYZ, React/TypeScript, 3+ years, hybrid NYC.",
+			"url": "https://linkedin.com/jobs/view/789012"
+		}
+	]
 }

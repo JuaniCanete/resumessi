@@ -1,9 +1,9 @@
-import { test, before, after } from 'node:test';
-import assert from 'node:assert/strict';
-import { spawn, execSync, type ChildProcess } from 'node:child_process';
 import * as http from 'node:http';
+import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { rmSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from 'node:fs';
+import { spawn, execSync, type ChildProcess } from 'node:child_process';
+import { test, before, after } from 'node:test';
 
 const TEST_PORT = 3447;
 const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
@@ -542,7 +542,7 @@ test('POST /api/generate-cover-letter rejects missing resume with 400', async ()
 	}
 });
 
-test('POST /api/generate-cover-letter returns 503 when no AI providers configured', async () => {
+test('POST /api/generate-cover-letter returns 503 when no AI providers configured', () => {
 	// This test would need a server without AI keys - skip in integration
 	// Covered at unit level in router.test.ts
 	assert.ok(true, 'Covered in router.test.ts unit tests');
@@ -603,12 +603,12 @@ test('POST /api/ats/clean-jd rejects missing jobDescription with 400', async () 
 	}
 });
 
-test('POST /api/ats/clean-jd returns 503 when no AI providers configured', async () => {
+test('POST /api/ats/clean-jd returns 503 when no AI providers configured', () => {
 	// Covered at unit level
 	assert.ok(true, 'Covered in router.test.ts unit tests');
 });
 
-test('POST /api/ats/clean-jd returns COLLECTION_DETECTED for collection pages', async () => {
+test('POST /api/ats/clean-jd returns COLLECTION_DETECTED for collection pages', () => {
 	// Would need mocked AI returning isCollection: true - covered at unit level
 	assert.ok(true, 'Covered in router.test.ts unit tests');
 });

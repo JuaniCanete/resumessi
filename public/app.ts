@@ -3,9 +3,9 @@
  * Extracted from public/main.html inline script
  */
 
-import { buildQueryUrl, resizeImage, showToast } from './utils';
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import { safeJsonParse } from '../src/providers';
+import { buildQueryUrl, resizeImage, showToast } from './utils';
 
 // Declare global function for TypeScript benefit
 declare function closeJdEditModal(): void;
@@ -1014,8 +1014,107 @@ function extractNameFromPDFText(text: string): string | null {
 	const headerBlacklist =
 		/^(summary|professional summary|profile|experience|work experience|education|skills|certifications|contact|about|objective|languages)/i;
 	// Common job-title / role words that should never be treated as a person's name
-	const jobTitleBlacklist =
-		/^(senior|junior|lead|staff|principal|mid|mid-level|entry|entry-level|software|frontend|front-end|backend|back-end|fullstack|full-stack|devops|sdet|qa|quality|automation|engineer|developer|manager|director|architect|analyst|consultant|specialist|designer|product|project|program|scrum|agile|data|cloud|platform|infrastructure|network|security|test|testing|tester|intern|internship|contractor|freelance|remote|head|chief|cto|ceo|coo|cfo|vp|vice|president|founder|owner|recruiter|talent|people|hr|human|resources|marketing|sales|finance|legal|operations|support|success|account|business|strategy|growth|content|writer|copywriter|editor|teacher|professor|nurse|doctor|lawyer|accountant|architect|scientist|researcher|technician|coordinator|assistant|associate|representative|officer|leadership|lead)/i;
+	const jobTitleBlacklistTerms = [
+		'senior',
+		'junior',
+		'lead',
+		'staff',
+		'principal',
+		'mid',
+		'mid-level',
+		'entry',
+		'entry-level',
+		'software',
+		'frontend',
+		'front-end',
+		'backend',
+		'back-end',
+		'fullstack',
+		'full-stack',
+		'devops',
+		'sdet',
+		'qa',
+		'quality',
+		'automation',
+		'engineer',
+		'developer',
+		'manager',
+		'director',
+		'architect',
+		'analyst',
+		'consultant',
+		'specialist',
+		'designer',
+		'product',
+		'project',
+		'program',
+		'scrum',
+		'agile',
+		'data',
+		'cloud',
+		'platform',
+		'infrastructure',
+		'network',
+		'security',
+		'test',
+		'testing',
+		'tester',
+		'intern',
+		'internship',
+		'contractor',
+		'freelance',
+		'remote',
+		'head',
+		'chief',
+		'cto',
+		'ceo',
+		'coo',
+		'cfo',
+		'vp',
+		'vice',
+		'president',
+		'founder',
+		'owner',
+		'recruiter',
+		'talent',
+		'people',
+		'hr',
+		'human',
+		'resources',
+		'marketing',
+		'sales',
+		'finance',
+		'legal',
+		'operations',
+		'support',
+		'success',
+		'account',
+		'business',
+		'strategy',
+		'growth',
+		'content',
+		'writer',
+		'copywriter',
+		'editor',
+		'teacher',
+		'professor',
+		'nurse',
+		'doctor',
+		'lawyer',
+		'accountant',
+		'architect',
+		'scientist',
+		'researcher',
+		'technician',
+		'coordinator',
+		'assistant',
+		'associate',
+		'representative',
+		'officer',
+		'leadership',
+		'lead',
+	];
+	const jobTitleBlacklist = new RegExp(`^(${jobTitleBlacklistTerms.join('|')})`, 'i');
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i].trim();
@@ -2102,6 +2201,47 @@ function copyCoverLetter(): void {
 		});
 }
 
+/**
+ * Opens the browser print dialog to export the resume as PDF.
+ * Sets the document title to the applicant's name so exported PDFs carry
+ * "Name - Resume" instead of the app's default "<title>".
+ */
+function downloadResume(): void {
+	const originalTitle = document.title;
+
+	// Prefer the freshest data: localStorage mirrors the current resume on disk.
+	let name = '';
+	try {
+		const stored = localStorage.getItem('resume-data');
+		if (stored) {
+			const parsed = JSON.parse(stored) as { basics?: Record<string, string> };
+			if (parsed.basics?.name) name = parsed.basics.name;
+		}
+	} catch {
+		// fall through to in-memory state
+	}
+	if (!name) {
+		const b = (currentResumeData?.basics as Record<string, string>) || {};
+		if (b.name) name = b.name;
+	}
+	if (!name) return window.print();
+
+	// Set the title BEFORE printing so Chrome embeds it in the PDF /Title
+	// metadata and prefixes the suggested filename. Chrome only snapshots the
+	// title into the PDF when printing completes, so restore it on "afterprint"
+	// instead of right after the (blocking) call to window.print().
+	const printTitle = `${name} - Resume`;
+	document.title = printTitle;
+
+	const restore = () => {
+		document.title = originalTitle;
+		window.removeEventListener('afterprint', restore);
+	};
+	window.addEventListener('afterprint', restore);
+
+	window.print();
+}
+
 function downloadCoverLetter(): void {
 	const text = (document.getElementById('cover-letter-text') as HTMLTextAreaElement).value;
 	if (!text) return;
@@ -2230,3 +2370,4 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 (window as unknown as Record<string, unknown>).generateCoverLetter = generateCoverLetter;
 (window as unknown as Record<string, unknown>).copyCoverLetter = copyCoverLetter;
 (window as unknown as Record<string, unknown>).downloadCoverLetter = downloadCoverLetter;
+(window as unknown as Record<string, unknown>).downloadResume = downloadResume;

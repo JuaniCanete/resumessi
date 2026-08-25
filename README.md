@@ -158,6 +158,7 @@ TEXT_LIGHT_COLOR=#736868
 BG_BADGE_COLOR=#f1f5f9
 SUCCESS_COLOR=#0ea5e9
 ```
+
 ---
 
 ## 🖨️ PDF Export
@@ -178,6 +179,7 @@ npm run build:check  # verify prompts are up-to-date
 ```
 
 **Source of truth (runtime):**
+
 - `src/prompts/ats-scan.txt`
 - `src/prompts/extraction.txt`
 - `src/prompts/polish.txt`
@@ -187,23 +189,23 @@ After editing any prompt or frontend code, run `npm run build` before committing
 
 ### Scripts
 
-| Command | Description |
-|---|---|
-| `npm start` | Start dev server (runs build first) |
-| `npm run setup` | Run setup wizard (⚠️ **overwrites existing .env** — only configures AI providers; SerpAPI & scraper settings must be added manually) |
-| `npm run build` | Build prompts into HTML/JS + bundle frontend with esbuild |
-| `npm run build:check` | Verify build is up-to-date |
-| `npm run validate` | Run pre-build validation (includes LLM evals) |
-| `npm run generate` | Generate resume from prompt data |
-| `npm run evals` | Run LLM evaluation harness |
-| `npm run typecheck` | Run TypeScript type checks (`tsc --noEmit`) |
-| `npm run lint` | Run ESLint |
-| `npm run lint:fix` | Run ESLint with auto-fix |
-| `npm run html:validate` | Validate HTML files |
-| `npm run css:validate` | Validate CSS in HTML files |
-| `npm run test:unit` | Run unit tests (`node:test`) |
-| `npm run test:e2e` | Run Playwright E2E tests |
-| `npm run scraper:auth` | Generate/refresh LinkedIn session state |
+| Command                 | Description                                                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm start`             | Start dev server (runs build first)                                                                                                  |
+| `npm run setup`         | Run setup wizard (⚠️ **overwrites existing .env** — only configures AI providers; SerpAPI & scraper settings must be added manually) |
+| `npm run build`         | Build prompts into HTML/JS + bundle frontend with esbuild                                                                            |
+| `npm run build:check`   | Verify build is up-to-date                                                                                                           |
+| `npm run validate`      | Run pre-build validation (includes LLM evals)                                                                                        |
+| `npm run generate`      | Generate resume from prompt data                                                                                                     |
+| `npm run evals`         | Run LLM evaluation harness                                                                                                           |
+| `npm run typecheck`     | Run TypeScript type checks (`tsc --noEmit`)                                                                                          |
+| `npm run lint`          | Run ESLint                                                                                                                           |
+| `npm run lint:fix`      | Run ESLint with auto-fix                                                                                                             |
+| `npm run html:validate` | Validate HTML files                                                                                                                  |
+| `npm run css:validate`  | Validate CSS in HTML files                                                                                                           |
+| `npm run test:unit`     | Run unit tests (`node:test`)                                                                                                         |
+| `npm run test:e2e`      | Run Playwright E2E tests                                                                                                             |
+| `npm run scraper:auth`  | Generate/refresh LinkedIn session state                                                                                              |
 
 ---
 

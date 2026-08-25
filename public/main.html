@@ -1049,6 +1049,11 @@
 				line-height: 1.4;
 			}
 
+			@page {
+				size: A4;
+				margin: 0;
+			}
+
 			@media print {
 				.no-print {
 					display: none !important;
@@ -1070,7 +1075,7 @@
 				.resume-container {
 					margin: 0 !important;
 					max-width: 100% !important;
-					padding: 0 !important;
+					padding: 36px 48px !important;
 					box-shadow: none !important;
 					min-height: auto !important;
 				}
@@ -1086,6 +1091,7 @@
 				body {
 					background: #fff;
 					color: #000;
+					margin: 0;
 				}
 
 				.experience-item {
@@ -1334,7 +1340,7 @@
 				>
 					Generate resume using AI
 				</button>
-				<button class="p-btn p-btn-secondary" id="btn-download" data-testid="btn-download" onclick="window.print()">
+				<button class="p-btn p-btn-secondary" id="btn-download" data-testid="btn-download" onclick="downloadResume()">
 					Download Resume
 				</button>
 
@@ -1395,7 +1401,7 @@
 							<span class="actions-option-icon">📊</span>
 							<span class="actions-option-text">ATS Results</span>
 						</button>
-						<button class="actions-option" role="menuitem" onclick="window.print()">
+						<button class="actions-option" role="menuitem" onclick="downloadResume()">
 							<span class="actions-option-icon">⬇</span>
 							<span class="actions-option-text">Download Resume</span>
 						</button>

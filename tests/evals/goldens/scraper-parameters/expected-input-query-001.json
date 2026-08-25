@@ -1,12 +1,12 @@
 {
-  "role": "Senior Frontend Engineer",
-  "seniority": "Senior",
-  "employmentType": "fulltime",
-  "region": "North America",
-  "country": "United States",
-  "currency": "USD",
-  "workType": "remote",
-  "datePosted": "week",
-  "keywords": ["React", "TypeScript", "Redux", "CI/CD", "Frontend", "JavaScript"],
-  "customDomains": []
+	"role": "Senior Frontend Engineer",
+	"seniority": "Senior",
+	"employmentType": "fulltime",
+	"region": "North America",
+	"country": "United States",
+	"currency": "USD",
+	"workType": "remote",
+	"datePosted": "week",
+	"keywords": ["React", "TypeScript", "Redux", "CI/CD", "Frontend", "JavaScript"],
+	"customDomains": []
 }

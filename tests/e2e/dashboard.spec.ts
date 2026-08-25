@@ -153,7 +153,6 @@ test.describe('Dashboard View — Full Coverage', () => {
 			await findJobPage.switchToDashboard();
 
 			await findJobPage.renameCard(0, 'applied', 'New Title');
-			await findJobPage.page.waitForTimeout(300);
 
 			const card = findJobPage.getCardsInColumn('applied').first();
 			await expect(card.locator('.board-card-title')).toHaveText('New Title');
@@ -170,7 +169,6 @@ test.describe('Dashboard View — Full Coverage', () => {
 			await input.waitFor({ state: 'visible', timeout: 2000 });
 			await input.fill('Changed Title');
 			await findJobPage.page.keyboard.press('Escape');
-			await findJobPage.page.waitForTimeout(300);
 
 			const card = findJobPage.getCardsInColumn('applied').first();
 			await expect(card.locator('.board-card-title')).toHaveText('Original Title');
@@ -187,7 +185,6 @@ test.describe('Dashboard View — Full Coverage', () => {
 			await findJobPage.switchToDashboard();
 
 			await findJobPage.clickDeleteOnCard(0, 'applied');
-			await findJobPage.page.waitForTimeout(300);
 
 			const cards = findJobPage.getCardsInColumn('applied');
 			await expect(cards).toHaveCount(1);
@@ -205,7 +202,6 @@ test.describe('Dashboard View — Full Coverage', () => {
 			expect(counts[0]).toBe('2');
 
 			await findJobPage.clickDeleteOnCard(0, 'applied');
-			await findJobPage.page.waitForTimeout(300);
 
 			counts = await findJobPage.dashboardBoard.locator('.board-list-count').allTextContents();
 			expect(counts[0]).toBe('1');
@@ -233,11 +229,9 @@ test.describe('Dashboard View — Full Coverage', () => {
 				});
 				return resp.ok;
 			});
-			await findJobPage.page.waitForTimeout(300);
 
 			// Refresh dashboard to see the move
 			await findJobPage.switchToDashboard();
-			await findJobPage.page.waitForTimeout(500);
 
 			const appliedCards = findJobPage.getCardsInColumn('applied');
 			const screeningCards = findJobPage.getCardsInColumn('screening');
@@ -264,10 +258,8 @@ test.describe('Dashboard View — Full Coverage', () => {
 				});
 				return resp.ok;
 			});
-			await findJobPage.page.waitForTimeout(300);
 
 			await findJobPage.switchToDashboard();
-			await findJobPage.page.waitForTimeout(500);
 
 			const rejectedCards = findJobPage.getCardsInColumn('rejected');
 			await expect(rejectedCards).toHaveCount(1);
@@ -304,7 +296,6 @@ test.describe('Dashboard View — Full Coverage', () => {
 
 			// Change source from LinkedIn to Google
 			await findJobPage.clickChangeSourceOnCard(0, 'applied', 'Google');
-			await findJobPage.page.waitForTimeout(300);
 
 			// Verify API was called (mock returns success)
 			// Verify badge updated

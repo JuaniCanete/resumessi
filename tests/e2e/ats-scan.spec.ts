@@ -1,5 +1,5 @@
-import { test, expect } from './test-setup';
 import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
+import { test, expect } from './test-setup';
 
 test.describe('ATS Scan — UI Flow', () => {
 	test('scan button is visible on load', async ({ mainPage }) => {
@@ -27,5 +27,3 @@ test.describe('ATS Scan — UI Flow', () => {
 		expect(scoreText === '--' || scoreText === '' || scoreText === null).toBeTruthy();
 	});
 });
-
-

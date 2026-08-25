@@ -1,8 +1,8 @@
-import { launchStealthBrowser, randomDelay } from './browser';
-import { buildScraperSearchUrl, buildScraperSearchUrls } from './pagination';
-import type { ScraperQuery, ScraperResult } from './types';
 import fs from 'fs';
 import path from 'path';
+import type { ScraperQuery, ScraperResult } from './types';
+import { buildScraperSearchUrl, buildScraperSearchUrls } from './pagination';
+import { launchStealthBrowser, randomDelay } from './browser';
 
 export class RemoteRocketshipError extends Error {
 	constructor(

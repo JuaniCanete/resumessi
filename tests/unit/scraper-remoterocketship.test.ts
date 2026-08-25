@@ -1,5 +1,5 @@
-import { test } from 'node:test';
 import assert from 'node:assert';
+import { test } from 'node:test';
 import { extractJobFromCard, extractJobCards } from '../../src/scraper/remoterocketship';
 
 // Simplified mock types for testing - using loose typing for test mocks
@@ -7,57 +7,58 @@ type MockPage = { $$: (selector: string) => Promise<unknown[]> };
 type MockCard = { $: (selector: string) => Promise<unknown>; $$: (selector: string) => Promise<unknown[]> };
 
 const mockPage: MockPage = {
-	$$: async (selector: string): Promise<unknown[]> => {
+	$$: (selector: string): Promise<unknown[]> => {
 		if (selector === 'div[role="button"][tabindex="0"]') {
-			return [mockCard];
+			return Promise.resolve([mockCard]);
 		}
-		return [];
+		return Promise.resolve([]);
 	},
 };
 
 const mockCard: MockCard = {
-	$: async (selector: string): Promise<unknown> => {
+	$: (selector: string): Promise<unknown> => {
 		if (selector === 'h3 a[href*="/publicjobs/"]') {
-			return {
-				textContent: async () => 'Senior Software Engineer',
-				getAttribute: async (attr: string): Promise<string | null> => (attr === 'href' ? '/publicjobs/12345' : null),
-			};
+			return Promise.resolve({
+				textContent: () => 'Senior Software Engineer',
+				getAttribute: (attr: string): Promise<string | null> =>
+					Promise.resolve(attr === 'href' ? '/publicjobs/12345' : null),
+			});
 		}
 		if (selector === 'h4 a[href*="/company/"]') {
-			return {
-				textContent: async () => 'Test Company',
-			};
+			return Promise.resolve({
+				textContent: () => 'Test Company',
+			});
 		}
 		if (selector === 'p.notranslate:has-text("🕒")') {
-			return {
-				textContent: async () => '🕒 2 days ago',
-			};
+			return Promise.resolve({
+				textContent: () => '🕒 2 days ago',
+			});
 		}
 		if (selector === 'div.py-2.px-2.my-1.flex.flex-row.items-center.bg-pill') {
-			return [
-				{ textContent: async () => '🌏 Anywhere', getAttribute: async () => null },
-				{ textContent: async () => '💵 $100k-$150k', getAttribute: async () => null },
-				{ textContent: async () => '⏰ Full Time', getAttribute: async () => null },
-				{ textContent: async () => '🟡 Senior', getAttribute: async () => null },
-			];
+			return Promise.resolve([
+				{ textContent: () => '🌏 Anywhere', getAttribute: () => null },
+				{ textContent: () => '💵 $100k-$150k', getAttribute: () => null },
+				{ textContent: () => '⏰ Full Time', getAttribute: () => null },
+				{ textContent: () => '🟡 Senior', getAttribute: () => null },
+			]);
 		}
-		return null;
+		return Promise.resolve(null);
 	},
-	$$: async (selector: string): Promise<unknown[]> => {
+	$$: (selector: string): Promise<unknown[]> => {
 		if (selector === 'div.py-2.px-2.my-1.flex.flex-row.items-center.bg-pill') {
-			return [
-				{ textContent: async () => '🌏 Anywhere', getAttribute: async () => null },
-				{ textContent: async () => '💵 $100k-$150k', getAttribute: async () => null },
-				{ textContent: async () => '⏰ Full Time', getAttribute: async () => null },
-				{ textContent: async () => '🟡 Senior', getAttribute: async () => null },
-			];
+			return Promise.resolve([
+				{ textContent: () => '🌏 Anywhere', getAttribute: () => null },
+				{ textContent: () => '💵 $100k-$150k', getAttribute: () => null },
+				{ textContent: () => '⏰ Full Time', getAttribute: () => null },
+				{ textContent: () => '🟡 Senior', getAttribute: () => null },
+			]);
 		}
-		return [];
+		return Promise.resolve([]);
 	},
 };
 
 const mockPageNoCards: MockPage = {
-	$$: async (): Promise<unknown[]> => [],
+	$$: (): Promise<unknown[]> => Promise.resolve([]),
 };
 
 test('extractJobCards returns cards when found with primary selector', async () => {
@@ -100,8 +101,8 @@ test('extractJobFromCard extracts job with all fields', async () => {
 
 test('extractJobFromCard returns null when title missing', async () => {
 	const badCard: MockCard = {
-		$: async () => null,
-		$$: async () => [],
+		$: () => Promise.resolve(null),
+		$$: () => Promise.resolve([]),
 	};
 	// @ts-expect-error mock page/card for testing
 	const job = await extractJobFromCard(mockPage, badCard);
@@ -110,19 +111,19 @@ test('extractJobFromCard returns null when title missing', async () => {
 
 test('extractJobFromCard returns null when URL missing', async () => {
 	const badCard: MockCard = {
-		$: async (selector: string) => {
+		$: (selector: string) => {
 			if (selector === 'h3 a[href*="/publicjobs/"]') {
-				return {
-					textContent: async () => 'Senior Software Engineer',
-					getAttribute: async () => null,
-				};
+				return Promise.resolve({
+					textContent: () => 'Senior Software Engineer',
+					getAttribute: () => null,
+				});
 			}
 			if (selector === 'h4 a[href*="/company/"]') {
-				return { textContent: async () => 'Test Company' };
+				return Promise.resolve({ textContent: () => 'Test Company' });
 			}
-			return null;
+			return Promise.resolve(null);
 		},
-		$$: async () => [],
+		$$: () => Promise.resolve([]),
 	};
 	// @ts-expect-error mock page/card for testing
 	const job = await extractJobFromCard(mockPage, badCard);
@@ -131,22 +132,22 @@ test('extractJobFromCard returns null when URL missing', async () => {
 
 test('extractJobFromCard handles missing pill tags gracefully', async () => {
 	const minimalCard: MockCard = {
-		$: async (selector: string) => {
+		$: (selector: string) => {
 			if (selector === 'h3 a[href*="/publicjobs/"]') {
-				return {
-					textContent: async () => 'Junior Developer',
-					getAttribute: async (attr: string) => (attr === 'href' ? '/publicjobs/999' : null),
-				};
+				return Promise.resolve({
+					textContent: () => 'Junior Developer',
+					getAttribute: (attr: string) => (attr === 'href' ? '/publicjobs/999' : null),
+				});
 			}
 			if (selector === 'h4 a[href*="/company/"]') {
-				return { textContent: async () => 'Startup Inc' };
+				return Promise.resolve({ textContent: () => 'Startup Inc' });
 			}
 			if (selector === 'p.notranslate:has-text("🕒")') {
-				return { textContent: async () => '🕒 1 day ago' };
+				return Promise.resolve({ textContent: () => '🕒 1 day ago' });
 			}
-			return null;
+			return Promise.resolve(null);
 		},
-		$$: async () => [],
+		$$: () => Promise.resolve([]),
 	};
 	// @ts-expect-error mock page/card for testing
 	const job = await extractJobFromCard(mockPage, minimalCard);
@@ -162,27 +163,27 @@ test('extractJobFromCard handles missing pill tags gracefully', async () => {
 
 test('extractJobFromCard handles View Job link fallback', async () => {
 	const cardWithViewJob: MockCard = {
-		$: async (selector: string) => {
+		$: (selector: string) => {
 			if (selector === 'h3 a[href*="/publicjobs/"]') {
-				return {
-					textContent: async () => 'No Href Title',
-					getAttribute: async () => null,
-				};
+				return Promise.resolve({
+					textContent: () => 'No Href Title',
+					getAttribute: () => null,
+				});
 			}
 			if (selector === 'a:has-text("View Job")[href*="/publicjobs/"]') {
-				return {
-					getAttribute: async (attr: string) => (attr === 'href' ? '/publicjobs/fallback' : null),
-				};
+				return Promise.resolve({
+					getAttribute: (attr: string) => (attr === 'href' ? '/publicjobs/fallback' : null),
+				});
 			}
 			if (selector === 'h4 a[href*="/company/"]') {
-				return { textContent: async () => 'Fallback Company' };
+				return Promise.resolve({ textContent: () => 'Fallback Company' });
 			}
 			if (selector === 'p.notranslate:has-text("🕒")') {
-				return { textContent: async () => '🕒 3 days ago' };
+				return Promise.resolve({ textContent: () => '🕒 3 days ago' });
 			}
-			return null;
+			return Promise.resolve(null);
 		},
-		$$: async () => [],
+		$$: () => Promise.resolve([]),
 	};
 	// @ts-expect-error mock page/card for testing
 	const job = await extractJobFromCard(mockPage, cardWithViewJob);

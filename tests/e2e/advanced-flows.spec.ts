@@ -1,6 +1,6 @@
+import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
 import path from 'path';
 import { test, expect } from './test-setup';
-import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
 
 // Extend window type for test functions exposed by app.ts
 declare global {
@@ -160,8 +160,8 @@ test.describe('Advanced Flows', () => {
 			}
 		});
 
-		// Wait for the async function to complete and refresh message to appear
-		await mainPage.page.waitForTimeout(500);
+		// Wait for the refresh message to appear
+		await mainPage.refreshMessage.waitFor({ state: 'visible', timeout: 5000 });
 
 		// Check refresh message (it's shown briefly, then hidden after 2s)
 		const refreshMsg = mainPage.refreshMessage;

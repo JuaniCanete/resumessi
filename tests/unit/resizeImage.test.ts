@@ -7,9 +7,9 @@
 
 'use strict';
 
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resizeImage } from '../../public/utils';
+import { test } from 'node:test';
 
 // ── Mock Setup ────────────────────────────────────────────────────────────────
 
@@ -100,7 +100,7 @@ test('resizeImage rejects when image fails to load', async () => {
 	(global as unknown as Record<string, unknown>).Image = FailingImageCtor;
 	setupCanvasMock('data:image/jpeg;base64,test');
 
-	await assert.rejects(async () => resizeImage('bad-url', 400, 400, 0.7), /Failed to load image for resizing/);
+	await assert.rejects(() => resizeImage('bad-url', 400, 400, 0.7), /Failed to load image for resizing/);
 });
 
 test('resizeImage rejects when canvas context is unavailable', async () => {
@@ -114,11 +114,7 @@ test('resizeImage rejects when canvas context is unavailable', async () => {
 			toDataURL: () => 'data:image/jpeg;base64,test',
 		}),
 	};
-
-	await assert.rejects(
-		async () => resizeImage('data:image/jpeg;base64,test', 400, 400, 0.7),
-		/Failed to get canvas context/
-	);
+	await assert.rejects(() => resizeImage('data:image/jpeg;base64,test', 400, 400, 0.7), /Failed to get canvas context/);
 });
 
 test('resizeImage rejects when given a corrupted image data URL', async () => {
@@ -127,5 +123,5 @@ test('resizeImage rejects when given a corrupted image data URL', async () => {
 	setupCanvasMock('data:image/jpeg;base64,test');
 
 	const corruptedDataUrl = 'data:image/jpeg;base64,tests/assets/photos/corrupted.jpg';
-	await assert.rejects(async () => resizeImage(corruptedDataUrl, 400, 400, 0.7), /Failed to load image for resizing/);
+	await assert.rejects(() => resizeImage(corruptedDataUrl, 400, 400, 0.7), /Failed to load image for resizing/);
 });

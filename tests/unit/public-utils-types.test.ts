@@ -1,6 +1,6 @@
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
 import { LOCALSTORAGE_KEYS } from '../../public/utils/types';
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
 
 test('LOCALSTORAGE_KEYS.scrapingResults - generates correct key for linkedin', () => {
 	const key = LOCALSTORAGE_KEYS.scrapingResults('linkedin');

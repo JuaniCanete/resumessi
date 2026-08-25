@@ -218,7 +218,8 @@ export class FindJobPage {
 		await textarea.fill(title);
 		await confirmBtn.click();
 
-		await this.page.waitForTimeout(300);
+		// Wait for the card to be created instead of using waitForTimeout
+		await this.page.locator('.board-card').last().waitFor({ state: 'visible', timeout: 5000 });
 	}
 
 	async openCardMenu(cardIndex: number, columnId: string): Promise<void> {
@@ -247,7 +248,8 @@ export class FindJobPage {
 		const confirmBtn = this.sharedModal.locator('.btn-confirm');
 		await confirmBtn.waitFor({ state: 'visible', timeout: 5000 });
 		await confirmBtn.click();
-		await this.page.waitForTimeout(300);
+		// Wait for modal to close and card to be removed
+		await this.sharedModal.waitFor({ state: 'hidden', timeout: 5000 });
 	}
 
 	async clickChangeSourceOnCard(cardIndex: number, columnId: string, newSource: string): Promise<void> {
@@ -258,20 +260,16 @@ export class FindJobPage {
 		await sourceItem.click();
 
 		// Wait for source dropdown/modal and select new source
-		await this.page.waitForTimeout(300);
-
-		// The source change might be a dropdown or modal - try both
 		const sourceOption = this.page.locator(`[data-source="${newSource.toLowerCase()}"]`);
+		await sourceOption.waitFor({ state: 'visible', timeout: 5000 });
 		if ((await sourceOption.count()) > 0) {
 			await sourceOption.click();
 		} else {
 			// Fallback: click menu item with source name
 			const sourceMenuItem = this.page.locator(`.board-card-menu-item:has-text("${newSource}")`);
-			if ((await sourceMenuItem.count()) > 0) {
-				await sourceMenuItem.click();
-			}
+			await sourceMenuItem.waitFor({ state: 'visible', timeout: 5000 });
+			await sourceMenuItem.click();
 		}
-		await this.page.waitForTimeout(300);
 	}
 
 	getToastByMessage(message: string): Locator {
@@ -296,6 +294,8 @@ export class FindJobPage {
 		const input = card.locator('input[type="text"]');
 		await input.fill(newTitle);
 		await input.press('Enter');
+		// Wait for input to be replaced by title
+		await card.locator('.board-card-title').waitFor({ state: 'visible', timeout: 5000 });
 	}
 
 	async dragCardToColumn(cardIndex: number, fromColumnId: string, toColumnId: string): Promise<void> {
@@ -303,7 +303,8 @@ export class FindJobPage {
 		const targetContainer = this.page.locator(`.board-cards-container[data-list-id="${toColumnId}"]`);
 
 		await sourceCard.dragTo(targetContainer);
-		await this.page.waitForTimeout(300);
+		// Wait for drop to complete - card should appear in target column
+		await this.getCardsInColumn(toColumnId).first().waitFor({ state: 'visible', timeout: 5000 });
 	}
 
 	async getCardTitle(cardIndex: number, columnId: string): Promise<string> {
@@ -346,7 +347,7 @@ export class FindJobPage {
 		await this.metaSource.waitFor({ state: 'visible', timeout: 10000 });
 	}
 
-	async isDropdownClosed(): Promise<boolean> {
-		return await this.findJobActionsDropdown.evaluate((el: HTMLElement) => el.classList.contains('hidden'));
+	isDropdownClosed(): Promise<boolean> {
+		return this.findJobActionsDropdown.evaluate((el: HTMLElement) => el.classList.contains('hidden'));
 	}
 }

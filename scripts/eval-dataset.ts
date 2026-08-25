@@ -1,5 +1,5 @@
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 
 export interface Golden<TInput, TExpected> {
 	id: string;

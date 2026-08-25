@@ -1,16 +1,16 @@
 {
-  "overall_score": 88,
-  "tier": "GOOD_MATCH",
-  "breakdown": {
-    "skills_score": 92,
-    "experience_years_score": 85,
-    "education_match": true,
-    "keyword_coverage": 0.85
-  },
-  "feedback": "Strong match for Senior Frontend Engineer role. Candidate has 6 years of React/TypeScript experience, exceeding the 5-year requirement. Excellent coverage of required skills including React, TypeScript, Redux/Zustand, Jest/Cypress, and CI/CD. Remote work experience aligns with company offering. Minor gap: no explicit mention of Node.js backend experience though listed in skills.",
-  "missingKeywords": [
-    "Node.js",
-    "GraphQL",
-    "micro-frontend"
-  ]
+	"overall_score": 88,
+	"tier": "GOOD_MATCH",
+	"breakdown": {
+		"skills_score": 92,
+		"experience_years_score": 85,
+		"education_match": true,
+		"keyword_coverage": 0.85
+	},
+	"feedback": "Strong match for Senior Frontend Engineer role. Candidate has 6 years of React/TypeScript experience, exceeding the 5-year requirement. Excellent coverage of required skills including React, TypeScript, Redux/Zustand, Jest/Cypress, and CI/CD. Remote work experience aligns with company offering. Minor gap: no explicit mention of Node.js backend experience though listed in skills.",
+	"missingKeywords": [
+		"Node.js",
+		"GraphQL",
+		"micro-frontend"
+	]
 }

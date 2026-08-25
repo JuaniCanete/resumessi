@@ -17,9 +17,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import type { ResumeData } from '../types/resume';
 import { getProviderConfig } from '../providers';
 import { runInference } from '../router';
-import type { ResumeData } from '../types/resume';
 
 // Resume generation prompt is loaded dynamically from prompts/resume-generation.txt
 const RESUME_PROMPT: string | null = null;

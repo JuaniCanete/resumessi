@@ -56,12 +56,10 @@ test.describe('UI Feedback — Toasts, Modals, Dashboard', () => {
 				{ title: 'Stay Here Job', url: 'https://example.com/stay', status: 'No News', column: 'applied' },
 			]);
 			await findJobPage.switchToDashboard();
-			await findJobPage.page.waitForTimeout(500);
 
 			const card = findJobPage.getCardsInColumn('applied').first();
 			const targetContainer = findJobPage.getCardsInColumn('applied').locator('..');
 			await card.dragTo(targetContainer);
-			await findJobPage.page.waitForTimeout(500);
 
 			const toast = findJobPage.getToastByMessage('Already in this column');
 			await toast.waitFor({ state: 'visible', timeout: 3000 });
@@ -113,7 +111,6 @@ test.describe('UI Feedback — Toasts, Modals, Dashboard', () => {
 
 			const modalCountBefore = await mainPage.getModalElement().count();
 			await mainPage.page.keyboard.press('Enter');
-			await mainPage.page.waitForTimeout(500);
 			const modalCountAfter = await mainPage.getModalElement().count();
 			expect(modalCountAfter).toBeLessThanOrEqual(modalCountBefore);
 		});
@@ -145,7 +142,8 @@ test.describe('UI Feedback — Toasts, Modals, Dashboard', () => {
 			});
 
 			await findJobPage.switchToDashboard();
-			await findJobPage.page.waitForTimeout(500);
+			// Wait for dashboard cards to be visible
+			await findJobPage.getCardsInColumn('applied').first().waitFor({ state: 'visible', timeout: 5000 });
 
 			// TODO(Playwright limitation): dragTo does not reliably simulate cross-container
 			// HTML5 drag-and-drop. Same-column drop is covered by the test below.
@@ -164,8 +162,6 @@ test.describe('UI Feedback — Toasts, Modals, Dashboard', () => {
 				return resp.ok;
 			});
 
-			await findJobPage.page.waitForTimeout(500);
-
 			expect(updateStatusCalled).toBe(true);
 			expect(capturedBody.status).toBe('Interviewing');
 			expect(capturedBody.column).toBe('screening');
@@ -176,12 +172,12 @@ test.describe('UI Feedback — Toasts, Modals, Dashboard', () => {
 				{ title: 'Stay Here Job', url: 'https://example.com/stay', status: 'No News', column: 'applied' },
 			]);
 			await findJobPage.switchToDashboard();
-			await findJobPage.page.waitForTimeout(500);
+			// Wait for dashboard cards to be visible
+			await findJobPage.getCardsInColumn('applied').first().waitFor({ state: 'visible', timeout: 5000 });
 
 			const card = findJobPage.getCardsInColumn('applied').first();
 			const targetContainer = findJobPage.getCardsInColumn('applied').locator('..');
 			await card.dragTo(targetContainer);
-			await findJobPage.page.waitForTimeout(500);
 
 			const toast = findJobPage.getToastByMessage('Already in this column');
 			await toast.waitFor({ state: 'visible', timeout: 3000 });
@@ -205,13 +201,19 @@ test.describe('UI Feedback — Toasts, Modals, Dashboard', () => {
 				{ title: 'Rename Me', url: 'https://example.com/rename', status: 'No News', column: 'applied' },
 			]);
 			await findJobPage.switchToDashboard();
-			await findJobPage.page.waitForTimeout(500);
+			// Wait for dashboard cards to be visible
+			await findJobPage.getCardsInColumn('applied').first().waitFor({ state: 'visible', timeout: 5000 });
 
 			await findJobPage.clickRenameOnCard(0, 'applied');
 			const input = findJobPage.getCardsInColumn('applied').first().locator('input[type="text"]');
 			await input.waitFor({ state: 'visible', timeout: 2000 });
 			await input.press('Enter');
-			await findJobPage.page.waitForTimeout(500);
+			// Wait for rename to complete (input replaced by title)
+			await findJobPage
+				.getCardsInColumn('applied')
+				.first()
+				.locator('.board-card-title')
+				.waitFor({ state: 'visible', timeout: 5000 });
 
 			expect(renameCallCount).toBe(0);
 		});
@@ -238,10 +240,16 @@ test.describe('UI Feedback — Toasts, Modals, Dashboard', () => {
 			});
 
 			await findJobPage.switchToDashboard();
-			await findJobPage.page.waitForTimeout(500);
+			// Wait for dashboard cards to be visible
+			await findJobPage.getCardsInColumn('applied').first().waitFor({ state: 'visible', timeout: 5000 });
 
 			await findJobPage.renameCard(0, 'applied', 'New Title');
-			await findJobPage.page.waitForTimeout(500);
+			// Wait for rename to complete
+			await findJobPage
+				.getCardsInColumn('applied')
+				.first()
+				.locator('.board-card-title')
+				.waitFor({ state: 'visible', timeout: 5000 });
 
 			expect(capturedTitle).toBe('New Title');
 		});

@@ -1,5 +1,5 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 
 test('src/types/provider.ts - ProviderName enum', () => {
 	const providers = ['cohere', 'mistral', 'gemini', 'groq'] as const;

@@ -1,5 +1,5 @@
-import { writeFileSync, mkdirSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { writeFileSync, mkdirSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 
 export interface RunMetrics {
 	promptType: string;
@@ -136,7 +136,8 @@ export function generateCostReport(metrics: RunMetrics[]): string {
 	report += '  By Prompt Type:\n';
 
 	for (const [prompt, data] of Object.entries(byPrompt)) {
-		report += `    ${prompt}: ${data.count} runs, $${data.cost.toFixed(4)}, ${data.tokens.toLocaleString()} tokens, ${data.avgLatency.toFixed(0)}ms avg\n`;
+		report += `    
+		${prompt}: ${data.count} runs, $${data.cost.toFixed(4)}, ${data.tokens.toLocaleString()} tokens, ${data.avgLatency.toFixed(0)}ms avg\n`;
 	}
 
 	return report;

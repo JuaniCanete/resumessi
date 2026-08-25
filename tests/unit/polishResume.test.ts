@@ -11,9 +11,9 @@
  */
 'use strict';
 
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderSkills } from '../../public/utils';
+import { test } from 'node:test';
 
 // ── 1. ATS scan validation � SKIPPED (duplicate of validateJDInput.test.js) ─
 

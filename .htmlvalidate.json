@@ -1,18 +1,18 @@
 {
-  "extends": ["html-validate:recommended"],
-  "rules": {
-    "attr-case": ["error", { "style": "lowercase" }],
-    "attr-pattern": "off",
-    "no-dup-class": "error",
-    "no-trailing-spaces": "off",
-    "spec-charref": "off",
-    "void-style": "error",
-    "id-pattern": ["error", { "pattern": "^[a-zA-Z0-9\\-_]+$" }],
-    "class-pattern": ["error", { "pattern": "^[a-zA-Z0-9\\-_]+$" }],
-    "no-inline-style": "off",
-    "no-implicit-button-type": "off",
-    "no-raw-characters": "off",
-    "no-trailing-whitespace": "off",
-    "attribute-empty-style": "off"
-  }
+	"extends": ["html-validate:recommended"],
+	"rules": {
+		"attr-case": ["error", { "style": "lowercase" }],
+		"attr-pattern": "off",
+		"no-dup-class": "error",
+		"no-trailing-spaces": "off",
+		"spec-charref": "off",
+		"void-style": "error",
+		"id-pattern": ["error", { "pattern": "^[a-zA-Z0-9\\-_]+$" }],
+		"class-pattern": ["error", { "pattern": "^[a-zA-Z0-9\\-_]+$" }],
+		"no-inline-style": "off",
+		"no-implicit-button-type": "off",
+		"no-raw-characters": "off",
+		"no-trailing-whitespace": "off",
+		"attribute-empty-style": "off"
+	}
 }

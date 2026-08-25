@@ -1,7 +1,7 @@
-import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'fs';
 import { findChromePath } from '../../src/scraper/browser';
+import fs from 'fs';
+import { test, mock } from 'node:test';
 
 // Save original values so tests can restore them
 const originalPlatform = process.platform;

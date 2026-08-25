@@ -1,7 +1,7 @@
 import fs from 'fs';
+import { launchStealthBrowser } from '../src/scraper/browser';
 import path from 'path';
 import readline from 'readline';
-import { launchStealthBrowser } from '../src/scraper/browser';
 
 const STORAGE_DIR = path.join(process.cwd(), 'data', 'storage-state');
 const STORAGE_FILE = path.join(STORAGE_DIR, 'linkedin.json');

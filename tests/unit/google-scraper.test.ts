@@ -1,12 +1,12 @@
-import { test } from 'node:test';
+import type { ScraperQuery } from '../../src/scraper/types';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
 	buildGoogleSearchUrl,
 	extractGoogleResultUrl,
 	DEFAULT_TARGET_DOMAINS,
 	scrapeGoogle,
 } from '../../src/scraper/google';
-import type { ScraperQuery } from '../../src/scraper/types';
 
 test('buildGoogleSearchUrl skips site filters when customDomains is empty array', () => {
 	const query: ScraperQuery = {
@@ -111,16 +111,11 @@ test('scrapeGoogle parses SerpAPI results successfully', async t => {
 		globalThis.fetch = originalFetch;
 	});
 
-	globalThis.fetch = async (input: Parameters<typeof fetch>[0]) => {
+	globalThis.fetch = (input: Parameters<typeof fetch>[0]) => {
 		const urlStr = input.toString();
 		assert.ok(urlStr.includes('api_key=test-key'));
 		assert.ok(urlStr.includes('q='));
-		return {
-			status: 200,
-			ok: true,
-			json: async () => mockResponse,
-			text: async () => JSON.stringify(mockResponse),
-		} as Response;
+		return Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 }));
 	};
 
 	const results = await scrapeGoogle(query, mockEnv);
@@ -139,12 +134,7 @@ test('scrapeGoogle handles 429 quota limit error gracefully', async t => {
 		globalThis.fetch = originalFetch;
 	});
 
-	globalThis.fetch = async () =>
-		({
-			status: 429,
-			ok: false,
-			text: async () => 'Quota Exceeded',
-		}) as Response;
+	globalThis.fetch = () => Promise.resolve(new Response('Quota Exceeded', { status: 429 }));
 
 	const results = await scrapeGoogle(query, mockEnv);
 	assert.deepEqual(results, []);

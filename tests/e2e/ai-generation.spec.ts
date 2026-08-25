@@ -20,11 +20,9 @@ test.describe('AI Generation Modal', () => {
 		await expect(mainPage.aiModal).toBeVisible();
 
 		const closeBtn = mainPage.aiModal.locator('[id*="close"], .modal-close, #btn-modal-cancel').first();
-		if (await closeBtn.count() > 0) {
+		if ((await closeBtn.count()) > 0) {
 			await closeBtn.click();
 			await expect(mainPage.aiModal).toBeHidden({ timeout: 2000 });
 		}
 	});
 });
-
-

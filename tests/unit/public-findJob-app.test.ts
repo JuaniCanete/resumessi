@@ -6,8 +6,8 @@
  */
 'use strict';
 
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 
 // Mock functions from findJob-app.ts that can be tested in isolation
 
@@ -98,9 +98,18 @@ test('public/findJob-app.ts - normalizeLinkedInJobUrl logic', () => {
 		}
 	}
 
-	assert.equal(normalizeLinkedInJobUrl('https://www.linkedin.com/jobs/collections/12345?currentJobId=67890'), 'https://www.linkedin.com/jobs/view/12345');
-	assert.equal(normalizeLinkedInJobUrl('https://www.linkedin.com/jobs/search/?keywords=test&currentJobId=11111'), 'https://www.linkedin.com/jobs/view/11111');
-	assert.equal(normalizeLinkedInJobUrl('https://www.linkedin.com/jobs/view/99999'), 'https://www.linkedin.com/jobs/view/99999');
+	assert.equal(
+		normalizeLinkedInJobUrl('https://www.linkedin.com/jobs/collections/12345?currentJobId=67890'),
+		'https://www.linkedin.com/jobs/view/12345'
+	);
+	assert.equal(
+		normalizeLinkedInJobUrl('https://www.linkedin.com/jobs/search/?keywords=test&currentJobId=11111'),
+		'https://www.linkedin.com/jobs/view/11111'
+	);
+	assert.equal(
+		normalizeLinkedInJobUrl('https://www.linkedin.com/jobs/view/99999'),
+		'https://www.linkedin.com/jobs/view/99999'
+	);
 	assert.equal(normalizeLinkedInJobUrl('https://example.com/jobs/collections/123'), null);
 	assert.equal(normalizeLinkedInJobUrl('https://www.linkedin.com/jobs/collections/abc'), null);
 	assert.equal(normalizeLinkedInJobUrl('not-a-url'), null);

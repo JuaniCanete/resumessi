@@ -1,7 +1,7 @@
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import * as process from 'node:process';
 import { join } from 'node:path';
 import { runInference } from '../src/router.js';
-import * as process from 'node:process';
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 
 export type EvalMode = 'mock' | 'live' | 'record';
 

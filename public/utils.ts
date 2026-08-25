@@ -2,8 +2,8 @@
  * Shared utility functions for resumessi
  */
 
-import { buildScraperSearchUrl } from '../src/scraper/pagination';
 import type { ScraperQuery } from '../src/scraper/types';
+import { buildScraperSearchUrl } from '../src/scraper/pagination';
 import { isCollectionUrl } from '../src/scraper/runtime-utils';
 
 export { isCollectionUrl };

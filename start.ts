@@ -6,26 +6,18 @@
  *
  * Usage: npm start
  */
-
-import * as http from 'http';
-import * as fs from 'fs';
-import * as path from 'path';
-import { spawn } from 'child_process';
 import 'dotenv/config';
-import { getProviderConfig, validateInferenceRequest, safeJsonParse } from './src/providers';
-import { runInference, runPolish } from './src/router';
-import {
-	scrapeLinkedIn,
-	validateLinkedInStorageState,
-	fetchLinkedInJobDescription,
-	normalizeLinkedInJobUrl,
-	LinkedInSessionExpiredError,
-} from './src/scraper/linkedin';
+import * as fs from 'fs';
+import * as http from 'http';
+import * as https from 'https';
+import * as path from 'path';
+import { generateLinkedInStorageState } from './scripts/linkedin-auth';
 import { scrapeGoogle } from './src/scraper/google';
 import { scrapeRemoteRocketship } from './src/scraper/remoterocketship';
-import { generateLinkedInStorageState } from './scripts/linkedin-auth';
-import { getRequestPath, isCollectionUrl } from './src/scraper/runtime-utils';
+import { spawn } from 'child_process';
 import type { ScraperQuery, ScraperResult } from './src/scraper/types';
+import { getProviderConfig, validateInferenceRequest, safeJsonParse } from './src/providers';
+import { getRequestPath, isCollectionUrl } from './src/scraper/runtime-utils';
 import {
 	loadJobData,
 	markScrapingResultRemoved,
@@ -46,7 +38,14 @@ import {
 	clearScraperResultsBySource,
 	getDb,
 } from './src/storage/jobDataSqlite';
-import * as https from 'https';
+import { runInference, runPolish } from './src/router';
+import {
+	scrapeLinkedIn,
+	validateLinkedInStorageState,
+	fetchLinkedInJobDescription,
+	normalizeLinkedInJobUrl,
+	LinkedInSessionExpiredError,
+} from './src/scraper/linkedin';
 
 // Wrap in try-catch for graceful degradation
 let pdfParse: ((buffer: Buffer) => Promise<{ text: string }>) | null = null;
@@ -421,11 +420,14 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 			}
 
 			const env = getFullConfigFromEnv();
+			// API parameter names must match provider specs (snake_case)
+			/* eslint-disable camelcase */
 			const { system, prompt, provider, scope = 'generic', temperature, max_tokens, top_p } = requestData;
 			const params: Record<string, unknown> = {};
 			if (temperature !== undefined) params.temperature = temperature;
 			if (max_tokens !== undefined) params.max_tokens = max_tokens;
 			if (top_p !== undefined) params.top_p = top_p;
+			/* eslint-enable camelcase */
 
 			// Capture provider name for error fallback (accessible in outer scope)
 			const attemptedProvider = provider || null;
@@ -550,7 +552,10 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 						res.end(
 							JSON.stringify({
 								error: 'PDF_TOO_LARGE',
-								message: `Resume is ~${estimatedPages} pages. Recommended is 1-2 pages, take into account that processing this PDF will consume extra tokens.`,
+								message: `
+									Resume is ~${estimatedPages} pages. Recommended is 1-2 pages, 
+									take into account that processing this PDF will consume extra tokens.
+									`,
 								pages: estimatedPages,
 								textPreview: text.substring(0, 10000),
 							})
@@ -1849,7 +1854,11 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 			// Salutation & sign-off instruction
 			let salutationSignOffInstruction = 'Do not include any salutation or sign-off.';
 			if (includeSalutationSignOff) {
-				salutationSignOffInstruction = `Include a brief salutation (e.g., "Dear Hiring Team,") at the start and a sign-off (e.g., "Sincerely,\n${candidateName}") at the end. These do NOT count toward the word limit.`;
+				salutationSignOffInstruction = `
+				Include a brief salutation (e.g., "Dear Hiring Team,") 
+				at the start and a sign-off (e.g., "Sincerely,\n${candidateName}") at the end. 
+				These do NOT count toward the word limit.
+				`;
 			}
 			basePrompt = basePrompt.replace('{include_salutation_signoff}', salutationSignOffInstruction);
 
@@ -1874,7 +1883,14 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 				const wordDrift = targetWords > 0 ? Math.abs(actualWordCount - targetWords) / targetWords : 0;
 				if (wordDrift > 0.2) {
 					console.warn(
-						`[cover-letter] Length drift detected: targetWords=${targetWords}, actualWords=${actualWordCount}, actualChars=${actualCharCount}, drift=${(wordDrift * 100).toFixed(1)}%, maxTokens=${maxTokens}, charLimit=${limit}`
+						`
+						[cover-letter] Length drift detected: 
+						targetWords=${targetWords}, 
+						actualWords=${actualWordCount}, 
+						actualChars=${actualCharCount}, 
+						drift=${(wordDrift * 100).toFixed(1)}%, 
+						maxTokens=${maxTokens}, charLimit=${limit}
+						`
 					);
 				}
 

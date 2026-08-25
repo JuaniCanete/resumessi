@@ -49,7 +49,6 @@ test.describe('Resume Refresh Button', () => {
 		// The initial page load already fetched the file; count starts at 0 for our route.
 		const before = resumeFetchCount;
 		await mainPage.clickRefresh();
-		await page.waitForTimeout(600);
 
 		// The refresh click must have issued a fresh fetch to the resume JSON
 		expect(resumeFetchCount).toBeGreaterThan(before);
