@@ -3,13 +3,16 @@ import assert from 'node:assert/strict';
 import { spawn, execSync, type ChildProcess } from 'node:child_process';
 import * as http from 'node:http';
 import { join } from 'node:path';
-import { rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { rmSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from 'node:fs';
 
 const TEST_PORT = 3447;
 const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
 const TEST_DB = join(__dirname, '..', '..', 'data', 'test', 'jobdata-unit-test.db');
 const TEST_RESUME_DIR = join(__dirname, '..', '..', 'src', 'resume', 'output');
 const TEST_RESUME_FILE = join(TEST_RESUME_DIR, 'resume-data.json');
+const TEST_RESUME_BACKUP = join(TEST_RESUME_DIR, 'resume-data.json.bak');
+const TEST_RESUME_POLISHED = join(TEST_RESUME_DIR, 'resume-data-AI-polished.json');
+const TEST_RESUME_POLISHED_BACKUP = join(TEST_RESUME_DIR, 'resume-data-AI-polished.json.bak');
 let serverProcess: ChildProcess | null = null;
 
 interface HttpResponse {
@@ -100,6 +103,10 @@ function stopServer(): void {
 }
 
 before(async () => {
+	// Backup actual user resume if exists to avoid being overridden by tests
+	if (existsSync(TEST_RESUME_FILE)) copyFileSync(TEST_RESUME_FILE, TEST_RESUME_BACKUP);
+	if (existsSync(TEST_RESUME_POLISHED)) copyFileSync(TEST_RESUME_POLISHED, TEST_RESUME_POLISHED_BACKUP);
+
 	// Spawn node directly with the tsx loader to avoid .cmd spawn issues on Windows
 	serverProcess = spawn(process.execPath, ['--import', 'tsx', 'start.ts', '--no-open'], {
 		env: {
@@ -144,6 +151,25 @@ after(() => {
 			/* ignore missing files */
 		}
 	});
+
+	// Restore original resume
+	try {
+		if (existsSync(TEST_RESUME_BACKUP)) {
+			copyFileSync(TEST_RESUME_BACKUP, TEST_RESUME_FILE);
+			rmSync(TEST_RESUME_BACKUP, { force: true });
+		} else {
+			rmSync(TEST_RESUME_FILE, { force: true });
+		}
+
+		if (existsSync(TEST_RESUME_POLISHED_BACKUP)) {
+			copyFileSync(TEST_RESUME_POLISHED_BACKUP, TEST_RESUME_POLISHED);
+			rmSync(TEST_RESUME_POLISHED_BACKUP, { force: true });
+		} else {
+			rmSync(TEST_RESUME_POLISHED, { force: true });
+		}
+	} catch {
+		// ignore
+	}
 });
 
 // ─── /config.json ─────────────────────────────────────────────────────

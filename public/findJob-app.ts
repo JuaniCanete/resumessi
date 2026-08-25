@@ -752,13 +752,6 @@ function renderPage(page: number): void {
 			body.appendChild(queryAffinity);
 		}
 
-		if (item.parameters && item.parameters.length > 0) {
-			const parameters = document.createElement('div');
-			parameters.className = 'result-parameters';
-			parameters.textContent = `Parameters found: ${item.parameters.join(' • ')}`;
-			body.appendChild(parameters);
-		}
-
 		card.appendChild(body);
 		container.appendChild(card);
 	}
@@ -1626,13 +1619,6 @@ function createJobCard(item: ScraperResult, view: 'scraping' | 'saved' | 'dashbo
 			aiSummary.textContent = summaryText;
 		}
 		body.appendChild(aiSummary);
-	}
-
-	if (item.parameters && item.parameters.length > 0) {
-		const parameters = document.createElement('div');
-		parameters.className = 'result-parameters';
-		parameters.textContent = `Parameters found: ${item.parameters.join(' • ')}`;
-		body.appendChild(parameters);
 	}
 
 	card.appendChild(body);
