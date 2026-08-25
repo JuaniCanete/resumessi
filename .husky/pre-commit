@@ -4,7 +4,7 @@ set -e
 echo "Running pre-commit validations..."
 
 # Prevent eslint OOM kills (KILLED) when lint-staged lints large batches
-export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=8192}"
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=6144}"
 
 npx lint-staged --concurrent false
 npm run validate -- --skip-evals
