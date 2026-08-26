@@ -87,7 +87,7 @@ test.describe('Scraper Results — Source Switching', () => {
 		await expect(findJobPage.resultsList).toBeEmpty();
 		await expect(findJobPage.pagination).not.toBeVisible();
 
-		// Header meta fields must be reset to empty-state defaults (Issue 6)
+		// Header meta fields must be reset to empty-state defaults
 		await expect(findJobPage.metaTimestamp).toHaveText('No results');
 		await expect(findJobPage.metaTotal).toHaveText('N/A');
 		await expect(findJobPage.metaQuery).toHaveText('N/A');

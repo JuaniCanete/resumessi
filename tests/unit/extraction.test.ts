@@ -240,7 +240,7 @@ Jane Doe`;
 	assert.equal(extractNameFromPDFText(text), 'Jane Doe');
 });
 
-// ─── Job Title / Role Filtering (Issue 4 regression) ────────────────
+// ─── Job Title / Role Filtering ────
 
 test('extractNameFromPDFText ignores job title "Senior SDET" and finds real name', () => {
 	const text = `Senior SDET
