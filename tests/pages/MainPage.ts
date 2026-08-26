@@ -10,6 +10,7 @@ export class MainPage {
 	readonly rpScoreCircle: Locator;
 	readonly rpScoreText: Locator;
 	readonly rpFeedback: Locator;
+	readonly rpPoweredBy: Locator;
 	readonly polishButton: Locator;
 	readonly rollbackButton: Locator;
 	readonly photoUploadTrigger: Locator;
@@ -52,6 +53,7 @@ export class MainPage {
 		this.rpScoreCircle = page.getByTestId('rp-score-circle');
 		this.rpScoreText = page.getByTestId('rp-score-text');
 		this.rpFeedback = page.getByTestId('rp-feedback');
+		this.rpPoweredBy = page.getByTestId('rp-poweredBy');
 		this.polishButton = page.getByTestId('polish-button');
 		this.rollbackButton = page.getByTestId('rollback-button');
 		this.photoUploadTrigger = page.getByTestId('photo-upload-trigger');
@@ -135,6 +137,10 @@ export class MainPage {
 
 	getFeedback(): Promise<string | null> {
 		return this.rpFeedback.textContent();
+	}
+
+	getPoweredBy(): Promise<string | null> {
+		return this.rpPoweredBy.textContent();
 	}
 
 	// ─── Actions Dropdown ───────────────────────────────────────────

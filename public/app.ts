@@ -297,7 +297,12 @@ async function runAtsScan(): Promise<void> {
 			throw new Error(errData.error || errData.suggestion || `HTTP ${response.status}`);
 		}
 
-		const data = (await response.json()) as { text: string; error?: string };
+		const data = (await response.json()) as {
+			text: string;
+			provider?: string;
+			model?: string;
+			error?: string;
+		};
 		if (data.error) throw new Error(data.error);
 
 		const raw = data.text;
@@ -310,6 +315,11 @@ async function runAtsScan(): Promise<void> {
 		const screening =
 			(parsed.data as { ai_screening?: Record<string, unknown> }).ai_screening ||
 			(parsed.data as Record<string, unknown>);
+
+		// The AI output doesn't include the provider/model, so stamp the actual
+		// serving provider/model returned at the top level of /api/infer.
+		if (data.provider) screening.provider = data.provider;
+		if (data.model) screening.model = data.model;
 
 		applyScanResultsToUI(screening);
 		saveScanResults(screening);

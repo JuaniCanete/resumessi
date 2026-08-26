@@ -486,6 +486,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 					JSON.stringify({
 						text: result.text,
 						provider: result.provider,
+						model: result.model,
 						usage: result.usage,
 					})
 				);

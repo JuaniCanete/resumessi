@@ -26,4 +26,13 @@ test.describe('ATS Scan — UI Flow', () => {
 		const scoreText = await mainPage.rpScoreCircle.textContent();
 		expect(scoreText === '--' || scoreText === '' || scoreText === null).toBeTruthy();
 	});
+
+	test('AI Results powered by shows provider/model after scan', async ({ mainPage }) => {
+		await mainPage.enterJobDescription(jobDescriptionFixtures.minimal);
+		await mainPage.clickScan();
+
+		await expect(mainPage.rpPoweredBy).toHaveText('cohere/command-a-reasoning-08-2025', {
+			timeout: 10000,
+		});
+	});
 });

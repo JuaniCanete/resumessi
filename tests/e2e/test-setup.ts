@@ -71,6 +71,8 @@ const test = playwrightTest.extend<{ mainPage: MainPage; findJobPage: FindJobPag
 									missingKeywords: ['Playwright', 'E2E Testing'],
 								},
 							}),
+							provider: 'cohere',
+							model: 'command-a-reasoning-08-2025',
 						}),
 					});
 				} catch {
