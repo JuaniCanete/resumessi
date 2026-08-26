@@ -75,6 +75,7 @@ export async function runInference(
 				provider: providerName,
 				status: (err as { status?: number }).status || 500,
 				error: (err as { error?: string }).error || (err as Error).message,
+				correlationId,
 			};
 			attempts.push(attempt);
 			lastError = err as Error;

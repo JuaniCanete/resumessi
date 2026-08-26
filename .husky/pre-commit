@@ -6,12 +6,22 @@ echo "Running pre-commit validations..."
 # Ensure 6gb of memory allocation for the pre-commit process
 export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=6144}"
 
+# Skip evals on every commit (mock evals only in CI)
+export VALIDATE_SKIP_EVALS=1
+
+# Format & lint staged files
 npx lint-staged --concurrent false
-npm run validate -- --skip-evals
+
+# Validate prompts (evals skipped via VALIDATE_SKIP_EVALS)
+npm run validate
+
+# Static checks
 npm run typecheck
 npm run lint
 npm run html:validate
 npm run css:validate
+
+# Build (prebuild runs validate again, evals already gated)
 npm run build
 
 echo "All validations passed ✅"

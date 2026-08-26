@@ -71,7 +71,7 @@ export default [
 			'lines-between-class-members': ['error', 'always', { exceptAfterSingleLine: true }],
 			'object-shorthand': 'error',
 			'object-curly-spacing': ['error', 'always'],
-			'max-len': ['warn', { code: 150, ignoreStrings: true }],
+			'max-len': ['error', { code: 150, ignoreStrings: true }],
 			'no-console': ['error', { allow: ['info', 'error', 'warn'] }],
 			'no-const-assign': 'error',
 			'no-duplicate-imports': 'error',
@@ -93,17 +93,17 @@ export default [
 			'prefer-spread': 'error',
 			'prefer-template': 'error',
 			// require-await fires on test mock stubs that intentionally return sync values inside async fns.
-			'require-await': 'warn',
-			'sort-imports': [
-				'warn',
-				{
-					ignoreCase: false,
-					ignoreDeclarationSort: false,
-					ignoreMemberSort: true,
-					memberSyntaxSortOrder: ['none', 'all', 'single', 'multiple'],
-					allowSeparatedGroups: true,
-				},
-			],
+			'require-await': 'error',
+'sort-imports': [
+			'error',
+			{
+				ignoreCase: false,
+				ignoreDeclarationSort: false,
+				ignoreMemberSort: true,
+				memberSyntaxSortOrder: ['none', 'all', 'single', 'multiple'],
+				allowSeparatedGroups: true,
+			},
+		],
 		},
 	},
 	{
@@ -112,7 +112,7 @@ export default [
 			parserOptions: { ecmaVersion: 2022, sourceType: 'commonjs' },
 		},
 		rules: {
-			'no-unused-vars': 'warn',
+			'no-unused-vars': 'error',
 			'@typescript-eslint/no-unused-vars': 'off',
 		},
 	},

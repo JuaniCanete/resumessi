@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { REMOTEROCKETSHIP_CARD_SELECTORS, REMOTEROCKETSHIP_FIELD_SELECTORS, trySelectors } from './selectors';
 import type { ScraperQuery, ScraperResult } from './types';
 import { buildScraperSearchUrl, buildScraperSearchUrls } from './pagination';
 import { launchStealthBrowser, randomDelay } from './browser';
@@ -116,15 +117,11 @@ export async function scrapeRemoteRocketship(
 }
 
 export async function extractJobCards(page: import('playwright').Page): Promise<import('playwright').ElementHandle[]> {
-	// Card container: div[role="button"] with the job content
-	// The View Job link is inside the hover area but href is always in DOM
-	const selectors = [
-		'div[role="button"][tabindex="0"]', // Main card container
-		'div.relative.cursor-pointer[role="button"]',
-		'div:has(h3 a[href*="/publicjobs/"])', // Cards with job title link
-	];
+	// Card container selectors (tried in order)
+	const triedSelectors: string[] = [];
 
-	for (const selector of selectors) {
+	for (const selector of REMOTEROCKETSHIP_CARD_SELECTORS) {
+		triedSelectors.push(selector);
 		try {
 			const cards = await page.$$(selector);
 			if (cards.length > 0) {
@@ -136,7 +133,11 @@ export async function extractJobCards(page: import('playwright').Page): Promise<
 		}
 	}
 
-	console.warn('[RemoteRocketship Scraper] No cards found with any selector strategy');
+	console.warn(
+		'[RemoteRocketship Scraper] No cards found with any selector strategy. ' +
+			`Tried: ${triedSelectors.join(' | ')}. ` +
+			'Update REMOTEROCKETSHIP_CARD_SELECTORS in src/scraper/selectors.ts.'
+	);
 	return [];
 }
 
@@ -146,7 +147,7 @@ export async function extractJobFromCard(
 ): Promise<ScraperResult | null> {
 	try {
 		// Extract title from h3 a[href*="/publicjobs/"]
-		const titleEl = await card.$('h3 a[href*="/publicjobs/"]');
+		const titleEl = await trySelectors(card, REMOTEROCKETSHIP_FIELD_SELECTORS.title);
 		const title = titleEl ? (await titleEl.textContent())?.trim() || '' : '';
 
 		// Extract job URL from the title link (or View Job link)
@@ -160,7 +161,7 @@ export async function extractJobFromCard(
 
 		// Fallback: get View Job link (only visible on hover but href exists in DOM)
 		if (!jobUrl) {
-			const viewJobEl = await card.$('a:has-text("View Job")[href*="/publicjobs/"]');
+			const viewJobEl = await trySelectors(card, REMOTEROCKETSHIP_FIELD_SELECTORS.viewJobLink);
 			if (viewJobEl) {
 				const href = await viewJobEl.getAttribute('href');
 				if (href) {
@@ -170,14 +171,14 @@ export async function extractJobFromCard(
 		}
 
 		// Extract company from h4 a[href*="/company/"]
-		const companyEl = await card.$('h4 a[href*="/company/"]');
+		const companyEl = await trySelectors(card, REMOTEROCKETSHIP_FIELD_SELECTORS.company);
 		const company = companyEl ? (await companyEl.textContent())?.trim() || '' : '';
 
 		// Extract date from p.notranslate with 🕒
-		const dateEl = await card.$('p.notranslate:has-text("🕒")');
+		const dateEl = await trySelectors(card, REMOTEROCKETSHIP_FIELD_SELECTORS.date);
 		const postedDate = dateEl ? (await dateEl.textContent())?.trim() || '' : '';
 
-		// Extract all pill tags
+		// Extract all pill tags (not in selector config - specific to RR UI)
 		const pillEls = await card.$$('div.py-2.px-2.my-1.flex.flex-row.items-center.bg-pill');
 		const tags: string[] = [];
 		let location = '';

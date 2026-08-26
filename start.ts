@@ -191,10 +191,7 @@ function parseEnvFile(): Record<string, string | undefined> {
 		SUCCESS_COLOR: '#0ea5e9',
 		CHROME_PATH: '',
 		GOOGLE_API_KEY: '',
-		COLLECTION_WARNING_ENABLED: 'true',
-		REMOTEROCKETSHIP_BROWSER_PATH: '',
-		REMOTEROCKETSHIP_TIMEOUT_MS: '30000',
-		REMOTEROCKETSHIP_RATE_LIMIT_MS: '2000',
+		COLLECTION_WARNING_ENABLED: 'false',
 	};
 
 	const envPath = path.join(ROOT, '.env');
@@ -235,9 +232,6 @@ function parseEnvFile(): Record<string, string | undefined> {
 				key.includes('COLOR') ||
 				key === 'AI_INFERENCE_ORDER' ||
 				key === 'COLLECTION_WARNING_ENABLED' ||
-				key === 'REMOTEROCKETSHIP_BROWSER_PATH' ||
-				key === 'REMOTEROCKETSHIP_TIMEOUT_MS' ||
-				key === 'REMOTEROCKETSHIP_RATE_LIMIT_MS' ||
 				key.startsWith('LINKEDIN_') ||
 				key === 'CHROME_PATH'
 			) {
@@ -386,6 +380,20 @@ async function extractJobParameters(results: ScraperResult[], env: Record<string
 
 initStorage();
 
+// Create automatic backup on server start (non-test mode only)
+if (process.env.NODE_ENV !== 'test') {
+	(async () => {
+		try {
+			const { createBackup, cleanupOldBackups } = await import('./scripts/backup-db');
+			createBackup();
+			cleanupOldBackups();
+			console.info('[Backup] Automatic backup created on startup');
+		} catch (err: unknown) {
+			console.warn('[Backup] Failed to create startup backup:', (err as Error).message);
+		}
+	})();
+}
+
 const server = http.createServer(async (req: http.IncomingMessage, res: http.ServerResponse) => {
 	res.setHeader('Access-Control-Allow-Origin', '*');
 	res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -403,6 +411,45 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 		const config = getConfigFromEnv();
 		res.writeHead(200, { 'Content-Type': 'application/json' });
 		res.end(JSON.stringify(config));
+		return;
+	}
+
+	// Health check endpoint — data integrity verification
+	if (requestPath === '/api/health' && req.method === 'GET') {
+		try {
+			const database = getDb();
+			const dashboardCount = database.prepare('SELECT COUNT(*) as c FROM job_dashboard').get() as { c: number };
+			const savedCount = database.prepare('SELECT COUNT(*) as c FROM saved_jobs').get() as { c: number };
+			const scrapedCount = database.prepare('SELECT COUNT(*) as c FROM scraping_results').get() as { c: number };
+			const runsCount = database.prepare('SELECT COUNT(*) as c FROM scraper_runs').get() as { c: number };
+
+			const health = {
+				status: 'ok',
+				timestamp: new Date().toISOString(),
+				dataIntegrity: {
+					job_dashboard: dashboardCount.c,
+					saved_jobs: savedCount.c,
+					scraping_results: scrapedCount.c,
+					scraper_runs: runsCount.c,
+				},
+				warnings: [] as string[],
+			};
+
+			// Warn if critical data is unexpectedly empty
+			if (dashboardCount.c === 0) {
+				health.warnings.push('job_dashboard is empty - possible data loss');
+				health.status = 'degraded';
+			}
+			if (savedCount.c === 0 && dashboardCount.c > 0) {
+				health.warnings.push('saved_jobs is empty while dashboard has data');
+			}
+
+			res.writeHead(health.status === 'ok' ? 200 : 200, { 'Content-Type': 'application/json' });
+			res.end(JSON.stringify(health));
+		} catch (err: unknown) {
+			res.writeHead(500, { 'Content-Type': 'application/json' });
+			res.end(JSON.stringify({ status: 'error', error: (err as Error).message }));
+		}
 		return;
 	}
 
@@ -1377,13 +1424,19 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
 	if (requestPath === '/api/job-data/dashboard/clear-test' && req.method === 'POST') {
 		try {
-			// Only allow in test mode
-			if (process.env.NODE_ENV !== 'test') {
-				res.writeHead(403, { 'Content-Type': 'application/json' });
-				res.end(JSON.stringify({ error: 'Forbidden: only available in test mode' }));
-				return;
+			// Only allow in test mode, or with valid confirmation token in production
+			let confirmToken: string | undefined;
+			const body = await getRequestBody(req);
+			if (body) {
+				try {
+					const parsed = JSON.parse(body);
+					confirmToken = parsed.confirmToken;
+				} catch {
+					// Ignore parse errors
+				}
 			}
-			await clearTestDashboardData();
+
+			await clearTestDashboardData(confirmToken);
 			res.writeHead(200, { 'Content-Type': 'application/json' });
 			res.end(JSON.stringify({ success: true }));
 		} catch (err: unknown) {
@@ -1400,13 +1453,13 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 				body += chunk;
 			});
 			req.on('end', async () => {
-				const { source } = JSON.parse(body);
+				const { source, confirmToken } = JSON.parse(body);
 				if (!source || !['linkedin', 'google', 'remoterocketship'].includes(source)) {
 					res.writeHead(400, { 'Content-Type': 'application/json' });
 					res.end(JSON.stringify({ error: 'Invalid source' }));
 					return;
 				}
-				await clearScraperResultsBySource(source);
+				await clearScraperResultsBySource(source, confirmToken);
 				res.writeHead(200, { 'Content-Type': 'application/json' });
 				res.end(JSON.stringify({ success: true }));
 			});

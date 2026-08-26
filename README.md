@@ -140,9 +140,6 @@ Optional overrides in `.env`:
 ```env
 # Write debug HTML/JSON files to data/scraper-debug/ during scraping (may contain session data)
 SCRAPER_DEBUG=false
-
-# Comma-separated hostnames that accept any URL path (not just /jobs/ patterns)
-SCRAPER_JOB_BOARD_HOSTS=
 ```
 
 ### Color Theme

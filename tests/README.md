@@ -81,6 +81,24 @@ tests/
 - All AI endpoints (`/api/infer`, `/api/prompts/**`, `/api/parse-resume-pdf`, `/api/polish-resume`) are mocked via `page.route()` in `tests/e2e/test-setup.ts`.
 - Unit tests mock provider responses; no real HTTP calls to AI providers.
 
+### No Production Database
+
+**No tests should use the production database (`data/jobdata.db`).**
+
+- All tests must use isolated test databases via `JOB_DATA_DB_PATH` environment variable.
+- Unit tests: use `data/test/sqlite-unit/` (via `process.chdir()`) or `data/test/jobdata-unit-test.db`.
+- E2E tests: use `data/test/jobdata-test.db` (configured in `playwright.config.ts`).
+- Test databases are cleaned up automatically in `after()` hooks and `global-teardown.ts`.
+
+### No Real External API Calls
+
+**No tests should make real HTTP calls to external services (SerpAPI, LinkedIn, etc.).**
+
+- Scraper tests must mock `fetch`/`http` calls using test doubles.
+- Google scraper tests (`tests/unit/google-scraper.test.ts`) must mock SerpAPI responses.
+- LinkedIn scraper tests (`tests/unit/linkedin-scraper.test.ts`) only test URL building — no browser launch.
+- Use `node:test` mocking utilities or simple function mocks to simulate API responses.
+
 ## Notes
 
 Test files mirror implementations from `public/main.html`, `public/findJob.html`, `src/providers.ts`, and `src/storage/jobDataSqlite.ts`. When functions are extracted to external files, update imports accordingly.

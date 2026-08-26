@@ -50,10 +50,32 @@ export function setDbPathForTesting(path: string): void {
 interface CacheEntry {
 	payload: ScraperRunPayload;
 	timestamp: number;
+	version: number;
 }
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const CACHE_MAX_SIZE = 100;
 const cachedRuns: Record<string, CacheEntry> = {};
+
+// Simple per-source mutex for cache updates
+const cacheMutexes: Record<string, Promise<void> | null> = {
+	linkedin: null,
+	google: null,
+	remoterocketship: null,
+};
+
+async function withCacheMutex(
+	source: 'linkedin' | 'google' | 'remoterocketship',
+	fn: () => void | Promise<void>
+): Promise<void> {
+	while (cacheMutexes[source]) {
+		await cacheMutexes[source];
+	}
+	const promise = Promise.resolve(fn()).finally(() => {
+		cacheMutexes[source] = null;
+	});
+	cacheMutexes[source] = promise;
+	return promise;
+}
 
 function getCachedRun(source: 'linkedin' | 'google' | 'remoterocketship'): ScraperRunPayload | null {
 	const entry = cachedRuns[source];
@@ -73,7 +95,7 @@ function setCachedRun(source: 'linkedin' | 'google' | 'remoterocketship', payloa
 		);
 		delete cachedRuns[oldestKey];
 	}
-	cachedRuns[source] = { payload, timestamp: Date.now() };
+	cachedRuns[source] = { payload, timestamp: Date.now(), version: (cachedRuns[source]?.version ?? 0) + 1 };
 }
 
 function clearCachedRun(source?: 'linkedin' | 'google' | 'remoterocketship'): void {
@@ -540,11 +562,11 @@ export function setScrapingRun(
 	});
 }
 
-export function updateScrapingResultSummary(
+export async function updateScrapingResultSummary(
 	source: 'linkedin' | 'google' | 'remoterocketship',
 	updates: { summary?: string; provider?: string; metadataExtractionStatus?: 'done' },
 	results: ScraperResult[]
-): void {
+): Promise<void> {
 	const database = getDb();
 	const dbTransaction = database.transaction(() => {
 		const updateRun = database.prepare(`
@@ -615,24 +637,26 @@ export function updateScrapingResultSummary(
 	});
 	dbTransaction();
 
-	// Update cache
-	const cached = getCachedRun(source);
-	if (cached) {
-		cached.summary = updates.summary || cached.summary;
-		cached.provider = updates.provider || cached.provider;
-		cached.metadataExtractionStatus = updates.metadataExtractionStatus || cached.metadataExtractionStatus;
-		if (results.length > 0) {
-			for (const result of results) {
-				const cachedResult = cached.results.find(r => r.url === result.url);
-				if (cachedResult) {
-					cachedResult.aiSummary = result.aiSummary;
-					cachedResult.queryAffinity = result.queryAffinity;
-					cachedResult.parameters = result.parameters;
+	// Update cache with mutex to prevent race conditions
+	await withCacheMutex(source, () => {
+		const cached = getCachedRun(source);
+		if (cached) {
+			cached.summary = updates.summary || cached.summary;
+			cached.provider = updates.provider || cached.provider;
+			cached.metadataExtractionStatus = updates.metadataExtractionStatus || cached.metadataExtractionStatus;
+			if (results.length > 0) {
+				for (const result of results) {
+					const cachedResult = cached.results.find(r => r.url === result.url);
+					if (cachedResult) {
+						cachedResult.aiSummary = result.aiSummary;
+						cachedResult.queryAffinity = result.queryAffinity;
+						cachedResult.parameters = result.parameters;
+					}
 				}
 			}
+			setCachedRun(source, cached);
 		}
-		setCachedRun(source, cached);
-	}
+	});
 }
 
 export function clearScrapingRunCache(source?: 'linkedin' | 'google'): void {
@@ -889,7 +913,7 @@ export function markScrapingResultRemoved(source: 'linkedin' | 'google', url: st
 	clearCachedRun(source);
 }
 
-export function saveJobFromScraping(result: ScraperResult, source: 'linkedin' | 'google'): void {
+export async function saveJobFromScraping(result: ScraperResult, source: 'linkedin' | 'google'): Promise<void> {
 	const database = getDb();
 	const dbTransaction = database.transaction(() => {
 		const savedJob = {
@@ -923,14 +947,16 @@ export function saveJobFromScraping(result: ScraperResult, source: 'linkedin' | 
 		Record<string, unknown> | undefined;
 	if (existing) {
 		const row = parseSavedRowFromSqlite(existing);
-		const cached = getCachedRun(source);
-		if (cached) {
-			const idx = cached.results.findIndex(r => r.url === result.url);
-			if (idx >= 0) {
-				cached.results[idx] = row;
-				setCachedRun(source, cached);
+		await withCacheMutex(source, () => {
+			const cached = getCachedRun(source);
+			if (cached) {
+				const idx = cached.results.findIndex(r => r.url === result.url);
+				if (idx >= 0) {
+					cached.results[idx] = row;
+					setCachedRun(source, cached);
+				}
 			}
-		}
+		});
 	}
 }
 
@@ -1150,13 +1176,35 @@ export function removeDashboardJob(url?: string, id?: string): void {
 	}
 }
 
-export function clearTestDashboardData(): void {
+export function clearTestDashboardData(confirmToken?: string): void {
+	// Require explicit confirmation token in non-test mode
+	if (process.env.NODE_ENV !== 'test') {
+		const expectedToken = process.env.CLEAR_DASHBOARD_CONFIRM_TOKEN;
+		if (!expectedToken) {
+			throw new Error('CLEAR_DASHBOARD_CONFIRM_TOKEN not set in .env. Refusing to clear dashboard.');
+		}
+		if (confirmToken !== expectedToken) {
+			throw new Error('Invalid confirmation token. Dashboard clear operation aborted.');
+		}
+		console.warn('[Storage] Dashboard cleared via clearTestDashboardData with valid token');
+	}
 	const database = getDb();
 	database.prepare('DELETE FROM job_dashboard').run();
 	clearCachedRun();
 }
 
-export function clearScraperResultsBySource(source: string): void {
+export function clearScraperResultsBySource(source: string, confirmToken?: string): void {
+	// Require explicit confirmation token in non-test mode for safety
+	if (process.env.NODE_ENV !== 'test') {
+		const expectedToken = process.env.CLEAR_DASHBOARD_CONFIRM_TOKEN;
+		if (!expectedToken) {
+			throw new Error('CLEAR_DASHBOARD_CONFIRM_TOKEN not set in .env. Refusing to clear scraper results.');
+		}
+		if (confirmToken !== expectedToken) {
+			throw new Error('Invalid confirmation token. Scraper results clear operation aborted.');
+		}
+		console.warn(`[Storage] Scraper results cleared for source: ${source} with valid token`);
+	}
 	const database = getDb();
 	database.prepare('DELETE FROM scraper_runs WHERE source = ?').run(source);
 	database.prepare('DELETE FROM scraping_results WHERE source = ?').run(source);

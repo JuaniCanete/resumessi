@@ -6,18 +6,27 @@ export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=6144}"
 
 BRANCH="${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
 echo "Running pre-push validations on $BRANCH..."
-  npm run build
-if [ "$BRANCH" = "main" ]; then
-  npm run validate
-else
-  npm run validate -- --skip-evals
+
+# Skip evals on non-main branches and during prebuild
+if [ "$BRANCH" != "main" ]; then
+  export VALIDATE_SKIP_EVALS=1
 fi
-  npm run typecheck
-  npm run lint
-  npm run test:unit
-  npm run html:validate
-  npm run css:validate
-  npm run build
-  npm run test:e2e
+
+# Validate prompts + optional evals (gated by VALIDATE_SKIP_EVALS)
+npm run validate
+
+# Static checks
+npm run typecheck
+npm run lint
+npm run html:validate
+npm run css:validate
+
+# Build (prebuild runs validate again — skip evals to avoid double run on main)
+export VALIDATE_SKIP_EVALS=1
+npm run build
+
+# Unit + E2E tests
+npm run test:unit
+npm run test:e2e
 
 echo "All pre-push validations passed ✅"

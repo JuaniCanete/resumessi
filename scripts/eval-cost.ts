@@ -1,3 +1,4 @@
+import { estimateCost } from './eval-model-pricing.js';
 import { join } from 'node:path';
 import { writeFileSync, mkdirSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 
@@ -14,29 +15,6 @@ export interface RunMetrics {
 }
 
 const METRICS_DIR = join(process.cwd(), '.eval-metrics');
-const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-	'gpt-4o-mini': { input: 0.15 / 1e6, output: 0.6 / 1e6 },
-	'gpt-4o': { input: 2.5 / 1e6, output: 10.0 / 1e6 },
-	'gpt-4.1': { input: 2.0 / 1e6, output: 8.0 / 1e6 },
-	'claude-3-haiku': { input: 0.25 / 1e6, output: 1.25 / 1e6 },
-	'claude-3-sonnet': { input: 3.0 / 1e6, output: 15.0 / 1e6 },
-	'gemini-1.5-flash': { input: 0.075 / 1e6, output: 0.3 / 1e6 },
-	'gemini-1.5-pro': { input: 1.25 / 1e6, output: 5.0 / 1e6 },
-	'command-r-plus': { input: 0.5 / 1e6, output: 1.5 / 1e6 },
-	'mistral-large': { input: 2.0 / 1e6, output: 6.0 / 1e6 },
-	'llama-3.1-70b': { input: 0.59 / 1e6, output: 0.79 / 1e6 },
-};
-
-function estimateCost(
-	provider: string,
-	model: string,
-	usage: { promptTokens: number; completionTokens: number }
-): number {
-	const key = model.toLowerCase();
-	const pricing =
-		MODEL_PRICING[key] || MODEL_PRICING[Object.keys(MODEL_PRICING).find(k => key.includes(k)) || 'gpt-4o-mini'];
-	return usage.promptTokens * pricing.input + usage.completionTokens * pricing.output;
-}
 
 export function trackRun(
 	promptType: string,

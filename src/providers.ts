@@ -253,11 +253,8 @@ function parseResponse(
 			};
 			const parts = geminiData?.candidates?.[0]?.content?.parts || [];
 			text = parts.map(p => p.text || '').join('');
-			// Gemini sometimes wraps JSON in markdown fences — extract clean JSON
-			const jsonMatch = text.match(/\{[\s\S]*\}/);
-			if (jsonMatch) {
-				text = jsonMatch[0];
-			}
+			// Gemini sometimes wraps JSON in markdown fences — extract clean JSON using brace-matching
+			text = extractJsonFromText(text);
 			if (geminiData?.usageMetadata) {
 				usage.prompt_tokens = geminiData.usageMetadata.promptTokenCount;
 				usage.completion_tokens = geminiData.usageMetadata.candidatesTokenCount;

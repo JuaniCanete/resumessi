@@ -1,9 +1,10 @@
+import { LINKEDIN_CARD_SELECTORS } from './selectors';
 import fs from 'fs';
 import { generateLinkedInStorageState } from '../../scripts/linkedin-auth';
 import path from 'path';
 import { updateJobDescription } from '../storage/jobDataSqlite';
 import type { ScraperQuery, ScraperResult } from './types';
-import { buildScraperSearchUrls, buildScraperSearchUrl } from './pagination';
+import { buildScraperSearchUrl, buildScraperSearchUrls } from './pagination';
 import { launchStealthBrowser, randomDelay } from './browser';
 
 const STORAGE_FILE =
@@ -16,17 +17,6 @@ const JD_END_MARKER = 'Set alert for similar jobs';
 
 // Maximum number of job pages to visit for full JD extraction (to avoid long scrape times)
 const MAX_JD_EXTRACTIONS = 10;
-
-// Ordered list of selector strategies for LinkedIn job card containers. Each
-// strategy is tried in sequence until one yields results. LinkedIn changes their
-// DOM frequently, so we layer stable fallbacks (data-* attributes, generic
-// list-item patterns) on top of the current class names.
-const LINKEDIN_RESULT_SELECTOR_STRATEGIES: string[] = [
-	'.job-card-container, .base-card, .jobs-search-results__list-item, .job-card-list',
-	'ul.jobs-search__results-list > li',
-	'li[data-occludable-job-id]',
-	'article.job-card, div.job-card',
-];
 
 /**
  * Typed error thrown when the LinkedIn session (data/storage-state/linkedin.json)
@@ -91,7 +81,7 @@ export function normalizeLinkedInJobUrl(rawUrl: string): string | null {
 async function extractLinkedInJobCards(page: import('playwright').Page): Promise<import('playwright').ElementHandle[]> {
 	const triedSelectors: string[] = [];
 
-	for (const selector of LINKEDIN_RESULT_SELECTOR_STRATEGIES) {
+	for (const selector of LINKEDIN_CARD_SELECTORS) {
 		triedSelectors.push(selector);
 		try {
 			const cards = await page.$$(selector);
@@ -109,7 +99,7 @@ async function extractLinkedInJobCards(page: import('playwright').Page): Promise
 		'[LinkedIn Scraper] No cards found with any selector strategy. ' +
 			`Tried: ${triedSelectors.join(' | ')}. ` +
 			'LinkedIn may have changed their DOM structure or blocked automated access. ' +
-			'Update LINKEDIN_RESULT_SELECTOR_STRATEGIES in src/scraper/linkedin.ts.'
+			'Update LINKEDIN_CARD_SELECTORS in src/scraper/selectors.ts.'
 	);
 	return [];
 }
@@ -210,11 +200,6 @@ export async function validateLinkedInStorageState(): Promise<boolean> {
 	}
 }
 
-// Deprecated: use buildScraperSearchUrl('linkedin', query) from pagination.ts instead
-export function buildLinkedInSearchUrl(query: ScraperQuery): string {
-	return buildScraperSearchUrl('linkedin', query);
-}
-
 /**
  * Extract the job description text from a LinkedIn page body, between the
  * "About the job" and "Set alert for similar jobs" markers. Returns '' when
@@ -299,9 +284,7 @@ export async function fetchLinkedInJobDescription(rawUrl: string): Promise<strin
 	const jobUrl = normalizeLinkedInJobUrl(rawUrl);
 	if (!jobUrl) return '';
 
-	// No stored session means any Playwright fetch would only return LinkedIn's
-	// login page. Fail fast with the typed error instead of launching a headless
-	// browser and waiting for a JD that can never render.
+	// Cheap pre-flight: session file must exist (inline validation catches expiry)
 	if (!fs.existsSync(STORAGE_FILE)) {
 		throw new LinkedInSessionExpiredError('LinkedIn session missing. Run: tsx scripts/linkedin-auth.ts');
 	}
@@ -350,26 +333,83 @@ export async function fetchLinkedInJobDescription(rawUrl: string): Promise<strin
  * Strip session-bearing data from authenticated page HTML before it is
  * written to disk by SCRAPER_DEBUG. LinkedIn embeds csrfToken, sessionId,
  * and full profile data in the DOM — never persist it unredacted.
+ *
+ * Uses generic token detection patterns to catch new/unknown token types.
  */
 function redactDebugHtml(html: string): string {
 	let redacted = html;
 
+	// Generic token patterns: JWT (eyJ...), base64-like, long alphanumeric session tokens
+	const TOKEN_PATTERNS = [
+		/eyJ[A-Za-z0-9_-]{20,}/g, // JWT header (base64url encoded)
+		/[A-Za-z0-9_-]{32,}/g, // Long alphanumeric tokens (session IDs, CSRF)
+		/[A-Za-z0-9+/]{40,}={0,2}/g, // Base64 encoded data (40+ chars)
+	];
+
+	// Token key names to redact in JSON/serialized state
+	const TOKEN_KEY_PATTERNS = [
+		/csrfToken/i,
+		/csrf[_-]?token/i,
+		/sessionId/i,
+		/session[_-]?id/i,
+		/li_at/i,
+		/JSESSIONID/i,
+		/bscookie/i,
+		/voyagerIdentity/i,
+		/access[_-]?token/i,
+		/refresh[_-]?token/i,
+		/api[_-]?key/i,
+		/secret/i,
+		/bearer/i,
+		/authorization/i,
+	];
+
 	// Remove <script> blocks that reference session tokens or user data.
 	redacted = redacted.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, match => {
-		if (/(csrfToken|csrf-token|sessionId|li_at|JSESSIONID|bscookie|voyagerIdentity)/i.test(match)) {
+		// Check for known token key patterns
+		if (TOKEN_KEY_PATTERNS.some(p => p.test(match))) {
 			return '<!-- [redacted] script block containing session data -->';
+		}
+		// Check for generic token patterns
+		if (TOKEN_PATTERNS.some(p => p.test(match))) {
+			return '<!-- [redacted] script block containing token-like data -->';
 		}
 		return match;
 	});
 
-	// Remove hidden inputs that carry CSRF tokens.
-	redacted = redacted.replace(/<input[^>]*name=["'][^"']*csrf[^"']*["'][^>]*>/gi, '<!-- [redacted] csrf input -->');
+	// Remove hidden inputs that carry CSRF/token data.
+	redacted = redacted.replace(/<input[^>]*type=["']hidden["'][^>]*>/gi, match => {
+		if (TOKEN_KEY_PATTERNS.some(p => p.test(match))) {
+			return '<!-- [redacted] hidden input with token data -->';
+		}
+		return match;
+	});
 
-	// Redact known session-token values inside the serialized page state.
-	redacted = redacted
-		.replace(/("csrfToken"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2')
-		.replace(/("sessionId"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2')
-		.replace(/("li_at"\s*:\s*")[^"]*(")/gi, '$1[REDACTED]$2');
+	// Redact token values in JSON/serialized state - both key-based and generic
+	// Pattern: "key": "value" where key matches token patterns OR value looks like a token
+	redacted = redacted.replace(/("(?:[^"\\]|\\.)*")\s*:\s*("(?:[^"\\]|\\.)*")/gi, (_match, key, value) => {
+		// Check if key looks like a token-related field
+		if (TOKEN_KEY_PATTERNS.some(p => p.test(key))) {
+			return `${key}: "[REDACTED]"`;
+		}
+		// Check if value looks like a token (long alphanumeric, JWT, base64)
+		const unquotedValue = value.slice(1, -1);
+		if (TOKEN_PATTERNS.some(p => p.test(unquotedValue))) {
+			return `${key}: "[REDACTED]"`;
+		}
+		return `${key}: ${value}`;
+	});
+
+	// Also redact unquoted JSON values that look like tokens (e.g., {token: abc123})
+	redacted = redacted.replace(
+		/([{,]\s*)([A-Za-z_][A-Za-z0-9_-]*)\s*:\s*([A-Za-z0-9+/_-]{32,}={0,2})/gi,
+		(_match, prefix, key, value) => {
+			if (TOKEN_KEY_PATTERNS.some(p => p.test(key)) || TOKEN_PATTERNS.some(p => p.test(value))) {
+				return `${prefix}${key}: [REDACTED]`;
+			}
+			return `${prefix}${key}: ${value}`;
+		}
+	);
 
 	return redacted;
 }
@@ -388,7 +428,7 @@ export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult
 		storageStatePath: fs.existsSync(STORAGE_FILE) ? STORAGE_FILE : undefined,
 	});
 
-	const baseUrl = buildLinkedInSearchUrl(query);
+	const baseUrl = buildScraperSearchUrl('linkedin', query);
 	const pageCount = query.pageCount ?? 1;
 	const startPage = query.startPage ?? 1;
 	const searchUrls = buildScraperSearchUrls(baseUrl, 'linkedin', pageCount, startPage);

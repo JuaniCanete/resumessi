@@ -49,7 +49,7 @@ function check(relPath: string): void {
 	console.info(`✔  ${relPath}`);
 }
 
-const skipEvals = process.argv.includes('--skip-evals');
+const skipEvals = process.argv.includes('--skip-evals') || process.env.VALIDATE_SKIP_EVALS === '1';
 
 console.info('Validating prompt files...');
 REQUIRED_PROMPTS.forEach(check);

@@ -5,11 +5,6 @@ import { buildScraperSearchUrl, DEFAULT_TARGET_DOMAINS } from './pagination';
 
 export { DEFAULT_TARGET_DOMAINS };
 
-// Deprecated: use buildScraperSearchUrl('google', query) from pagination.ts instead
-export function buildGoogleSearchUrl(query: ScraperQuery): string {
-	return buildScraperSearchUrl('google', query);
-}
-
 /**
  * Google wraps external result links in a redirect URL:
  *   https://www.google.com/url?q=<real-url>&sa=U&...
@@ -40,7 +35,7 @@ export async function scrapeGoogle(
 	}
 
 	// Build the search query string using the existing single source of truth URL builder
-	const googleSearchUrl = buildGoogleSearchUrl(query);
+	const googleSearchUrl = buildScraperSearchUrl('google', query);
 	let searchQuery = '';
 	try {
 		const parsedUrl = new URL(googleSearchUrl);

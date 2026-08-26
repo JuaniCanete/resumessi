@@ -51,6 +51,7 @@ export interface ProviderAttempt {
 	provider: string;
 	status: number;
 	error: string;
+	correlationId: string;
 }
 
 export interface InferenceRequest {
