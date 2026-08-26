@@ -43,6 +43,7 @@
 # □ All required fields present.
 # □ No markdown (**), em dashes (--), or formatting artifacts inside text strings.
 # □ Expert flags set correctly.
+# □ Links are the original parsed resume links and not placeholders URLs.
 #
 # ================================================================================
 # SECTION 2 — USER INPUT (fill in your information below)

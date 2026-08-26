@@ -348,7 +348,7 @@ async function extractJobParameters(results: ScraperResult[], env: Record<string
 		const inferenceResult = await runInference(
 			systemPrompt,
 			prompt,
-			{ temperature: 0, max_tokens: 1024, top_p: 0.1 },
+			{ temperature: 0, maxTokens: 1024, topP: 0.1 },
 			env,
 			null,
 			null,
@@ -820,7 +820,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 						const inferenceResult = await runInference(
 							systemPrompt,
 							prompt,
-							{ temperature: 0, max_tokens: 1024, top_p: 0.1 },
+							{ temperature: 0, maxTokens: 1024, topP: 0.1 },
 							envCopy,
 							null,
 							null,
@@ -1921,7 +1921,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 				const result = await runInference(
 					`You are a cover letter writing assistant. Output ONLY the cover letter text. No markdown, no explanations, no JSON. ${includeSalutationSignOff ? 'Include a brief salutation at the start and a sign-off at the end as specified in the user prompt.' : 'No salutation, no sign-off.'} Strictly follow all HARD RULES and STRUCTURAL REQUIREMENTS in the user prompt.`,
 					basePrompt,
-					{ temperature: 0.3, max_tokens: maxTokens, top_p: 0.9 },
+					{ temperature: 0.3, maxTokens, topP: 0.9 },
 					env,
 					null,
 					null,
@@ -2006,7 +2006,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 				const result = await runInference(
 					'You are a job description cleaner and classifier.',
 					basePrompt,
-					{ temperature: 0, max_tokens: 2048, top_p: 0.1 },
+					{ temperature: 0, maxTokens: 2048, topP: 0.1 },
 					env,
 					null,
 					null,
@@ -2158,7 +2158,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 				const result = await runInference(
 					'You are an ATS resume scorer. Return only valid JSON matching the requested schema.',
 					basePrompt,
-					{ temperature: 0, max_tokens: 2048, top_p: 0.1 },
+					{ temperature: 0, maxTokens: 2048, topP: 0.1 },
 					env,
 					provider || null,
 					null,

@@ -4,7 +4,23 @@ import type {
 	ProviderMap,
 	ProviderConfigResult,
 	BuildRequestResult,
+	InferenceParams,
+	TokenUsage,
+	CohereRequestBody,
+	MistralRequestBody,
+	GeminiRequestBody,
+	GroqRequestBody,
 } from './types/provider';
+
+interface ApiErrorResponse {
+	error?: string | ApiErrorInner;
+	[key: string]: unknown;
+}
+
+interface ApiErrorInner {
+	message?: string;
+	[key: string]: unknown;
+}
 
 const PROVIDER_TIMEOUTS: Record<string, number> = {
 	cohere: 30000,
@@ -40,7 +56,7 @@ async function callProvider(
 	prompt: string,
 	model: string,
 	key: string,
-	params: Record<string, unknown> = {},
+	params: InferenceParams = {},
 	scope: string = 'generic',
 	correlationId?: string
 ): Promise<ProviderResponse> {
@@ -53,7 +69,7 @@ async function callProvider(
 	let httpStatus = 0;
 	let ok = false;
 	let errorMsg: string | undefined;
-	let parsedUsage: Record<string, number | undefined> | null = null;
+	let parsedUsage: TokenUsage | null = null;
 
 	try {
 		const response = await fetchWithTimeout(
@@ -72,8 +88,8 @@ async function callProvider(
 		if (!response.ok) {
 			let errMsg = `HTTP ${response.status}`;
 			try {
-				const errData = (await response.json()) as Record<string, unknown>;
-				const errInner = errData.error as Record<string, unknown> | undefined;
+				const errData = (await response.json()) as ApiErrorResponse;
+				const errInner = errData.error as ApiErrorInner | undefined;
 				errMsg =
 					(typeof errInner?.message === 'string' ? errInner.message : undefined) ||
 					(typeof errData.error === 'string' ? errData.error : undefined) ||
@@ -103,7 +119,7 @@ async function callProvider(
 		throw { status: httpStatus, provider, error: errorMsg };
 	} finally {
 		const latencyMs = Date.now() - startTime;
-		const record = {
+		const record: Record<string, unknown> = {
 			timestamp: new Date().toISOString(),
 			correlationId: cid,
 			scope,
@@ -111,11 +127,11 @@ async function callProvider(
 			model,
 			httpStatus,
 			latencyMs,
-			usage: parsedUsage || { prompt_tokens: undefined, completion_tokens: undefined },
+			usage: parsedUsage || { promptTokens: undefined, completionTokens: undefined, totalTokens: undefined },
 			ok,
 		};
 		if (!ok && errorMsg) {
-			(record as Record<string, unknown>).error = errorMsg;
+			record.error = errorMsg;
 		}
 		console.info(JSON.stringify(record));
 	}
@@ -127,30 +143,30 @@ function buildRequest(
 	prompt: string,
 	model: string,
 	key: string,
-	params: Record<string, unknown> = {}
+	params: InferenceParams = {}
 ): BuildRequestResult {
 	// API parameter names must match provider specs (snake_case)
-	/* eslint-disable camelcase */
-	const { temperature, max_tokens, top_p } = params;
+
+	const { temperature, maxTokens, topP } = params;
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
 	if (provider === 'cohere') {
 		headers['Authorization'] = `Bearer ${key}`;
-		const messages: Array<Record<string, string>> = [];
+		const messages: Array<{ role: string; content: string }> = [];
 		if (system) {
 			messages.push({ role: 'system', content: system });
 		}
 		messages.push({ role: 'user', content: prompt });
 
-		const body: Record<string, unknown> = {
+		const body: CohereRequestBody = {
 			model,
 			messages,
 		};
 
 		if (temperature !== undefined) body.temperature = temperature;
-		if (max_tokens !== undefined) body.max_tokens = max_tokens;
+		if (maxTokens !== undefined) body.max_tokens = maxTokens;
 		// Cohere v2 chat API does not support top_p parameter
-		// if (top_p !== undefined) body.top_p = top_p;
+		// if (topP !== undefined) body.top_p = topP;
 
 		return {
 			url: 'https://api.cohere.com/v2/chat',
@@ -161,7 +177,7 @@ function buildRequest(
 
 	if (provider === 'gemini') {
 		const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-		const body: Record<string, unknown> = {
+		const body: GeminiRequestBody = {
 			contents: [{ parts: [{ text: prompt }] }],
 		};
 
@@ -169,10 +185,10 @@ function buildRequest(
 			body.systemInstruction = { parts: [{ text: system }] };
 		}
 
-		const generationConfig: Record<string, unknown> = {};
+		const generationConfig: GeminiRequestBody['generationConfig'] = {};
 		if (temperature !== undefined) generationConfig.temperature = temperature;
-		if (max_tokens !== undefined) generationConfig.maxOutputTokens = max_tokens;
-		if (top_p !== undefined) generationConfig.topP = top_p;
+		if (maxTokens !== undefined) generationConfig.maxOutputTokens = maxTokens;
+		if (topP !== undefined) generationConfig.topP = topP;
 		if (Object.keys(generationConfig).length > 0) {
 			body.generationConfig = generationConfig;
 		}
@@ -182,28 +198,27 @@ function buildRequest(
 
 	if (provider === 'mistral' || provider === 'groq') {
 		headers['Authorization'] = `Bearer ${key}`;
-		const messages: Array<Record<string, string>> = [];
+		const messages: Array<{ role: string; content: string }> = [];
 		if (system) {
 			messages.push({ role: 'system', content: system });
 		}
 		messages.push({ role: 'user', content: prompt });
 
-		const body: Record<string, unknown> = {
+		const body: MistralRequestBody | GroqRequestBody = {
 			model,
 			messages,
 		};
 
 		if (temperature !== undefined) body.temperature = temperature;
-		if (max_tokens !== undefined) body.max_tokens = max_tokens;
+		if (maxTokens !== undefined) body.max_tokens = maxTokens;
 		// For Mistral/Groq: when temperature=0 (greedy sampling), top_p must be 1 or omitted
 		const temp = temperature as number | undefined;
-		if (top_p !== undefined && (temp === undefined || temp > 0)) {
-			body.top_p = top_p;
-		} else if (top_p !== undefined && temp === 0) {
+		if (topP !== undefined && (temp === undefined || temp > 0)) {
+			body.top_p = topP;
+		} else if (topP !== undefined && temp === 0) {
 			// Greedy sampling requires top_p = 1
 			body.top_p = 1;
 		}
-		/* eslint-enable camelcase */
 
 		const baseUrl =
 			provider === 'mistral'
@@ -216,21 +231,13 @@ function buildRequest(
 	throw new Error(`Unknown provider: ${provider}`);
 }
 
-function parseResponse(
-	provider: ProviderName,
-	data: Record<string, unknown>
-): { text: string; usage: Record<string, number | undefined> } {
+function parseResponse(provider: ProviderName, data: unknown): { text: string; usage: TokenUsage } {
 	let text = '';
-	const usage: Record<string, number | undefined> = {};
+	const usage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
 	try {
 		if (provider === 'cohere') {
-			const msgData = data as {
-				message?: { content?: Array<{ text?: string }> | string };
-				text?: string;
-				meta?: { tokens?: { input_tokens?: number; output_tokens?: number } };
-				usage?: { prompt_tokens?: number; completion_tokens?: number };
-			};
+			const msgData = data as CohereResponse;
 			if (msgData?.message?.content) {
 				if (Array.isArray(msgData.message.content)) {
 					text = msgData.message.content.map(c => c.text || '').join('');
@@ -240,34 +247,28 @@ function parseResponse(
 			}
 			text = text || msgData?.text || '';
 			if (msgData?.meta?.tokens) {
-				usage.prompt_tokens = msgData.meta.tokens.input_tokens;
-				usage.completion_tokens = msgData.meta.tokens.output_tokens;
+				usage.promptTokens = msgData.meta.tokens.input_tokens || 0;
+				usage.completionTokens = msgData.meta.tokens.output_tokens || 0;
 			} else if (msgData?.usage) {
-				usage.prompt_tokens = msgData.usage.prompt_tokens;
-				usage.completion_tokens = msgData.usage.completion_tokens;
+				usage.promptTokens = msgData.usage.prompt_tokens || 0;
+				usage.completionTokens = msgData.usage.completion_tokens || 0;
 			}
 		} else if (provider === 'gemini') {
-			const geminiData = data as {
-				candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-				usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
-			};
+			const geminiData = data as GeminiResponse;
 			const parts = geminiData?.candidates?.[0]?.content?.parts || [];
 			text = parts.map(p => p.text || '').join('');
 			// Gemini sometimes wraps JSON in markdown fences — extract clean JSON using brace-matching
 			text = extractJsonFromText(text);
 			if (geminiData?.usageMetadata) {
-				usage.prompt_tokens = geminiData.usageMetadata.promptTokenCount;
-				usage.completion_tokens = geminiData.usageMetadata.candidatesTokenCount;
+				usage.promptTokens = geminiData.usageMetadata.promptTokenCount || 0;
+				usage.completionTokens = geminiData.usageMetadata.candidatesTokenCount || 0;
 			}
 		} else if (provider === 'mistral' || provider === 'groq') {
-			const openaiData = data as {
-				choices?: Array<{ message?: { content?: string } }>;
-				usage?: { prompt_tokens?: number; completion_tokens?: number };
-			};
+			const openaiData = data as OpenAIResponse;
 			text = openaiData?.choices?.[0]?.message?.content || '';
 			if (openaiData?.usage) {
-				usage.prompt_tokens = openaiData.usage.prompt_tokens;
-				usage.completion_tokens = openaiData.usage.completion_tokens;
+				usage.promptTokens = openaiData.usage.prompt_tokens || 0;
+				usage.completionTokens = openaiData.usage.completion_tokens || 0;
 			}
 		}
 	} catch (err) {
@@ -275,7 +276,25 @@ function parseResponse(
 		throw err;
 	}
 
+	usage.totalTokens = usage.promptTokens + usage.completionTokens;
 	return { text, usage };
+}
+
+interface CohereResponse {
+	message?: { content?: Array<{ text?: string }> | string };
+	text?: string;
+	meta?: { tokens?: { input_tokens?: number; output_tokens?: number } };
+	usage?: { prompt_tokens?: number; completion_tokens?: number };
+}
+
+interface GeminiResponse {
+	candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+	usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+}
+
+interface OpenAIResponse {
+	choices?: Array<{ message?: { content?: string } }>;
+	usage?: { prompt_tokens?: number; completion_tokens?: number };
 }
 
 function extractJsonFromText(text: string): string {
@@ -395,11 +414,11 @@ function repairUnquotedJsonKeys(text: string): string {
 	return result;
 }
 
-function safeJsonParse(text: string): { data: Record<string, unknown> | null; error: string | null } {
+function safeJsonParse(text: string): { data: unknown; error: string | null } {
 	const cleaned = extractJsonFromText(text);
 
 	try {
-		const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+		const parsed = JSON.parse(cleaned);
 		return { data: parsed, error: null };
 	} catch (err) {
 		const errorMsg = err instanceof Error ? err.message : 'Invalid JSON';
@@ -416,7 +435,7 @@ function safeJsonParse(text: string): { data: Record<string, unknown> | null; er
 		repaired = repairUnquotedJsonKeys(repaired);
 
 		try {
-			const parsed = JSON.parse(repaired) as Record<string, unknown>;
+			const parsed = JSON.parse(repaired);
 			return { data: parsed, error: null };
 		} catch {
 			return { data: null, error: errorMsg };
@@ -465,43 +484,64 @@ function getProviderConfig(env: Record<string, string | undefined>): ProviderCon
 	};
 }
 
-function validateInferenceRequest(body: Record<string, unknown>): string[] {
+function validateInferenceRequest(body: unknown): string[] {
 	const errors: string[] = [];
 
-	if (typeof body.system !== 'string' || body.system.trim().length < 1) {
+	if (typeof body !== 'object' || body === null) {
+		errors.push('body must be an object');
+		return errors;
+	}
+
+	const b = body as Record<string, unknown>;
+
+	if (typeof b.system !== 'string' || b.system.trim().length < 1) {
 		errors.push('system must be a non-empty string');
 	}
-	if (typeof body.prompt !== 'string' || body.prompt.trim().length < 1) {
+	if (typeof b.prompt !== 'string' || b.prompt.trim().length < 1) {
 		errors.push('prompt must be a non-empty string');
 	}
 	if (
-		body.provider !== undefined &&
-		body.provider !== null &&
-		(typeof body.provider !== 'string' || body.provider.trim().length < 1)
+		b.provider !== undefined &&
+		b.provider !== null &&
+		(typeof b.provider !== 'string' || b.provider.trim().length < 1)
 	) {
 		errors.push('provider must be a non-empty string when provided');
 	}
 	if (
-		body.scope !== undefined &&
-		(typeof body.scope !== 'string' ||
-			!['ats', 'polish', 'generate', 'generic'].includes(body.scope.trim().toLowerCase()))
+		b.scope !== undefined &&
+		(typeof b.scope !== 'string' || !['ats', 'polish', 'generate', 'generic'].includes(b.scope.trim().toLowerCase()))
 	) {
 		errors.push('scope must be one of: ats, polish, generate, generic');
 	}
-	if (
-		body.temperature !== undefined &&
-		(typeof body.temperature !== 'number' || body.temperature < 0 || body.temperature > 2)
-	) {
+	if (b.temperature !== undefined && (typeof b.temperature !== 'number' || b.temperature < 0 || b.temperature > 2)) {
 		errors.push('temperature must be a number between 0.0 and 2.0');
 	}
-	if (body.max_tokens !== undefined && (!Number.isInteger(body.max_tokens) || (body.max_tokens as number) <= 0)) {
+	if (b.max_tokens !== undefined && (!Number.isInteger(b.max_tokens) || (b.max_tokens as number) <= 0)) {
 		errors.push('max_tokens must be a positive integer');
 	}
-	if (body.top_p !== undefined && (typeof body.top_p !== 'number' || body.top_p < 0 || body.top_p > 1)) {
+	// Also accept camelCase maxTokens
+	if (b.maxTokens !== undefined && (!Number.isInteger(b.maxTokens) || (b.maxTokens as number) <= 0)) {
+		errors.push('max_tokens must be a positive integer');
+	}
+	if (b.top_p !== undefined && (typeof b.top_p !== 'number' || b.top_p < 0 || b.top_p > 1)) {
+		errors.push('top_p must be a number between 0.0 and 1.0');
+	}
+	// Also accept camelCase topP
+	if (b.topP !== undefined && (typeof b.topP !== 'number' || b.topP < 0 || b.topP > 1)) {
 		errors.push('top_p must be a number between 0.0 and 1.0');
 	}
 
-	const allowedKeys = new Set(['system', 'prompt', 'provider', 'scope', 'temperature', 'max_tokens', 'top_p']);
+	const allowedKeys = new Set([
+		'system',
+		'prompt',
+		'provider',
+		'scope',
+		'temperature',
+		'max_tokens',
+		'top_p',
+		'maxTokens',
+		'topP',
+	]);
 	for (const key of Object.keys(body)) {
 		if (!allowedKeys.has(key)) {
 			errors.push(`Unexpected field: ${key}`);

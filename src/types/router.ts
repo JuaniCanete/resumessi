@@ -1,8 +1,19 @@
-import type { ProviderAttempt, ProviderName } from './provider';
+import type { ProviderName } from './provider';
+
+export interface ProviderAttempt {
+	provider: string;
+	status: number;
+	error: string;
+	correlationId: string;
+}
 
 export interface RouterOptions {
 	selectedProvider?: ProviderName | null;
 	timeout?: number;
+	temperature?: number;
+	maxTokens?: number;
+	topP?: number;
+	preferredProvider?: string;
 }
 
 export interface RouterResult {
@@ -10,9 +21,11 @@ export interface RouterResult {
 	provider: ProviderName;
 	model?: string;
 	usage: {
-		prompt_tokens?: number;
-		completion_tokens?: number;
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
 	};
+	attempts: ProviderAttempt[];
 }
 
 export interface RouterError extends Error {
@@ -21,7 +34,35 @@ export interface RouterError extends Error {
 }
 
 export interface PolishInput {
-	resumeData?: Record<string, unknown>;
+	resumeData?: ResumeData;
 	provider?: string;
-	[key: string]: unknown;
+}
+
+export interface ResumeData {
+	basics?: {
+		name?: string;
+		email?: string;
+		phone?: string;
+		location?: string;
+		photo?: string;
+		url?: string;
+		summary?: string;
+	};
+	skills?: Array<{ name: string; level?: string; keywords?: string[] }>;
+	experience?: Array<{
+		name: string;
+		position: string;
+		startDate: string;
+		endDate: string;
+		summary: string;
+		highlights?: string[];
+	}>;
+	education?: Array<{
+		institution: string;
+		area: string;
+		studyType: string;
+		startDate: string;
+		endDate: string;
+		score?: string;
+	}>;
 }

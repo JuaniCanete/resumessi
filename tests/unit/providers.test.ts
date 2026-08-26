@@ -1,7 +1,7 @@
 /**
  * tests/unit/providers.test.ts
  *
- * Unit tests for src/providers.js.
+ * Unit tests for src/providers.ts.
  * - buildRequest: verify URL, headers, body for each provider
  * - parseResponse: verify text extraction and usage parsing
  * - getProviderTimeout: verify per-provider timeouts
@@ -13,6 +13,12 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import type {
+	CohereRequestBody,
+	MistralRequestBody,
+	GroqRequestBody,
+	GeminiRequestBody,
+} from '../../src/types/provider';
 import {
 	buildRequest,
 	parseResponse,
@@ -32,20 +38,22 @@ test('buildRequest creates valid Cohere request', () => {
 	assert.equal(result.url, 'https://api.cohere.com/v2/chat');
 	assert.equal(result.headers['Authorization'], 'Bearer key-123');
 	assert.equal(result.headers['Content-Type'], 'application/json');
-	assert.equal(result.body.model, 'command-a-reasoning-08-2025');
-	const msgs = result.body.messages as Array<{ role: string; content: string }>;
+	const cohereBody = result.body as CohereRequestBody;
+	assert.equal(cohereBody.model, 'command-a-reasoning-08-2025');
+	const msgs = cohereBody.messages as Array<{ role: string; content: string }>;
 	assert.equal(msgs.length, 2);
 	assert.equal(msgs[0].role, 'system');
 	assert.equal(msgs[0].content, 'You are helpful.');
 	assert.equal(msgs[1].role, 'user');
 	assert.equal(msgs[1].content, 'Hello');
-	assert.equal(result.body.preamble_override, undefined);
-	assert.equal(result.body.temperature, 0.5);
+	assert.equal(cohereBody.preamble_override, undefined);
+	assert.equal(cohereBody.temperature, 0.5);
 });
 
 test('buildRequest creates valid Cohere request without system', () => {
 	const result = buildRequest('cohere', '', 'Hello', 'command-a-reasoning-08-2025', 'key-123');
-	const msgs = result.body.messages as Array<{ role: string; content?: string }>;
+	const cohereBody = result.body as CohereRequestBody;
+	const msgs = cohereBody.messages as Array<{ role: string; content?: string }>;
 	assert.equal(msgs.length, 1);
 	assert.equal(msgs[0].role, 'user');
 	assert.equal(msgs[0].content, 'Hello');
@@ -53,45 +61,51 @@ test('buildRequest creates valid Cohere request without system', () => {
 
 test('buildRequest creates valid Gemini request', () => {
 	const result = buildRequest('gemini', 'You are helpful.', 'Hello', 'gemini-3.6-flash', 'key-456', {
-		max_tokens: 100,
+		maxTokens: 100,
 	});
 	assert.equal(
 		result.url,
 		'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=key-456'
 	);
 	assert.ok(!result.headers['Authorization']);
-	const contents = result.body.contents as Array<{ parts: Array<{ text: string }> }>;
+	const geminiBody = result.body as GeminiRequestBody;
+	const contents = geminiBody.contents as Array<{ parts: Array<{ text: string }> }>;
 	assert.equal(contents[0].parts[0].text, 'Hello');
-	const sysInst = result.body.systemInstruction as { parts: Array<{ text: string }> } | undefined;
+	const sysInst = geminiBody.systemInstruction as { parts: Array<{ text: string }> } | undefined;
 	assert.equal(sysInst!.parts[0].text, 'You are helpful.');
-	const gc = result.body.generationConfig as { maxOutputTokens: number };
-	assert.equal(gc.maxOutputTokens, 100);
+	const gc = geminiBody.generationConfig as { maxOutputTokens: number } | undefined;
+	assert.equal(gc?.maxOutputTokens, 100);
 });
 
 test('buildRequest creates valid Gemini request without system', () => {
 	const result = buildRequest('gemini', '', 'Hello', 'gemini-3.6-flash', 'key-456');
-	assert.equal(result.body.systemInstruction, undefined);
+	const geminiBody = result.body as GeminiRequestBody;
+	assert.equal(geminiBody.systemInstruction, undefined);
 });
 
 test('buildRequest creates valid Mistral request', () => {
-	const result = buildRequest('mistral', 'You are helpful.', 'Hello', 'codestral-2508', 'key-789', { top_p: 0.9 });
+	const result = buildRequest('mistral', 'You are helpful.', 'Hello', 'codestral-2508', 'key-789', { topP: 0.9 });
 	assert.equal(result.url, 'https://api.mistral.ai/v1/chat/completions');
 	assert.equal(result.headers['Authorization'], 'Bearer key-789');
-	assert.equal(result.body.model, 'codestral-2508');
-	const msgs = result.body.messages as Array<{ role: string; content: string }>;
+	const mistralBody = result.body as MistralRequestBody;
+	assert.equal(mistralBody.model, 'codestral-2508');
+	const msgs = mistralBody.messages as Array<{ role: string; content: string }>;
+	assert.equal(msgs.length, 2);
 	assert.equal(msgs[0].role, 'system');
 	assert.equal(msgs[0].content, 'You are helpful.');
 	assert.equal(msgs[1].role, 'user');
 	assert.equal(msgs[1].content, 'Hello');
-	assert.equal(result.body.top_p, 0.9);
+	assert.equal(mistralBody.top_p, 0.9);
 });
 
 test('buildRequest creates valid Groq request', () => {
 	const result = buildRequest('groq', 'You are helpful.', 'Hello', 'openai/gpt-oss-120b', 'key-abc');
 	assert.equal(result.url, 'https://api.groq.com/openai/v1/chat/completions');
 	assert.equal(result.headers['Authorization'], 'Bearer key-abc');
-	assert.equal(result.body.model, 'openai/gpt-oss-120b');
-	const msgs = result.body.messages as Array<{ role: string; content: string }>;
+	const groqBody = result.body as GroqRequestBody;
+	assert.equal(groqBody.model, 'openai/gpt-oss-120b');
+	const msgs = groqBody.messages as Array<{ role: string; content: string }>;
+	assert.equal(msgs.length, 2);
 	assert.equal(msgs[0].role, 'system');
 	assert.equal(msgs[0].content, 'You are helpful.');
 	assert.equal(msgs[1].role, 'user');
@@ -109,7 +123,7 @@ test('parseResponse extracts Cohere text', () => {
 	const data = { message: { content: [{ text: 'Hello world' }] } };
 	const result = parseResponse('cohere', data);
 	assert.equal(result.text, 'Hello world');
-	assert.deepEqual(result.usage, {});
+	assert.ok(result.usage.promptTokens === 0 && result.usage.completionTokens === 0);
 });
 
 test('parseResponse extracts Cohere text from fallback shape', () => {
@@ -131,8 +145,8 @@ test('parseResponse extracts Gemini usage', () => {
 	};
 	const result = parseResponse('gemini', data);
 	assert.equal(result.text, 'Hello');
-	assert.equal(result.usage.prompt_tokens, 10);
-	assert.equal(result.usage.completion_tokens, 20);
+	assert.equal(result.usage.promptTokens, 10);
+	assert.equal(result.usage.completionTokens, 20);
 });
 
 test('parseResponse extracts OpenAI-compatible text', () => {
@@ -148,14 +162,14 @@ test('parseResponse extracts OpenAI-compatible usage', () => {
 	};
 	const result = parseResponse('groq', data);
 	assert.equal(result.text, 'Hello');
-	assert.equal(result.usage.prompt_tokens, 5);
-	assert.equal(result.usage.completion_tokens, 10);
+	assert.equal(result.usage.promptTokens, 5);
+	assert.equal(result.usage.completionTokens, 10);
 });
 
 test('parseResponse handles missing fields gracefully', () => {
 	const result = parseResponse('cohere', {});
 	assert.equal(result.text, '');
-	assert.deepEqual(result.usage, {});
+	assert.ok(result.usage.promptTokens === 0 && result.usage.completionTokens === 0);
 });
 
 // ── getProviderTimeout ────────────────────────────────────────────────────────
@@ -171,7 +185,7 @@ test('getProviderTimeout returns default for unknown provider', () => {
 	assert.equal(getProviderTimeout('unknown'), 30000);
 });
 
-// ── getProviderConfig ─────────────────────────────────────────────────────────
+// ── getProviderConfig ────────────────────────────────────────────────────────
 
 test('getProviderConfig returns configured providers in order', () => {
 	const env = {
@@ -207,8 +221,8 @@ test('validateInferenceRequest accepts valid request', () => {
 		system: 'You are helpful.',
 		prompt: 'Hello',
 		temperature: 0.7,
-		max_tokens: 100,
-		top_p: 0.9,
+		maxTokens: 100,
+		topP: 0.9,
 	});
 	assert.equal(errors.length, 0);
 });
@@ -228,13 +242,13 @@ test('validateInferenceRequest rejects invalid temperature', () => {
 	assert.ok(errors.some(e => e.includes('temperature')));
 });
 
-test('validateInferenceRequest rejects invalid max_tokens', () => {
-	const errors = validateInferenceRequest({ system: 'sys', prompt: 'Hello', max_tokens: -1 });
+test('validateInferenceRequest rejects invalid maxTokens', () => {
+	const errors = validateInferenceRequest({ system: 'sys', prompt: 'Hello', maxTokens: -1 });
 	assert.ok(errors.some(e => e.includes('max_tokens')));
 });
 
-test('validateInferenceRequest rejects invalid top_p', () => {
-	const errors = validateInferenceRequest({ system: 'sys', prompt: 'Hello', top_p: 1.5 });
+test('validateInferenceRequest rejects invalid topP', () => {
+	const errors = validateInferenceRequest({ system: 'sys', prompt: 'Hello', topP: 1.5 });
 	assert.ok(errors.some(e => e.includes('top_p')));
 });
 
@@ -243,7 +257,7 @@ test('validateInferenceRequest rejects extra fields', () => {
 	assert.ok(errors.some(e => e.includes('extra')));
 });
 
-// ── extractJsonFromText ─────────────────────────────────────────────────────────
+// ── extractJsonFromText ────────────────────────────────────────────────────────
 
 test('extractJsonFromText strips markdown fences and extracts JSON', () => {
 	const input = 'Here is the result:\n```json\n{"key": "value"}\n```\nThanks!';

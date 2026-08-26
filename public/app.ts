@@ -307,7 +307,9 @@ async function runAtsScan(): Promise<void> {
 			throw new Error(parsed.error || 'AI returned invalid JSON. Please try again.');
 		}
 
-		const screening = (parsed.data.ai_screening || parsed.data) as Record<string, unknown>;
+		const screening =
+			(parsed.data as { ai_screening?: Record<string, unknown> }).ai_screening ||
+			(parsed.data as Record<string, unknown>);
 
 		applyScanResultsToUI(screening);
 		saveScanResults(screening);
@@ -1191,7 +1193,7 @@ async function confirmGeneration(): Promise<void> {
 			throw new Error(parsed.error || 'AI returned invalid JSON. Please try again.');
 		}
 
-		const resumeData = parsed.data;
+		const resumeData = parsed.data as { basics?: Record<string, unknown> };
 
 		const hallucinatedNames = ['john doe', 'jane doe', 'alex johnson', 'your name', 'candidate', 'todo'];
 

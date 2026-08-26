@@ -1,5 +1,5 @@
-import type { ProviderName, ProviderAttempt, ProviderResponse } from './types/provider';
-import type { RouterResult, RouterError } from './types/router';
+import type { ProviderName, ProviderMap, ProviderAttempt, ProviderResponse, InferenceParams } from './types/provider';
+import type { RouterResult, RouterError, ResumeData } from './types/router';
 import { callProvider, getProviderConfig } from './providers';
 
 export type CallProviderFn = (
@@ -8,21 +8,23 @@ export type CallProviderFn = (
 	prompt: string,
 	model: string,
 	key: string,
-	params?: Record<string, unknown>,
+	params?: InferenceParams,
 	scope?: string,
 	correlationId?: string
 ) => Promise<ProviderResponse>;
 
 type GetProviderConfigFn = (env: Record<string, string | undefined>) => {
 	order: string[];
-	providerMap: Record<string, { key: string; model: string } | undefined>;
+	providerMap: ProviderMap;
 	configured: string[];
 };
+
+export { type InferenceParams } from './types/provider';
 
 export async function runInference(
 	system: string,
 	prompt: string,
-	params: Record<string, unknown> = {},
+	params: InferenceParams = {},
 	env: Record<string, string | undefined>,
 	selectedProvider: string | null = null,
 	callProviderFn: CallProviderFn | null = null,
@@ -69,7 +71,7 @@ export async function runInference(
 				scope,
 				correlationId
 			);
-			return { text: result.text, provider: result.provider, model: result.model, usage: result.usage };
+			return { text: result.text, provider: result.provider, model: result.model, usage: result.usage, attempts: [] };
 		} catch (err: unknown) {
 			const attempt: ProviderAttempt = {
 				provider: providerName,
@@ -90,7 +92,7 @@ export async function runInference(
 }
 
 export function runPolish(
-	resumeData: Record<string, unknown>,
+	resumeData: ResumeData,
 	promptTemplate: string,
 	env: Record<string, string | undefined>,
 	selectedProvider: string | null = null,

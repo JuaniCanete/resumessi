@@ -16,10 +16,13 @@ export interface ProviderResponse {
 	provider: ProviderName;
 	model: string;
 	status: number;
-	usage: {
-		prompt_tokens?: number;
-		completion_tokens?: number;
-	};
+	usage: TokenUsage;
+}
+
+export interface TokenUsage {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
 }
 
 export interface ProviderConfig {
@@ -64,8 +67,50 @@ export interface InferenceRequest {
 	top_p?: number;
 }
 
+export interface InferenceParams {
+	temperature?: number;
+	maxTokens?: number;
+	topP?: number;
+}
+
 export interface BuildRequestResult {
 	url: string;
 	headers: Record<string, string>;
-	body: Record<string, unknown>;
+	body: CohereRequestBody | MistralRequestBody | GeminiRequestBody | GroqRequestBody;
+}
+
+export interface CohereRequestBody {
+	model: string;
+	messages: Array<{ role: string; content: string }>;
+	temperature?: number;
+	max_tokens?: number;
+	top_p?: number;
+	p?: number;
+	preamble_override?: string;
+}
+
+export interface MistralRequestBody {
+	model: string;
+	messages: Array<{ role: string; content: string }>;
+	temperature?: number;
+	max_tokens?: number;
+	top_p?: number;
+}
+
+export interface GeminiRequestBody {
+	contents: Array<{ parts: Array<{ text: string }> }>;
+	systemInstruction?: { parts: Array<{ text: string }> };
+	generationConfig?: {
+		temperature?: number;
+		maxOutputTokens?: number;
+		topP?: number;
+	};
+}
+
+export interface GroqRequestBody {
+	model: string;
+	messages: Array<{ role: string; content: string }>;
+	temperature?: number;
+	max_tokens?: number;
+	top_p?: number;
 }

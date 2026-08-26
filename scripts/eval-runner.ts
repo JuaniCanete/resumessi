@@ -78,8 +78,8 @@ export async function runEvalInference<T>(
 		userPrompt,
 		{
 			temperature: options.temperature ?? 0,
-			max_tokens: options.maxTokens ?? 4000,
-			top_p: options.topP ?? 1,
+			maxTokens: options.maxTokens ?? 4000,
+			topP: options.topP ?? 1,
 		},
 		env,
 		undefined,
@@ -89,8 +89,8 @@ export async function runEvalInference<T>(
 	);
 
 	const latencyMs = Date.now() - startTime;
-	const promptTokens = result.usage?.prompt_tokens || 0;
-	const completionTokens = result.usage?.completion_tokens || 0;
+	const promptTokens = result.usage?.promptTokens || 0;
+	const completionTokens = result.usage?.completionTokens || 0;
 	const totalTokens = promptTokens + completionTokens;
 
 	if (totalTokens > MAX_TOTAL_TOKENS) {

@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { runInference, runPolish, type CallProviderFn } from '../../src/router';
+import { runInference, runPolish, type CallProviderFn, type InferenceParams } from '../../src/router';
 
 const mockCallProvider: CallProviderFn = (_provider, _system, _prompt, _model, _key, _params?, _scope?) =>
 	Promise.resolve({
@@ -16,7 +16,7 @@ const mockCallProvider: CallProviderFn = (_provider, _system, _prompt, _model, _
 		provider: _provider,
 		model: _model,
 		status: 200,
-		usage: { prompt_tokens: 10, completion_tokens: 20 },
+		usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
 	});
 
 const mockGetProviderConfig = (env: Record<string, string | undefined>) => {
@@ -58,7 +58,7 @@ test('runInference returns first successful provider', async () => {
 	const result = await runInference('sys', 'prompt', {}, env, null, mockCallProvider, mockGetProviderConfig);
 	assert.equal(result.provider, 'gemini');
 	assert.equal(result.text, 'Response from gemini');
-	assert.deepEqual(result.usage, { prompt_tokens: 10, completion_tokens: 20 });
+	assert.deepEqual(result.usage, { promptTokens: 10, completionTokens: 20, totalTokens: 30 });
 });
 
 test('runInference skips providers without keys', async () => {
@@ -85,7 +85,7 @@ test('runInference falls back to next provider on failure', async () => {
 			provider: _provider,
 			model: _model,
 			status: 200,
-			usage: {},
+			usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
 		});
 	};
 
@@ -132,18 +132,24 @@ test('runInference throws when no providers configured', async () => {
 });
 
 test('runInference passes params to callProvider', async () => {
-	const mockCall = (
+	const mockCall: CallProviderFn = (
 		_provider: string,
 		_system: string,
 		_prompt: string,
 		_model: string,
 		_key: string,
-		params?: Record<string, unknown>,
+		params?: InferenceParams,
 		_scope?: string
 	) => {
 		assert.equal(params?.temperature, 0.5);
-		assert.equal(params?.max_tokens, 100);
-		return Promise.resolve({ text: 'ok', provider: 'cohere' as const, model: _model, status: 200, usage: {} });
+		assert.equal(params?.maxTokens, 100);
+		return Promise.resolve({
+			text: 'ok',
+			provider: 'cohere',
+			model: _model,
+			status: 200,
+			usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+		});
 	};
 
 	const env = {
@@ -151,25 +157,17 @@ test('runInference passes params to callProvider', async () => {
 		GEMINI_API_KEY: 'gem-key',
 	};
 
-	await runInference(
-		'sys',
-		'prompt',
-		{ temperature: 0.5, max_tokens: 100 },
-		env,
-		null,
-		mockCall,
-		mockGetProviderConfig
-	);
+	await runInference('sys', 'prompt', { temperature: 0.5, maxTokens: 100 }, env, null, mockCall, mockGetProviderConfig);
 });
 
 test('runPolish builds prompt with resume data and calls inference', async () => {
-	const mockCall = (
+	const mockCall: CallProviderFn = (
 		_provider: string,
 		_system: string,
 		_prompt: string,
 		_model: string,
 		_key: string,
-		_params?: Record<string, unknown>,
+		_params?: InferenceParams,
 		_scope?: string
 	) => {
 		assert.ok(_prompt.includes('RESUME DATA TO POLISH'));
@@ -177,10 +175,10 @@ test('runPolish builds prompt with resume data and calls inference', async () =>
 		assert.equal(_system, 'You are a resume polishing assistant.');
 		return Promise.resolve({
 			text: '{"basics": {}}',
-			provider: 'cohere' as const,
+			provider: 'cohere',
 			model: _model,
 			status: 200,
-			usage: {},
+			usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
 		});
 	};
 
