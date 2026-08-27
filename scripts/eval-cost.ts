@@ -111,11 +111,14 @@ export function generateCostReport(metrics: RunMetrics[]): string {
 	report += `  Total Cost: $${totalCost.toFixed(4)}\n`;
 	report += `  Total Tokens: ${totalTokens.toLocaleString()}\n`;
 	report += `  Avg Latency: ${avgLatency.toFixed(0)}ms\n\n`;
-	report += '  By Prompt Type:\n';
+	report += '  By Prompt Type:';
 
 	for (const [prompt, data] of Object.entries(byPrompt)) {
-		report += `    
-		${prompt}: ${data.count} runs, $${data.cost.toFixed(4)}, ${data.tokens.toLocaleString()} tokens, ${data.avgLatency.toFixed(0)}ms avg\n`;
+		report += `\n\t${prompt}:
+		\t${data.count} runs,
+		\t$${data.cost.toFixed(4)},
+		\t${data.tokens.toLocaleString()} tokens,
+		\t${data.avgLatency.toFixed(0)}ms avg\n`;
 	}
 
 	return report;

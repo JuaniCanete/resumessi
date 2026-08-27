@@ -59,10 +59,9 @@ if (hasErrors) {
 	process.exit(1);
 }
 
-console.info('\nAll prompt files are valid.');
+console.info('\nAll prompt files are valid.\n');
 
 if (!skipEvals) {
-	console.info('\nRunning LLM evals...');
 	const evalContext: EvalContext = {
 		mode: 'mock',
 		promptTypes: [],

@@ -166,7 +166,6 @@ function validateJobDescription(text: string): { valid: boolean; reason?: string
 	if (sentences.length < 3) {
 		return { valid: false, reason: 'Insufficient sentence structure' };
 	}
-
 	return { valid: true };
 }
 
@@ -389,7 +388,7 @@ if (process.env.NODE_ENV !== 'test') {
 			cleanupOldBackups();
 			console.info('[Backup] Automatic backup created on startup');
 		} catch (err: unknown) {
-			console.warn('[Backup] Failed to create startup backup:', (err as Error).message);
+			console.error('[Backup] Failed to create startup backup:', (err as Error).message);
 		}
 	})();
 }

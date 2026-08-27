@@ -343,16 +343,13 @@ async function runEvals(context: EvalContext): Promise<boolean> {
 	console.info(`Mode: ${context.mode}`);
 	console.info(`Prompt types: ${context.promptTypes.join(', ')}`);
 	if (context.baselineVersion) console.info(`Baseline: ${context.baselineVersion}`);
-	console.info('');
-
 	let allPassed = true;
 	let totalTests = 0;
 	let passedTests = 0;
 	const allRunMetrics: RunMetrics[] = [];
 
 	// Load goldens
-	const goldensMap = await loadAllGoldens();
-
+	const goldensMap = loadAllGoldens();
 	const promptTypesToEval = context.promptTypes.length > 0 ? context.promptTypes : listAvailablePromptTypes();
 
 	for (const promptType of promptTypesToEval) {
@@ -379,7 +376,7 @@ async function runEvals(context: EvalContext): Promise<boolean> {
 
 	// Print summary
 	console.info('\n╔══════════════════════════════════════════════════════════════╗');
-	console.info('║                        Summary                                ║');
+	console.info('║                        Summary                               ║');
 	console.info('╚══════════════════════════════════════════════════════════════╝');
 	console.info(`Total: ${totalTests} | Passed: ${passedTests} | Failed: ${totalTests - passedTests}`);
 
