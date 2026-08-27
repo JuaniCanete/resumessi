@@ -188,15 +188,17 @@ test('buildQueryUrl - builds LinkedIn URL with role, and maps seniority to f_E',
 	const url = buildQueryUrl('linkedin', {
 		role: 'software engineer',
 		seniority: 'mid',
-		employmentType: '2',
+		employmentType: 'full',
 		region: 'us',
 		country: 'us',
 		currency: 'USD',
 	});
 
 	assert.ok(url.includes('linkedin.com'));
-	assert.ok(url.includes('keywords=software%20engineer%20mid%202%20us%20us%20USD'));
+	// employmentType goes to f_JT, not keywords
+	assert.ok(url.includes('keywords=software%20engineer%20mid%20us%20us%20USD'));
 	assert.ok(url.includes('f_E=4'));
+	assert.ok(url.includes('f_JT=F'));
 	// f_WT is NOT set because workType is not provided (employmentType != workType)
 });
 
@@ -204,7 +206,7 @@ test('buildQueryUrl - includes employment type, region, country, currency for Li
 	const url = buildQueryUrl('linkedin', {
 		role: 'engineer',
 		seniority: 'associate',
-		employmentType: '1',
+		employmentType: 'part',
 		region: '102264436',
 		country: 'us',
 		currency: 'USD',
@@ -212,8 +214,10 @@ test('buildQueryUrl - includes employment type, region, country, currency for Li
 
 	assert.ok(url.includes('f_E=3'));
 	// f_WT is NOT set because workType is not provided (employmentType != workType)
-	// region/country/currency go into keywords, not as separate geoId/country params
-	assert.ok(url.includes('keywords=engineer%20associate%201%20102264436%20us%20USD'));
+	// employmentType goes to f_JT, not keywords
+	// region/country/currency go into keywords
+	assert.ok(url.includes('keywords=engineer%20associate%20102264436%20us%20USD'));
+	assert.ok(url.includes('f_JT=P'));
 });
 
 test('buildQueryUrl - builds Google URL with default domains', () => {

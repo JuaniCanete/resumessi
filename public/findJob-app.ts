@@ -2761,7 +2761,9 @@ function updateQueryPreview(): string {
 	const employmentType =
 		currentScraperPlatform === 'google'
 			? (document.getElementById('scraper-employment-google') as HTMLInputElement)?.value.trim() || ''
-			: (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
+			: currentScraperPlatform === 'remoterocketship'
+				? (document.getElementById('scraper-employment-rr') as HTMLSelectElement)?.value || ''
+				: (document.getElementById('scraper-employment') as HTMLSelectElement)?.value || '';
 	const country =
 		currentScraperPlatform === 'remoterocketship'
 			? (document.getElementById('scraper-country-rr') as HTMLInputElement)?.value.trim() || ''

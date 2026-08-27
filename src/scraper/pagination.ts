@@ -33,6 +33,19 @@ const LINKEDIN_WORK_TYPE_MAP: Record<string, string> = {
 	remote: '2',
 };
 
+const LINKEDIN_EMPLOYMENT_TYPE_MAP: Record<string, string> = {
+	full: 'F',
+	part: 'P',
+	hour: 'C',
+};
+
+const GOOGLE_EMPLOYMENT_TYPE_MAP: Record<string, string[]> = {
+	'full-time': ['full time', 'full-time'],
+	'part-time': ['part time', 'part-time'],
+	contract: ['contractor', 'contract'],
+	internship: ['internship'],
+};
+
 /**
  * Build a search URL for LinkedIn or Google from a scraper query.
  * Single source of truth for query composition (role, keywords,
@@ -54,7 +67,6 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
 		}
 		if (query.role) parts.push(query.role);
 		if (query.seniority) parts.push(query.seniority);
-		if (query.employmentType) parts.push(query.employmentType);
 		if (query.region) parts.push(query.region);
 		if (query.country) parts.push(query.country);
 		if (query.currency) parts.push(query.currency);
@@ -75,6 +87,10 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
 			const mapped = LINKEDIN_WORK_TYPE_MAP[query.workType.toLowerCase()];
 			if (mapped) search.set('f_WT', mapped);
 		}
+		if (query.employmentType) {
+			const mapped = LINKEDIN_EMPLOYMENT_TYPE_MAP[query.employmentType.toLowerCase()];
+			if (mapped) search.set('f_JT', mapped);
+		}
 
 		return `https://www.linkedin.com/jobs/search/?${search.toString().replace(/\+/g, '%20')}`;
 	}
@@ -89,7 +105,17 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
 		params.set('jobsInput', 'full-time');
 		params.set('page', '1');
 		params.set('sort', 'DateAdded');
-		params.set('employmentType', 'full-time');
+
+		// Employment type mapping for RR: full-time, part-time, contract, internship
+		const rrEmploymentMap: Record<string, string> = {
+			'full-time': 'full-time',
+			'part-time': 'part-time',
+			contract: 'contract',
+			internship: 'internship',
+		};
+		const rrEmp = query.employmentType ? rrEmploymentMap[query.employmentType] : 'full-time';
+		params.set('employmentType', rrEmp || 'full-time');
+		params.set('jobsInput', rrEmp || 'full-time');
 
 		if (query.role) {
 			params.set('jobTitle', query.role);
@@ -108,7 +134,7 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
 			params.set('seniority', query.seniority); // entry-level, junior, mid, senior, expert
 		}
 
-		return `https://www.remoterocketship.com/jobs/full-time/?${params.toString()}`;
+		return `https://www.remoterocketship.com/jobs/${rrEmp}/?${params.toString()}`;
 	}
 
 	if (query.role) {
@@ -131,7 +157,12 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
 		}
 	}
 	if (query.seniority) parts.push(`"${query.seniority}"`);
-	if (query.employmentType) parts.push(query.employmentType);
+	if (query.employmentType) {
+		const terms = GOOGLE_EMPLOYMENT_TYPE_MAP[query.employmentType];
+		if (terms) {
+			parts.push(`(${terms.join(' OR ')})`);
+		}
+	}
 
 	// undefined/null → fall back to defaults; empty array → no site filtering
 	const domains =

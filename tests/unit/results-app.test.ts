@@ -61,13 +61,14 @@ test('buildQueryUrl builds LinkedIn URL with role, and maps seniority to f_E', (
 test('buildQueryUrl includes employment type, region, country, currency for LinkedIn', () => {
 	const url = buildQueryUrl('linkedin', {
 		role: 'Backend Engineer',
-		employmentType: 'fulltime',
+		employmentType: 'full',
 		region: 'LATAM',
 		country: 'Argentina',
 		currency: 'USD',
 	});
 	const decoded = decodeURIComponent(url);
-	assert.ok(decoded.includes('fulltime'));
+	// employmentType should be in f_JT parameter, not in keywords
+	assert.ok(decoded.includes('f_JT=F'));
 	assert.ok(decoded.includes('LATAM'));
 	assert.ok(decoded.includes('Argentina'));
 	assert.ok(decoded.includes('USD'));

@@ -37,7 +37,7 @@ export interface ScraperQuery {
 	keywords?: string;
 	role?: string;
 	seniority?: string; // e.g. 'Senior' | 'Lead' | 'Junior'
-	employmentType?: string; // e.g. 'fulltime' | 'contractor' | 'parttime'
+	employmentType?: string; // e.g. 'full' | 'hour' | 'part'
 	region?: string; // e.g. 'LATAM' | 'US' | 'EU'
 	country?: string; // e.g. 'Argentina' | 'Brazil' | 'Mexico'
 	currency?: string; // e.g. 'USD' | 'ARS' | 'EUR'
