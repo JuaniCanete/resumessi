@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, cpSync, readdirSync, unlinkSync } from 'node:fs'
 const DATA_DIR = join(process.cwd(), 'data');
 const BACKUP_DIR = join(DATA_DIR, 'backups');
 const DB_FILES = ['jobdata.db', 'jobdata.db-wal', 'jobdata.db-shm'];
-const MAX_BACKUPS = 14;
+const MAX_BACKUPS = 5;
 
 function ensureBackupDir(): void {
 	if (!existsSync(BACKUP_DIR)) {
