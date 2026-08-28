@@ -139,12 +139,22 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
 
 	if (query.role) {
 		const role = query.role.trim();
-		const hasOr = /\s+OR\s+/i.test(role);
-		const hasParens = role.includes('(') || role.includes(')');
-		if (hasOr && hasParens) {
-			parts.push(role);
+		// Accept CSV input: "QA Automation, SDET" → ("QA Automation" OR "SDET")
+		// Also handles legacy OR syntax for backward compatibility
+		const terms = role.includes(',')
+			? role
+					.split(',')
+					.map(t => t.trim())
+					.filter(t => t.length > 0)
+			: role
+					.replace(/[()]/g, '')
+					.split(/\s+OR\s+/i)
+					.map(t => t.trim())
+					.filter(t => t.length > 0);
+		if (terms.length > 1) {
+			parts.push(`(${terms.map(t => `"${t}"`).join(' OR ')})`);
 		} else {
-			parts.push(`"${role}"`);
+			parts.push(`"${terms[0]}"`);
 		}
 	}
 	if (query.keywords) {
@@ -152,15 +162,18 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
 			.split(',')
 			.map(k => k.trim())
 			.filter(k => k.length > 0);
-		for (const term of keywordTerms) {
-			parts.push(`"${term}"`);
+		if (keywordTerms.length > 1) {
+			parts.push(`(${keywordTerms.map(t => `"${t}"`).join(' OR ')})`);
+		} else {
+			parts.push(`"${keywordTerms[0]}"`);
 		}
 	}
 	if (query.seniority) parts.push(`"${query.seniority}"`);
 	if (query.employmentType) {
 		const terms = GOOGLE_EMPLOYMENT_TYPE_MAP[query.employmentType];
 		if (terms) {
-			parts.push(`(${terms.join(' OR ')})`);
+			// Quote each term for strict matching
+			parts.push(`(${terms.map(t => `"${t}"`).join(' OR ')})`);
 		}
 	}
 
