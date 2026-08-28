@@ -28,7 +28,7 @@ export class MainPage {
 	readonly photoUploadConfirm: Locator;
 	readonly resumeContent: Locator;
 	readonly profilePhoto: Locator;
-	readonly aiModal: Locator;
+	readonly resumeGenerationAiModal: Locator;
 	readonly modalUploadSection: Locator;
 	readonly resumeName: Locator;
 	readonly body: Locator;
@@ -71,8 +71,8 @@ export class MainPage {
 		this.photoUploadConfirm = page.getByTestId('photo-upload-confirm');
 		this.resumeContent = page.getByTestId('resume-content');
 		this.profilePhoto = page.getByTestId('profile-photo');
-		this.aiModal = page.getByTestId('ai-modal');
-		this.modalUploadSection = page.getByTestId('ai-modal').locator('[data-testid="modal-upload-section"]');
+		this.resumeGenerationAiModal = page.getByTestId('resume-using-ai-modal');
+		this.modalUploadSection = page.getByTestId('resume-using-ai-modal').locator('[data-testid="modal-upload-section"]');
 		this.resumeName = page.getByTestId('resume-name');
 		this.body = page.locator('body');
 		this.leftSidebar = page.getByTestId('left-sidebar');
@@ -103,7 +103,7 @@ export class MainPage {
 		await this.btnRunScan.click();
 	}
 
-	async openAiModal(): Promise<void> {
+	async openResumeGenerationModal(): Promise<void> {
 		await this.btnAiGenerate.click({ force: true });
 	}
 
@@ -292,8 +292,8 @@ export class MainPage {
 
 	// ─── AI Modal ───────────────────────────────────────────────────────
 
-	async closeAiModal(): Promise<void> {
-		await this.aiModal.evaluate((el: HTMLElement) => {
+	async closeResumeGenerationModal(): Promise<void> {
+		await this.resumeGenerationAiModal.evaluate((el: HTMLElement) => {
 			el.style.display = 'none';
 		});
 	}

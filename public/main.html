@@ -1335,7 +1335,7 @@
 					class="p-btn"
 					id="btn-ai-generate"
 					data-testid="btn-ai-generate"
-					onclick="openAIModal()"
+					onclick="openResumeGenerationModal()"
 					style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a1a; font-weight: 700"
 				>
 					Generate resume using AI
@@ -1591,8 +1591,8 @@
 
 		<!-- AI Generation Modal -->
 		<div
-			id="ai-modal"
-			data-testid="ai-modal"
+			id="resume-using-ai-modal"
+			data-testid="resume-using-ai-modal"
 			style="
 				display: none;
 				position: fixed;
@@ -1618,7 +1618,7 @@
 				"
 			>
 				<button
-					onclick="closeAIModal()"
+					onclick="closeResumeGenerationModal()"
 					style="
 						position: absolute;
 						top: 15px;
@@ -1712,7 +1712,7 @@
 					>
 						✨ Generate Resume
 					</button>
-					<button class="p-btn p-btn-secondary" style="flex: 1" onclick="closeAIModal()">Cancel</button>
+					<button class="p-btn p-btn-secondary" style="flex: 1" onclick="closeResumeGenerationModal()">Cancel</button>
 				</div>
 
 				<!-- Loading State -->

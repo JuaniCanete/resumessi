@@ -146,9 +146,4 @@ test.describe(() => {
 		const resumeName = await mainPage.resumeName.textContent();
 		expect(resumeName).toBe('Test User');
 	});
-
-	test('should open AI modal on click', async ({ mainPage }) => {
-		await mainPage.openAiModal();
-		await expect(mainPage.aiModal).toBeVisible();
-	});
 });

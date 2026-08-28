@@ -906,9 +906,9 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 			closePhotoUploadModal();
 			return;
 		}
-		const modal = document.getElementById('ai-modal');
+		const modal = document.getElementById('resume-using-ai-modal');
 		if (modal && modal.style.display === 'flex') {
-			closeAIModal();
+			closeResumeGenerationModal();
 			return;
 		}
 		const coverLetterModal = document.getElementById('cover-letter-modal');
@@ -928,8 +928,8 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 });
 
 // ─── AI Modal Functions ─────────────────────────────────────────────
-function openAIModal(): void {
-	document.getElementById('ai-modal')!.style.display = 'flex';
+function openResumeGenerationModal(): void {
+	document.getElementById('resume-using-ai-modal')!.style.display = 'flex';
 	document.getElementById('modal-upload-section')!.style.display = 'block';
 	document.getElementById('modal-error-section')!.style.display = 'none';
 	document.getElementById('modal-file-name')!.style.display = 'none';
@@ -940,12 +940,12 @@ function openAIModal(): void {
 	currentPDFFileName = '';
 }
 
-function closeAIModal(): void {
+function closeResumeGenerationModal(): void {
 	if (generationController) {
 		generationController.abort();
 		generationController = null;
 	}
-	document.getElementById('ai-modal')!.style.display = 'none';
+	document.getElementById('resume-using-ai-modal')!.style.display = 'none';
 	(document.getElementById('pdf-input') as HTMLInputElement).value = '';
 }
 
@@ -1219,7 +1219,7 @@ async function confirmGeneration(): Promise<void> {
 				const errMsg = `AI returned hallucinated name "${outputNameRaw}". Generation aborted.`;
 				console.error(errMsg);
 				showToast({ message: errMsg, type: 'error' });
-				closeAIModal();
+				closeResumeGenerationModal();
 				return;
 			}
 
@@ -1235,7 +1235,7 @@ async function confirmGeneration(): Promise<void> {
 						}". Generation aborted.`;
 						console.error(errMsg);
 						showToast({ message: errMsg, type: 'error' });
-						closeAIModal();
+						closeResumeGenerationModal();
 						return;
 					}
 				}
@@ -1259,7 +1259,7 @@ async function confirmGeneration(): Promise<void> {
 		}
 
 		renderResume(resumeData);
-		closeAIModal();
+		closeResumeGenerationModal();
 		openPhotoUploadModal();
 		localStorage.setItem('resume-data', JSON.stringify(resumeData));
 	} catch (err: unknown) {
@@ -1269,7 +1269,7 @@ async function confirmGeneration(): Promise<void> {
 			showToast({ message: `Error generating resume: ${(err as Error).message}`, type: 'error' });
 			console.error(err);
 		}
-		closeAIModal();
+		closeResumeGenerationModal();
 	}
 }
 
@@ -1586,7 +1586,7 @@ function cancelProvidersSelection(): void {
 }
 
 // ─── Drag & Drop Handlers ───────────────────────────────────────────
-const modal = document.getElementById('ai-modal');
+const modal = document.getElementById('resume-using-ai-modal');
 if (modal) {
 	modal.addEventListener('dragover', (e: DragEvent) => {
 		e.preventDefault();
@@ -2342,8 +2342,8 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 (window as unknown as Record<string, unknown>).expandRight = expandRight;
 (window as unknown as Record<string, unknown>).validateJDInput = validateJDInput;
 (window as unknown as Record<string, unknown>).handleScanButtonClick = handleScanButtonClick;
-(window as unknown as Record<string, unknown>).openAIModal = openAIModal;
-(window as unknown as Record<string, unknown>).closeAIModal = closeAIModal;
+(window as unknown as Record<string, unknown>).openResumeGenerationModal = openResumeGenerationModal;
+(window as unknown as Record<string, unknown>).closeResumeGenerationModal = closeResumeGenerationModal;
 (window as unknown as Record<string, unknown>).handlePDFUpload = handlePDFUpload;
 (window as unknown as Record<string, unknown>).confirmGeneration = confirmGeneration;
 (window as unknown as Record<string, unknown>).polishResume = polishResume;
