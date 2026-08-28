@@ -22,7 +22,7 @@ const GENERATED_FLAG = JSON.stringify({
 // A small valid JPEG shipped with the project, used to drive the file input.
 const SAMPLE_PHOTO = path.resolve(__dirname, '../../demo/goat.jpg');
 
-test.describe('Advanced Flows', () => {
+test.describe(() => {
 	test('photo upload — stores base64 in localStorage and updates resume display', async ({ mainPage }) => {
 		await mainPage.page.evaluate(flag => localStorage.setItem('resume-data', flag), GENERATED_FLAG);
 		await mainPage.page.reload();

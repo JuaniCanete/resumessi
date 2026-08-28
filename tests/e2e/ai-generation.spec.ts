@@ -1,6 +1,6 @@
 import { test, expect } from './test-setup';
 
-test.describe('AI Generation Modal', () => {
+test.describe(() => {
 	test('generate button is visible on load', async ({ mainPage }) => {
 		await expect(mainPage.btnAiGenerate).toBeVisible();
 	});

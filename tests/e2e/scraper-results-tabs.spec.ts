@@ -55,7 +55,7 @@ function buildEmptyPayload(source: 'linkedin' | 'google' | 'remoterocketship'): 
 	};
 }
 
-test.describe('Scraper Results — Source Switching', () => {
+test.describe(() => {
 	test('empty results show only no-results state and clear previously rendered cards', async ({ findJobPage }) => {
 		await findJobPage.page.route('**/api/scraper/results?source=linkedin', async route => {
 			await route.fulfill({

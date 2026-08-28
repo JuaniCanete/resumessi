@@ -1,6 +1,6 @@
 import { test, expect } from './test-setup';
 
-test.describe('AI Providers Modal', () => {
+test.describe(() => {
 	test.beforeEach(async ({ page }) => {
 		await page.route('**/config.json', async route => {
 			await route.fulfill({

@@ -39,7 +39,7 @@ const staleResumeData = {
 	skills: { 'Core Skills': [{ name: 'Old Skill', expert: true }] },
 };
 
-test.describe('Resume Display', () => {
+test.describe(() => {
 	test('should display resume content on load', async ({ mainPage }) => {
 		const resumeName = await mainPage.resumeName.textContent();
 		expect(resumeName).toBeTruthy();
@@ -146,9 +146,7 @@ test.describe('Resume Display', () => {
 		const resumeName = await mainPage.resumeName.textContent();
 		expect(resumeName).toBe('Test User');
 	});
-});
 
-test.describe('AI Generation', () => {
 	test('should open AI modal on click', async ({ mainPage }) => {
 		await mainPage.openAiModal();
 		await expect(mainPage.aiModal).toBeVisible();

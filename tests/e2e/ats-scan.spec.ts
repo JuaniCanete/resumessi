@@ -1,7 +1,7 @@
 import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
 import { test, expect } from './test-setup';
 
-test.describe('ATS Scan — UI Flow', () => {
+test.describe(() => {
 	test('scan button is visible on load', async ({ mainPage }) => {
 		await expect(mainPage.btnRunScan).toBeVisible();
 		await expect(mainPage.btnRunScan).toBeDisabled();

@@ -1,6 +1,6 @@
 import { test, expect } from './test-setup';
 
-test.describe('Resume Refresh Button', () => {
+test.describe(() => {
 	test('clicking refresh shows the "Applying changes" toast and auto-hides it', async ({ mainPage }) => {
 		await mainPage.clickRefresh();
 
@@ -54,7 +54,6 @@ test.describe('Resume Refresh Button', () => {
 		await mainPage.clickRefresh();
 
 		expect(resumeFetchCount).toBeGreaterThan(before);
-
 		await expect(mainPage.refreshMessage).toBeVisible({ timeout: 5000 });
 	});
 });
