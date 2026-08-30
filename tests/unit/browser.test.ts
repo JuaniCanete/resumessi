@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { findChromePath } from '../../src/scraper/browser';
 import fs from 'fs';
+import { join } from 'node:path';
 import { test, mock } from 'node:test';
 
 // Save original values so tests can restore them
@@ -58,11 +59,13 @@ test('findChromePath returns first existing platform candidate on win32', () => 
 	process.env['PROGRAMFILES(X86)'] = 'C:\\Program Files (x86)';
 	process.env.LOCALAPPDATA = 'C:\\Users\\Test\\AppData\\Local';
 
+	// Built with path.join so separators match what findChromePath produces
+	// on ANY host OS (join normalizes per-platform).
 	const winCandidates = [
-		'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-		'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-		'C:\\Users\\Test\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe',
-		'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+		join('C:\\Program Files', 'Google\\Chrome\\Application\\chrome.exe'),
+		join('C:\\Program Files (x86)', 'Google\\Chrome\\Application\\chrome.exe'),
+		join('C:\\Users\\Test\\AppData\\Local', 'Google\\Chrome\\Application\\chrome.exe'),
+		join('C:\\Program Files', 'Microsoft\\Edge\\Application\\msedge.exe'),
 	];
 
 	// Only the second candidate exists

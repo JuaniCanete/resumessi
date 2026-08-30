@@ -37,71 +37,71 @@
 ```
 resumessi/
 ├── public/
-│   ├── main.html              # Main application (ATS Scanner + Resume Generator)
-│   ├── app.ts                 # Frontend application logic
-│   ├── findJob.html           # Job finder page (scraping results + Kanban dashboard)
-│   ├── findJob-app.ts         # Job finder page logic
-│   ├── utils.ts               # Shared frontend utilities
+│   ├── main.html                               # Main application (ATS Scanner + Resume Generator)
+│   ├── app.ts                                  # Frontend application logic
+│   ├── findJob.html                            # Job finder page (scraping results + Kanban dashboard)
+│   ├── findJob-app.ts                          # Job finder page logic
+│   ├── utils.ts                                # Shared frontend utilities
 │   ├── utils/
-│   │   ├── modal.ts           # Shared modal/toast components
-│   │   ├── storage.ts         # Client-side localStorage helpers
-│   │   └── types.ts           # Shared client-side types
+│   │   ├── modal.ts                            # Shared modal/toast components
+│   │   ├── storage.ts                          # Client-side localStorage helpers
+│   │   └── types.ts                            # Shared client-side types
 │   ├── dist/
-│   │   └── app.js             # Compiled frontend bundle (esbuild)
+│   │   └── app.js                              # Compiled frontend bundle (esbuild)
 │   └── assets/
 │       └── photos/
-│           └── photo.jpg       # Default profile photo
+│           └── photo.jpg                       # Default profile photo
 ├── src/
 │   ├── resume/
-│   │   ├── generate-resume.ts # AI-powered resume generator
-│   │   ├── prompt.txt.example # Resume generation input template
+│   │   ├── generate-resume.ts                  # AI-powered resume generator
+│   │   ├── prompt.txt.example                  # Resume generation input template
 │   │   └── output/
-│   │       └── resume-data.json           # Current resume data (auto-generated)
+│   │       └── resume-data.json                # Current resume data (auto-generated)
 │   ├── types/
-│   │   ├── provider.ts         # Provider interfaces and config types
-│   │   ├── router.ts           # Router error/result types
-│   │   ├── config.ts           # Config type definitions
-│   │   └── resume.ts           # Resume data types
+│   │   ├── provider.ts                         # Provider interfaces and config types
+│   │   ├── router.ts                           # Router error/result types
+│   │   ├── config.ts                           # Config type definitions
+│   │   └── resume.ts                           # Resume data types
 │   ├── prompts/
-│   │   ├── ats-scan.txt            # ATS scoring prompt
-│   │   ├── clean-jd.txt            # JD cleaning prompt
-│   │   ├── cover-letter.txt        # Cover letter generation prompt
-│   │   ├── extraction.txt          # Resume extraction prompt (PDF → JSON)
-│   │   ├── polish.txt              # Resume polishing prompt
-│   │   ├── resume-generation.txt   # Resume generation prompt
-│   │   ├── scraper-parameters.txt  # Job parameter extraction prompt
-│   │   └── scraper-summarize.txt   # Scraper result summarization prompt
+│   │   ├── ats-scan.txt                        # ATS scoring prompt
+│   │   ├── clean-jd.txt                        # JD cleaning prompt
+│   │   ├── cover-letter.txt                    # Cover letter generation prompt
+│   │   ├── extraction.txt                      # Resume extraction prompt (PDF → JSON)
+│   │   ├── polish.txt                          # Resume polishing prompt
+│   │   ├── resume-generation.txt               # Resume generation prompt
+│   │   ├── scraper-parameters.txt              # Job parameter extraction prompt
+│   │   └── scraper-summarize.txt               # Scraper result summarization prompt
 │   ├── scraper/
-│   │   ├── google.ts           # Google (SerpAPI) scraper
-│   │   ├── linkedin.ts         # LinkedIn scraper (Playwright)
-│   │   ├── pagination.ts       # Search URL builder + pagination
-│   │   ├── runtime-utils.ts    # Shared scraper runtime helpers
-│   │   └── types.ts            # Scraper types
+│   │   ├── google.ts                           # Google (SerpAPI) scraper
+│   │   ├── linkedin.ts                         # LinkedIn scraper (Playwright)
+│   │   ├── pagination.ts                       # Search URL builder + pagination
+│   │   ├── runtime-utils.ts                    # Shared scraper runtime helpers
+│   │   └── types.ts                            # Scraper types
 │   ├── storage/
-│   │   ├── jobDataSqlite.ts    # SQLite-backed job data storage (active)
-│   ├── providers.ts            # AI provider configuration & API logic
-│   └── router.ts               # Inference router for multi-provider fallback
+│   │   ├── jobDataSqlite.ts                    # SQLite-backed job data storage (active)
+│   ├── providers.ts                            # AI provider configuration & API logic
+│   └── router.ts                               # Inference router for multi-provider fallback
 ├── demo/
-│   ├── resume-demo-data.json          # Demo resume data
-│   └── demo-job-description-goat.md # Sample job description for testing
+│   ├── resume-demo-data.json                   # Demo resume data
+│   └── demo-job-description-goat.md            # Sample job description for testing
 ├── tests/
-│   ├── e2e/                    # End-to-end tests (Playwright)
-│   ├── unit/                   # Unit tests (Node.js test runner)
+│   ├── e2e/                                    # End-to-end tests (Playwright)
+│   ├── unit/                                   # Unit tests (Node.js test runner)
 │   ├── fixtures/
 │   │   └── resume-fixtures.ts
-│   ├── pages/                  # Playwright page object models
-│   ├── README.md               # Test documentation
+│   ├── pages/                                  # Playwright page object models
+│   ├── README.md                               # Test documentation
 │   └── playwright.config.ts
 ├── scripts/
-│   ├── linkedin-auth.ts        # LinkedIn session auth helper
-│   ├── run-evals.ts            # LLM evaluation harness
-│   └── validate.ts             # Pre-build validation
-├── start.ts                    # Dev server with /config.json endpoint
-├── build.ts                    # Build script (prompt injection + esbuild frontend bundler)
-├── setup.ts                    # Setup wizard
+│   ├── linkedin-auth.ts                        # LinkedIn session auth helper
+│   ├── run-evals.ts                            # LLM evaluation harness
+│   └── preflight.ts                            # Pre-flight checks
+├── start.ts                                    # Dev server with /config.json endpoint
+├── build.ts                                    # Build script (prompt injection + esbuild frontend bundler)
+├── setup.ts                                    # Setup wizard
 ├── package.json
 ├── .env.example
-└── AGENTS.md                   # AI agent collaboration guide
+└── AGENTS.md                                   # AI agent collaboration guide
 ```
 
 ---
@@ -186,23 +186,23 @@ After editing any prompt or frontend code, run `npm run build` before committing
 
 ### Scripts
 
-| Command                 | Description                                                                                                                          |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm start`             | Start dev server (runs build first)                                                                                                  |
-| `npm run setup`         | Run setup wizard (⚠️ **overwrites existing .env** — only configures AI providers; SerpAPI & scraper settings must be added manually) |
-| `npm run build`         | Build prompts into HTML/JS + bundle frontend with esbuild                                                                            |
-| `npm run build:check`   | Verify build is up-to-date                                                                                                           |
-| `npm run validate`      | Run pre-build validation (includes LLM evals)                                                                                        |
-| `npm run generate`      | Generate resume from prompt data                                                                                                     |
-| `npm run evals`         | Run LLM evaluation harness                                                                                                           |
-| `npm run typecheck`     | Run TypeScript type checks (`tsc --noEmit`)                                                                                          |
-| `npm run lint`          | Run ESLint                                                                                                                           |
-| `npm run lint:fix`      | Run ESLint with auto-fix                                                                                                             |
-| `npm run html:validate` | Validate HTML files                                                                                                                  |
-| `npm run css:validate`  | Validate CSS in HTML files                                                                                                           |
-| `npm run test:unit`     | Run unit tests (`node:test`)                                                                                                         |
-| `npm run test:e2e`      | Run Playwright E2E tests                                                                                                             |
-| `npm run scraper:auth`  | Generate/refresh LinkedIn session state                                                                                              |
+| Command                   | Description                                                                                                                       |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `npm start`               | Start dev server (runs build first)                                                                                               |
+| `npm run setup`           | Run setup wizard (**overwrites existing .env** — only configures AI providers; SerpAPI & scraper settings must be added manually) |
+| `npm run build`           | Build prompts into HTML/JS + bundle frontend with esbuild                                                                         |
+| `npm run build:check`     | Verify build is up-to-date                                                                                                        |
+| `npm run preflight`       | Run pre-flight checks (includes mock LLM evals)                                                                                   |
+| `npm run generate:resume` | Generate resume from prompt data                                                                                                  |
+| `npm run evals`           | Run LLM evaluation harness                                                                                                        |
+| `npm run typecheck`       | Run TypeScript type checks (`tsc --noEmit`)                                                                                       |
+| `npm run lint`            | Run ESLint                                                                                                                        |
+| `npm run lint:fix`        | Run ESLint with auto-fix                                                                                                          |
+| `npm run html:validate`   | Validate HTML files                                                                                                               |
+| `npm run css:validate`    | Validate CSS in HTML files                                                                                                        |
+| `npm run test:unit`       | Run unit tests (`node:test`)                                                                                                      |
+| `npm run test:e2e`        | Run Playwright E2E tests                                                                                                          |
+| `npm run scraper:auth`    | Generate/refresh LinkedIn session state                                                                                           |
 
 ---
 

@@ -14,7 +14,7 @@
  * 4. Prompts for SerpAPI key (for Google job scraping)
  * 5. Writes values into .env
  *
- * Usage: tsx setup.ts
+ * Usage: npm run setup
  */
 
 import * as fs from 'fs';

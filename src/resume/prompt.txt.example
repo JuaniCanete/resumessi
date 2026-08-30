@@ -1,5 +1,5 @@
 # Resume Data Template
-# Fill in your information below and run: node generate-resume.ts
+# Fill in your information below and run: npm run generate:resume
 
 Full Name: Your Name Here
 Email: your.email@example.com

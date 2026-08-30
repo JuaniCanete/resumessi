@@ -8,8 +8,8 @@
 	},
 	"scripts": {
 		"setup": "tsx setup.ts",
-		"validate": "tsx scripts/validate.ts",
-		"prebuild": "npm run validate",
+		"preflight": "tsx scripts/preflight.ts",
+		"prebuild": "npm run preflight -- --skip-evals",
 		"build": "tsx build.ts",
 		"prestart": "npm run build",
 		"start": "tsx start.ts",
@@ -17,12 +17,12 @@
 		"typecheck": "tsc --noEmit",
 		"lint": "eslint . --max-warnings=0",
 		"lint:fix": "eslint . --fix --max-warnings=0",
-		"format": "prettier --write .",
-		"format:check": "prettier --check .",
+		"format": "prettier --check .",
+		"format:fix": "prettier --write .",
 		"html:validate": "html-validate public/**/*.html",
 		"css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html",
-		"test:unit": "tsx --test \"tests/unit/**/*.test.ts\"",
-		"test:coverage": "npx c8 --reporter=text --reporter=lcov --reporter=html tsx --test \"tests/unit/**/*.test.ts\"",
+		"test:unit": "tsx --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
+		"test:coverage": "npx c8 --reporter=text --reporter=lcov --reporter=html tsx --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
 		"test:e2e": "playwright test --config=tests/playwright.config.ts",
 		"evals": "tsx scripts/run-evals.ts",
 		"scraper:auth": "tsx scripts/linkedin-auth.ts"
@@ -60,11 +60,11 @@
 	},
 	"lint-staged": {
 		"*.{js,ts}": [
-			"eslint --fix",
-			"prettier --write"
+			"npm run lint:fix",
+			"npm run format:fix"
 		],
 		"*.{json,md,html}": [
-			"prettier --write"
+			"npm run format:fix"
 		]
 	},
 	"keywords": [
@@ -95,7 +95,6 @@
 		"@types/node": "^22.0.0",
 		"@typescript-eslint/eslint-plugin": "^8.65.0",
 		"@typescript-eslint/parser": "^8.65.0",
-		"@vitest/coverage-v8": "^4.1.11",
 		"cross-env": "^10.1.0",
 		"esbuild": "^0.28.1",
 		"eslint": "^9.0.0",
@@ -105,6 +104,7 @@
 		"eslint-plugin-no-only-tests": "^3.4.0",
 		"eslint-plugin-playwright": "^2.11.0",
 		"eslint-plugin-prettier": "^5.5.6",
+		"eslint-plugin-yml": "^3.8.1",
 		"globals": "^14.0.0",
 		"html-validate": "^9.0.0",
 		"husky": "^9.1.7",

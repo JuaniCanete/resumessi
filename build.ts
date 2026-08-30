@@ -5,8 +5,7 @@
  *
  * Compiles public/app.ts and public/findJob-app.ts → public/dist/ via esbuild.
  *
- * Usage:
- *   tsx build.ts
+ * Usage: npm run build
  */
 
 import * as esbuild from 'esbuild';

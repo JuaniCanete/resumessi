@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * resumessi — Pre-build Validation Script
+ * resumessi — Pre-flight Checks
  *
- * Asserts that all required prompt source files exist and are non-empty
- * before running the build. Fails fast with a clear error message.
- * Also runs LLM evaluation checks (unless --skip-evals).
+ * Health check run before the build: asserts that all required prompt source
+ * files exist and are non-empty, and runs a mock-mode LLM eval smoke pass
+ * (golden/schema integrity — NOT a quality gate) unless --skip-evals.
+ * Fails fast with a clear error message.
  *
- * Usage:  tsx scripts/validate.ts [--skip-evals]
- * Hook:   automatically run via "prebuild" in package.json
+ * Usage: npm run preflight -- --skip-evals
+ * Hook: automatically run via "prebuild" in package.json
  */
 
 import * as fs from 'fs';
