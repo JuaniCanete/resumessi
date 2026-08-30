@@ -1,0 +1,152 @@
+name: CI-pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '22'                # matches package.json engines >=22.22.0
+  PLAYWRIGHT_VERSION: '1.61.1'      # sync with installed @playwright/test
+
+# Concurrency: group = resource-group-like key. PRs cancel the in-progress run
+# (stale is waste); push runs on main/develop queue instead, so a near-done run
+# is not killed.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  static-checks:
+    name: Static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format
+        run: npm run format
+
+      - name: HTML validation
+        run: npm run html:validate
+
+      - name: CSS validation
+        run: npm run css:validate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Coverage via artifacts only (no Codecov, no Pages). c8 thresholds in
+      # package.json (70%) fail the job on regression; artifact is for inspection.
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
+        env:
+          NODE_ENV: test
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+  preflight:
+    name: Preflight (Prompts + Mock Evals)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Single mock-eval gate: prebuild uses --skip-evals so mock evals run
+      # exactly ONCE per CI run — here, in this named, visible job. Note: in mock
+      # mode golden outputs are returned verbatim, so this is a smoke gate
+      # (prompt existence + golden/schema integrity), NOT a quality gate.
+      # Wire --fail-on-regression + baselines for that later.
+      - name: Preflight prompts & run mock evals
+        run: npm run preflight
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [static-checks, unit-tests, preflight]
+    container:
+      image: mcr.microsoft.com/playwright:v${{ env.PLAYWRIGHT_VERSION }}-noble
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # Required inside the container: the image ships its own Node (unpinned)
+      # and no npm cache. setup-node pins Node 22 + enables the npm cache.
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        # better-sqlite3 is a native C++ addon compiled via node-gyp on first
+        # clean install (~1-2 min). Playwright images ship the toolchain
+        # (python3/make/g++), so this just works — expect it on cold runs.
+
+      # Build here, not in a separate job: the E2E webserver starts tsx start.ts
+      # directly (no npm lifecycle), so public/dist/ must already exist — dist/ is
+      # gitignored. Build failure fails this job and blocks the merge.
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report and traces on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

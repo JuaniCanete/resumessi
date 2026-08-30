@@ -99,6 +99,10 @@ tests/
 - LinkedIn scraper tests (`tests/unit/linkedin-scraper.test.ts`) only test URL building — no browser launch.
 - Use `node:test` mocking utilities or simple function mocks to simulate API responses.
 
+### CI Parity
+
+E2E tests run identically locally and in CI: all external APIs mocked, isolated test db (`data/test/`), fixed port 3001 (never 3000). The webserver command uses `cross-env` so it works on Windows, macOS, and Linux CI.
+
 ## Notes
 
 Test files mirror implementations from `public/main.html`, `public/findJob.html`, `src/providers.ts`, and `src/storage/jobDataSqlite.ts`. When functions are extracted to external files, update imports accordingly.

@@ -14,127 +14,111 @@ import {
 
 // ─── Zod Schemas for Output Validation ────────────────────────────────
 
-const AtsOutputSchema = z
-	.object({
-		overall_score: z.number().min(0).max(100),
-		tier: z.enum(['STRONG_MATCH', 'GOOD_MATCH', 'MODERATE_MATCH', 'WEAK_MATCH']),
-		breakdown: z.record(z.string(), z.unknown()).optional(),
-		feedback: z.string().optional(),
-		missingKeywords: z.array(z.string()).optional(),
-	})
-	.passthrough();
+const AtsOutputSchema = z.looseObject({
+	overall_score: z.number().min(0).max(100),
+	tier: z.enum(['STRONG_MATCH', 'GOOD_MATCH', 'MODERATE_MATCH', 'WEAK_MATCH']),
+	breakdown: z.record(z.string(), z.unknown()).optional(),
+	feedback: z.string().optional(),
+	missingKeywords: z.array(z.string()).optional(),
+});
 
-const PolishOutputSchema = z
-	.object({
-		basics: z.object({
-			name: z.string().min(1),
-			email: z.string().email(),
-		}),
-		experience: z
-			.array(
-				z.object({
-					title: z.string().min(1),
-					company: z.string().min(1),
-				})
-			)
-			.optional(),
-	})
-	.passthrough();
-
-const CoverLetterOutputSchema = z
-	.object({
-		text: z.string().min(50),
-	})
-	.passthrough();
-
-const ExtractionOutputSchema = z
-	.object({
+const PolishOutputSchema = z.looseObject({
+	basics: z.object({
 		name: z.string().min(1),
-		contact: z.record(z.string(), z.string()).optional(),
-		experience: z
-			.array(
-				z.object({
-					company: z.string().optional(),
-					role: z.string().optional(),
-					duration: z.string().optional(),
-					highlights: z.array(z.string()).optional(),
-				})
-			)
-			.optional(),
-		skills: z.array(z.string()).optional(),
-		education: z
-			.array(
-				z.object({
-					institution: z.string().optional(),
-					degree: z.string().optional(),
-					year: z.string().optional(),
-				})
-			)
-			.optional(),
-	})
-	.passthrough();
+		email: z.string().email(),
+	}),
+	experience: z
+		.array(
+			z.object({
+				title: z.string().min(1),
+				company: z.string().min(1),
+			})
+		)
+		.optional(),
+});
 
-const CleanJdOutputSchema = z
-	.object({
-		cleanedText: z.string().min(10),
-	})
-	.passthrough();
+const CoverLetterOutputSchema = z.looseObject({
+	text: z.string().min(50),
+});
 
-const ScraperParametersOutputSchema = z
-	.object({
-		role: z.string().min(1),
-		seniority: z.string().min(1),
-		employmentType: z.string().min(1),
-		region: z.string().optional(),
-		country: z.string().optional(),
-		currency: z.string().optional(),
-		workType: z.string().optional(),
-		datePosted: z.string().optional(),
-		keywords: z.array(z.string()).optional(),
-		customDomains: z.array(z.string()).optional(),
-	})
-	.passthrough();
+const ExtractionOutputSchema = z.looseObject({
+	name: z.string().min(1),
+	contact: z.record(z.string(), z.string()).optional(),
+	experience: z
+		.array(
+			z.object({
+				company: z.string().optional(),
+				role: z.string().optional(),
+				duration: z.string().optional(),
+				highlights: z.array(z.string()).optional(),
+			})
+		)
+		.optional(),
+	skills: z.array(z.string()).optional(),
+	education: z
+		.array(
+			z.object({
+				institution: z.string().optional(),
+				degree: z.string().optional(),
+				year: z.string().optional(),
+			})
+		)
+		.optional(),
+});
 
-const ScraperSummarizeOutputSchema = z
-	.object({
-		jobs: z
-			.array(
-				z.object({
-					title: z.string().min(1),
-					company: z.string().min(1),
-					location: z.string().optional(),
-					snippet: z.string().optional(),
-					url: z.string().url().optional(),
-				})
-			)
-			.min(1),
-	})
-	.passthrough();
+const CleanJdOutputSchema = z.looseObject({
+	cleanedText: z.string().min(10),
+});
 
-const ResumeGenerationSchema = z
-	.object({
-		basics: z.object({
-			name: z.string().min(1),
-			email: z.string().email(),
-			phone: z.string().optional(),
-			location: z.string().optional(),
-			summary: z.string().optional(),
-		}),
-		experience: z
-			.array(
-				z.object({
-					title: z.string().min(1),
-					company: z.string().min(1),
-					location: z.string().optional(),
-					startDate: z.string().optional(),
-					endDate: z.string().optional(),
-					description: z.string().optional(),
-					highlights: z.array(z.string()).optional(),
-				})
-			)
-			.optional(),
-	})
-	.passthrough();
+const ScraperParametersOutputSchema = z.looseObject({
+	role: z.string().min(1),
+	seniority: z.string().min(1),
+	employmentType: z.string().min(1),
+	region: z.string().optional(),
+	country: z.string().optional(),
+	currency: z.string().optional(),
+	workType: z.string().optional(),
+	datePosted: z.string().optional(),
+	keywords: z.array(z.string()).optional(),
+	customDomains: z.array(z.string()).optional(),
+});
+
+const ScraperSummarizeOutputSchema = z.looseObject({
+	jobs: z
+		.array(
+			z.object({
+				title: z.string().min(1),
+				company: z.string().min(1),
+				location: z.string().optional(),
+				snippet: z.string().optional(),
+				url: z.string().url().optional(),
+			})
+		)
+		.min(1),
+});
+
+const ResumeGenerationSchema = z.looseObject({
+	basics: z.object({
+		name: z.string().min(1),
+		email: z.string().email(),
+		phone: z.string().optional(),
+		location: z.string().optional(),
+		summary: z.string().optional(),
+	}),
+	experience: z
+		.array(
+			z.object({
+				title: z.string().min(1),
+				company: z.string().min(1),
+				location: z.string().optional(),
+				startDate: z.string().optional(),
+				endDate: z.string().optional(),
+				description: z.string().optional(),
+				highlights: z.array(z.string()).optional(),
+			})
+		)
+		.optional(),
+});
 
 const SCHEMAS: Record<string, z.ZodSchema<unknown>> = {
 	'ats-scan': AtsOutputSchema,
@@ -447,7 +431,7 @@ function parseArgs(): EvalContext {
 
 function printHelp(): void {
 	console.info(`
-Usage: tsx scripts/run-evals.ts [options]
+Usage: npm run evals -- [options]
 
 Options:
   -m, --mode <mode>           Evaluation mode: mock (default), live, record
@@ -459,10 +443,10 @@ Options:
   list                        List available prompt types
 
 Examples:
-  tsx scripts/run-evals.ts                          # Fast mock evals
-  tsx scripts/run-evals.ts --mode live              # Live inference
-  tsx scripts/run-evals.ts -p ats-scan -p polish    # Specific prompts
-  tsx scripts/run-evals.ts --mode live --baseline v2.3.1 --fail-on-regression
+  npm run evals                        		# Fast mock evals
+  npm run evals -- --mode live            	# Live inference
+  npm run evals -- -p ats-scan -p polish  	# Specific prompts
+  npm run evals -- --mode live --baseline v2.3.1 --fail-on-regression
 `);
 }
 

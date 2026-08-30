@@ -6,9 +6,11 @@ import { flatConfigs } from 'eslint-plugin-import-x';
 import playwright from 'eslint-plugin-playwright';
 import noOnlyTests from 'eslint-plugin-no-only-tests';
 import prettierPlugin from 'eslint-plugin-prettier';
+import { configs as ymlConfigs } from 'eslint-plugin-yml';
 
 export default [
 	js.configs.recommended,
+        ...ymlConfigs['flat/recommended'],
 	{
 		ignores: [
 			'tests/test-results/**',

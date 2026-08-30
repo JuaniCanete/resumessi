@@ -1,0 +1,25 @@
+Full Name: Mica Bezona 
+Email: mica.bezona@example.com
+Phone: +34 600 000 000
+Location: Valencia, Spain
+LinkedIn: linkedin.com/in/juanicanete
+
+SUMMARY
+Full-stack developer with 6 years of experience building web applications
+with TypeScript, Node.js and React. Career pivot into AI-integrated tooling.
+
+EXPERIENCE
+Senior Full-Stack Developer | Nexora Software | 2021 - Present
+- Built ATS resume scoring service with LLM providers (Cohere, Mistral, Groq)
+- Led migration of monolith to modular TypeScript services
+- Reduced page load time by 40% via esbuild bundling
+
+Full-Stack Developer | Datalab Systems | 2018 - 2021
+- Developed job dashboard with Kanban board and SQLite storage
+- Implemented web scrapers with pagination for LinkedIn and Google Jobs
+
+EDUCATION
+B.Sc. Computer Science | University of Valencia | 2018
+
+SKILLS
+TypeScript, Node.js, React, Playwright, SQLite, esbuild, ESLint

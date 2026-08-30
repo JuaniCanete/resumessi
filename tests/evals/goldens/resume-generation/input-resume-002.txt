@@ -1,0 +1,13 @@
+Full Name: Tito Micho
+Email: tito.micho@example.com
+Location: Madrid, Spain
+
+SUMMARY
+QA engineer transitioning to test automation.
+
+EXPERIENCE
+QA Analyst | Softgroup | 2019 - 2023
+- Manual and automated testing of web applications
+
+SKILLS
+Selenium, JavaScript, Postman

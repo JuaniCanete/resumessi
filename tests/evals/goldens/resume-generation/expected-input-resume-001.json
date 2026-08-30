@@ -1,0 +1,43 @@
+{
+	"basics": {
+		"name": "Mica Bezona",
+		"email": "mica.bezona@example.com",
+		"phone": "+34 600 000 000",
+		"location": "Valencia, Spain",
+		"summary": "Full-stack developer with 6 years of experience building web applications with TypeScript, Node.js and React. Career pivot into AI-integrated tooling."
+	},
+	"experience": [
+		{
+			"title": "Senior Full-Stack Developer",
+			"company": "Nexora Software",
+			"location": "Valencia, Spain",
+			"startDate": "2021",
+			"endDate": "Present",
+			"description": "Built ATS resume scoring service with LLM providers (Cohere, Mistral, Groq). Led migration of monolith to modular TypeScript services. Reduced page load time by 40% via esbuild bundling.",
+			"highlights": [
+				"Built ATS resume scoring service with LLM providers",
+				"Led migration of monolith to modular TypeScript services",
+				"Reduced page load time by 40% via esbuild bundling"
+			]
+		},
+		{
+			"title": "Full-Stack Developer",
+			"company": "Datalab Systems",
+			"startDate": "2018",
+			"endDate": "2021",
+			"description": "Developed job dashboard with Kanban board and SQLite storage. Implemented web scrapers with pagination for LinkedIn and Google Jobs.",
+			"highlights": [
+				"Developed job dashboard with Kanban board and SQLite storage",
+				"Implemented web scrapers with pagination for LinkedIn and Google Jobs"
+			]
+		}
+	],
+	"education": [
+		{
+			"institution": "University of Valencia",
+			"degree": "B.Sc. Computer Science",
+			"year": "2018"
+		}
+	],
+	"skills": ["TypeScript", "Node.js", "React", "Playwright", "SQLite", "esbuild", "ESLint"]
+}

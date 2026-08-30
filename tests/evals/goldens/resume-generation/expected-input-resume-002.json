@@ -1,0 +1,19 @@
+{
+	"basics": {
+		"name": "Tito Micho",
+		"email": "tito.micho@example.com",
+		"location": "Madrid, Spain",
+		"summary": "QA engineer transitioning to test automation."
+	},
+	"experience": [
+		{
+			"title": "QA Analyst",
+			"company": "Softgroup",
+			"startDate": "2019",
+			"endDate": "2023",
+			"description": "Manual and automated testing of web applications.",
+			"highlights": ["Manual and automated testing of web applications"]
+		}
+	],
+	"skills": ["Selenium", "JavaScript", "Postman"]
+}

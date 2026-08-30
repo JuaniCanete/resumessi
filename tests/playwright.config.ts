@@ -10,7 +10,7 @@ export default defineConfig({
 	workers: 2,
 	reporter: [['html', { open: 'on-failure' }], ['list']],
 	use: {
-		//This line chan't change otherwise tests would run over port 3000 which is the application
+		//Port 3001 must NOT change: 3000 is the user-facing app port (see webServer below).
 		baseURL: 'http://localhost:3001',
 		screenshot: 'only-on-failure',
 		trace: 'retain-on-failure',
@@ -20,12 +20,15 @@ export default defineConfig({
 		{ name: 'chromium', use: { browserName: 'chromium' } },
 	],
 	webServer: {
-		//These line chan't change otherwise tests would run over port 3000 which is the application
-		command: `cmd.exe /c "set PORT=3001&& set NODE_ENV=test&& set JOB_DATA_DB_PATH=${TEST_DB_PATH}&& npx tsx start.ts --no-open"`,
+		//cross-env sets env vars identically on cmd/PowerShell/sh (CI runs Linux).
+		//Port 3001 must NOT change: 3000 is the user-facing app port.
+		command: `npx cross-env PORT=3001 NODE_ENV=test JOB_DATA_DB_PATH="${TEST_DB_PATH}" npx tsx start.ts --no-open`,
 		url: 'http://localhost:3001/public/main.html',
 		reuseExistingServer: false,
 		timeout: 60000,
-		cwd: '..',
+		//Resolved relative to the config file location (tests/), NOT the process cwd —
+		//'..' points to the repo root where start.ts lives.
+		cwd: join(__dirname, '..'),
 	},
 	globalTeardown: './global-teardown.ts',
 });
