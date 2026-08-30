@@ -10,7 +10,7 @@ import { configs as ymlConfigs } from 'eslint-plugin-yml';
 
 export default [
 	js.configs.recommended,
-        ...ymlConfigs['flat/recommended'],
+	...ymlConfigs['flat/recommended'],
 	{
 		ignores: [
 			'tests/test-results/**',
@@ -96,16 +96,16 @@ export default [
 			'prefer-template': 'error',
 			// require-await fires on test mock stubs that intentionally return sync values inside async fns.
 			'require-await': 'error',
-'sort-imports': [
-			'error',
-			{
-				ignoreCase: false,
-				ignoreDeclarationSort: false,
-				ignoreMemberSort: true,
-				memberSyntaxSortOrder: ['none', 'all', 'single', 'multiple'],
-				allowSeparatedGroups: true,
-			},
-		],
+			'sort-imports': [
+				'error',
+				{
+					ignoreCase: false,
+					ignoreDeclarationSort: false,
+					ignoreMemberSort: true,
+					memberSyntaxSortOrder: ['none', 'all', 'single', 'multiple'],
+					allowSeparatedGroups: true,
+				},
+			],
 		},
 	},
 	{

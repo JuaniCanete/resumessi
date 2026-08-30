@@ -13,11 +13,12 @@ if [ "$BRANCH" != "main" ]; then
 fi
 
 # Validate prompts + optional evals (gated by VALIDATE_SKIP_EVALS)
-npm run validate
+npm run preflight
 
 # Static checks
 npm run typecheck
 npm run lint
+npm run format
 npm run html:validate
 npm run css:validate
 

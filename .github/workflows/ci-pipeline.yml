@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 env:
-  NODE_VERSION: '22'                # matches package.json engines >=22.22.0
-  PLAYWRIGHT_VERSION: '1.61.1'      # sync with installed @playwright/test
+  NODE_VERSION: '22' # matches package.json engines >=22.22.0
+  PLAYWRIGHT_VERSION: '1.61.1' # sync with installed @playwright/test
 
 # Concurrency: group = resource-group-like key. PRs cancel the in-progress run
 # (stale is waste); push runs on main/develop queue instead, so a near-done run
