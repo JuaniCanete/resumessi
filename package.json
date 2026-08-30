@@ -105,7 +105,7 @@
 		"eslint-plugin-playwright": "^2.11.0",
 		"eslint-plugin-prettier": "^5.5.6",
 		"eslint-plugin-yml": "^3.8.1",
-		"globals": "^14.0.0",
+		"globals": "^17.11.0",
 		"html-validate": "^9.0.0",
 		"husky": "^9.1.7",
 		"jsdom": "^29.1.1",
