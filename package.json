@@ -21,8 +21,8 @@
 		"format:fix": "prettier --write .",
 		"html:validate": "html-validate public/**/*.html",
 		"css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html",
-		"test:unit": "tsx --test \"tests/unit/**/*.test.ts\"",
-		"test:coverage": "npx c8 --reporter=text --reporter=lcov --reporter=html tsx --test \"tests/unit/**/*.test.ts\"",
+		"test:unit": "tsx --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
+		"test:coverage": "npx c8 --reporter=text --reporter=lcov --reporter=html tsx --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
 		"test:e2e": "playwright test --config=tests/playwright.config.ts",
 		"evals": "tsx scripts/run-evals.ts",
 		"scraper:auth": "tsx scripts/linkedin-auth.ts"

@@ -238,6 +238,20 @@ function parseEnvFile(): Record<string, string | undefined> {
 			}
 		});
 	}
+	// Process environment overrides the .env file (standard dotenv semantics:
+	// real env vars win). Same test-isolation filter as the file pass above.
+	for (const [key, value] of Object.entries(process.env)) {
+		if (value === undefined) continue;
+		if (
+			process.env.NODE_ENV === 'test' &&
+			(/_(API_KEY|SECRET)$/i.test(key) || key.startsWith('LINKEDIN_') || key === 'CHROME_PATH')
+		) {
+			continue;
+		}
+		if (Object.prototype.hasOwnProperty.call(env, key) || key === 'COLLECTION_WARNING_ENABLED') {
+			env[key] = value;
+		}
+	}
 	return env;
 }
 
