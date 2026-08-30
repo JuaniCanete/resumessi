@@ -11,8 +11,7 @@ env:
   PLAYWRIGHT_VERSION: '1.61.1' # sync with installed @playwright/test
 
 # Concurrency: group = resource-group-like key. PRs cancel the in-progress run
-# (stale is waste); push runs on main/develop queue instead, so a near-done run
-# is not killed.
+# (stale is waste); pushes to main queue instead, so a near-done run is not killed.
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
