@@ -6,7 +6,7 @@
 export const MODEL_PRICING: Record<string, { input: number; output: number }> = {
 	'command-a-reasoning-08-2025': { input: 0.5 / 1e6, output: 1.5 / 1e6 }, // Cohere
 	'codestral-2508': { input: 0.2 / 1e6, output: 0.6 / 1e6 }, // Mistral
-	'gemini-3.6-flash': { input: 0.075 / 1e6, output: 0.3 / 1e6 }, // Gemini
+	'gemini-3.7-flash': { input: 0.075 / 1e6, output: 0.3 / 1e6 }, // Gemini
 	'openai/gpt-oss-120b': { input: 0.15 / 1e6, output: 0.6 / 1e6 }, // Groq
 };
 
@@ -20,6 +20,6 @@ export function estimateCost(
 	usage: { promptTokens: number; completionTokens: number }
 ): number {
 	const key = model.toLowerCase();
-	const pricing = MODEL_PRICING[key] || MODEL_PRICING['gemini-3.6-flash'];
+	const pricing = MODEL_PRICING[key] || MODEL_PRICING['gemini-3.7-flash'];
 	return usage.promptTokens * pricing.input + usage.completionTokens * pricing.output;
 }

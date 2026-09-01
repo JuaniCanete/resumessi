@@ -665,36 +665,6 @@ export function clearScrapingRunCache(source?: 'linkedin' | 'google'): void {
 
 // --- Legacy compatible functions ---
 
-export const LOCALSTORAGE_KEYS = {
-	scrapingResults: (source: 'linkedin' | 'google') => `jobData:scrapingResults:${source}`,
-	savedJobs: (source: 'linkedin' | 'google') => `jobData:savedJobs:${source}`,
-	jobDashboard: 'jobData:jobDashboard',
-	sidebarState: 'findJob:sidebarState',
-} as const;
-
-// Sidebar state persistence (kept as localStorage since it's pure client state)
-export interface SidebarState {
-	open: boolean;
-	activeTab: 'scraping' | 'saved' | 'dashboard';
-}
-
-export function saveSidebarState(state: SidebarState): void {
-	try {
-		localStorage.setItem(LOCALSTORAGE_KEYS.sidebarState, JSON.stringify(state));
-	} catch {
-		// Ignore
-	}
-}
-
-export function loadSidebarState(): SidebarState | null {
-	try {
-		const raw = localStorage.getItem(LOCALSTORAGE_KEYS.sidebarState);
-		return raw ? JSON.parse(raw) : null;
-	} catch {
-		return null;
-	}
-}
-
 export function loadJobData(): JobData {
 	const database = getDb();
 	const linkedinResults = database
@@ -752,60 +722,6 @@ function parseSavedRowFromSqlite(row: Record<string, unknown>): ScraperResult {
 	};
 }
 
-export function saveJobData(data: JobData): void {
-	const database = getDb();
-	const dbTransaction = database.transaction(() => {
-		const insertScraping = database.prepare(`
-      INSERT OR REPLACE INTO scraping_results
-        (
-	  		url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-        	saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, 
-		 	runId, timestamp, site, jobDescription, isCollectionUrl
-		)
-      VALUES
-        (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
-         @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
-         @interviewRounds, @notes, @id, @runId, @timestamp, @site, @jobDescription, @isCollectionUrl)
-    `);
-		const insertSaved = database.prepare(`
-      INSERT OR REPLACE INTO saved_jobs
-        (url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         savedAt, applied, appliedAt, status, column, interviewRounds, notes, jobId, site, jobDescription, isCollectionUrl)
-      VALUES
-        (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
-         @parameters, @savedAt, @applied, @appliedAt, @status, @column, @interviewRounds, @notes, @id, @site, @jobDescription, @isCollectionUrl)
-    `);
-		const insertDashboard = database.prepare(`
-      INSERT OR REPLACE INTO job_dashboard
-        (url, jobId, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-         source, status, column, interviewRounds, notes, savedAt, appliedAt, site, jobDescription)
-      VALUES
-        (@url, @jobId, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
-         @parameters, @source, @status, @column, @interviewRounds, @notes, @savedAt, @appliedAt, @site, @jobDescription)
-    `);
-
-		for (const item of data.scrapingResults.linkedin) {
-			const formatted = formatRowForSqlite(item, 'linkedin');
-			insertScraping.run({ ...formatted, runId: null, timestamp: null });
-		}
-		for (const item of data.scrapingResults.google) {
-			const formatted = formatRowForSqlite(item, 'google');
-			insertScraping.run({ ...formatted, runId: null, timestamp: null });
-		}
-		for (const item of data.savedJobs.linkedin) {
-			insertSaved.run(formatSavedRowForSqlite(item, 'linkedin'));
-		}
-		for (const item of data.savedJobs.google) {
-			insertSaved.run(formatSavedRowForSqlite(item, 'google'));
-		}
-		for (const item of data.jobDashboard) {
-			insertDashboard.run(formatDashboardRowForSqlite(item));
-		}
-	});
-	dbTransaction();
-	clearCachedRun();
-}
-
 function formatSavedRowForSqlite(
 	row: ScraperResult,
 	source: 'linkedin' | 'google' | 'remoterocketship'
@@ -840,70 +756,6 @@ export function getScrapingResults(source: 'linkedin' | 'google' | 'remoterocket
 		.prepare('SELECT * FROM scraping_results WHERE source = ? AND removed = 0')
 		.all(source) as Record<string, unknown>[];
 	return rows.map(parseRowFromSqlite);
-}
-
-export function setScrapingResults(source: 'linkedin' | 'google' | 'remoterocketship', results: ScraperResult[]): void {
-	const database = getDb();
-	const dbTransaction = database.transaction(() => {
-		const checkExisting = database.prepare(
-			'SELECT removed, saved, savedAt, applied, appliedAt, status, column, interviewRounds, notes, runId, timestamp, site, jobDescription, isCollectionUrl FROM scraping_results WHERE url = ? AND source = ?'
-		);
-		const upsertResult = database.prepare(`
-      INSERT INTO scraping_results
-        (
-	  		url, source, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
-        	saved, savedAt, applied, appliedAt, removed, status, column, interviewRounds, notes, jobId, 
-			runId, timestamp, site, jobDescription, isCollectionUrl
-		)
-      VALUES
-        (@url, @source, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
-         @parameters, @saved, @savedAt, @applied, @appliedAt, @removed, @status, @column,
-         @interviewRounds, @notes, @id, @runId, @timestamp, @site, @jobDescription, @isCollectionUrl)
-      ON CONFLICT(url, source) DO UPDATE SET
-        title = excluded.title,
-        snippet = excluded.snippet,
-        company = excluded.company,
-        postedDate = excluded.postedDate,
-        aiSummary = excluded.aiSummary,
-        queryAffinity = excluded.queryAffinity,
-        parameters = excluded.parameters,
-        saved = excluded.saved,
-        savedAt = excluded.savedAt,
-        applied = excluded.applied,
-        appliedAt = excluded.appliedAt,
-        removed = excluded.removed,
-        status = excluded.status,
-        column = excluded.column,
-        interviewRounds = excluded.interviewRounds,
-        notes = excluded.notes,
-        jobId = excluded.jobId,
-        runId = excluded.runId,
-        timestamp = excluded.timestamp,
-        site = excluded.site,
-        jobDescription = excluded.jobDescription,
-        isCollectionUrl = excluded.isCollectionUrl
-    `);
-
-		for (const result of results) {
-			const existing = checkExisting.get(result.url, source) as Record<string, unknown> | undefined;
-			const base = formatRowForSqlite(result, source);
-			const rowToInsert: Record<string, unknown> = {
-				...base,
-				removed: existing ? (existing.removed as number) : 0,
-				saved: existing ? (existing.saved as number) : base.saved,
-				savedAt: existing ? (existing.savedAt as string) : base.savedAt,
-				applied: existing ? (existing.applied as number) : base.applied,
-				appliedAt: existing ? (existing.appliedAt as string) : base.appliedAt,
-				status: existing ? (existing.status as string) : base.status,
-				column: existing ? (existing.column as string) : base.column,
-				interviewRounds: existing ? (existing.interviewRounds as number) : base.interviewRounds,
-				notes: existing ? (existing.notes as string) : base.notes,
-			};
-			upsertResult.run(rowToInsert);
-		}
-	});
-	dbTransaction();
-	clearCachedRun();
 }
 
 export function markScrapingResultRemoved(source: 'linkedin' | 'google', url: string): void {
@@ -1223,10 +1075,3 @@ export function updateJobDescription(url: string, jobDescription: string): void 
 }
 
 // --- Close ---
-
-export function closeStorage(): void {
-	if (db) {
-		db.close();
-		db = null;
-	}
-}

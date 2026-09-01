@@ -148,6 +148,56 @@
 				overflow-y: auto;
 				display: flex;
 				flex-direction: column;
+				scrollbar-width: thin;
+				scrollbar-color: var(--accent) rgba(255, 255, 255, 0.05);
+			}
+
+			/* Scrollbar styling for sidebars and containers */
+			#findjob-sidebar,
+			.board-container,
+			.board-cards-container,
+			#job-scraper-content,
+			#jd-edit-modal textarea,
+			#jd-view-body {
+				scrollbar-width: thin;
+				scrollbar-color: var(--accent) rgba(255, 255, 255, 0.05);
+			}
+
+			#findjob-sidebar::-webkit-scrollbar,
+			.board-container::-webkit-scrollbar,
+			.board-cards-container::-webkit-scrollbar,
+			#job-scraper-content::-webkit-scrollbar,
+			#jd-edit-modal textarea::-webkit-scrollbar,
+			#jd-view-body::-webkit-scrollbar {
+				width: 8px;
+			}
+
+			#findjob-sidebar::-webkit-scrollbar-track,
+			.board-container::-webkit-scrollbar-track,
+			.board-cards-container::-webkit-scrollbar-track,
+			#job-scraper-content::-webkit-scrollbar-track,
+			#jd-edit-modal textarea::-webkit-scrollbar-track,
+			#jd-view-body::-webkit-scrollbar-track {
+				background: rgba(255, 255, 255, 0.05);
+			}
+
+			#findjob-sidebar::-webkit-scrollbar-thumb,
+			.board-container::-webkit-scrollbar-thumb,
+			.board-cards-container::-webkit-scrollbar-thumb,
+			#job-scraper-content::-webkit-scrollbar-thumb,
+			#jd-edit-modal textarea::-webkit-scrollbar-thumb,
+			#jd-view-body::-webkit-scrollbar-thumb {
+				background: var(--accent);
+				border-radius: 4px;
+			}
+
+			#findjob-sidebar::-webkit-scrollbar-thumb:hover,
+			.board-container::-webkit-scrollbar-thumb:hover,
+			.board-cards-container::-webkit-scrollbar-thumb:hover,
+			#job-scraper-content::-webkit-scrollbar-thumb:hover,
+			#jd-edit-modal textarea::-webkit-scrollbar-thumb:hover,
+			#jd-view-body::-webkit-scrollbar-thumb:hover {
+				background: #1d4ed8;
 			}
 
 			#findjob-sidebar.collapsed {

@@ -7,15 +7,6 @@ export interface ProviderAttempt {
 	correlationId: string;
 }
 
-export interface RouterOptions {
-	selectedProvider?: ProviderName | null;
-	timeout?: number;
-	temperature?: number;
-	maxTokens?: number;
-	topP?: number;
-	preferredProvider?: string;
-}
-
 export interface RouterResult {
 	text: string;
 	provider: ProviderName;
@@ -31,11 +22,6 @@ export interface RouterResult {
 export interface RouterError extends Error {
 	attempts: ProviderAttempt[];
 	lastError: Error | null;
-}
-
-export interface PolishInput {
-	resumeData?: ResumeData;
-	provider?: string;
 }
 
 export interface ResumeData {

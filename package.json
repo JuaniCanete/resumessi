@@ -21,10 +21,11 @@
 		"format:fix": "prettier --write .",
 		"html:validate": "html-validate public/**/*.html",
 		"css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html",
-		"test:unit": "tsx --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
-		"test:coverage": "npx c8 --reporter=text --reporter=lcov --reporter=html tsx --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
+		"test:unit": "cross-env NODE_ENV=test tsx --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
+		"test:coverage": "cross-env NODE_ENV=test npx c8 --reporter=text --reporter=lcov --reporter=html tsx --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
 		"test:e2e": "playwright test --config=tests/playwright.config.ts",
 		"evals": "tsx scripts/run-evals.ts",
+		"sec-pii-scan": "tsx scripts/security-pii-scanner.ts",
 		"scraper:auth": "tsx scripts/linkedin-auth.ts"
 	},
 	"c8": {

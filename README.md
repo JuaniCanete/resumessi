@@ -10,7 +10,7 @@
 
 ### Prerequisites
 
-- **Node.js ≥ 18** (required for native modules and modern TypeScript features)
+- **Node.js ≥ 22.22.0** (matches the project engine requirement and CI runtime)
 - **Visual Studio Build Tools + Python 3** (Windows only — required for `better-sqlite3` and `pdf-parse-fork` native compilation via `node-gyp`)
 - **Playwright browsers** — run `npx playwright install` after `npm install` to download Chromium
 
@@ -19,7 +19,7 @@
 1. **Clone** the project.
 2. **Install dependencies** — `npm install`
 3. **Install Playwright browsers** — `npx playwright install`
-4. **Run setup** — `npm run setup` creates `.env` from `.env.example` (⚠️ **WARNING: overwrites an existing `.env`** — backup your keys first!)
+4. **Run setup** — `npm run setup` creates `.env` from `.env.example` (⚠ **WARNING: overwrites an existing `.env`** — backup your keys first!)
 5. **Complete steps from Wizard** — This will set up AI provider API keys. **Note:** `npm run setup` only configures AI providers. SerpAPI (`GOOGLE_API_KEY`) and scraper settings (`SCRAPER_DEBUG`, `REMOTEROCKETSHIP_*`, `COLLECTION_WARNING_ENABLED`) must be added manually to `.env` after setup.
 6. **LinkedIn authentication** — Run `npm run scraper:auth` (or `tsx scripts/linkedin-auth.ts`) to generate the LinkedIn session state for scraping.
 7. **Start the app** — `npm start` runs the local server and opens the app in your browser.
@@ -122,7 +122,7 @@ MISTRAL_API_KEY=your_mistral_key_here
 MISTRAL_MODEL=codestral-2508
 
 GEMINI_API_KEY=your_gemini_key_here
-GEMINI_MODEL=gemini-3.6-flash
+GEMINI_MODEL=gemini-3.7-flash
 
 GROQ_API_KEY=your_groq_key_here
 GROQ_MODEL=openai/gpt-oss-120b

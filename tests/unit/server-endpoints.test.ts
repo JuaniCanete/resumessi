@@ -1,18 +1,15 @@
 import * as http from 'node:http';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { rmSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from 'node:fs';
+import { rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { spawn, execSync, type ChildProcess } from 'node:child_process';
 import { test, before, after } from 'node:test';
 
 const TEST_PORT = 3447;
 const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
 const TEST_DB = join(__dirname, '..', '..', 'data', 'test', 'jobdata-unit-test.db');
-const TEST_RESUME_DIR = join(__dirname, '..', '..', 'src', 'resume', 'output');
-const TEST_RESUME_FILE = join(TEST_RESUME_DIR, 'resume-data.json');
-const TEST_RESUME_BACKUP = join(TEST_RESUME_DIR, 'resume-data.json.bak');
-const TEST_RESUME_POLISHED = join(TEST_RESUME_DIR, 'resume-data-AI-polished.json');
-const TEST_RESUME_POLISHED_BACKUP = join(TEST_RESUME_DIR, 'resume-data-AI-polished.json.bak');
+const TEST_RESUME_FILE = join(__dirname, '..', 'data', 'resume', 'resume-data.json');
+const TEST_RESUME_POLISHED_FILE = join(__dirname, '..', 'data', 'resume', 'resume-data-AI-polished.json');
 let serverProcess: ChildProcess | null = null;
 
 interface HttpResponse {
@@ -103,16 +100,14 @@ function stopServer(): void {
 }
 
 before(async () => {
-	// Backup actual user resume if exists to avoid being overridden by tests
-	if (existsSync(TEST_RESUME_FILE)) copyFileSync(TEST_RESUME_FILE, TEST_RESUME_BACKUP);
-	if (existsSync(TEST_RESUME_POLISHED)) copyFileSync(TEST_RESUME_POLISHED, TEST_RESUME_POLISHED_BACKUP);
-
 	// Spawn node directly with the tsx loader to avoid .cmd spawn issues on Windows
 	serverProcess = spawn(process.execPath, ['--import', 'tsx', 'start.ts', '--no-open'], {
 		env: {
 			PORT: String(TEST_PORT),
 			NODE_ENV: 'test',
 			JOB_DATA_DB_PATH: TEST_DB,
+			RESUME_DATA_FILE: TEST_RESUME_FILE,
+			RESUME_DATA_FILE_POLISHED: TEST_RESUME_POLISHED_FILE,
 			// Only pass necessary env vars, avoid leaking sensitive keys
 			AI_INFERENCE_ORDER: process.env.AI_INFERENCE_ORDER,
 			COHERE_API_KEY: '',
@@ -153,24 +148,13 @@ after(() => {
 		}
 	});
 
-	// Restore original resume
-	try {
-		if (existsSync(TEST_RESUME_BACKUP)) {
-			copyFileSync(TEST_RESUME_BACKUP, TEST_RESUME_FILE);
-			rmSync(TEST_RESUME_BACKUP, { force: true });
-		} else {
-			rmSync(TEST_RESUME_FILE, { force: true });
+	[TEST_RESUME_FILE, TEST_RESUME_POLISHED_FILE].forEach(f => {
+		try {
+			rmSync(f, { force: true });
+		} catch {
+			// ignore
 		}
-
-		if (existsSync(TEST_RESUME_POLISHED_BACKUP)) {
-			copyFileSync(TEST_RESUME_POLISHED_BACKUP, TEST_RESUME_POLISHED);
-			rmSync(TEST_RESUME_POLISHED_BACKUP, { force: true });
-		} else {
-			rmSync(TEST_RESUME_POLISHED, { force: true });
-		}
-	} catch {
-		// ignore
-	}
+	});
 });
 
 // ─── /config.json ─────────────────────────────────────────────────────
@@ -470,6 +454,8 @@ function startIsolatedServerForATS(port: number): Promise<{ baseUrl: string; chi
 				PORT: String(port),
 				NODE_ENV: 'test',
 				JOB_DATA_DB_PATH: TEST_DB,
+				RESUME_DATA_FILE: TEST_RESUME_FILE,
+				RESUME_DATA_FILE_POLISHED: TEST_RESUME_POLISHED_FILE,
 				// Only pass necessary env vars
 				AI_INFERENCE_ORDER: process.env.AI_INFERENCE_ORDER,
 				COHERE_API_KEY: '',
@@ -510,8 +496,9 @@ function httpJsonOn(baseUrl: string, method: string, path: string, body?: unknow
 
 function setupTestResumeOn(): void {
 	// Write resume file for the test server
-	if (!existsSync(TEST_RESUME_DIR)) {
-		mkdirSync(TEST_RESUME_DIR, { recursive: true });
+	const resumeDir = join(__dirname, '..', 'data', 'resume');
+	if (!existsSync(resumeDir)) {
+		mkdirSync(resumeDir, { recursive: true });
 	}
 	writeFileSync(TEST_RESUME_FILE, JSON.stringify(TEST_RESUME_DATA, null, 2));
 }

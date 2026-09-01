@@ -76,23 +76,6 @@ export const REMOTEROCKETSHIP_FIELD_SELECTORS = {
 	],
 } as const;
 
-// Type helpers for selector config
-export type SelectorConfig = {
-	card: readonly string[];
-	fields: Record<string, readonly string[]>;
-};
-
-export const SCRAPER_SELECTORS: Record<string, SelectorConfig> = {
-	linkedin: {
-		card: LINKEDIN_CARD_SELECTORS,
-		fields: LINKEDIN_FIELD_SELECTORS,
-	},
-	remoterocketship: {
-		card: REMOTEROCKETSHIP_CARD_SELECTORS,
-		fields: REMOTEROCKETSHIP_FIELD_SELECTORS,
-	},
-} as const;
-
 /**
  * Try multiple selectors in order on an ElementHandle, return first match.
  * Used by both LinkedIn and RemoteRocketship scrapers.

@@ -1,0 +1,76 @@
+name: Code Review
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  code-review:
+    name: Code Review Suggestions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+
+      - name: Analyze changes for review points
+        if: steps.changed-files.outputs.all_changed_files != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const changedFiles = `${{ steps.changed-files.outputs.all_changed_files }}`.split(' ');
+
+            const reviewItems = [];
+
+            // Check for large diffs
+            for (const file of changedFiles) {
+              try {
+                const stats = require('child_process').execSync(`git diff HEAD~1 HEAD --stat -- ${file}`, { encoding: 'utf8' });
+                if (stats.includes('+') && stats.split('+').length > 50) {
+                  reviewItems.push(`📝 Large file changes in \`${file}\` - consider splitting into smaller commits`);
+                }
+              } catch {
+                // Skip if git diff fails
+              }
+            }
+
+            // Check for common patterns in TypeScript files
+            const tsFiles = changedFiles.filter(f => f.endsWith('.ts') || f.endsWith('.tsx'));
+            for (const file of tsFiles) {
+              try {
+                if (fs.existsSync(file)) {
+                  const content = fs.readFileSync(file, 'utf8');
+                  if (content.match(/console\.(log|warn|error)\(/)) {
+                    reviewItems.push(`🔍 Debug console statements found in \`${file}\` - consider removing before merge`);
+                  }
+                  if (content.match(/any\b/)) {
+                    reviewItems.push(`⚠️ TypeScript \`any\` type used in \`${file}\` - consider adding proper types`);
+                  }
+                }
+              } catch {
+                // Skip if file read fails
+              }
+            }
+
+            if (reviewItems.length > 0) {
+              const body = '🤖 **Automated Code Review Suggestions**\n\n' +
+                           reviewItems.map(item => `- ${item}`).join('\n') +
+                           '\n\n_These are suggestions only - feel free to dismiss if not applicable._';
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
