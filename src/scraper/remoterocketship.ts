@@ -23,20 +23,6 @@ export class RemoteRocketshipNetworkError extends RemoteRocketshipError {
 	}
 }
 
-export class RemoteRocketshipParsingError extends RemoteRocketshipError {
-	constructor(message: string, cause?: Error) {
-		super(message, 'PARSING_ERROR', cause);
-		this.name = 'RemoteRocketshipParsingError';
-	}
-}
-
-export class RemoteRocketshipTimeoutError extends RemoteRocketshipError {
-	constructor(message: string, cause?: Error) {
-		super(message, 'TIMEOUT_ERROR', cause);
-		this.name = 'RemoteRocketshipTimeoutError';
-	}
-}
-
 /**
  * Scrape Remote Rocketship job listings.
  */
@@ -70,7 +56,7 @@ export async function scrapeRemoteRocketship(
 				await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
 			} catch (err) {
 				if ((err as Error).name === 'TimeoutError' || (err as Error).message?.includes('timeout')) {
-					throw new RemoteRocketshipTimeoutError(`Page load timeout: ${searchUrl}`, err as Error);
+					throw new RemoteRocketshipError(`Page load timeout: ${searchUrl}`, 'TIMEOUT_ERROR', err as Error);
 				}
 				throw new RemoteRocketshipNetworkError(`Failed to navigate to ${searchUrl}`, err as Error);
 			}

@@ -61,6 +61,10 @@ try {
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = __dirname;
 
+const RESUME_DATA_FILE = process.env.RESUME_DATA_FILE ?? path.join(ROOT, 'src', 'resume', 'output', 'resume-data.json');
+const RESUME_DATA_FILE_POLISHED =
+	process.env.RESUME_DATA_FILE_POLISHED ?? path.join(ROOT, 'src', 'resume', 'output', 'resume-data-AI-polished.json');
+
 // MIME types for common extensions
 const MIME: Record<string, string> = {
 	'.html': 'text/html; charset=utf-8',
@@ -178,7 +182,7 @@ function parseEnvFile(): Record<string, string | undefined> {
 		MISTRAL_API_KEY: '',
 		MISTRAL_MODEL: 'codestral-2508',
 		GEMINI_API_KEY: '',
-		GEMINI_MODEL: 'gemini-3.6-flash',
+		GEMINI_MODEL: 'gemini-3.7-flash',
 		GROQ_API_KEY: '',
 		GROQ_MODEL: 'openai/gpt-oss-120b',
 		PRIMARY_COLOR: '#0a0a0a',
@@ -191,6 +195,8 @@ function parseEnvFile(): Record<string, string | undefined> {
 		CHROME_PATH: '',
 		GOOGLE_API_KEY: '',
 		COLLECTION_WARNING_ENABLED: 'false',
+		RESUME_DATA_FILE: '',
+		RESUME_DATA_FILE_POLISHED: '',
 	};
 
 	const envPath = path.join(ROOT, '.env');
@@ -231,6 +237,8 @@ function parseEnvFile(): Record<string, string | undefined> {
 				key.includes('COLOR') ||
 				key === 'AI_INFERENCE_ORDER' ||
 				key === 'COLLECTION_WARNING_ENABLED' ||
+				key === 'RESUME_DATA_FILE' ||
+				key === 'RESUME_DATA_FILE_POLISHED' ||
 				key.startsWith('LINKEDIN_') ||
 				key === 'CHROME_PATH'
 			) {
@@ -248,7 +256,12 @@ function parseEnvFile(): Record<string, string | undefined> {
 		) {
 			continue;
 		}
-		if (Object.prototype.hasOwnProperty.call(env, key) || key === 'COLLECTION_WARNING_ENABLED') {
+		if (
+			Object.prototype.hasOwnProperty.call(env, key) ||
+			key === 'COLLECTION_WARNING_ENABLED' ||
+			key === 'RESUME_DATA_FILE' ||
+			key === 'RESUME_DATA_FILE_POLISHED'
+		) {
 			env[key] = value;
 		}
 	}
@@ -540,6 +553,132 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 		return;
 	}
 
+	/**
+	 * Extract and validate keywords from a job description against resume text.
+	 * Returns keywords that appear in the resume, flagging those that don't.
+	 * Does NOT invent experience - only checks what's already present.
+	 */
+	function validateResumeKeywords(
+		resumeText: string,
+		jobDescription: string
+	): {
+		present: string[];
+		missing: string[];
+		suggestions: string[];
+	} {
+		// Extract common tech keywords from JD (case-insensitive)
+		const techKeywords = [
+			'typescript',
+			'javascript',
+			'python',
+			'java',
+			'golang',
+			'go',
+			'rust',
+			'c#',
+			'csharp',
+			'react',
+			'vue',
+			'angular',
+			'node.js',
+			'nodejs',
+			'express',
+			'django',
+			'flask',
+			'spring',
+			'fastapi',
+			'postgresql',
+			'postgres',
+			'mysql',
+			'mongodb',
+			'redis',
+			'aws',
+			'azure',
+			'gcp',
+			'docker',
+			'kubernetes',
+			'git',
+			'github',
+			'gitlab',
+			'bitbucket',
+			'ci/cd',
+			'jenkins',
+			'gitlab ci',
+			'github actions',
+			'playwright',
+			'selenium',
+			'jest',
+			'vitest',
+			'mocha',
+			'pytest',
+			'junit',
+			'cypress',
+			'k6',
+			'jmeter',
+			'locust',
+			'datadog',
+			'sentry',
+			'new relic',
+			'testrail',
+			'jira',
+			'xray',
+			'zephyr',
+			'claude code',
+			'github copilot',
+			'copilot',
+			'ai',
+			'llm',
+			'agile',
+			'scrum',
+			'kanban',
+			'rest',
+			'graphql',
+			'grpc',
+			'microservices',
+			'monolith',
+			'serverless',
+			'lambda',
+			'cloud functions',
+			'websocket',
+			'websockets',
+			'oauth',
+			'jwt',
+			'saml',
+			'testing',
+			'automation',
+			'quality assurance',
+			'qa',
+			'sdet',
+		];
+
+		const resumeLower = resumeText.toLowerCase();
+		const jdLower = jobDescription.toLowerCase();
+
+		// Extract keywords from JD that are in the tech list with word boundaries
+		const jdKeywords = techKeywords.filter(kw => {
+			const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			const regex = new RegExp(`(^|[^a-zA-Z0-9_])${escaped}([^a-zA-Z0-9_]|$)`, 'i');
+			return regex.test(jdLower);
+		});
+		const present: string[] = [];
+		const missing: string[] = [];
+
+		for (const keyword of jdKeywords) {
+			const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			const regex = new RegExp(`(^|[^a-zA-Z0-9_])${escaped}([^a-zA-Z0-9_]|$)`, 'i');
+			if (regex.test(resumeLower)) {
+				present.push(keyword);
+			} else {
+				missing.push(keyword);
+			}
+		}
+
+		// Generate suggestions for top missing keywords
+		const suggestions = missing.slice(0, 5);
+
+		return { present, missing, suggestions };
+	}
+
 	// Serve prompt files dynamically
 	if (requestPath.startsWith('/api/prompts/')) {
 		const promptName = requestPath.replace('/api/prompts/', '');
@@ -603,7 +742,45 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
 				try {
 					const buffer = fs.readFileSync(filepath);
-					const data = await (pdfParse as (buffer: Buffer) => Promise<{ text: string }>)(buffer);
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const customPageRender = async (pageData: any): Promise<string> => {
+						const textContent = await pageData.getTextContent();
+						let lastY: number | undefined;
+						let pageText = '';
+						for (const item of textContent.items) {
+							if (lastY === item.transform[5] || lastY === undefined) {
+								pageText += item.str;
+							} else {
+								pageText += `\n${item.str}`;
+							}
+							lastY = item.transform[5];
+						}
+
+						try {
+							const annotations = await pageData.getAnnotations();
+							const urls: string[] = [];
+							if (Array.isArray(annotations)) {
+								for (const annot of annotations) {
+									const linkUrl = annot?.url || annot?.unsafeUrl || annot?.dest;
+									if (typeof linkUrl === 'string' && /^https?:\/\//i.test(linkUrl)) {
+										urls.push(linkUrl.trim());
+									}
+								}
+							}
+							if (urls.length > 0) {
+								const uniqueUrls = Array.from(new Set(urls));
+								pageText += `\n\n--- EXTRACTED HYPERLINKS ---\n${uniqueUrls.map(u => `- ${u}`).join('\n')}`;
+							}
+						} catch {
+							// Ignore annotation extraction failures
+						}
+
+						return pageText;
+					};
+
+					const data = await (
+						pdfParse as (buffer: Buffer, options?: Record<string, unknown>) => Promise<{ text: string }>
+					)(buffer, { pagerender: customPageRender });
 					const text = data.text;
 
 					const estimatedPages = Math.ceil(text.length / 3000);
@@ -726,10 +903,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 		const polishedData = JSON.parse(body);
 
 		try {
-			fs.writeFileSync(
-				path.join(ROOT, 'src', 'resume', 'output', 'resume-data-AI-polished.json'),
-				JSON.stringify(polishedData, null, 2)
-			);
+			fs.writeFileSync(RESUME_DATA_FILE_POLISHED, JSON.stringify(polishedData, null, 2));
 
 			res.writeHead(200, { 'Content-Type': 'application/json' });
 			res.end(JSON.stringify({ success: true }));
@@ -750,10 +924,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 				res.end(JSON.stringify({ error: 'Invalid resume data: missing basics' }));
 				return;
 			}
-			fs.writeFileSync(
-				path.join(ROOT, 'src', 'resume', 'output', 'resume-data.json'),
-				JSON.stringify(resumeData, null, 2)
-			);
+			fs.writeFileSync(RESUME_DATA_FILE, JSON.stringify(resumeData, null, 2));
 			res.writeHead(200, { 'Content-Type': 'application/json' });
 			res.end(JSON.stringify({ success: true }));
 		} catch (err: unknown) {
@@ -1485,7 +1656,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 	}
 
 	if (requestPath === '/api/rollback' && req.method === 'POST') {
-		const filePath = path.join(ROOT, 'src', 'resume', 'output', 'resume-data-AI-polished.json');
+		const filePath = RESUME_DATA_FILE_POLISHED;
 
 		try {
 			if (fs.existsSync(filePath)) {
@@ -1718,7 +1889,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 			}
 
 			// Load the resume data
-			const resumeDataPath = path.join(ROOT, 'src', 'resume', 'output', 'resume-data.json');
+			const resumeDataPath = RESUME_DATA_FILE;
 			let resumeText = '';
 			let flattenedResumeText = '';
 			let candidateName = 'Candidate';
@@ -2103,7 +2274,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 			}
 
 			// Load the resume data
-			const resumeDataPath = path.join(ROOT, 'src', 'resume', 'output', 'resume-data.json');
+			const resumeDataPath = RESUME_DATA_FILE;
 			let resumeText = '';
 			if (fs.existsSync(resumeDataPath)) {
 				const resumeData = JSON.parse(fs.readFileSync(resumeDataPath, 'utf-8'));
@@ -2197,6 +2368,22 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 				screening.provider = result.provider;
 				screening.model = result.model;
 				if (jobTitle) screening.jobTitle = jobTitle;
+
+				// Filter out false-positive missing keywords if they actually exist in the resume text
+				if (Array.isArray(screening.missingKeywords)) {
+					const resumeLower = resumeText.toLowerCase();
+					screening.missingKeywords = (screening.missingKeywords as string[]).filter((kw: string) => {
+						if (!kw || typeof kw !== 'string') return false;
+						const cleanKw = kw.trim().toLowerCase();
+						if (!cleanKw) return false;
+						const escaped = cleanKw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+						const pattern = new RegExp(`(^|[^a-zA-Z0-9_])${escaped}([^a-zA-Z0-9_]|$)`, 'i');
+						return !pattern.test(resumeLower);
+					});
+				}
+
+				const validatedKeywords = validateResumeKeywords(resumeText, jobDescription);
+				screening.validatedKeywords = validatedKeywords;
 
 				res.writeHead(200, { 'Content-Type': 'application/json' });
 				res.end(JSON.stringify(screening));

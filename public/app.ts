@@ -598,7 +598,6 @@ async function loadResumeData(): Promise<void> {
 	const priorities = [
 		'/src/resume/output/resume-data-AI-polished.json',
 		'/src/resume/output/resume-data.json',
-		'/demo/resume-demo-data.json',
 	];
 
 	for (const filePath of priorities) {
@@ -607,7 +606,7 @@ async function loadResumeData(): Promise<void> {
 			if (resp.ok) {
 				const data = (await resp.json()) as Record<string, unknown>;
 				renderResume(data);
-				currentDataSource = filePath.includes('demo-data') ? 'demo' : 'generated';
+				currentDataSource = 'generated';
 				updatePolishButton();
 				return;
 			}
@@ -616,7 +615,8 @@ async function loadResumeData(): Promise<void> {
 		}
 	}
 
-	// Fallback to localStorage if no file found
+	// A custom resume in localStorage means the user already generated one;
+	// render it instead of the new-user demo.
 	const local = localStorage.getItem('resume-data');
 	if (local) {
 		try {
@@ -626,8 +626,22 @@ async function loadResumeData(): Promise<void> {
 			updatePolishButton();
 			return;
 		} catch {
-			// Invalid localStorage data, fall through to placeholder
+			// Invalid localStorage data, fall through to demo/placeholder
 		}
+	}
+
+	// New-user fallback: only shown when no custom resume exists anywhere.
+	try {
+		const demoResp = await fetch('/demo/resume-demo-data.json');
+		if (demoResp.ok) {
+			const data = (await demoResp.json()) as Record<string, unknown>;
+			renderResume(data);
+			currentDataSource = 'demo';
+			updatePolishButton();
+			return;
+		}
+	} catch {
+		// ignore, fall through to placeholder
 	}
 
 	currentDataSource = 'placeholder';
@@ -1470,7 +1484,7 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
 	const providerModels: Record<string, string> = {
 		cohere: 'command-a-reasoning-08-2025',
 		mistral: 'codestral-2508',
-		gemini: 'gemini-3.6-flash',
+		gemini: 'gemini-3.7-flash',
 		groq: 'openai/gpt-oss-120b',
 		default: 'Unknown model',
 	};
