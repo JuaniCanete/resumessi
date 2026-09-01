@@ -178,16 +178,16 @@ for (const file of stagedFiles) {
 // Summary
 console.info('\n============================================');
 if (errors > 0) {
-	console.error(`${RED}[x] QUALITY GATE FAILED: ${errors} error(s)${NC}`);
+	console.error(`${RED}[x] SECURITY & PII SCAN FAILED: ${errors} error(s)${NC}`);
 	process.exit(1);
 }
 
 if (warnings > 0) {
-	console.warn(`${YELLOW}[!] QUALITY GATE: ${warnings} warning(s)${NC}`);
+	console.warn(`${YELLOW}[!] SECURITY & PII SCAN: ${warnings} warning(s)${NC}`);
 }
 
 if (errors === 0 && warnings === 0) {
-	console.info(`${GREEN}[✓] GATE CHECKS PASSED${NC}`);
+	console.info(`${GREEN}[✓] SECURITY & PII SCAN PASSED${NC}`);
 }
 
 console.info('============================================\n');

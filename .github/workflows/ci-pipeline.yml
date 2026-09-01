@@ -19,8 +19,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  quality-gate:
-    name: Security & Quality Gate
+  sec-pii-scan:
+    name: Security & PII scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -38,8 +38,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Quality Gate
-        run: npm run quality-gate
+      - name: Run PII and security scan
+        run: npm run sec-pii-scan
 
   static-checks:
     name: Static checks
@@ -134,7 +134,7 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [quality-gate, static-checks, unit-tests, preflight]
+    needs: [sec-pii-scan, static-checks, unit-tests, preflight]
     container:
       # Keep in sync with @playwright/test version in package.json.
       image: mcr.microsoft.com/playwright:v1.61.1-noble
