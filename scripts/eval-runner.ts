@@ -109,7 +109,9 @@ export async function runEvalInference<T>(
 	try {
 		parsedOutput = schema.parse(JSON.parse(result.text));
 	} catch (e) {
-		throw new Error(`Failed to parse output as JSON: ${(e as Error).message}\nOutput: ${result.text.slice(0, 500)}`, { cause: e });
+		throw new Error(`Failed to parse output as JSON: ${(e as Error).message}\nOutput: ${result.text.slice(0, 500)}`, {
+			cause: e,
+		});
 	}
 
 	if (mode === 'record') {
