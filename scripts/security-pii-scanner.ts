@@ -13,7 +13,7 @@ let warnings = 0;
 console.info(`${GREEN}Running PII and AI sloopy gate checks...${NC}\n`);
 
 // Get staged files from git
-let stagedFiles: string[] = [];
+let stagedFiles: string[];
 try {
 	const output = execSync('git diff --cached --name-only', { encoding: 'utf-8' });
 	stagedFiles = output
