@@ -8,7 +8,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const test = playwrightTest.extend<{ mainPage: MainPage; findJobPage: FindJobPage }>({
 	mainPage: async ({ page }, use) => {
 		let lastProviderSent: string | null = null;
-		let bindingRegistered = false;
+		const bindingRegistered = false;
 
 		const registerDefaultRoutes = async () => {
 			await page.route('**/config.json', async route => {
@@ -184,7 +184,6 @@ const test = playwrightTest.extend<{ mainPage: MainPage; findJobPage: FindJobPag
 		// Expose provider tracking for tests (register once per page)
 		if (!bindingRegistered) {
 			await page.exposeBinding('getLastProviderSent', () => lastProviderSent);
-			bindingRegistered = true;
 		}
 
 		await mainPage.goto();
