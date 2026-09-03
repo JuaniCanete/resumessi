@@ -2317,7 +2317,7 @@ async function cleanJdUsingAi(): Promise<void> {
 	if (fetchBtn) fetchBtn.disabled = true;
 
 	// First fetch the raw JD from the URL
-	let rawText = '';
+	let rawText: string;
 	try {
 		const fetchResp = await fetch('/api/fetch-url', {
 			method: 'POST',

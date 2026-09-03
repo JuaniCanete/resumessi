@@ -42,7 +42,7 @@ async function fetchWithTimeout(url: string, options: globalThis.RequestInit, ti
 		return response;
 	} catch (err: unknown) {
 		if (err instanceof Error && err.name === 'AbortError') {
-			throw new Error(`Request timed out after ${timeoutMs}ms`);
+			throw (new Error(`Request timed out after ${timeoutMs}ms`), { cause: err });
 		}
 		throw err;
 	} finally {

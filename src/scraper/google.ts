@@ -36,7 +36,7 @@ export async function scrapeGoogle(
 
 	// Build the search query string using the existing single source of truth URL builder
 	const googleSearchUrl = buildScraperSearchUrl('google', query);
-	let searchQuery = '';
+	let searchQuery: string;
 	try {
 		const parsedUrl = new URL(googleSearchUrl);
 		searchQuery = parsedUrl.searchParams.get('q') || '';
