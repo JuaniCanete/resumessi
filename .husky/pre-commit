@@ -9,6 +9,9 @@ export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=6144}"
 # Skip evals on every commit (mock evals only in CI)
 export VALIDATE_SKIP_EVALS=1
 
+# PII and security scan (run first - fail fast)
+npm run sec-pii-scan
+
 # Format & lint staged files
 npx lint-staged --concurrent false
 

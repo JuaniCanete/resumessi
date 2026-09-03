@@ -464,7 +464,7 @@ function getProviderConfig(env: Record<string, string | undefined>): ProviderCon
 	}
 
 	const geminiKey = env.GEMINI_API_KEY || '';
-	const geminiModel = env.GEMINI_MODEL || 'gemini-3.6-flash';
+	const geminiModel = env.GEMINI_MODEL || 'gemini-3.7-flash';
 	if (geminiKey) {
 		providerMap.gemini = { key: geminiKey, model: geminiModel };
 	}

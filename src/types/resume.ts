@@ -66,28 +66,3 @@ export interface ATSScoreBreakdown {
 	education_match: boolean;
 	[key: string]: unknown;
 }
-
-export interface ATSOutput {
-	overall_score: number;
-	tier: 'STRONG_MATCH' | 'GOOD_MATCH' | 'MODERATE_MATCH' | 'WEAK_MATCH';
-	breakdown: ATSScoreBreakdown;
-	feedback: string;
-	missingKeywords: string[];
-}
-
-export interface ExtractedResumeData {
-	name: string;
-	contact: Record<string, string>;
-	experience: Array<{
-		company: string;
-		role: string;
-		duration: string;
-		highlights: string[];
-	}>;
-	skills: string[];
-	education: Array<{
-		institution: string;
-		degree: string;
-		year: string;
-	}>;
-}

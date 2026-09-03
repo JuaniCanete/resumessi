@@ -30,7 +30,7 @@ after(() => {
 	process.chdir(originalCwd);
 	// Clean up test database files after tests complete
 	try {
-		storage.closeStorage();
+		storage.closeDb();
 	} catch {
 		// Ignore close errors
 	}

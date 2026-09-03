@@ -25,6 +25,7 @@ This file defines how AI assistants collaborate within the **resumessi** project
 5. **ALWAYS RESPECT INDENTATION STYLE AND FORMATTING** — maintain existing file formatting (tab size 4, match existing file indentation or spaces on txt files for example), prefer template literals over string concatenation, refrain from adding unnecessary comments.
 6. **The codebase is TypeScript.** Run `npm run typecheck` to check for type errors before committing.
 7. **Frontend TypeScript** (`public/app.ts`) is compiled via **esbuild** into `public/dist/app.js` during the build step (`npm run build`).
+8. **Emojis not alloed** while working on logging files we only use: `✓`, `✗`, `⚠` or any symbol that better fit the ocasion.
 
 ---
 

@@ -1,16 +1,5 @@
 export type ProviderName = 'cohere' | 'mistral' | 'gemini' | 'groq';
 
-export interface LLMMessage {
-	role: 'system' | 'user' | 'assistant';
-	content: string;
-}
-
-export interface LLMOptions {
-	temperature?: number;
-	max_tokens?: number;
-	top_p?: number;
-}
-
 export interface ProviderResponse {
 	text: string;
 	provider: ProviderName;
@@ -44,27 +33,11 @@ export interface ProviderConfigResult {
 	configured: string[];
 }
 
-export interface ProviderError {
-	status: number;
-	error: string;
-	provider: string;
-}
-
 export interface ProviderAttempt {
 	provider: string;
 	status: number;
 	error: string;
 	correlationId: string;
-}
-
-export interface InferenceRequest {
-	system: string;
-	prompt: string;
-	provider?: string;
-	scope?: string;
-	temperature?: number;
-	max_tokens?: number;
-	top_p?: number;
 }
 
 export interface InferenceParams {

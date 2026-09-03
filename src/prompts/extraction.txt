@@ -10,7 +10,7 @@ STEP 2 — STRUCTURE EXTRACTION
 - Evaluate skills objectively based on the text to set expert flags appropriately.
 
 ═══════════════════════════════════════════════════════════════
-IDENTITY PRESERVATION — STRICT RULES
+IDENTITY PRESERVATION & LINK RULES — STRICT
 ═══════════════════════════════════════════════════════════════
 - Extract the candidate's name VERBATIM from the resume text. Do NOT paraphrase, normalize, "correct", or invent a name.
 - If the resume text says "Juani Cañete", the output basics.name MUST be "Juani Cañete".
@@ -18,6 +18,13 @@ IDENTITY PRESERVATION — STRICT RULES
 - You are FORBIDDEN to generate a resume for a different person than the one in the input text. Do NOT create a fictional person's resume — only extract what is actually in the PDF.
 - The output name MUST match a name that appears in the input text. Cross-reference before outputting.
 - If no name is visible in the resume text, output an empty string "" for basics.name — NEVER invent a fake name.
+- PRESERVE REAL URLS & HYPERLINKS:
+  - If the resume text contains a "--- EXTRACTED HYPERLINKS ---" section or inline URLs, map them directly to their corresponding fields:
+    - LinkedIn profile URL (https://www.linkedin.com/in/...) -> basics.linkedin
+    - GitHub profile URL (https://github.com/...) -> basics.github
+    - Video / talk URLs (https://youtube.com/..., https://youtu.be/...) -> talks[].url
+    - Certificate URLs (https://www.udemy.com/certificate/..., https://www.sololearn.com/certificates/..., etc.) -> certifications[].url
+  - NEVER convert real URLs to placeholder text, relative paths, or localhost URLs. Preserve full absolute URLs verbatim.
 
 OUTPUT SPECIFICATION:
 Return ONLY the raw, valid JSON object. Do not include markdown code blocks (like ```json), introduction text, or explanations.
@@ -31,12 +38,13 @@ REQUIRED JSON SCHEMA:
   "techStack": "",
   "languages": [{ "name": "", "level": "" }],
   "education": [{ "degree": "", "institution": "", "year": "" }],
-  "talks": [],
+  "talks": [{ "title": "", "url": "" }],
   "certifications": [{ "title": "", "issuer": "", "date": "", "duration": null, "url": "" }]
 }
 
 SELF-VALIDATION (before outputting):
 □ basics.name is the EXACT name from the resume text (VERBATIM copy — no paraphrasing, no invented names).
+□ Real URLs from the text or EXTRACTED HYPERLINKS are preserved in basics.linkedin, basics.github, certifications[].url, and talks[].url.
 □ No invented or assumed personal details (addresses, phone numbers, dates) appear in any field.
 □ No placeholder examples like "keyword1", "Your Name", "John Doe", or "Alex Johnson" appear in output.
 □ JSON is valid and parseable via JSON.parse()

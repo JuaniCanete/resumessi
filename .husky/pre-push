@@ -27,7 +27,7 @@ export VALIDATE_SKIP_EVALS=1
 npm run build
 
 # Unit + E2E tests
-npm run test:unit
-npm run test:e2e
+npx cross-env NODE_ENV=test npm run test:unit
+npx cross-env NODE_ENV=test npm run test:e2e
 
 echo "All pre-push validations passed ✅"
