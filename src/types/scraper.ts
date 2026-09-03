@@ -56,14 +56,3 @@ export interface ScraperRunMeta {
 	results: ScraperResult[];
 	summary?: string;
 }
-
-export interface ScraperRunPayload {
-	timestamp: string | null;
-	source: 'linkedin' | 'google' | 'remoterocketship';
-	query: Record<string, string>;
-	totalResults: number;
-	results: ScraperResult[];
-	summary?: string;
-	runId?: string;
-	removedCount?: number;
-}

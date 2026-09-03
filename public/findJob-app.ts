@@ -1187,6 +1187,20 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
 	card.appendChild(menu);
 
 	card.addEventListener('dragstart', (e: DragEvent) => {
+		// Prevent drag when text selection is active or target/activeElement is a form control
+		const target = e.target as HTMLElement | null;
+		const activeEl = document.activeElement as HTMLElement | null;
+		const isTargetFormControl = Boolean(target && /^(input|textarea|button|select)$/i.test(target.tagName));
+		const isActiveFormControl = Boolean(activeEl && /^(input|textarea|button|select)$/i.test(activeEl.tagName));
+		const sel = window.getSelection();
+		const hasTextSelection = Boolean(sel && sel.toString().length > 0);
+		const hasEditingInput = Boolean(card.querySelector('input, textarea'));
+
+		if (isTargetFormControl || isActiveFormControl || hasTextSelection || hasEditingInput) {
+			e.preventDefault();
+			return;
+		}
+
 		draggedCardUrl = job.url;
 		draggedCardId = job.id || null;
 		// Capture source column at drag start (before card might move during dragover)
@@ -1217,11 +1231,21 @@ function startRename(card: HTMLElement, titleEl: HTMLElement, job: ScraperResult
 	input.style.cssText =
 		'width: 100%; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 6px 8px; color: #e2e8f0; font-family: Comfortaa, sans-serif; font-size: 13px; outline: none;';
 
+	card.draggable = false;
 	currentTitleEl.replaceWith(input);
 	input.focus();
 	input.select();
 
+	input.addEventListener('mousedown', (e: MouseEvent) => {
+		e.stopPropagation();
+	});
+	input.addEventListener('dragstart', (e: DragEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+	});
+
 	const finish = async (save: boolean) => {
+		card.draggable = true;
 		const newTitle = save ? input.value.trim() : currentTitle;
 		const titleChanged = save && newTitle && newTitle !== currentTitle;
 		if (titleChanged) {
@@ -2293,7 +2317,7 @@ async function cleanJdUsingAi(): Promise<void> {
 	if (fetchBtn) fetchBtn.disabled = true;
 
 	// First fetch the raw JD from the URL
-	let rawText = '';
+	let rawText: string;
 	try {
 		const fetchResp = await fetch('/api/fetch-url', {
 			method: 'POST',
@@ -3223,7 +3247,7 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
 	const providerModels: Record<string, string> = {
 		cohere: 'command-a-reasoning-08-2025',
 		mistral: 'codestral-2508',
-		gemini: 'gemini-3.6-flash',
+		gemini: 'gemini-3.7-flash',
 		groq: 'openai/gpt-oss-120b',
 		default: 'Unknown model',
 	};

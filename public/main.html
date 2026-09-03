@@ -56,6 +56,34 @@
 				overflow-y: auto;
 				overflow-x: hidden;
 				z-index: 200;
+				scrollbar-width: thin;
+				scrollbar-color: var(--accent) rgba(255, 255, 255, 0.05);
+			}
+
+			/* Scrollbar styling for panels */
+			.panel::-webkit-scrollbar,
+			#left-panel::-webkit-scrollbar,
+			#right-panel::-webkit-scrollbar {
+				width: 8px;
+			}
+
+			.panel::-webkit-scrollbar-track,
+			#left-panel::-webkit-scrollbar-track,
+			#right-panel::-webkit-scrollbar-track {
+				background: rgba(255, 255, 255, 0.05);
+			}
+
+			.panel::-webkit-scrollbar-thumb,
+			#left-panel::-webkit-scrollbar-thumb,
+			#right-panel::-webkit-scrollbar-thumb {
+				background: var(--accent);
+				border-radius: 4px;
+			}
+
+			.panel::-webkit-scrollbar-thumb:hover,
+			#left-panel::-webkit-scrollbar-thumb:hover,
+			#right-panel::-webkit-scrollbar-thumb:hover {
+				background: #1d4ed8;
 			}
 
 			.panel-inner {

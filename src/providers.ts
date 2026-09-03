@@ -42,7 +42,7 @@ async function fetchWithTimeout(url: string, options: globalThis.RequestInit, ti
 		return response;
 	} catch (err: unknown) {
 		if (err instanceof Error && err.name === 'AbortError') {
-			throw new Error(`Request timed out after ${timeoutMs}ms`);
+			throw (new Error(`Request timed out after ${timeoutMs}ms`), { cause: err });
 		}
 		throw err;
 	} finally {
@@ -464,7 +464,7 @@ function getProviderConfig(env: Record<string, string | undefined>): ProviderCon
 	}
 
 	const geminiKey = env.GEMINI_API_KEY || '';
-	const geminiModel = env.GEMINI_MODEL || 'gemini-3.6-flash';
+	const geminiModel = env.GEMINI_MODEL || 'gemini-3.7-flash';
 	if (geminiKey) {
 		providerMap.gemini = { key: geminiKey, model: geminiModel };
 	}

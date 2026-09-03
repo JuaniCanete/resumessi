@@ -416,13 +416,11 @@ function redactDebugHtml(html: string): string {
 
 export async function scrapeLinkedIn(query: ScraperQuery): Promise<ScraperResult[]> {
 	// Precondition: check state validity
-	let isValid = await validateLinkedInStorageState();
+	const isValid = await validateLinkedInStorageState();
 	if (!isValid) {
 		console.info('[LinkedIn Scraper] Storage state invalid or missing. Auto-regenerating...');
 		await generateLinkedInStorageState();
-		isValid = await validateLinkedInStorageState();
 	}
-
 	const { browser, context } = await launchStealthBrowser({
 		headless: true,
 		storageStatePath: fs.existsSync(STORAGE_FILE) ? STORAGE_FILE : undefined,
