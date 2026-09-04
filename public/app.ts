@@ -1468,7 +1468,11 @@ function closeProvidersModal(): void {
 	}
 }
 
-function renderProvidersList(providers: string[], selectedProvider: string | null, env: Record<string, unknown> = {}): void {
+function renderProvidersList(
+	providers: string[],
+	selectedProvider: string | null,
+	env: Record<string, unknown> = {}
+): void {
 	const listEl = document.getElementById('providers-list');
 	if (!listEl) return;
 
