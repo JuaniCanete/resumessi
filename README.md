@@ -169,6 +169,7 @@ COLLECTION_WARNING_ENABLED=false
 ```
 
 ### Color Theme
+
 Optional overrides in `.env`:
 
 ```env
@@ -202,14 +203,14 @@ npm run build:check  # verify prompts are up-to-date
 
 **Source of truth (runtime):**
 
-  - `src/prompts/ats-scan.txt`
-  - `src/prompts/clean-jd.txt`
-  - `src/prompts/cover-letter.txt`
-  - `src/prompts/extraction.txt`
-  - `src/prompts/polish.txt`
-  - `src/prompts/resume-generation.txt`
-  - `src/prompts/scraper-parameters.txt`
-  - `src/prompts/scraper-summarize.txt`
+- `src/prompts/ats-scan.txt`
+- `src/prompts/clean-jd.txt`
+- `src/prompts/cover-letter.txt`
+- `src/prompts/extraction.txt`
+- `src/prompts/polish.txt`
+- `src/prompts/resume-generation.txt`
+- `src/prompts/scraper-parameters.txt`
+- `src/prompts/scraper-summarize.txt`
 
 After editing any prompt or frontend code, run `npm run build` before committing.
 
