@@ -10,7 +10,7 @@
 
 ### Prerequisites
 
-- **Node.js ≥ 22.22.0** (matches the project engine requirement and CI runtime)
+- **Node.js ≥ 24.0.0** (matches the project engine requirement and CI runtime)
 - **Visual Studio Build Tools + Python 3** (Windows only — required for `better-sqlite3` and `pdf-parse-fork` native compilation via `node-gyp`)
 - **Playwright browsers** — run `npx playwright install` after `npm install` to download Chromium
 
@@ -18,17 +18,18 @@
 
 1. **Clone** the project.
 2. **Install dependencies** — `npm install`
-3. **Install Playwright browsers** — `npx playwright install`
-4. **Run setup** — `npm run setup` creates `.env` from `.env.example` (⚠ **WARNING: overwrites an existing `.env`** — backup your keys first!)
-5. **Complete steps from Wizard** — This will set up AI provider API keys. **Note:** `npm run setup` only configures AI providers. SerpAPI (`GOOGLE_API_KEY`) and scraper settings (`SCRAPER_DEBUG`, `REMOTEROCKETSHIP_*`, `COLLECTION_WARNING_ENABLED`) must be added manually to `.env` after setup.
-6. **LinkedIn authentication** — Run `npm run scraper:auth` (or `tsx scripts/linkedin-auth.ts`) to generate the LinkedIn session state for scraping.
-7. **Start the app** — `npm start` runs the local server and opens the app in your browser.
-8. **Build your resume** — Drop your existing resume in PDF format and a photo, and AI will generate a brand new one for you.
-9. **Paste a Job Description** in the left panel and click **Validate JD using AI**.
-10. **Start scraping for jobs** — For LinkedIn it uses storage state to treat the page respectfully. For Google it uses SerpAPI.
-11. **Apply or save jobs** — Search the job that better match your preferences.
-12. **Manage your needs** — Job dashboard allows to control the status of the applications, within the app or outside.
-13. **Generate a cover letter** — After an ATS scan, use the **Cover Letter** button to auto-generate a tailored cover letter from the JD.
+3. **Install external scripts** - `npm install-scripts approve better-sqlite3` `npm install-scripts approve esbuild` `npm install-scripts approve unrs-resolver`.
+4. **Install Playwright browsers** — `npx playwright install`
+5. **Run setup** — `npm run setup` creates `.env` from `.env.example` (⚠ **WARNING: overwrites an existing `.env`** — backup your keys first in case you have a pre-existing one!)
+6. **Complete steps from Wizard** — This will set up AI provider API keys. **Note:** `npm run setup` only configures AI providers. SerpAPI (`GOOGLE_API_KEY`) and scraper settings (`SCRAPER_DEBUG`, `COLLECTION_WARNING_ENABLED`) must be added manually to `.env` after setup. If you don't complete the API keys addition on wizards check `### API Keys & Inference Order` section below.
+7. **LinkedIn authentication** — Run `npm run scraper:auth` (or `tsx scripts/linkedin-auth.ts`) to generate the LinkedIn session state for scraping. This step can be ommited as Linkedin scraping executes this as a precondition.
+8. **Start the app** — `npm start` runs the local server and opens the app in your browser.
+9. **Build your resume** — Drop your existing resume in PDF format and a photo, and AI will generate a brand new one for you.
+10. **Paste a Job Description** in the left panel and click **Validate JD using AI**.
+11. **Start scraping for jobs** — For LinkedIn it uses storage state to treat the page respectfully. For Google it uses SerpAPI.
+12. **Apply or save jobs** — Search the job that better match your preferences.
+13. **Manage your needs** — Job dashboard allows to control the status of the applications, within the app or outside.
+14. **Generate a cover letter** — After an ATS scan, use the **Cover Letter** button to auto-generate a tailored cover letter from the JD.
 
 ---
 
@@ -110,7 +111,7 @@ resumessi/
 
 ### API Keys & Inference Order
 
-Edit `.env` (created by `npm run setup`):
+Edit `.env` (created by `npm run setup`) or create a `.env` from scratch at the root folder of the project:
 
 ```env
 AI_INFERENCE_ORDER=cohere,mistral,gemini,groq
@@ -129,9 +130,8 @@ GROQ_MODEL=your_desired_model_or_env.example_suggested
 ```
 
 - `.env` is gitignored and served via `/config.json` at runtime.
-- **Inference order:** providers are tried in the order listed in `AI_INFERENCE_ORDER`. If a provider fails, the next one is tried automatically.
-- **AI API solo call** providers are also tried standalone for single API calls.
-- **Inference order** vs **AI API solo call** some tasks are long such as scraping a site, obtaining JDs and rendering them. In this case inference order takes precedence. Models uses auto-fallback.
+- **Inference order:** providers are tried in the order listed in `AI_INFERENCE_ORDER`. If a provider fails, the next one is tried automatically. I do recommend putting first a model you don't use too much often to avoid get rate-limited.
+- **Inference order** vs **AI API solo call** some tasks are long such as scraping a site, obtaining JDs and rendering them. In this case inference order takes precedence. Models uses auto-fallback. The rest of the API calls are handled by "Provider selection" modal within the app.
 
 ### Scraper Options
 
@@ -140,10 +140,12 @@ Optional overrides in `.env`:
 ```env
 # Write debug HTML/JSON files to data/scraper-debug/ during scraping (may contain session data)
 SCRAPER_DEBUG=false
+# Scraping detects when we're getting a job collection instead of a single job and aborts when true.
+COLLECTION_WARNING_ENABLED=false
+
 ```
 
 ### Color Theme
-
 Optional overrides in `.env`:
 
 ```env
@@ -177,10 +179,14 @@ npm run build:check  # verify prompts are up-to-date
 
 **Source of truth (runtime):**
 
-- `src/prompts/ats-scan.txt`
-- `src/prompts/extraction.txt`
-- `src/prompts/polish.txt`
-- `src/prompts/resume-generation.txt`
+  - `src/prompts/ats-scan.txt`
+  - `src/prompts/clean-jd.txt`
+  - `src/prompts/cover-letter.txt`
+  - `src/prompts/extraction.txt`
+  - `src/prompts/polish.txt`
+  - `src/prompts/resume-generation.txt`
+  - `src/prompts/scraper-parameters.txt`
+  - `src/prompts/scraper-summarize.txt`
 
 After editing any prompt or frontend code, run `npm run build` before committing.
 
