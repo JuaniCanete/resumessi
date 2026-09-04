@@ -27,6 +27,25 @@ test.describe('result-card action buttons', () => {
 		await expect(findJobPage.jdEditTextarea).toHaveValue(/Mocked job description text/);
 	});
 
+	test('Run ATS preserves user edits made while the saved JD request is pending', async ({ findJobPage }) => {
+		await findJobPage.mockResults(source, [MOCK_RESULT]);
+		// Delay the saved-JD response so there is time to edit before it resolves
+		await findJobPage.mockJd('Saved JD from database', 1500);
+
+		await findJobPage.goto();
+		await findJobPage.page.waitForURL('**/findJob.html?source=linkedin*');
+
+		await findJobPage.getCardAction(0, 'runATS').click();
+		await expect(findJobPage.jdEditModal).toBeVisible();
+
+		// Type while the request is still pending
+		await findJobPage.jdEditTextarea.fill('My custom edit while loading');
+
+		// Once the saved JD resolves, the user edit must NOT be overwritten
+		await expect(findJobPage.jdEditTextarea).toHaveValue('My custom edit while loading', { timeout: 5000 });
+		await expect(findJobPage.jdEditTextarea).not.toHaveValue('Saved JD from database');
+	});
+
 	test('Show JD opens the JD view modal with the saved description', async ({ findJobPage }) => {
 		await findJobPage.mockResults(source, [MOCK_RESULT]);
 		await findJobPage.mockJd('Saved JD from database');

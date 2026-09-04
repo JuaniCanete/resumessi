@@ -394,9 +394,12 @@ export class FindJobPage {
 		});
 	}
 
-	async mockJd(jobDescription: string): Promise<void> {
+	async mockJd(jobDescription: string, delayMs = 0): Promise<void> {
 		await this.page.route('**/api/scraper/jd', async route => {
 			if (route.request().method() === 'POST') {
+				if (delayMs > 0) {
+					await new Promise(resolve => setTimeout(resolve, delayMs));
+				}
 				await route.fulfill({
 					status: 200,
 					contentType: 'application/json',

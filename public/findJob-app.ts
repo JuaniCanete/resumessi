@@ -2098,8 +2098,11 @@ async function openJdEditModal(item: ScraperResult): Promise<void> {
 	}
 
 	if (savedJd) {
-		// Use saved JD directly — no network fetch needed
-		textarea.value = savedJd;
+		// Use saved JD directly — but only if the user hasn't edited the fallback
+		// text while the request was pending, so their edits aren't discarded.
+		if (textarea.value === fallbackContent) {
+			textarea.value = savedJd;
+		}
 		textarea.disabled = false;
 		if (scanBtnDefault) scanBtnDefault.disabled = false;
 		if (scanBtn) scanBtn.disabled = false;
