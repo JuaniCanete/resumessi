@@ -4,7 +4,7 @@
 	"description": "AI-powered job seeker and validator",
 	"main": "public/main.html",
 	"engines": {
-		"node": ">=22.22.0"
+		"node": ">=24.0.0"
 	},
 	"scripts": {
 		"setup": "tsx setup.ts",
