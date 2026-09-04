@@ -458,13 +458,13 @@ function getProviderConfig(env: Record<string, string | undefined>): ProviderCon
 	}
 
 	const mistralKey = env.MISTRAL_API_KEY || '';
-	const mistralModel = env.MISTRAL_MODEL || 'codestral-2508';
+	const mistralModel = env.MISTRAL_MODEL || 'codestral-latest';
 	if (mistralKey) {
 		providerMap.mistral = { key: mistralKey, model: mistralModel };
 	}
 
 	const geminiKey = env.GEMINI_API_KEY || '';
-	const geminiModel = env.GEMINI_MODEL || 'gemini-3.7-flash';
+	const geminiModel = env.GEMINI_MODEL || 'gemini-3.8-flash';
 	if (geminiKey) {
 		providerMap.gemini = { key: geminiKey, model: geminiModel };
 	}
