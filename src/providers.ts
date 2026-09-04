@@ -186,9 +186,15 @@ function buildRequest(
 		}
 
 		const generationConfig: GeminiRequestBody['generationConfig'] = {};
-		if (temperature !== undefined) generationConfig.temperature = temperature;
+
 		if (maxTokens !== undefined) generationConfig.maxOutputTokens = maxTokens;
-		if (topP !== undefined) generationConfig.topP = topP;
+
+		// Gemini 3.8+ handles reasoning internally and rejects legacy sampling params
+		if (!model.includes('3.8')) {
+			if (temperature !== undefined) generationConfig.temperature = temperature;
+			if (topP !== undefined) generationConfig.topP = topP;
+		}
+
 		if (Object.keys(generationConfig).length > 0) {
 			body.generationConfig = generationConfig;
 		}
