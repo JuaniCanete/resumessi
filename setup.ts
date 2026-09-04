@@ -46,14 +46,14 @@ const PROVIDERS: ProviderDef[] = [
 		name: 'Mistral',
 		keyEnv: 'MISTRAL_API_KEY',
 		modelEnv: 'MISTRAL_MODEL',
-		defaultModel: 'codestral-2508',
+		defaultModel: 'codestral-latest',
 	},
 	{
 		id: 'gemini',
 		name: 'Gemini',
 		keyEnv: 'GEMINI_API_KEY',
 		modelEnv: 'GEMINI_MODEL',
-		defaultModel: 'gemini-3.7-flash',
+		defaultModel: 'gemini-3.8-flash',
 	},
 	{ id: 'groq', name: 'Groq', keyEnv: 'GROQ_API_KEY', modelEnv: 'GROQ_MODEL', defaultModel: 'openai/gpt-oss-120b' },
 ];
@@ -116,10 +116,10 @@ COHERE_API_KEY=${env.COHERE_API_KEY || 'your_cohere_key_here'}
 COHERE_MODEL=${env.COHERE_MODEL || 'command-a-reasoning-08-2025'}
 
 MISTRAL_API_KEY=${env.MISTRAL_API_KEY || 'your_mistral_key_here'}
-MISTRAL_MODEL=${env.MISTRAL_MODEL || 'codestral-2508'}
+MISTRAL_MODEL=${env.MISTRAL_MODEL || 'codestral-latest'}
 
 GEMINI_API_KEY=${env.GEMINI_API_KEY || 'your_gemini_key_here'}
-GEMINI_MODEL=${env.GEMINI_MODEL || 'gemini-3.7-flash'}
+GEMINI_MODEL=${env.GEMINI_MODEL || 'gemini-3.8-flash'}
 
 GROQ_API_KEY=${env.GROQ_API_KEY || 'your_groq_key_here'}
 GROQ_MODEL=${env.GROQ_MODEL || 'openai/gpt-oss-120b'}

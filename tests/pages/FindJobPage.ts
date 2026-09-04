@@ -22,6 +22,10 @@ export class FindJobPage {
 	readonly remoteRocketshipConfirmModal: Locator;
 	readonly remoteRocketshipConfirmBtn: Locator;
 	readonly remoteRocketshipConfirmClose: Locator;
+	readonly jdEditModal: Locator;
+	readonly jdEditTextarea: Locator;
+	readonly jdViewModal: Locator;
+	readonly jdViewBody: Locator;
 	readonly linkedinSourceValue: string;
 	readonly remoteRocketshipSourceValue: string;
 	readonly googleSourceValue: string;
@@ -48,6 +52,10 @@ export class FindJobPage {
 		this.remoteRocketshipConfirmModal = page.getByTestId('remoterocketship-confirm-modal');
 		this.remoteRocketshipConfirmBtn = page.getByTestId('remoterocketship-confirm-btn');
 		this.remoteRocketshipConfirmClose = page.getByTestId('remoterocketship-confirm-close');
+		this.jdEditModal = page.locator('#jd-edit-modal');
+		this.jdEditTextarea = page.locator('#jd-edit-textarea');
+		this.jdViewModal = page.locator('#jd-view-modal');
+		this.jdViewBody = page.locator('#jd-view-body');
 		this.linkedinSourceValue = 'LinkedIn';
 		this.remoteRocketshipSourceValue = 'Remote Rocketship';
 		this.googleSourceValue = 'Google';
@@ -343,5 +351,63 @@ export class FindJobPage {
 
 	isDropdownClosed(): Promise<boolean> {
 		return this.findJobActionsDropdown.evaluate((el: HTMLElement) => el.classList.contains('hidden'));
+	}
+
+	// ─── Result-card actions (RUN ATS / SHOW JD / SAVE / REMOVE / APPLIED? / APPLY) ───
+
+	getResultCard(cardIndex = 0): Locator {
+		return this.resultsList.locator('.result-card').nth(cardIndex);
+	}
+
+	getCardAction(cardIndex: number, actionClass: string): Locator {
+		return this.getResultCard(cardIndex).locator(`.card-action-btn.${actionClass}`);
+	}
+
+	getApplyLink(cardIndex = 0): Locator {
+		return this.getResultCard(cardIndex).locator('a.result-link-btn');
+	}
+
+	getSharedModalConfirmBtn(): Locator {
+		return this.sharedModal.locator('.btn-confirm');
+	}
+
+	getApplyNameInput(): Locator {
+		return this.sharedModal.locator('.apply-name-input');
+	}
+
+	async mockResults(
+		source: 'linkedin' | 'google' | 'remoterocketship',
+		results: Array<Record<string, unknown>> = []
+	): Promise<void> {
+		await this.page.route(`**/api/scraper/results?source=${source}`, async route => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					timestamp: new Date().toISOString(),
+					source,
+					query: { role: 'Software Engineer' },
+					totalResults: results.length,
+					results,
+				}),
+			});
+		});
+	}
+
+	async mockJd(jobDescription: string, delayMs = 0): Promise<void> {
+		await this.page.route('**/api/scraper/jd', async route => {
+			if (route.request().method() === 'POST') {
+				if (delayMs > 0) {
+					await new Promise(resolve => setTimeout(resolve, delayMs));
+				}
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({ jobDescription, cleaned: 0 }),
+				});
+				return;
+			}
+			await route.continue();
+		});
 	}
 }

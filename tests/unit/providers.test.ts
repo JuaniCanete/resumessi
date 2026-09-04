@@ -60,12 +60,12 @@ test('buildRequest creates valid Cohere request without system', () => {
 });
 
 test('buildRequest creates valid Gemini request', () => {
-	const result = buildRequest('gemini', 'You are helpful.', 'Hello', 'gemini-3.7-flash', 'key-456', {
+	const result = buildRequest('gemini', 'You are helpful.', 'Hello', 'gemini-3.8-flash', 'key-456', {
 		maxTokens: 100,
 	});
 	assert.equal(
 		result.url,
-		'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=key-456'
+		'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=key-456'
 	);
 	assert.ok(!result.headers['Authorization']);
 	const geminiBody = result.body as GeminiRequestBody;
@@ -78,17 +78,17 @@ test('buildRequest creates valid Gemini request', () => {
 });
 
 test('buildRequest creates valid Gemini request without system', () => {
-	const result = buildRequest('gemini', '', 'Hello', 'gemini-3.7-flash', 'key-456');
+	const result = buildRequest('gemini', '', 'Hello', 'gemini-3.8-flash', 'key-456');
 	const geminiBody = result.body as GeminiRequestBody;
 	assert.equal(geminiBody.systemInstruction, undefined);
 });
 
 test('buildRequest creates valid Mistral request', () => {
-	const result = buildRequest('mistral', 'You are helpful.', 'Hello', 'codestral-2508', 'key-789', { topP: 0.9 });
+	const result = buildRequest('mistral', 'You are helpful.', 'Hello', 'codestral-latest', 'key-789', { topP: 0.9 });
 	assert.equal(result.url, 'https://api.mistral.ai/v1/chat/completions');
 	assert.equal(result.headers['Authorization'], 'Bearer key-789');
 	const mistralBody = result.body as MistralRequestBody;
-	assert.equal(mistralBody.model, 'codestral-2508');
+	assert.equal(mistralBody.model, 'codestral-latest');
 	const msgs = mistralBody.messages as Array<{ role: string; content: string }>;
 	assert.equal(msgs.length, 2);
 	assert.equal(msgs[0].role, 'system');

@@ -2049,12 +2049,12 @@ async function openJdEditModal(item: ScraperResult): Promise<void> {
 		// For fetch sources, textarea should be enabled for manual paste
 		textarea.disabled = false;
 	} else {
-		// LinkedIn has JD - go straight to ATS
+		// LinkedIn has JD - go straight to ATS (textarea stays editable)
 		if (fetchActions) fetchActions.style.display = 'none';
 		if (scanBtnDefault) scanBtnDefault.style.display = 'inline-flex';
 		if (fetchBtn) fetchBtn.style.display = 'none';
 		if (scanBtn) scanBtn.style.display = 'none';
-		textarea.disabled = true;
+		textarea.disabled = false;
 	}
 
 	const fallbackParts: string[] = [];
@@ -2098,8 +2098,11 @@ async function openJdEditModal(item: ScraperResult): Promise<void> {
 	}
 
 	if (savedJd) {
-		// Use saved JD directly — no network fetch needed
-		textarea.value = savedJd;
+		// Use saved JD directly — but only if the user hasn't edited the fallback
+		// text while the request was pending, so their edits aren't discarded.
+		if (textarea.value === fallbackContent) {
+			textarea.value = savedJd;
+		}
 		textarea.disabled = false;
 		if (scanBtnDefault) scanBtnDefault.disabled = false;
 		if (scanBtn) scanBtn.disabled = false;
@@ -3217,7 +3220,7 @@ async function openProvidersModal(): Promise<void> {
 			actionsEl.style.flexDirection = 'row';
 			actionsEl.style.justifyContent = 'stretch';
 		}
-		renderProvidersList(availableProviders, (env.primaryProvider as string) || null);
+		renderProvidersList(availableProviders, (env.primaryProvider as string) || null, env);
 	}
 
 	modal.style.display = 'flex';
@@ -3231,7 +3234,7 @@ function closeProvidersModal(): void {
 	}
 }
 
-function renderProvidersList(providers: string[], selectedProvider: string | null): void {
+function renderProvidersList(providers: string[], selectedProvider: string | null, env: Record<string, unknown>): void {
 	const listEl = document.getElementById('providers-list');
 	if (!listEl) return;
 
@@ -3244,20 +3247,21 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
 			'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ctext y="1em" font-size="20"%3E🤖%3C/text%3E%3C/svg%3E',
 	};
 
+	const pendingSetup: string = 'Pending setup';
 	const providerModels: Record<string, string> = {
-		cohere: 'command-a-reasoning-08-2025',
-		mistral: 'codestral-2508',
-		gemini: 'gemini-3.7-flash',
-		groq: 'openai/gpt-oss-120b',
+		cohere: (env.COHERE_MODEL as string) || pendingSetup,
+		mistral: (env.MISTRAL_MODEL as string) || pendingSetup,
+		gemini: (env.GEMINI_MODEL as string) || pendingSetup,
+		groq: (env.GROQ_MODEL as string) || pendingSetup,
 		default: 'Unknown model',
 	};
 
 	const providerDescriptions: Record<string, string> = {
-		cohere: 'Balanced performance, strong for general tasks',
-		mistral: 'Fast, multilingual, great for reasoning',
-		gemini: "Google's latest model, vision capable",
-		groq: 'Ultra-fast inference, Llama architecture',
-		default: 'AI provider for resume generation',
+		cohere: 'Deep reasoning, best for smart scoring & JD match',
+		mistral: 'Massive 256k context, expert in parameter extraction',
+		gemini: 'Ultra-fast analysis with advanced multi-modal vision',
+		groq: 'Instant processing, heavy-duty 120B token routing',
+		default: 'AI provider for professional resume generation',
 	};
 
 	const currentSelected = localStorage.getItem('selected-ai-provider') || selectedProvider;
