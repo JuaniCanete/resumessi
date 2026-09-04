@@ -114,24 +114,47 @@ resumessi/
 Edit `.env` (created by `npm run setup`) or create a `.env` from scratch at the root folder of the project:
 
 ```env
-AI_INFERENCE_ORDER=cohere,mistral,gemini,groq
+# resumessi Configuration
+# 1. Run: npm install
+# 2. Run: npm run setup
+#    (creates .env with defaults and prompts for API keys)
+# 3. Start the app: npm start
 
+# --- AI Inference Order ---
+# Comma-separated list of providers to try IN ORDER for AI tasks (ATS scoring, resume generation, cover letters).
+# The first provider with a valid API key will be used. If it fails, the next is tried.
+# Supported providers: cohere, mistral, gemini, groq
+AI_INFERENCE_ORDER='gemini,mistral,cohere,groq'
+
+# --- AI Provider API Keys & Models ---
+# Get keys from the provider dashboards. At least ONE key is required for AI features.
+
+# Get your Cohere key at: https://dashboard.cohere.com/api-keys
 COHERE_API_KEY=your_cohere_key_here
-COHERE_MODEL=your_desired_model_or_env.example_suggested
+COHERE_MODEL=command-a-reasoning-08-2025
 
+# Get your Mistral key at: https://admin.mistral.ai/organization/api-keys
 MISTRAL_API_KEY=your_mistral_key_here
-MISTRAL_MODEL=your_desired_model_or_env.example_suggested
+MISTRAL_MODEL=codestral-latest
 
+# Get your Gemini key at: https://aistudio.google.com/api-keys
 GEMINI_API_KEY=your_gemini_key_here
-GEMINI_MODEL=your_desired_model_or_env.example_suggested
+GEMINI_MODEL=gemini-3.8-flash
 
+# Get your Groq key at: https://console.groq.com/keys
 GROQ_API_KEY=your_groq_key_here
-GROQ_MODEL=your_desired_model_or_env.example_suggested
+GROQ_MODEL=openai/gpt-oss-120b
+
+# --- SerpAPI (Google Job Search) ---
+# Required for Google job scraping (searches job boards via SerpAPI).
+
+# Get your SerpAPI key at: https://serpapi.com/manage-api-key
+GOOGLE_API_KEY=your_serpapi_key_here
 ```
 
 - `.env` is gitignored and served via `/config.json` at runtime.
 - **Inference order:** providers are tried in the order listed in `AI_INFERENCE_ORDER`. If a provider fails, the next one is tried automatically. I do recommend putting first a model you don't use too much often to avoid get rate-limited.
-- **Inference order** vs **AI API solo call** some tasks are long such as scraping a site, obtaining JDs and rendering them. In this case inference order takes precedence. Models uses auto-fallback. The rest of the API calls are handled by "Provider selection" modal within the app.
+- **Inference order** vs **AI API solo call:** some tasks are long such as scraping a site, obtaining JDs and rendering them. In this case inference order takes precedence. Models uses auto-fallback. The rest of the API calls are handled by "Provider selection" modal within the app.
 
 ### Scraper Options
 
