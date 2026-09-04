@@ -3220,7 +3220,7 @@ async function openProvidersModal(): Promise<void> {
 			actionsEl.style.flexDirection = 'row';
 			actionsEl.style.justifyContent = 'stretch';
 		}
-		renderProvidersList(availableProviders, (env.primaryProvider as string) || null);
+		renderProvidersList(availableProviders, (env.primaryProvider as string) || null, env);
 	}
 
 	modal.style.display = 'flex';
@@ -3234,7 +3234,7 @@ function closeProvidersModal(): void {
 	}
 }
 
-function renderProvidersList(providers: string[], selectedProvider: string | null): void {
+function renderProvidersList(providers: string[], selectedProvider: string | null, env: Record<string, unknown>): void {
 	const listEl = document.getElementById('providers-list');
 	if (!listEl) return;
 
@@ -3247,20 +3247,21 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
 			'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ctext y="1em" font-size="20"%3E🤖%3C/text%3E%3C/svg%3E',
 	};
 
+	const pendingSetup: string = 'Pending setup';
 	const providerModels: Record<string, string> = {
-		cohere: 'command-a-reasoning-08-2025',
-		mistral: 'codestral-2508',
-		gemini: 'gemini-3.7-flash',
-		groq: 'openai/gpt-oss-120b',
+		cohere: (env.COHERE_MODEL as string) || pendingSetup,
+		mistral: (env.MISTRAL_MODEL as string) || pendingSetup,
+		gemini: (env.GEMINI_MODEL as string) || pendingSetup,
+		groq: (env.GROQ_MODEL as string) || pendingSetup,
 		default: 'Unknown model',
 	};
 
 	const providerDescriptions: Record<string, string> = {
-		cohere: 'Balanced performance, strong for general tasks',
-		mistral: 'Fast, multilingual, great for reasoning',
-		gemini: "Google's latest model, vision capable",
-		groq: 'Ultra-fast inference, Llama architecture',
-		default: 'AI provider for resume generation',
+		cohere: 'Deep reasoning, best for smart scoring & JD match',
+		mistral: 'Massive 256k context, expert in parameter extraction',
+		gemini: 'Ultra-fast analysis with advanced multi-modal vision',
+		groq: 'Instant processing, heavy-duty 120B token routing',
+		default: 'AI provider for professional resume generation',
 	};
 
 	const currentSelected = localStorage.getItem('selected-ai-provider') || selectedProvider;
