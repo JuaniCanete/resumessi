@@ -2049,12 +2049,12 @@ async function openJdEditModal(item: ScraperResult): Promise<void> {
 		// For fetch sources, textarea should be enabled for manual paste
 		textarea.disabled = false;
 	} else {
-		// LinkedIn has JD - go straight to ATS
+		// LinkedIn has JD - go straight to ATS (textarea stays editable)
 		if (fetchActions) fetchActions.style.display = 'none';
 		if (scanBtnDefault) scanBtnDefault.style.display = 'inline-flex';
 		if (fetchBtn) fetchBtn.style.display = 'none';
 		if (scanBtn) scanBtn.style.display = 'none';
-		textarea.disabled = true;
+		textarea.disabled = false;
 	}
 
 	const fallbackParts: string[] = [];

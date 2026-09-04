@@ -11,9 +11,20 @@ const STORAGE_FILE =
 	process.env.LINKEDIN_STORAGE_FILE || path.join(process.cwd(), 'data', 'storage-state', 'linkedin.json');
 
 // Markers that delimit the job description on a LinkedIn job posting page.
-// The content between these two markers is the actual JD text.
-const JD_START_MARKER = 'About the job';
-const JD_END_MARKER = 'Set alert for similar jobs';
+// The content between a start marker and an end marker is the actual JD text.
+//
+// LinkedIn renders these in the page locale, so we list the known variants and
+// pick the earliest match. English is canonical; Spanish variants handle the
+// es_ES locale (otherwise extraction silently returns '' and the JD is lost).
+// Start: "About the job" | "Acerca del empleo"
+const JD_START_MARKERS = ['About the job', 'Acerca del empleo'];
+// End: "Set alert for similar jobs" | "Configurar alerta para empleos similares" |
+//              "Crear alerta para empleos similares"
+const JD_END_MARKERS = [
+	'Set alert for similar jobs',
+	'Configurar alerta para empleos similares',
+	'Crear alerta para empleos similares',
+];
 
 // Maximum number of job pages to visit for full JD extraction (to avoid long scrape times)
 const MAX_JD_EXTRACTIONS = 10;
@@ -201,21 +212,36 @@ export async function validateLinkedInStorageState(): Promise<boolean> {
 }
 
 /**
+ * Earliest occurrence of any marker in `markers`. Ties resolve to the first
+ * listed marker (deterministic). Returns `{ index, length }` of the winner or
+ * `null` when none of the markers is present. Pure — used by extraction + tests.
+ */
+function findEarliestMarker(bodyText: string, markers: string[]): { index: number; length: number } | null {
+	let best: { index: number; length: number } | null = null;
+	for (const marker of markers) {
+		const idx = bodyText.indexOf(marker);
+		if (idx === -1) continue;
+		if (best === null || idx < best.index) best = { index: idx, length: marker.length };
+	}
+	return best;
+}
+
+/**
  * Extract the job description text from a LinkedIn page body, between the
- * "About the job" and "Set alert for similar jobs" markers. Returns '' when
- * the start marker is not found. Shared by the scraper and the authenticated
- * Check-JD fetch.
+ * earliest start marker and the earliest end marker that follows it. Supports
+ * locale variants (e.g. Spanish "Acerca del empleo" for the es_ES locale).
+ * Returns '' when no start marker is found. Shared by the scraper and the
+ * authenticated Check-JD fetch.
  */
 export function extractJdTextFromBody(bodyText: string): string {
 	if (!bodyText) return '';
 
-	const startIdx = bodyText.indexOf(JD_START_MARKER);
-	if (startIdx === -1) return '';
+	const start = findEarliestMarker(bodyText, JD_START_MARKERS);
+	if (!start) return '';
 
-	const searchStart = startIdx + JD_START_MARKER.length;
-	const endIdx = bodyText.indexOf(JD_END_MARKER, searchStart);
-	const contentStart = startIdx + JD_START_MARKER.length;
-	const contentEnd = endIdx === -1 ? bodyText.length : endIdx;
+	const contentStart = start.index + start.length;
+	const end = findEarliestMarker(bodyText.substring(contentStart), JD_END_MARKERS);
+	const contentEnd = end === null ? bodyText.length : contentStart + end.index;
 
 	return bodyText.substring(contentStart, contentEnd).trim();
 }
@@ -244,8 +270,8 @@ async function extractLinkedInJobDescription(page: import('playwright').Page, jo
 		const jdText = extractJdTextFromBody(bodyText);
 		console.info(
 			`[LinkedIn Scraper] JD markers for ${jobUrl}: ` +
-				`JD_START_MARKER="${JD_START_MARKER}" ${bodyText.includes(JD_START_MARKER) ? 'FOUND' : 'NOT FOUND'}, ` +
-				`JD_END_MARKER="${JD_END_MARKER}" ${bodyText.includes(JD_END_MARKER) ? 'FOUND' : 'NOT FOUND'}`
+				`start: [${JD_START_MARKERS.filter(m => bodyText.includes(m)).join(' | ') || 'none'}], ` +
+				`end: [${JD_END_MARKERS.filter(m => bodyText.includes(m)).join(' | ') || 'none'}]`
 		);
 		return jdText;
 	} catch (err: unknown) {
@@ -298,10 +324,17 @@ export async function fetchLinkedInJobDescription(rawUrl: string): Promise<strin
 		const page = await context.newPage();
 		await page.goto(jobUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
 
-		// Wait for the JD to render (LinkedIn renders it client-side) instead of a
-		// blind delay. Timeout is non-fatal: extraction below returns '' if absent.
+		// Wait for the JD to render (LinkedIn renders it client-side). Wait for any
+		// recognized start marker, since locale variants change the text.
+		// Timeout is non-fatal: extraction below returns '' if absent.
+		// (JD is fetched server-side; timeout only gates the waitForFunction call)
 		await page
-			.waitForFunction(() => document.body && document.body.innerText.includes('About the job'), { timeout: 15000 })
+			.waitForFunction(
+				(arg: { markers: string[] }) =>
+					document.body && document.body.innerText && arg.markers.some(m => document.body.innerText.includes(m)),
+				{ markers: JD_START_MARKERS },
+				{ timeout: 15000 }
+			)
 			.catch(() => {});
 
 		const bodyText = await page.evaluate(() => {
