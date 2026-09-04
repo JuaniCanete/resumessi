@@ -56,14 +56,10 @@ export async function scrapeGoogle(
 	const pageCount = Math.min(query.pageCount ?? 10, MAX_GOOGLE_PAGES);
 	const startPage = query.startPage ?? 1;
 	let totalItemsCollected = 0;
-
 	console.info(
-		`
-		[Google Scraper] Scraping up to ${pageCount} page(s) starting from page ${startPage} of SerpAPI for query: 
-		"${searchQuery}" (max ${MAX_TOTAL_ITEMS} items)
-		`
-	);
-
+		`[Google Scraper] Scraping up to ${pageCount} page(s) starting from page ${startPage} ` +
+		`of SerpAPI for query: "${searchQuery}" (max ${MAX_TOTAL_ITEMS} items)`
+	  );
 	for (let page = 0; page < pageCount; page++) {
 		const startParam = (startPage - 1 + page) * 10;
 		const apiUrl = new URL('https://serpapi.com/search.json?engine=google');
