@@ -6,7 +6,7 @@
 export const MODEL_PRICING: Record<string, { input: number; output: number }> = {
 	'command-a-reasoning-08-2025': { input: 0.5 / 1e6, output: 1.5 / 1e6 }, // Cohere
 	'codestral-latest': { input: 0.2 / 1e6, output: 0.6 / 1e6 }, // Mistral
-	'gemini-3.8-flash': { input: 0.075 / 1e6, output: 0.3 / 1e6 }, // Gemini
+	'gemini-3.7-flash': { input: 0.075 / 1e6, output: 0.3 / 1e6 }, // Gemini
 	'openai/gpt-oss-120b': { input: 0.15 / 1e6, output: 0.6 / 1e6 }, // Groq
 };
 
