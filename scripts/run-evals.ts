@@ -13,7 +13,6 @@ import {
 } from './eval-metrics.js';
 
 // ─── Zod Schemas for Output Validation ────────────────────────────────
-
 const AtsOutputSchema = z.looseObject({
 	overall_score: z.number().min(0).max(100),
 	tier: z.enum(['STRONG_MATCH', 'GOOD_MATCH', 'MODERATE_MATCH', 'WEAK_MATCH']),
@@ -288,7 +287,7 @@ async function evaluatePromptType(
 			if (regression && regression.regressions.length > 0) {
 				for (const reg of regression.regressions) {
 					console.error(
-						`    🔴 REGRESSION: ${reg.metric} ${reg.baselineScore.toFixed(2)} → ${reg.currentScore.toFixed(2)} (${reg.severity})`
+						`    ✗ REGRESSION: ${reg.metric} ${reg.baselineScore.toFixed(2)} → ${reg.currentScore.toFixed(2)} (${reg.severity})`
 					);
 				}
 			}
@@ -365,7 +364,7 @@ async function runEvals(context: EvalContext): Promise<boolean> {
 	console.info(`Total: ${totalTests} | Passed: ${passedTests} | Failed: ${totalTests - passedTests}`);
 
 	if (allRunMetrics.length > 0) {
-		console.info('\n💰 Cost/Latency Report:');
+		console.info('\n$$ Cost/Latency Report:');
 		console.info(generateCostReport(allRunMetrics));
 	}
 

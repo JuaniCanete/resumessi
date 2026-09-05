@@ -20,6 +20,6 @@ export function estimateCost(
 	usage: { promptTokens: number; completionTokens: number }
 ): number {
 	const key = model.toLowerCase();
-	const pricing = MODEL_PRICING[key] || MODEL_PRICING['gemini-3.8-flash'];
+	const pricing = MODEL_PRICING[key] || MODEL_PRICING['gemini-3.7-flash'];
 	return usage.promptTokens * pricing.input + usage.completionTokens * pricing.output;
 }

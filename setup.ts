@@ -53,7 +53,7 @@ const PROVIDERS: ProviderDef[] = [
 		name: 'Gemini',
 		keyEnv: 'GEMINI_API_KEY',
 		modelEnv: 'GEMINI_MODEL',
-		defaultModel: 'gemini-3.8-flash',
+		defaultModel: 'gemini-3.7-flash',
 	},
 	{ id: 'groq', name: 'Groq', keyEnv: 'GROQ_API_KEY', modelEnv: 'GROQ_MODEL', defaultModel: 'openai/gpt-oss-120b' },
 ];
@@ -119,7 +119,7 @@ MISTRAL_API_KEY=${env.MISTRAL_API_KEY || 'your_mistral_key_here'}
 MISTRAL_MODEL=${env.MISTRAL_MODEL || 'codestral-latest'}
 
 GEMINI_API_KEY=${env.GEMINI_API_KEY || 'your_gemini_key_here'}
-GEMINI_MODEL=${env.GEMINI_MODEL || 'gemini-3.8-flash'}
+GEMINI_MODEL=${env.GEMINI_MODEL || 'gemini-3.7-flash'}
 
 GROQ_API_KEY=${env.GROQ_API_KEY || 'your_groq_key_here'}
 GROQ_MODEL=${env.GROQ_MODEL || 'openai/gpt-oss-120b'}

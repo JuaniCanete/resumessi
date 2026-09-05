@@ -180,7 +180,7 @@ test.describe(() => {
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify({
-					AI_MODEL: 'gemini-3.8-flash',
+					AI_MODEL: 'gemini-3.7-flash',
 					ACCENT_COLOR: '#2563eb',
 				}),
 			});

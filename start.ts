@@ -182,7 +182,7 @@ function parseEnvFile(): Record<string, string | undefined> {
 		MISTRAL_API_KEY: '',
 		MISTRAL_MODEL: 'codestral-latest',
 		GEMINI_API_KEY: '',
-		GEMINI_MODEL: 'gemini-3.8-flash',
+		GEMINI_MODEL: 'gemini-3.7-flash',
 		GROQ_API_KEY: '',
 		GROQ_MODEL: 'openai/gpt-oss-120b',
 		PRIMARY_COLOR: '#0a0a0a',

@@ -60,12 +60,12 @@ test('buildRequest creates valid Cohere request without system', () => {
 });
 
 test('buildRequest creates valid Gemini request', () => {
-	const result = buildRequest('gemini', 'You are helpful.', 'Hello', 'gemini-3.8-flash', 'key-456', {
+	const result = buildRequest('gemini', 'You are helpful.', 'Hello', 'gemini-3.7-flash', 'key-456', {
 		maxTokens: 100,
 	});
 	assert.equal(
 		result.url,
-		'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=key-456'
+		'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=key-456'
 	);
 	assert.ok(!result.headers['Authorization']);
 	const geminiBody = result.body as GeminiRequestBody;
@@ -78,7 +78,7 @@ test('buildRequest creates valid Gemini request', () => {
 });
 
 test('buildRequest creates valid Gemini request without system', () => {
-	const result = buildRequest('gemini', '', 'Hello', 'gemini-3.8-flash', 'key-456');
+	const result = buildRequest('gemini', '', 'Hello', 'gemini-3.7-flash', 'key-456');
 	const geminiBody = result.body as GeminiRequestBody;
 	assert.equal(geminiBody.systemInstruction, undefined);
 });
