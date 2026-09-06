@@ -22,7 +22,9 @@ export default defineConfig({
 	webServer: {
 		//cross-env sets env vars identically on cmd/PowerShell/sh (CI runs Linux).
 		//Port 3001 must NOT change: 3000 is the user-facing app port.
-		command: `npx cross-env PORT=3001 NODE_ENV=test JOB_DATA_DB_PATH="${TEST_DB_PATH}" npx tsx start.ts --no-open`,
+		command: `
+		npx cross-env PORT=3001 NODE_ENV=test VERBOSE_DEBUG=false SCRAPER_DEBUG=false JOB_DATA_DB_PATH="${TEST_DB_PATH}" npx tsx start.ts --no-open
+		`,
 		url: 'http://localhost:3001/public/main.html',
 		reuseExistingServer: false,
 		timeout: 60000,
