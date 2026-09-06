@@ -1,3 +1,4 @@
+import { DEFAULT_AI_INFERENCE_ORDER, getDefaultModel } from './models';
 import type {
 	ProviderName,
 	ProviderResponse,
@@ -450,7 +451,7 @@ function safeJsonParse(text: string): { data: unknown; error: string | null } {
 }
 
 function getProviderConfig(env: Record<string, string | undefined>): ProviderConfigResult {
-	const order = (env.AI_INFERENCE_ORDER || 'cohere,mistral,gemini,groq')
+	const order = (env.AI_INFERENCE_ORDER || DEFAULT_AI_INFERENCE_ORDER)
 		.split(',')
 		.map(s => s.trim().toLowerCase())
 		.filter(Boolean);
@@ -458,25 +459,25 @@ function getProviderConfig(env: Record<string, string | undefined>): ProviderCon
 	const providerMap: ProviderMap = {};
 
 	const cohereKey = env.COHERE_API_KEY || '';
-	const cohereModel = env.COHERE_MODEL || 'command-a-reasoning-08-2025';
+	const cohereModel = env.COHERE_MODEL || getDefaultModel('cohere');
 	if (cohereKey) {
 		providerMap.cohere = { key: cohereKey, model: cohereModel };
 	}
 
 	const mistralKey = env.MISTRAL_API_KEY || '';
-	const mistralModel = env.MISTRAL_MODEL || 'codestral-latest';
+	const mistralModel = env.MISTRAL_MODEL || getDefaultModel('mistral');
 	if (mistralKey) {
 		providerMap.mistral = { key: mistralKey, model: mistralModel };
 	}
 
 	const geminiKey = env.GEMINI_API_KEY || '';
-	const geminiModel = env.GEMINI_MODEL || 'gemini-3.7-flash';
+	const geminiModel = env.GEMINI_MODEL || getDefaultModel('gemini');
 	if (geminiKey) {
 		providerMap.gemini = { key: geminiKey, model: geminiModel };
 	}
 
 	const groqKey = env.GROQ_API_KEY || '';
-	const groqModel = env.GROQ_MODEL || 'openai/gpt-oss-120b';
+	const groqModel = env.GROQ_MODEL || getDefaultModel('groq');
 	if (groqKey) {
 		providerMap.groq = { key: groqKey, model: groqModel };
 	}

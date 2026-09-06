@@ -5,7 +5,7 @@ test.beforeEach(async ({ findJobPage }) => {
 });
 
 // ─── Column & Card Rendering ──────────────────────────────────────────
-test('renders all 7 columns in correct order', async ({ findJobPage }) => {
+test('renders all 8 columns in correct order', async ({ findJobPage }) => {
 	await findJobPage.mockDashboardApi([
 		{ title: 'Job A', column: 'applied' },
 		{ title: 'Job B', column: 'screening' },
@@ -14,15 +14,16 @@ test('renders all 7 columns in correct order', async ({ findJobPage }) => {
 		{ title: 'Job E', column: 'offer' },
 		{ title: 'Job F', column: 'rejected' },
 		{ title: 'Job G', column: 'hired' },
+		{ title: 'Job H', column: 'blocked' },
 	]);
 	await findJobPage.switchToDashboard();
 
 	const board = findJobPage.dashboardBoard;
 	const columns = board.locator('.board-list');
-	await expect(columns).toHaveCount(7);
+	await expect(columns).toHaveCount(8);
 
 	const columnIds = await columns.evaluateAll((els: HTMLElement[]) => els.map(el => el.dataset.listId));
-	expect(columnIds).toEqual(['applied', 'screening', 'tech', 'client', 'offer', 'rejected', 'hired']);
+	expect(columnIds).toEqual(['applied', 'screening', 'tech', 'client', 'offer', 'blocked', 'rejected', 'hired']);
 });
 
 test('each column shows correct header title', async ({ findJobPage }) => {
@@ -50,6 +51,7 @@ test('each column shows correct header title', async ({ findJobPage }) => {
 		'Tech round',
 		'Client interview',
 		'Offer/Cultural fit',
+		'Blocked',
 		'Rejected',
 		'Hired',
 	]);
@@ -60,7 +62,7 @@ test('each column shows card count badge (0 when empty)', async ({ findJobPage }
 	await findJobPage.switchToDashboard();
 
 	const counts = await findJobPage.dashboardBoard.locator('.board-list-count').allTextContents();
-	expect(counts).toEqual(['0', '0', '0', '0', '0', '0', '0']);
+	expect(counts).toEqual(['0', '0', '0', '0', '0', '0', '0', '0']);
 });
 
 test('cards render with title, source badge, and status', async ({ findJobPage }) => {
@@ -115,7 +117,7 @@ test('card counter increments per column', async ({ findJobPage }) => {
 	await findJobPage.switchToDashboard();
 
 	const counts = await findJobPage.dashboardBoard.locator('.board-list-count').allTextContents();
-	expect(counts).toEqual(['2', '1', '0', '0', '0', '1', '0']);
+	expect(counts).toEqual(['2', '1', '0', '0', '0', '0', '1', '0']);
 });
 
 // ─── Add Card ──────────────────────────────────────────────────────────
@@ -319,7 +321,7 @@ test('empty dashboard shows all columns with 0 count', async ({ findJobPage }) =
 	await findJobPage.switchToDashboard();
 
 	const columns = findJobPage.dashboardBoard.locator('.board-list');
-	await expect(columns).toHaveCount(7);
+	await expect(columns).toHaveCount(8);
 
 	const counts = await findJobPage.dashboardBoard.locator('.board-list-count').allTextContents();
 	expect(counts.every(c => c === '0')).toBe(true);

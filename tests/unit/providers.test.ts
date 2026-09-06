@@ -211,7 +211,7 @@ test('getProviderConfig uses default order when AI_INFERENCE_ORDER is unset', ()
 		GROQ_API_KEY: 'groq-key',
 	};
 	const result = getProviderConfig(env);
-	assert.deepEqual(result.configured, ['cohere', 'mistral', 'gemini', 'groq']);
+	assert.deepEqual(result.configured, ['mistral', 'cohere', 'groq', 'gemini']);
 });
 
 // ── validateInferenceRequest ──────────────────────────────────────────────────

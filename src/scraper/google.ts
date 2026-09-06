@@ -1,5 +1,4 @@
-import fs from 'fs';
-import path from 'path';
+import { createScraperDebugSession } from '../utils/logger';
 import type { ScraperQuery, ScraperResult } from './types';
 import { buildScraperSearchUrl, DEFAULT_TARGET_DOMAINS } from './pagination';
 
@@ -50,6 +49,9 @@ export async function scrapeGoogle(
 		return [];
 	}
 
+	const debugSession = createScraperDebugSession('google');
+	debugSession.log(`Starting scrape for query: "${searchQuery}"`);
+
 	const results: ScraperResult[] = [];
 	const MAX_TOTAL_ITEMS = 50;
 	const MAX_GOOGLE_PAGES = 10;
@@ -72,31 +74,24 @@ export async function scrapeGoogle(
 			const response = await fetch(apiUrl.toString());
 			if (response.status === 429) {
 				console.error('[Google Scraper] SerpAPI quota exceeded (HTTP 429).');
+				debugSession.log('SerpAPI quota exceeded (HTTP 429).', 'ERROR');
 				return results; // Return whatever results we gathered so far
 			}
 
 			if (!response.ok) {
 				const errorText = await response.text();
 				console.error(`[Google Scraper] SerpAPI error (HTTP ${response.status}):`, errorText);
+				debugSession.log(`SerpAPI error (HTTP ${response.status}): ${errorText}`, 'ERROR');
 				break;
 			}
 
 			const data = await response.json();
 			const items = data.organic_results || [];
 			console.info(`[Google Scraper] Received ${items.length} items from SerpAPI for page ${page + 1}`);
+			debugSession.log(`Page ${page + 1} (startParam ${startParam}): Received ${items.length} items`);
 
-			// Save SerpAPI response for debugging pagination behavior (opt-in via SCRAPER_DEBUG=true)
-			if (process.env.SCRAPER_DEBUG === 'true') {
-				try {
-					const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
-					if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-					const debugFile = path.join(debugDir, `google-page-${startPage + page}.json`);
-					fs.writeFileSync(debugFile, JSON.stringify(data, null, 2));
-					console.info(`[Google Scraper] Saved debug response to ${debugFile}`);
-				} catch (debugErr: unknown) {
-					console.warn('[Google Scraper] Failed to save debug response:', (debugErr as Error).message);
-				}
-			}
+			// Save SerpAPI response for debugging pagination behavior
+			debugSession.saveArtifact(`google-page-${startPage + page}.json`, JSON.stringify(data, null, 2));
 
 			// Only keep results whose hostname is one of the targeted ATS domains
 			// AND whose URL path looks like an actual job posting.

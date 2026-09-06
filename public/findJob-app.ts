@@ -839,6 +839,7 @@ const DASHBOARD_LISTS = [
 	{ id: 'tech', title: 'Tech round' },
 	{ id: 'client', title: 'Client interview' },
 	{ id: 'offer', title: 'Offer/Cultural fit' },
+	{ id: 'blocked', title: 'Blocked' },
 	{ id: 'rejected', title: 'Rejected' },
 	{ id: 'hired', title: 'Hired' },
 ] as const;
@@ -855,6 +856,7 @@ const STATUS_TO_LIST: Record<string, DashboardListId> = {
 	'No News': 'applied',
 	'Interviewing': 'screening',
 	'Offer': 'offer',
+	'Blocked': 'blocked',
 	'Rejected': 'rejected',
 };
 
@@ -864,6 +866,7 @@ const LIST_TO_STATUS: Record<DashboardListId, string> = {
 	tech: 'Interviewing',
 	client: 'Interviewing',
 	offer: 'Offer',
+	blocked: 'Blocked',
 	rejected: 'Rejected',
 	hired: 'Hired',
 };
@@ -897,8 +900,18 @@ async function renderDashboard(): Promise<void> {
 
 		const statusesElem = document.getElementById('dashboard-meta-statuses');
 		if (statusesElem) {
-			const statuses = new Set(jobs.map(j => j.status || 'No News'));
-			statusesElem.textContent = statuses.size > 0 ? Array.from(statuses).join(', ') : 'None';
+			if (jobs.length === 0) {
+				statusesElem.textContent = 'None';
+			} else {
+				const counts = new Map<string, number>();
+				for (const j of jobs) {
+					const s = j.status || 'No News';
+					counts.set(s, (counts.get(s) || 0) + 1);
+				}
+				statusesElem.textContent = Array.from(counts.entries())
+					.map(([status, count]) => `${status} (${count})`)
+					.join(', ');
+			}
 		}
 
 		const jobsByList = new Map<DashboardListId, ScraperResult[]>();
@@ -3238,31 +3251,10 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
 	const listEl = document.getElementById('providers-list');
 	if (!listEl) return;
 
-	const providerIcons: Record<string, string> = {
-		cohere: '/public/assets/cohere_icon.png',
-		mistral: '/public/assets/mistral_icon.png',
-		gemini: '/public/assets/gemini_icon.png',
-		groq: '/public/assets/groq_icon.png',
-		default:
-			'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ctext y="1em" font-size="20"%3E🤖%3C/text%3E%3C/svg%3E',
-	};
-
-	const pendingSetup: string = 'Pending setup';
-	const providerModels: Record<string, string> = {
-		cohere: (env.COHERE_MODEL as string) || pendingSetup,
-		mistral: (env.MISTRAL_MODEL as string) || pendingSetup,
-		gemini: (env.GEMINI_MODEL as string) || pendingSetup,
-		groq: (env.GROQ_MODEL as string) || pendingSetup,
-		default: 'Unknown model',
-	};
-
-	const providerDescriptions: Record<string, string> = {
-		cohere: 'Deep reasoning, best for smart scoring & JD match',
-		mistral: 'Massive 256k context, expert in parameter extraction',
-		gemini: 'Ultra-fast analysis with advanced multi-modal vision',
-		groq: 'Instant processing, heavy-duty 120B token routing',
-		default: 'AI provider for professional resume generation',
-	};
+	const metadata =
+		(env.providersMetadata as Record<string, { name: string; model: string; description: string; icon: string }>) || {};
+	const defaultIcon =
+		'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ctext y="1em" font-size="20"%3E\uD83E\uDD16%3C/text%3E%3C/svg%3E';
 
 	const currentSelected = localStorage.getItem('selected-ai-provider') || selectedProvider;
 
@@ -3270,10 +3262,11 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
 
 	for (const provider of providers) {
 		const isSelected = provider === currentSelected;
-		const icon = providerIcons[provider] || providerIcons.default;
-		const model = providerModels[provider] || providerModels.default;
-		const desc = providerDescriptions[provider] || providerDescriptions.default;
-		const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
+		const meta = metadata[provider];
+		const icon = meta?.icon || defaultIcon;
+		const model = meta?.model || (env[`${provider.toUpperCase()}_MODEL`] as string) || 'Pending setup';
+		const desc = meta?.description || 'AI provider for professional resume generation';
+		const displayName = meta?.name || provider.charAt(0).toUpperCase() + provider.slice(1);
 
 		const item = document.createElement('div');
 		item.className = 'provider-item';

@@ -124,7 +124,7 @@ Edit `.env` (created by `npm run setup`) or create a `.env` from scratch at the 
 # Comma-separated list of providers to try IN ORDER for AI tasks (ATS scoring, resume generation, cover letters).
 # The first provider with a valid API key will be used. If it fails, the next is tried.
 # Supported providers: cohere, mistral, gemini, groq
-AI_INFERENCE_ORDER='gemini,mistral,cohere,groq'
+AI_INFERENCE_ORDER='mistral,cohere,groq,gemini'
 
 # --- AI Provider API Keys & Models ---
 # Get keys from the provider dashboards. At least ONE key is required for AI features.
@@ -156,16 +156,30 @@ GOOGLE_API_KEY=your_serpapi_key_here
 - **Inference order:** providers are tried in the order listed in `AI_INFERENCE_ORDER`. If a provider fails, the next one is tried automatically. I do recommend putting first a model you don't use too much often to avoid get rate-limited.
 - **Inference order** vs **AI API solo call:** some tasks are long such as scraping a site, obtaining JDs and rendering them. In this case inference order takes precedence. Models uses auto-fallback. The rest of the API calls are handled by "Provider selection" modal within the app.
 
-### Scraper Options
+Inference order API calls (Auto-fallback):
+
+- Job scraping parameter extraction (`/api/scrape/google`, `/api/scrape/linkedin`, `/api/scrape/remoterocketship`)
+- CLI automated resume generation (`npm run generate`)
+
+Solo API calls (User selected provider via modal):
+
+- ATS Resume Scan (`/api/ats-scan`)
+- Resume Tailoring (`/api/tailor-resume`)
+- Cover Letter Generation (`/api/generate-cover-letter`)
+- Resume Polish (`/api/polish-resume`)
+- Generic LLM inference (`/api/infer`)
+
+### Debugging & Scraper Options
 
 Optional overrides in `.env`:
 
 ```env
-# Write debug HTML/JSON files to data/scraper-debug/ during scraping (may contain session data)
+# Enable session CLI logs in debugging/logs/ and scraper artifacts in debugging/scraper/<source>-<timestamp>/
+VERBOSE_DEBUG=false
+# Write debug HTML/JSON files to debugging/scraper/<source>-<timestamp>/ during scraping (may contain session data)
 SCRAPER_DEBUG=false
 # Scraping detects when we're getting a job collection instead of a single job and aborts when true.
 COLLECTION_WARNING_ENABLED=false
-
 ```
 
 ### Color Theme
