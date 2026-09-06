@@ -57,6 +57,7 @@ import {
 	setScrapingRun,
 	updateDashboardJob,
 	removeDashboardJob,
+	insertDashboardJob,
 	getJobDashboard,
 	getScrapingResults,
 	updateJobDescription,
@@ -273,6 +274,37 @@ test('removeDashboardJob - deletes by id (jobId)', async () => {
 	const dashboard2 = await getJobDashboard();
 	const found2 = dashboard2.find(j => j.url === job.url);
 	assert.ok(!found2, 'Job should be deleted by id');
+
+	cleanup();
+});
+
+// ─── insertDashboardJob delete-then-re-add persistence test ───
+
+test('insertDashboardJob - restores a soft-deleted row instead of duplicate-key failure after delete', async () => {
+	const { cleanup } = getTestDb();
+	const job = makeJob();
+
+	await insertDashboardJob(job);
+
+	let dashboard = await getJobDashboard();
+	let found = dashboard.find(j => j.url === job.url);
+	assert.ok(found, 'Job should exist after initial insert');
+
+	// Soft-delete the job (sets removed = 1 while keeping the PK row)
+	await removeDashboardJob(job.url, job.id);
+
+	dashboard = await getJobDashboard();
+	assert.ok(!dashboard.find(j => j.url === job.url), 'Job should be removed after delete');
+
+	// Re-adding the same job must restore the soft-deleted row (removed = 0),
+	// not throw on the (url, jobId) primary key conflict
+	await insertDashboardJob(job);
+
+	dashboard = await getJobDashboard();
+	found = dashboard.find(j => j.url === job.url);
+	assert.ok(found, 'Job should be restored after re-add');
+	assert.equal(found.id, job.id);
+	assert.equal(found.removed, false, 'Row should be un-marked as removed');
 
 	cleanup();
 });

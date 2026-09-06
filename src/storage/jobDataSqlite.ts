@@ -1029,6 +1029,8 @@ export function insertDashboardJob(job: ScraperResult): ScraperResult {
 		notes: job.notes || '',
 	};
 
+	const row = formatDashboardRowForSqlite(dashboardJob);
+
 	const insertDashboard = database.prepare(`
     INSERT INTO job_dashboard
       (url, jobId, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
@@ -1037,8 +1039,34 @@ export function insertDashboardJob(job: ScraperResult): ScraperResult {
       (@url, @jobId, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
        @parameters, @source, @status, @column, @interviewRounds, @notes, @savedAt, @appliedAt)
   `);
-	const row = formatDashboardRowForSqlite(dashboardJob);
-	insertDashboard.run(row);
+
+	// Restore an existing soft-deleted row matching the (url, jobId) primary key before
+	// attempting a new insert, so re-adding a removed job doesn't fail on a duplicate key.
+	const restored = database
+		.prepare(
+			`UPDATE job_dashboard SET
+        removed = 0,
+        title = @title,
+        snippet = @snippet,
+        company = @company,
+        postedDate = @postedDate,
+        aiSummary = @aiSummary,
+        queryAffinity = @queryAffinity,
+        parameters = @parameters,
+        source = @source,
+        status = @status,
+        column = @column,
+        interviewRounds = @interviewRounds,
+        notes = @notes,
+        savedAt = @savedAt,
+        appliedAt = @appliedAt
+        WHERE url = @url AND jobId = @jobId`
+		)
+		.run(row);
+
+	if (restored.changes === 0) {
+		insertDashboard.run(row);
+	}
 
 	return dashboardJob;
 }

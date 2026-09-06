@@ -39,6 +39,11 @@ export function initSessionLogger(): void {
 	const sessionLogPath = path.join(LOGS_DIR, `session-${timestamp}.log`);
 	sessionLogStream = fs.createWriteStream(sessionLogPath, { flags: 'a' });
 
+	sessionLogStream.on('error', (err: Error) => {
+		if (originalError) originalError('[Logger] [✗] Session log stream error:', err.message);
+		sessionLogStream = null;
+	});
+
 	originalInfo = console.info.bind(console);
 	originalWarn = console.warn.bind(console);
 	originalError = console.error.bind(console);
