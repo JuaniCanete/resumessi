@@ -20,52 +20,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
+import { DEFAULT_AI_INFERENCE_ORDER, PROVIDERS, PROVIDER_URLS, type ProviderDefinition } from './src/models';
 
 const ROOT = __dirname;
 const ENV_EXAMPLE = path.join(ROOT, '.env.example');
 const ENV_FILE = path.join(ROOT, '.env');
-
-interface ProviderDef {
-	id: string;
-	name: string;
-	keyEnv: string;
-	modelEnv: string;
-	defaultModel: string;
-}
-
-const PROVIDERS: ProviderDef[] = [
-	{
-		id: 'cohere',
-		name: 'Cohere',
-		keyEnv: 'COHERE_API_KEY',
-		modelEnv: 'COHERE_MODEL',
-		defaultModel: 'command-a-reasoning-08-2025',
-	},
-	{
-		id: 'mistral',
-		name: 'Mistral',
-		keyEnv: 'MISTRAL_API_KEY',
-		modelEnv: 'MISTRAL_MODEL',
-		defaultModel: 'codestral-latest',
-	},
-	{
-		id: 'gemini',
-		name: 'Gemini',
-		keyEnv: 'GEMINI_API_KEY',
-		modelEnv: 'GEMINI_MODEL',
-		defaultModel: 'gemini-3.7-flash',
-	},
-	{ id: 'groq', name: 'Groq', keyEnv: 'GROQ_API_KEY', modelEnv: 'GROQ_MODEL', defaultModel: 'openai/gpt-oss-120b' },
-];
-
-const PROVIDER_URLS: Record<string, string> = {
-	cohere: 'https://dashboard.cohere.com/api-keys',
-	mistral: 'https://admin.mistral.ai/organization/api-keys',
-	gemini: 'https://aistudio.google.com/api-keys',
-	groq: 'https://console.groq.com/keys',
-};
-
-const DEFAULT_AI_INFERENCE_ORDER = 'mistral,cohere,gemini,groq';
 
 function ask(question: string, defaultValue: string = ''): Promise<string> {
 	const rl = readline.createInterface({
@@ -129,6 +88,10 @@ GROQ_MODEL=${env.GROQ_MODEL || 'openai/gpt-oss-120b'}
 # Required for Google job scraping (searches job boards via SerpAPI).
 GOOGLE_API_KEY=${env.GOOGLE_API_KEY || ''}
 
+# --- Debugging ---
+# Enable session logs in debugging/logs/ and scraper artifacts in debugging/scraper/
+VERBOSE_DEBUG=${env.VERBOSE_DEBUG || 'false'}
+
 # --- Theme Colors (override as needed) ---
 PRIMARY_COLOR=${env.PRIMARY_COLOR || '#0a0a0a'}
 SECONDARY_COLOR=${env.SECONDARY_COLOR || '#0a0a0a'}
@@ -157,10 +120,10 @@ async function main(): Promise<void> {
 	if (!fs.existsSync(ENV_FILE)) {
 		if (fs.existsSync(ENV_EXAMPLE)) {
 			fs.copyFileSync(ENV_EXAMPLE, ENV_FILE);
-			if (!isSilent) console.info('Created .env from .env.example ✅');
+			if (!isSilent) console.info('Created .env from .env.example [✓]');
 		} else {
 			writeEnvFile(ENV_FILE, {});
-			if (!isSilent) console.info('Created .env with default values ✅');
+			if (!isSilent) console.info('Created .env with default values [✓]');
 		}
 	} else {
 		if (!isSilent) {
@@ -196,7 +159,7 @@ async function main(): Promise<void> {
 		console.info('Providers are tried in order until one succeeds.');
 		console.info('');
 
-		const validIds = new Set(PROVIDERS.map(p => p.id));
+		const validIds = new Set<string>(PROVIDERS.map(p => p.id));
 		const currentOrder = (env.AI_INFERENCE_ORDER || DEFAULT_AI_INFERENCE_ORDER)
 			.split(',')
 			.map(s => s.trim().toLowerCase())
@@ -212,7 +175,7 @@ async function main(): Promise<void> {
 			const p = PROVIDERS.find(prov => prov.id === currentOrder[i]);
 			if (!p) continue;
 			const hasKey = env[p.keyEnv] && env[p.keyEnv] !== `your_${p.id}_key_here`;
-			const status = hasKey ? '✅ configured' : '⏭️  no key';
+			const status = hasKey ? '[✓] configured' : '[no key]';
 			console.info(`  ${i + 1}. ${p.name} (${p.id}) — ${status}`);
 		}
 
@@ -224,7 +187,7 @@ async function main(): Promise<void> {
 
 		const selection = await ask('Provider IDs (order matters): ', currentOrder.join(','));
 		console.info('');
-		const selectedProviders: ProviderDef[] = [];
+		const selectedProviders: ProviderDefinition[] = [];
 		const selectedOrder: string[] = [];
 		if (selection.trim()) {
 			const inputIds = selection
@@ -237,7 +200,7 @@ async function main(): Promise<void> {
 					selectedProviders.push(p);
 					selectedOrder.push(p.id);
 				} else {
-					console.warn(`  ⚠  Unknown provider: ${providerId} (skipped)`);
+					console.warn(`  [⚠] Unknown provider: ${providerId} (skipped)`);
 				}
 			}
 		}

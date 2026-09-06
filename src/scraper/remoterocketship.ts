@@ -1,5 +1,4 @@
-import fs from 'fs';
-import path from 'path';
+import { createScraperDebugSession } from '../utils/logger';
 import { REMOTEROCKETSHIP_CARD_SELECTORS, REMOTEROCKETSHIP_FIELD_SELECTORS, trySelectors } from './selectors';
 import type { ScraperQuery, ScraperResult } from './types';
 import { buildScraperSearchUrl, buildScraperSearchUrls } from './pagination';
@@ -44,7 +43,9 @@ export async function scrapeRemoteRocketship(
 	const startPage = query.startPage ?? 1;
 	const searchUrls = buildScraperSearchUrls(baseUrl, 'remoterocketship', pageCount, startPage);
 
+	const debugSession = createScraperDebugSession('remoterocketship');
 	console.info(`[RemoteRocketship Scraper] Scraping ${searchUrls.length} page(s) starting from page ${startPage}`);
+	debugSession.log(`Scraping ${searchUrls.length} page(s) starting from page ${startPage}: ${searchUrls.join(', ')}`);
 
 	const page = await context.newPage();
 	const results: ScraperResult[] = [];
@@ -56,8 +57,10 @@ export async function scrapeRemoteRocketship(
 				await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
 			} catch (err) {
 				if ((err as Error).name === 'TimeoutError' || (err as Error).message?.includes('timeout')) {
+					debugSession.log(`Page load timeout: ${searchUrl}`, 'ERROR');
 					throw new RemoteRocketshipError(`Page load timeout: ${searchUrl}`, 'TIMEOUT_ERROR', err as Error);
 				}
+				debugSession.log(`Failed to navigate to ${searchUrl}: ${(err as Error).message}`, 'ERROR');
 				throw new RemoteRocketshipNetworkError(`Failed to navigate to ${searchUrl}`, err as Error);
 			}
 			await randomDelay(rateLimitMs, rateLimitMs * 2);
@@ -65,19 +68,14 @@ export async function scrapeRemoteRocketship(
 			// Extract job cards using the card container selector
 			const cards = await extractJobCards(page);
 			console.info(`[RemoteRocketship Scraper] Found ${cards.length} cards on page ${pageIndex + 1}`);
+			debugSession.log(`Found ${cards.length} cards on page ${pageIndex + 1}`);
 
-			// Save page HTML for debugging (opt-in via SCRAPER_DEBUG=true)
-			if (process.env.SCRAPER_DEBUG === 'true') {
-				try {
-					const debugDir = path.join(process.cwd(), 'data', 'scraper-debug');
-					if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-					const html = await page.content();
-					const debugFile = path.join(debugDir, `remoterocketship-page-${startPage + pageIndex}.html`);
-					fs.writeFileSync(debugFile, html);
-					console.info(`[RemoteRocketship Scraper] Saved debug HTML to ${debugFile}`);
-				} catch (debugErr: unknown) {
-					console.warn('[RemoteRocketship Scraper] Failed to save debug HTML:', (debugErr as Error).message);
-				}
+			// Save page HTML for debugging
+			try {
+				const html = await page.content();
+				debugSession.saveArtifact(`remoterocketship-page-${startPage + pageIndex}.html`, html);
+			} catch (debugErr: unknown) {
+				debugSession.log(`Failed to save debug HTML: ${(debugErr as Error).message}`, 'WARN');
 			}
 
 			for (const card of cards) {

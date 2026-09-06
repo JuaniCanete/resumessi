@@ -1472,30 +1472,10 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
 	const listEl = document.getElementById('providers-list');
 	if (!listEl) return;
 
-	const providerIcons: Record<string, string> = {
-		cohere: '/public/assets/cohere_icon.png',
-		mistral: '/public/assets/mistral_icon.png',
-		gemini: '/public/assets/gemini_icon.png',
-		groq: '/public/assets/groq_icon.png',
-		default:
-			'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ctext y="1em" font-size="20"%3E\uD83E\uDD16%3C/text%3E%3C/svg%3E',
-	};
-	const pendingSetup: string = 'Pending setup';
-	const providerModels: Record<string, string> = {
-		cohere: (env.COHERE_MODEL as string) || pendingSetup,
-		mistral: (env.MISTRAL_MODEL as string) || pendingSetup,
-		gemini: (env.GEMINI_MODEL as string) || pendingSetup,
-		groq: (env.GROQ_MODEL as string) || pendingSetup,
-		default: 'Unknown model',
-	};
-
-	const providerDescriptions: Record<string, string> = {
-		cohere: 'Deep reasoning, best for smart scoring & JD match',
-		mistral: 'Massive 256k context, expert in parameter extraction',
-		gemini: 'Ultra-fast analysis with advanced multi-modal vision',
-		groq: 'Instant processing, heavy-duty 120B token routing',
-		default: 'AI provider for professional resume generation',
-	};
+	const metadata =
+		(env.providersMetadata as Record<string, { name: string; model: string; description: string; icon: string }>) || {};
+	const defaultIcon =
+		'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ctext y="1em" font-size="20"%3E\uD83E\uDD16%3C/text%3E%3C/svg%3E';
 
 	const currentSelected = localStorage.getItem('selected-ai-provider') || selectedProvider;
 
@@ -1503,10 +1483,11 @@ function renderProvidersList(providers: string[], selectedProvider: string | nul
 
 	for (const provider of providers) {
 		const isSelected = provider === currentSelected;
-		const icon = providerIcons[provider] || providerIcons.default;
-		const model = providerModels[provider] || providerModels.default;
-		const desc = providerDescriptions[provider] || providerDescriptions.default;
-		const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
+		const meta = metadata[provider];
+		const icon = meta?.icon || defaultIcon;
+		const model = meta?.model || (env[`${provider.toUpperCase()}_MODEL`] as string) || 'Pending setup';
+		const desc = meta?.description || 'AI provider for professional resume generation';
+		const displayName = meta?.name || provider.charAt(0).toUpperCase() + provider.slice(1);
 
 		const item = document.createElement('div');
 		item.className = 'provider-item';

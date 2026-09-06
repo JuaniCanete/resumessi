@@ -11,6 +11,10 @@ import * as fs from 'fs';
 import * as http from 'http';
 import * as https from 'https';
 import * as path from 'path';
+import { initSessionLogger } from './src/utils/logger';
+import { DEFAULT_AI_INFERENCE_ORDER, getProvidersMetadata } from './src/models';
+
+initSessionLogger();
 import { generateLinkedInStorageState } from './scripts/linkedin-auth';
 import { scrapeGoogle } from './src/scraper/google';
 import { scrapeRemoteRocketship } from './src/scraper/remoterocketship';
@@ -176,7 +180,7 @@ function validateJobDescription(text: string): { valid: boolean; reason?: string
 // Parse .env file into an object — shared by both config functions below.
 function parseEnvFile(): Record<string, string | undefined> {
 	const env: Record<string, string | undefined> = {
-		AI_INFERENCE_ORDER: 'cohere,mistral,gemini,groq',
+		AI_INFERENCE_ORDER: DEFAULT_AI_INFERENCE_ORDER,
 		COHERE_API_KEY: '',
 		COHERE_MODEL: 'command-a-reasoning-08-2025',
 		MISTRAL_API_KEY: '',
@@ -195,6 +199,8 @@ function parseEnvFile(): Record<string, string | undefined> {
 		CHROME_PATH: '',
 		GOOGLE_API_KEY: '',
 		COLLECTION_WARNING_ENABLED: 'false',
+		VERBOSE_DEBUG: 'false',
+		SCRAPER_DEBUG: 'false',
 		RESUME_DATA_FILE: '',
 		RESUME_DATA_FILE_POLISHED: '',
 	};
@@ -237,6 +243,8 @@ function parseEnvFile(): Record<string, string | undefined> {
 				key.includes('COLOR') ||
 				key === 'AI_INFERENCE_ORDER' ||
 				key === 'COLLECTION_WARNING_ENABLED' ||
+				key === 'VERBOSE_DEBUG' ||
+				key === 'SCRAPER_DEBUG' ||
 				key === 'RESUME_DATA_FILE' ||
 				key === 'RESUME_DATA_FILE_POLISHED' ||
 				key.startsWith('LINKEDIN_') ||
@@ -259,6 +267,8 @@ function parseEnvFile(): Record<string, string | undefined> {
 		if (
 			Object.prototype.hasOwnProperty.call(env, key) ||
 			key === 'COLLECTION_WARNING_ENABLED' ||
+			key === 'VERBOSE_DEBUG' ||
+			key === 'SCRAPER_DEBUG' ||
 			key === 'RESUME_DATA_FILE' ||
 			key === 'RESUME_DATA_FILE_POLISHED'
 		) {
@@ -272,9 +282,9 @@ function parseEnvFile(): Record<string, string | undefined> {
  * Client-safe config — strips API keys before sending to the browser.
  * Used by the /config.json endpoint.
  */
-function getConfigFromEnv(): Record<string, string | string[] | null | undefined> {
+function getConfigFromEnv(): Record<string, string | string[] | Record<string, unknown> | null | undefined> {
 	const env = parseEnvFile();
-	const clientSafe: Record<string, string | string[] | null | undefined> = {};
+	const clientSafe: Record<string, string | string[] | Record<string, unknown> | null | undefined> = {};
 	for (const [key, value] of Object.entries(env)) {
 		// Exclude any key that contains 'KEY' or 'SECRET' (case-insensitive)
 		if (/KEY|SECRET/i.test(key)) continue;
@@ -283,10 +293,11 @@ function getConfigFromEnv(): Record<string, string | string[] | null | undefined
 
 	const providerConfig = getProviderConfig(env);
 
-	clientSafe.AI_INFERENCE_ORDER = env.AI_INFERENCE_ORDER || 'cohere,mistral,gemini,groq';
+	clientSafe.AI_INFERENCE_ORDER = env.AI_INFERENCE_ORDER || DEFAULT_AI_INFERENCE_ORDER;
 	clientSafe.availableProviders = providerConfig.configured;
 	clientSafe.primaryProvider = providerConfig.configured[0] || null;
 	clientSafe.NODE_ENV = process.env.NODE_ENV || 'production';
+	clientSafe.providersMetadata = getProvidersMetadata(env);
 
 	return clientSafe;
 }
@@ -2451,4 +2462,15 @@ server.listen(PORT, () => {
 			spawn(cmd, [url], { detached: true, stdio: 'ignore' }).unref();
 		}
 	}
+});
+
+server.on('error', (err: Error & { code?: string }) => {
+	if (err.code === 'EADDRINUSE') {
+		console.error(
+			`\n[Start] Port ${PORT} is already in use. Another instance is running on this port.\n` +
+				`[Start] Stop it (or kill any orphaned node process on port ${PORT}) before starting.\n`
+		);
+		process.exit(1);
+	}
+	throw err;
 });

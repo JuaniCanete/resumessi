@@ -20,12 +20,21 @@ export default defineConfig({
 		{ name: 'chromium', use: { browserName: 'chromium' } },
 	],
 	webServer: {
-		//cross-env sets env vars identically on cmd/PowerShell/sh (CI runs Linux).
+		//Playwright injects these env vars via the `env` option below, so the command
+		//stays a single short line - no cross-env, and no newline/`&&` splitting issues
+		//on cmd.exe (which caused "Process from config.webServer exited early").
 		//Port 3001 must NOT change: 3000 is the user-facing app port.
-		command: `npx cross-env PORT=3001 NODE_ENV=test JOB_DATA_DB_PATH="${TEST_DB_PATH}" npx tsx start.ts --no-open`,
+		command: 'npx tsx start.ts --no-open',
 		url: 'http://localhost:3001/public/main.html',
 		reuseExistingServer: false,
 		timeout: 60000,
+		env: {
+			PORT: '3001',
+			NODE_ENV: 'test',
+			VERBOSE_DEBUG: 'false',
+			SCRAPER_DEBUG: 'false',
+			JOB_DATA_DB_PATH: TEST_DB_PATH,
+		},
 		//Resolved relative to the config file location (tests/), NOT the process cwd —
 		//'..' points to the repo root where start.ts lives.
 		cwd: join(__dirname, '..'),

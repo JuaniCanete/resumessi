@@ -1,3 +1,4 @@
+import { logInferenceCall } from './utils/logger';
 import type { ProviderName, ProviderMap, ProviderAttempt, ProviderResponse, InferenceParams } from './types/provider';
 import type { RouterResult, RouterError, ResumeData } from './types/router';
 import { callProvider, getProviderConfig } from './providers';
@@ -52,6 +53,7 @@ export async function runInference(
 	}
 
 	const correlationId = crypto.randomUUID().slice(0, 8);
+	const startTime = Date.now();
 
 	const attempts: ProviderAttempt[] = [];
 	let lastError: Error | null = null;
@@ -71,6 +73,18 @@ export async function runInference(
 				scope,
 				correlationId
 			);
+			logInferenceCall({
+				correlationId,
+				scope,
+				provider: result.provider,
+				model: result.model,
+				params,
+				systemPreview: system.slice(0, 200),
+				promptPreview: prompt.slice(0, 200),
+				durationMs: Date.now() - startTime,
+				usage: result.usage,
+				status: 'success',
+			});
 			return { text: result.text, provider: result.provider, model: result.model, usage: result.usage, attempts: [] };
 		} catch (err: unknown) {
 			const attempt: ProviderAttempt = {
@@ -88,6 +102,16 @@ export async function runInference(
 	const error = new Error(`All providers exhausted — ${failedProviders}`) as RouterError;
 	error.attempts = attempts;
 	error.lastError = lastError;
+
+	logInferenceCall({
+		correlationId,
+		scope,
+		failedProviders: attempts,
+		durationMs: Date.now() - startTime,
+		error: error.message,
+		status: 'failed',
+	});
+
 	throw error;
 }
 

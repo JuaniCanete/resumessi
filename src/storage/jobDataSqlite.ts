@@ -182,6 +182,17 @@ export function getDb(): Database.Database {
 			// Column already exists
 		}
 	}
+	// Migration: add removed column to job_dashboard if missing
+	try {
+		db.exec('ALTER TABLE job_dashboard ADD COLUMN removed INTEGER DEFAULT 0');
+	} catch {
+		// Column already exists
+	}
+	try {
+		db.exec('UPDATE job_dashboard SET removed = 0 WHERE removed IS NULL');
+	} catch {
+		// ignore
+	}
 	return db;
 }
 
@@ -197,12 +208,22 @@ export function closeDb(): void {
 export const STATUS_TO_LIST: Record<string, string> = {
 	'No News': 'applied',
 	'Interviewing': 'screening',
-	'Rejected': 'rejected',
 	'Offer': 'offer',
+	'Blocked': 'blocked',
+	'Rejected': 'rejected',
 	'Hired': 'hired',
 };
 
-const DASHBOARD_COLUMN_ORDER = ['applied', 'screening', 'rejected', 'offer', 'hired'] as const;
+const DASHBOARD_COLUMN_ORDER = [
+	'applied',
+	'screening',
+	'tech',
+	'client',
+	'offer',
+	'blocked',
+	'rejected',
+	'hired',
+] as const;
 
 function initSchema(database: Database.Database): void {
 	database.exec(`
@@ -289,6 +310,7 @@ function initSchema(database: Database.Database): void {
       notes TEXT,
       savedAt TEXT,
       appliedAt TEXT,
+      removed INTEGER DEFAULT 0,
       site TEXT,
       jobDescription TEXT,
       cleaned INTEGER DEFAULT 0,
@@ -346,6 +368,7 @@ function formatDashboardRowForSqlite(row: ScraperResult): Record<string, unknown
 		notes: row.notes || null,
 		savedAt: row.savedAt || null,
 		appliedAt: row.appliedAt || null,
+		removed: row.removed ? 1 : 0,
 		site: row.site || null,
 		jobDescription: row.jobDescription || null,
 	};
@@ -397,6 +420,7 @@ function parseDashboardRowFromSqlite(row: Record<string, unknown>): ScraperResul
 		id: (row.jobId as string) || undefined,
 		savedAt: row.savedAt as string | undefined,
 		appliedAt: row.appliedAt as string | undefined,
+		removed: (row.removed as number) ? true : false,
 		site: row.site as string | undefined,
 		jobDescription: row.jobDescription as string | undefined,
 	};
@@ -899,7 +923,9 @@ export function applyToJob(
 
 export function getJobDashboard(): ScraperResult[] {
 	const database = getDb();
-	const rows = database.prepare('SELECT rowid, * FROM job_dashboard').all() as (Record<string, unknown> & {
+	const rows = database
+		.prepare('SELECT rowid, * FROM job_dashboard WHERE removed = 0 OR removed IS NULL')
+		.all() as (Record<string, unknown> & {
 		rowid: number;
 	})[];
 	let changed = false;
@@ -1003,6 +1029,8 @@ export function insertDashboardJob(job: ScraperResult): ScraperResult {
 		notes: job.notes || '',
 	};
 
+	const row = formatDashboardRowForSqlite(dashboardJob);
+
 	const insertDashboard = database.prepare(`
     INSERT INTO job_dashboard
       (url, jobId, title, snippet, company, postedDate, aiSummary, queryAffinity, parameters,
@@ -1011,8 +1039,34 @@ export function insertDashboardJob(job: ScraperResult): ScraperResult {
       (@url, @jobId, @title, @snippet, @company, @postedDate, @aiSummary, @queryAffinity,
        @parameters, @source, @status, @column, @interviewRounds, @notes, @savedAt, @appliedAt)
   `);
-	const row = formatDashboardRowForSqlite(dashboardJob);
-	insertDashboard.run(row);
+
+	// Restore an existing soft-deleted row matching the (url, jobId) primary key before
+	// attempting a new insert, so re-adding a removed job doesn't fail on a duplicate key.
+	const restored = database
+		.prepare(
+			`UPDATE job_dashboard SET
+        removed = 0,
+        title = @title,
+        snippet = @snippet,
+        company = @company,
+        postedDate = @postedDate,
+        aiSummary = @aiSummary,
+        queryAffinity = @queryAffinity,
+        parameters = @parameters,
+        source = @source,
+        status = @status,
+        column = @column,
+        interviewRounds = @interviewRounds,
+        notes = @notes,
+        savedAt = @savedAt,
+        appliedAt = @appliedAt
+        WHERE url = @url AND jobId = @jobId`
+		)
+		.run(row);
+
+	if (restored.changes === 0) {
+		insertDashboard.run(row);
+	}
 
 	return dashboardJob;
 }
@@ -1020,11 +1074,11 @@ export function insertDashboardJob(job: ScraperResult): ScraperResult {
 export function removeDashboardJob(url?: string, id?: string): void {
 	const database = getDb();
 	if (url && id) {
-		database.prepare('DELETE FROM job_dashboard WHERE url = ? AND jobId = ?').run(url, id);
+		database.prepare('UPDATE job_dashboard SET removed = 1 WHERE url = ? AND jobId = ?').run(url, id);
 	} else if (url) {
-		database.prepare('DELETE FROM job_dashboard WHERE url = ?').run(url);
+		database.prepare('UPDATE job_dashboard SET removed = 1 WHERE url = ?').run(url);
 	} else if (id) {
-		database.prepare('DELETE FROM job_dashboard WHERE jobId = ?').run(id);
+		database.prepare('UPDATE job_dashboard SET removed = 1 WHERE jobId = ?').run(id);
 	}
 }
 
