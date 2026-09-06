@@ -2463,3 +2463,14 @@ server.listen(PORT, () => {
 		}
 	}
 });
+
+server.on('error', (err: Error & { code?: string }) => {
+	if (err.code === 'EADDRINUSE') {
+		console.error(
+			`\n[Start] Port ${PORT} is already in use. Another instance is running on this port.\n` +
+				`[Start] Stop it (or kill any orphaned node process on port ${PORT}) before starting.\n`
+		);
+		process.exit(1);
+	}
+	throw err;
+});
