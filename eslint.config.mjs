@@ -48,7 +48,6 @@ export default [
 			'quotes': ['error', 'single', { avoidEscape: true }],
 			'@typescript-eslint/no-require-imports': 'off',
 			'@typescript-eslint/no-var-requires': 'off',
-
 			'array-bracket-newline': ['error', 'consistent'],
 			'arrow-body-style': ['error', 'as-needed'],
 			'arrow-parens': ['error', 'as-needed'],
@@ -75,12 +74,11 @@ export default [
 				{
 					'alphabetize': {
 						'order': 'asc',
-						'caseInsensitive': true
+						'caseInsensitive': true,
 					},
-					'newlines-between': 'never'
-				}
+					'newlines-between': 'never',
+				},
 			],
-			
 			'lines-between-class-members': ['error', 'always', { exceptAfterSingleLine: true }],
 			'object-shorthand': 'error',
 			'object-curly-spacing': ['error', 'always'],
