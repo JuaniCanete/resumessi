@@ -35,7 +35,7 @@ ATS Tier: {ats_tier}
 ATS Feedback: {ats_feedback}
 LIMIT_REQUEST: {target_words} words (target, body only)
 LIMIT_MAX: {max_words} words (hard ceiling, body only)
-OPTINAL_SALUTATION: {include_salutation_signoff}
+OPTIONAL_SALUTATION: {include_salutation_signoff}
 
 # FOCUS AREA ANCHORS
 {focus_area_anchors}
@@ -50,7 +50,7 @@ OPTINAL_SALUTATION: {include_salutation_signoff}
 - STOP writing once you have completed exactly {paragraph_count} paragraphs. Do not continue.
 - You must conclude the letter completely within LIMIT_MAX ({max_words} words). As you approach LIMIT_MAX, start closing the loop — do not start new points.
 - If you reach LIMIT_MAX mid-sentence, finish that sentence and stop immediately.
-- If OPTINAL_SALUTATION parameter if present must be added, otherwise must be ommited
+- If OPTIONAL_SALUTATION parameter if present must be added, otherwise must be ommited
 
 # OPTIONAL SALUTATION & SIGN-OFF
-OPTINAL_SALUTATION is defined by {include_salutation_signoff}
+OPTIONAL_SALUTATION is defined by {include_salutation_signoff}
