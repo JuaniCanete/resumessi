@@ -1,5 +1,5 @@
-import { defineConfig } from '@playwright/test';
 import { join } from 'node:path';
+import { defineConfig } from '@playwright/test';
 
 const TEST_DB_PATH = join(__dirname, '..', 'data', 'test', 'jobdata-test.db');
 

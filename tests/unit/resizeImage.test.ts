@@ -8,8 +8,8 @@
 'use strict';
 
 import assert from 'node:assert/strict';
-import { resizeImage } from '../../public/utils';
 import { test } from 'node:test';
+import { resizeImage } from '../../public/utils';
 
 // ── Mock Setup ────────────────────────────────────────────────────────────────
 

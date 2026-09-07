@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { buildScraperSearchUrls } from '../../src/scraper/pagination';
 import { test } from 'node:test';
+import { buildScraperSearchUrls } from '../../src/scraper/pagination';
 
 test('buildScraperSearchUrls adds pagination offsets for LinkedIn', () => {
 	const urls = buildScraperSearchUrls('https://www.linkedin.com/jobs/search/?keywords=react', 'linkedin', 3);

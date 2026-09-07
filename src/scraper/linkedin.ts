@@ -1,12 +1,12 @@
-import { LINKEDIN_CARD_SELECTORS } from './selectors';
-import { createScraperDebugSession } from '../utils/logger';
 import fs from 'fs';
-import { generateLinkedInStorageState } from '../../scripts/linkedin-auth';
 import path from 'path';
+import { generateLinkedInStorageState } from '../../scripts/linkedin-auth';
 import { updateJobDescription } from '../storage/jobDataSqlite';
-import type { ScraperQuery, ScraperResult } from './types';
-import { buildScraperSearchUrl, buildScraperSearchUrls } from './pagination';
+import { createScraperDebugSession } from '../utils/logger';
 import { launchStealthBrowser, randomDelay } from './browser';
+import { buildScraperSearchUrl, buildScraperSearchUrls } from './pagination';
+import { LINKEDIN_CARD_SELECTORS } from './selectors';
+import type { ScraperQuery, ScraperResult } from './types';
 
 const STORAGE_FILE =
 	process.env.LINKEDIN_STORAGE_FILE || path.join(process.cwd(), 'data', 'storage-state', 'linkedin.json');

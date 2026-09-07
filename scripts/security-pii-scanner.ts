@@ -1,5 +1,5 @@
-import * as fs from 'fs';
 import { execSync } from 'child_process';
+import * as fs from 'fs';
 
 const RED = '\x1b[31m';
 const YELLOW = '\x1b[33m';

@@ -7,21 +7,26 @@
  * Usage: npm start
  */
 import 'dotenv/config';
+import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as http from 'http';
 import * as https from 'https';
 import * as path from 'path';
-import { initSessionLogger } from './src/utils/logger';
-import { DEFAULT_AI_INFERENCE_ORDER, getProvidersMetadata } from './src/models';
-
-initSessionLogger();
 import { generateLinkedInStorageState } from './scripts/linkedin-auth';
-import { scrapeGoogle } from './src/scraper/google';
-import { scrapeRemoteRocketship } from './src/scraper/remoterocketship';
-import { spawn } from 'child_process';
-import type { ScraperQuery, ScraperResult } from './src/scraper/types';
+import { DEFAULT_AI_INFERENCE_ORDER, getProvidersMetadata } from './src/models';
 import { getProviderConfig, validateInferenceRequest, safeJsonParse } from './src/providers';
+import { runInference, runPolish } from './src/router';
+import { scrapeGoogle } from './src/scraper/google';
+import {
+	scrapeLinkedIn,
+	validateLinkedInStorageState,
+	fetchLinkedInJobDescription,
+	normalizeLinkedInJobUrl,
+	LinkedInSessionExpiredError,
+} from './src/scraper/linkedin';
+import { scrapeRemoteRocketship } from './src/scraper/remoterocketship';
 import { getRequestPath, isCollectionUrl } from './src/scraper/runtime-utils';
+import type { ScraperQuery, ScraperResult } from './src/scraper/types';
 import {
 	loadJobData,
 	markScrapingResultRemoved,
@@ -42,14 +47,8 @@ import {
 	clearScraperResultsBySource,
 	getDb,
 } from './src/storage/jobDataSqlite';
-import { runInference, runPolish } from './src/router';
-import {
-	scrapeLinkedIn,
-	validateLinkedInStorageState,
-	fetchLinkedInJobDescription,
-	normalizeLinkedInJobUrl,
-	LinkedInSessionExpiredError,
-} from './src/scraper/linkedin';
+import { initSessionLogger } from './src/utils/logger';
+initSessionLogger();
 
 // Wrap in try-catch for graceful degradation
 let pdfParse: ((buffer: Buffer) => Promise<{ text: string }>) | null = null;

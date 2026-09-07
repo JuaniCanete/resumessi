@@ -1,7 +1,17 @@
-import { JSDOM } from 'jsdom';
-import { TextEncoder } from 'node:util';
 import assert from 'node:assert/strict';
 import { test, beforeEach, afterEach } from 'node:test';
+import { TextEncoder } from 'node:util';
+import { JSDOM } from 'jsdom';
+// Import after DOM setup
+import {
+	getVariantStyles,
+	showConfirmModal,
+	showToast,
+	confirmDelete,
+	confirmUnsave,
+	showApplyModal,
+	__resetModalState,
+} from '../../public/utils/modal';
 
 // Polyfill for JSDOM
 global.TextEncoder = TextEncoder;
@@ -28,17 +38,6 @@ global.KeyboardEvent = dom.window.KeyboardEvent;
 global.customElements = dom.window.customElements;
 global.requestAnimationFrame = (cb: FrameRequestCallback) => setTimeout(cb, 16);
 global.cancelAnimationFrame = (id: number) => clearTimeout(id);
-
-// Import after DOM setup
-import {
-	getVariantStyles,
-	showConfirmModal,
-	showToast,
-	confirmDelete,
-	confirmUnsave,
-	showApplyModal,
-	__resetModalState,
-} from '../../public/utils/modal';
 
 beforeEach(() => {
 	document.body.innerHTML = '';

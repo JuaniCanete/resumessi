@@ -3,8 +3,8 @@
  * Extracted from public/main.html inline script
  */
 
-import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import { safeJsonParse } from '../src/providers';
+import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import { buildQueryUrl, resizeImage, showToast } from './utils';
 
 // Declare global function for TypeScript benefit

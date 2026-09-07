@@ -1,6 +1,6 @@
-import Database from 'better-sqlite3';
-import { join } from 'node:path';
 import { existsSync, cpSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import Database from 'better-sqlite3';
 
 const DATA_DIR = join(process.cwd(), 'data');
 const DB_PATH = join(DATA_DIR, 'jobdata.db');

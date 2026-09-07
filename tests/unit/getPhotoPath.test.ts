@@ -13,7 +13,6 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-
 /**
  * Mirror of the photo resolution logic from public/main.html.
  * @param {object|null} uploadedPhoto - base64 data URL from localStorage, or null

@@ -1,8 +1,8 @@
 import { createScraperDebugSession } from '../utils/logger';
+import { launchStealthBrowser, randomDelay } from './browser';
+import { buildScraperSearchUrl, buildScraperSearchUrls } from './pagination';
 import { REMOTEROCKETSHIP_CARD_SELECTORS, REMOTEROCKETSHIP_FIELD_SELECTORS, trySelectors } from './selectors';
 import type { ScraperQuery, ScraperResult } from './types';
-import { buildScraperSearchUrl, buildScraperSearchUrls } from './pagination';
-import { launchStealthBrowser, randomDelay } from './browser';
 
 export class RemoteRocketshipError extends Error {
 	constructor(

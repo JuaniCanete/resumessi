@@ -1,8 +1,8 @@
-import type { ScraperQuery } from '../../src/scraper/types';
 import assert from 'node:assert/strict';
-import { buildScraperSearchUrl } from '../../src/scraper/pagination';
-import { DEFAULT_TARGET_DOMAINS, extractGoogleResultUrl, scrapeGoogle } from '../../src/scraper/google';
 import { mock, test } from 'node:test';
+import { DEFAULT_TARGET_DOMAINS, extractGoogleResultUrl, scrapeGoogle } from '../../src/scraper/google';
+import { buildScraperSearchUrl } from '../../src/scraper/pagination';
+import type { ScraperQuery } from '../../src/scraper/types';
 
 const mockSerpApiResponse = {
 	organic_results: [

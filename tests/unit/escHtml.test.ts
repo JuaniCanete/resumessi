@@ -13,8 +13,8 @@
 'use strict';
 
 import assert from 'node:assert/strict';
-import { escHtml } from '../../public/utils';
 import { test } from 'node:test';
+import { escHtml } from '../../public/utils';
 
 test('escHtml escapes < and > to numeric refs', () => {
 	assert.equal(escHtml('<b>'), '&#60;b&#62;');
