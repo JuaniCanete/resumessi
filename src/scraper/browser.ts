@@ -1,8 +1,8 @@
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { chromium } from 'playwright-extra';
 import fs from 'fs';
 import path from 'path';
 import type { Browser, BrowserContext } from 'playwright-core';
+import { chromium } from 'playwright-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
 // Attach stealth plugin
 chromium.use(StealthPlugin());

@@ -1,8 +1,8 @@
-import * as http from 'node:http';
 import assert from 'node:assert/strict';
-import { join } from 'node:path';
-import { rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { spawn, execSync, type ChildProcess } from 'node:child_process';
+import { rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import * as http from 'node:http';
+import { join } from 'node:path';
 import { test, before, after } from 'node:test';
 
 const TEST_PORT = 3447;

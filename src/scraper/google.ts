@@ -1,6 +1,6 @@
 import { createScraperDebugSession } from '../utils/logger';
-import type { ScraperQuery, ScraperResult } from './types';
 import { buildScraperSearchUrl, DEFAULT_TARGET_DOMAINS } from './pagination';
+import type { ScraperQuery, ScraperResult } from './types';
 
 export { DEFAULT_TARGET_DOMAINS };
 

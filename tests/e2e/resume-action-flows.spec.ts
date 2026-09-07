@@ -1,5 +1,5 @@
-import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
 import path from 'path';
+import { jobDescriptionFixtures } from '../fixtures/resume-fixtures';
 import { test, expect } from './test-setup';
 
 // Extend window type for test functions exposed by app.ts

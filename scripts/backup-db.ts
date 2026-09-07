@@ -1,5 +1,5 @@
-import { join } from 'node:path';
 import { existsSync, mkdirSync, cpSync, readdirSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
 
 const DATA_DIR = join(process.cwd(), 'data');
 const BACKUP_DIR = join(DATA_DIR, 'backups');

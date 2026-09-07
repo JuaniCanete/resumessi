@@ -1,7 +1,21 @@
 import assert from 'node:assert/strict';
-import { join } from 'node:path';
 import { rmSync, existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { test, before, after } from 'node:test';
+import {
+	setScrapingRun,
+	updateDashboardJob,
+	removeDashboardJob,
+	insertDashboardJob,
+	getJobDashboard,
+	getScrapingResults,
+	updateJobDescription,
+	applyToJob,
+	initStorage,
+	getDb,
+	closeDb,
+	setDbPathForTesting,
+} from '../../src/storage/jobDataSqlite';
 
 const TEST_DB_BASE = join(__dirname, '..', '..', 'data', 'test', 'jobdata-unit-test');
 const TEST_DB_DIR = join(__dirname, '..', '..', 'data', 'test');
@@ -52,21 +66,6 @@ function makeTestDb(): string {
 	const testDbPath = `${TEST_DB_BASE}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.db`;
 	return testDbPath;
 }
-
-import {
-	setScrapingRun,
-	updateDashboardJob,
-	removeDashboardJob,
-	insertDashboardJob,
-	getJobDashboard,
-	getScrapingResults,
-	updateJobDescription,
-	applyToJob,
-	initStorage,
-	getDb,
-	closeDb,
-	setDbPathForTesting,
-} from '../../src/storage/jobDataSqlite';
 
 function uniqueId(label: string): string {
 	return `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;

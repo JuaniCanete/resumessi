@@ -1,18 +1,6 @@
-import { JSDOM } from 'jsdom';
 import assert from 'node:assert/strict';
 import { test, beforeEach, afterEach } from 'node:test';
-
-// Setup JSDOM with localStorage
-const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
-	url: 'http://localhost',
-	pretendToBeVisual: true,
-});
-
-global.window = dom.window as unknown as Window & typeof globalThis;
-global.document = dom.window.document;
-// global.navigator = dom.window.navigator; // read-only
-global.localStorage = dom.window.localStorage;
-
+import { JSDOM } from 'jsdom';
 // Import after DOM setup
 import {
 	getStorageItem,
@@ -34,6 +22,17 @@ import {
 	clearAtsScanResults,
 	LOCALSTORAGE_KEYS,
 } from '../../public/utils/storage';
+
+// Setup JSDOM with localStorage
+const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+	url: 'http://localhost',
+	pretendToBeVisual: true,
+});
+
+global.window = dom.window as unknown as Window & typeof globalThis;
+global.document = dom.window.document;
+// global.navigator = dom.window.navigator; // read-only
+global.localStorage = dom.window.localStorage;
 
 function setupDOM(): void {
 	dom.window.localStorage.clear();

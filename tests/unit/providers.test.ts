@@ -13,12 +13,6 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type {
-	CohereRequestBody,
-	MistralRequestBody,
-	GroqRequestBody,
-	GeminiRequestBody,
-} from '../../src/types/provider';
 import {
 	buildRequest,
 	parseResponse,
@@ -28,6 +22,12 @@ import {
 	extractJsonFromText,
 	safeJsonParse,
 } from '../../src/providers';
+import type {
+	CohereRequestBody,
+	MistralRequestBody,
+	GroqRequestBody,
+	GeminiRequestBody,
+} from '../../src/types/provider';
 
 // ── buildRequest ──────────────────────────────────────────────────────────────
 

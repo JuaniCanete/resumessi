@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { join } from 'node:path';
-import type { ScraperResult, JobData } from '../../src/storage/jobDataSqlite';
 import { rmSync, mkdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { test, before, after, beforeEach } from 'node:test';
+import type { ScraperResult, JobData } from '../../src/storage/jobDataSqlite';
 
 const TEST_DATA_DIR = join(process.cwd(), 'data', 'test', 'sqlite-unit');
 // The module computes DATA_DIR = join(process.cwd(), 'data'), so when we

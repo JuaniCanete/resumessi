@@ -1,5 +1,5 @@
-import { join } from 'node:path';
 import { existsSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 
 const TEST_DB_PATH = join(__dirname, '..', 'data', 'test', 'jobdata-test.db');
 

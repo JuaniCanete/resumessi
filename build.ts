@@ -8,9 +8,9 @@
  * Usage: npm run build
  */
 
-import * as esbuild from 'esbuild';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as esbuild from 'esbuild';
 
 const ROOT = path.join(__dirname);
 

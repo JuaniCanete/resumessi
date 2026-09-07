@@ -13,7 +13,6 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-
 import { formatDate, renderSkills, getDuration } from '../../public/utils';
 
 test('formatDate returns "Present" for null/undefined/empty', () => {

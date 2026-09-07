@@ -1,7 +1,7 @@
-import { logInferenceCall } from './utils/logger';
+import { callProvider, getProviderConfig } from './providers';
 import type { ProviderName, ProviderMap, ProviderAttempt, ProviderResponse, InferenceParams } from './types/provider';
 import type { RouterResult, RouterError, ResumeData } from './types/router';
-import { callProvider, getProviderConfig } from './providers';
+import { logInferenceCall } from './utils/logger';
 
 export type CallProviderFn = (
 	provider: ProviderName,

@@ -4,10 +4,10 @@
  * Uses better-sqlite3 for persistent, ACID-compliant storage
  */
 
-import Database from 'better-sqlite3';
-import { ScraperResult } from '../types/scraper';
 import { mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import Database from 'better-sqlite3';
+import { ScraperResult } from '../types/scraper';
 
 export type { ScraperResult };
 

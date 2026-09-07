@@ -48,7 +48,6 @@ export default [
 			'quotes': ['error', 'single', { avoidEscape: true }],
 			'@typescript-eslint/no-require-imports': 'off',
 			'@typescript-eslint/no-var-requires': 'off',
-
 			'array-bracket-newline': ['error', 'consistent'],
 			'arrow-body-style': ['error', 'as-needed'],
 			'arrow-parens': ['error', 'as-needed'],
@@ -70,6 +69,16 @@ export default [
 			// TypeScript handles module resolution; ESLint's resolver is not TS-aware without extra config.
 			'import-x/extensions': 'off',
 			'import-x/no-unresolved': 'off',
+			'import-x/order': [
+				'error',
+				{
+					'alphabetize': {
+						'order': 'asc',
+						'caseInsensitive': true,
+					},
+					'newlines-between': 'never',
+				},
+			],
 			'lines-between-class-members': ['error', 'always', { exceptAfterSingleLine: true }],
 			'object-shorthand': 'error',
 			'object-curly-spacing': ['error', 'always'],
@@ -96,16 +105,7 @@ export default [
 			'prefer-template': 'error',
 			// require-await fires on test mock stubs that intentionally return sync values inside async fns.
 			'require-await': 'error',
-			'sort-imports': [
-				'error',
-				{
-					ignoreCase: false,
-					ignoreDeclarationSort: false,
-					ignoreMemberSort: true,
-					memberSyntaxSortOrder: ['none', 'all', 'single', 'multiple'],
-					allowSeparatedGroups: true,
-				},
-			],
+			'sort-imports': 'off',
 		},
 	},
 	{
