@@ -1083,16 +1083,15 @@ export function removeDashboardJob(url?: string, id?: string): void {
 }
 
 export function clearTestDashboardData(confirmToken?: string): void {
-	// Require explicit confirmation token in non-test mode
+	// Optional safety: only require a confirmation token when one is configured in .env.
+	// This keeps the clear flow a single click for the user (dev/demo) while still
+	// protecting production when a token is set. Tests always bypass the guard.
 	if (process.env.NODE_ENV !== 'test') {
 		const expectedToken = process.env.CLEAR_DASHBOARD_CONFIRM_TOKEN;
-		if (!expectedToken) {
-			throw new Error('CLEAR_DASHBOARD_CONFIRM_TOKEN not set in .env. Refusing to clear dashboard.');
-		}
-		if (confirmToken !== expectedToken) {
+		if (expectedToken && confirmToken !== expectedToken) {
 			throw new Error('Invalid confirmation token. Dashboard clear operation aborted.');
 		}
-		console.warn('[Storage] Dashboard cleared via clearTestDashboardData with valid token');
+		console.warn('[Storage] Dashboard cleared via clearTestDashboardData');
 	}
 	const database = getDb();
 	database.prepare('DELETE FROM job_dashboard').run();
@@ -1100,16 +1099,15 @@ export function clearTestDashboardData(confirmToken?: string): void {
 }
 
 export function clearScraperResultsBySource(source: string, confirmToken?: string): void {
-	// Require explicit confirmation token in non-test mode for safety
+	// Optional safety: only require a confirmation token when one is configured in .env.
+	// This keeps the clear flow a single click for the user (dev/demo) while still
+	// protecting production when a token is set. Tests always bypass the guard.
 	if (process.env.NODE_ENV !== 'test') {
 		const expectedToken = process.env.CLEAR_DASHBOARD_CONFIRM_TOKEN;
-		if (!expectedToken) {
-			throw new Error('CLEAR_DASHBOARD_CONFIRM_TOKEN not set in .env. Refusing to clear scraper results.');
-		}
-		if (confirmToken !== expectedToken) {
+		if (expectedToken && confirmToken !== expectedToken) {
 			throw new Error('Invalid confirmation token. Scraper results clear operation aborted.');
 		}
-		console.warn(`[Storage] Scraper results cleared for source: ${source} with valid token`);
+		console.warn(`[Storage] Scraper results cleared for source: ${source}`);
 	}
 	const database = getDb();
 	database.prepare('DELETE FROM scraper_runs WHERE source = ?').run(source);

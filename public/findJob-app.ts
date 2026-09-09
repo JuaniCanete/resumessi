@@ -4,6 +4,7 @@ import {
 	buildQueryUrl,
 	confirmDelete,
 	confirmUnsave,
+	showConfirmModal,
 	showToast,
 	showApplyModal,
 	isCollectionUrl,
@@ -500,6 +501,7 @@ async function loadDataAndRender(sourceParam: 'linkedin' | 'google' | 'remoteroc
 function renderScrapingResults(): void {
 	if (currentTab !== 'scraping') return;
 	if (isLoadingResults) return;
+	updateClearAllResultsButtonState();
 
 	const activePayload = payloadsBySource[currentSource];
 	const isExtracting = extractionStatus[currentSource] === 'extracting';
@@ -796,38 +798,59 @@ async function renderSavedJobs(): Promise<void> {
 
 	container.innerHTML = '';
 
+	let allSaved: ScraperResult[] = [];
+
 	try {
 		const resp = await fetch('/api/job-data/saved');
-		if (!resp.ok) throw new Error('Failed to load saved jobs');
-		const allSaved = (await resp.json()) as ScraperResult[];
-
-		const totalElem = document.getElementById('saved-meta-total');
-		if (totalElem) totalElem.textContent = String(allSaved.length);
-
-		const sourcesElem = document.getElementById('saved-meta-sources');
-		if (sourcesElem) {
-			const sources = new Set(allSaved.map(r => r.source));
-			sourcesElem.textContent =
-				sources.size > 0
-					? Array.from(sources)
-							.map(s => s.charAt(0).toUpperCase() + s.slice(1))
-							.join(', ')
-					: 'None';
-		}
-
-		if (allSaved.length === 0) {
-			if (noResults) noResults.style.display = 'block';
-			return;
-		}
-		if (noResults) noResults.style.display = 'none';
-
-		for (const item of allSaved) {
-			const card = createJobCard(item, 'saved');
-			container.appendChild(card);
+		if (resp.ok) {
+			allSaved = (await resp.json()) as ScraperResult[];
 		}
 	} catch (err: unknown) {
-		console.error('Failed to load saved jobs:', (err as Error).message);
-		showToast({ message: 'Failed to load saved jobs', type: 'error' });
+		console.error('Failed to load saved jobs from API:', (err as Error).message);
+	}
+
+	// Fallback to localStorage if API returned empty or failed
+	if (allSaved.length === 0) {
+		// Note: Saved jobs use 'jobData:savedJobs:{source}' while scraper results use 'scraper-results:{source}'
+		// These are separate namespaces; clearScraperSource only wipes scraper-results, not savedJobs.
+		const linkedinKey = 'jobData:savedJobs:linkedin';
+		const googleKey = 'jobData:savedJobs:google';
+		try {
+			const linkedinRaw = localStorage.getItem(linkedinKey);
+			const googleRaw = localStorage.getItem(googleKey);
+			const linkedinJobs = linkedinRaw ? JSON.parse(linkedinRaw) : [];
+			const googleJobs = googleRaw ? JSON.parse(googleRaw) : [];
+			if (linkedinJobs.length > 0 || googleJobs.length > 0) {
+				allSaved = [...linkedinJobs, ...googleJobs] as ScraperResult[];
+			}
+		} catch {
+			// Ignore localStorage parse errors
+		}
+	}
+
+	const totalElem = document.getElementById('saved-meta-total');
+	if (totalElem) totalElem.textContent = String(allSaved.length);
+
+	const sourcesElem = document.getElementById('saved-meta-sources');
+	if (sourcesElem) {
+		const sources = new Set(allSaved.map(r => r.source));
+		sourcesElem.textContent =
+			sources.size > 0
+				? Array.from(sources)
+						.map(s => s.charAt(0).toUpperCase() + s.slice(1))
+						.join(', ')
+				: 'None';
+	}
+
+	if (allSaved.length === 0) {
+		if (noResults) noResults.style.display = 'block';
+		return;
+	}
+	if (noResults) noResults.style.display = 'none';
+
+	for (const item of allSaved) {
+		const card = createJobCard(item, 'saved');
+		container.appendChild(card);
 	}
 }
 
@@ -1569,6 +1592,30 @@ function createJobCard(item: ScraperResult, view: 'scraping' | 'saved' | 'dashbo
 		});
 		headerActions.appendChild(removeBtn);
 	} else if (view === 'saved') {
+		const RunATSBtn = document.createElement('button');
+		RunATSBtn.className = 'card-action-btn runATS';
+		RunATSBtn.textContent = 'Run ATS';
+		const isCollection = isCollectionUrl(item.url);
+		if (isCollection) {
+			RunATSBtn.disabled = true;
+			RunATSBtn.title = 'Cannot run ATS on a collection page';
+			RunATSBtn.classList.add('card-action-btn--disabled');
+		}
+		RunATSBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			openJdEditModal(item);
+		});
+		headerActions.appendChild(RunATSBtn);
+
+		const showJdBtn = document.createElement('button');
+		showJdBtn.className = 'card-action-btn showJD';
+		showJdBtn.textContent = 'Show JD';
+		showJdBtn.addEventListener('click', (e: MouseEvent) => {
+			e.stopPropagation();
+			showJdForItem(item);
+		});
+		headerActions.appendChild(showJdBtn);
+
 		const unsaveBtn = document.createElement('button');
 		unsaveBtn.className = 'card-action-btn unsave';
 		unsaveBtn.textContent = 'Unsave';
@@ -3390,7 +3437,7 @@ function cancelProvidersSelection(): void {
 (window as unknown as Record<string, unknown>).cancelProvidersSelection = cancelProvidersSelection;
 (window as unknown as Record<string, unknown>).confirmProvidersSelection = confirmProvidersSelection;
 (window as unknown as Record<string, unknown>).clearTestData = clearTestData;
-(window as unknown as Record<string, unknown>).clearScraperSource = clearScraperSource;
+(window as unknown as Record<string, unknown>).clearCurrentScraperSource = clearCurrentScraperSource;
 (window as unknown as Record<string, unknown>).refreshJd = refreshJd;
 (window as unknown as Record<string, unknown>).fetchJdForAts = fetchJdForAts;
 (window as unknown as Record<string, unknown>).cleanJdUsingAi = cleanJdUsingAi;
@@ -3460,6 +3507,19 @@ document.addEventListener('DOMContentLoaded', () => {
 		.catch(() => {
 			// Ignore config fetch errors
 		});
+
+	// Security: warn if clear confirmation token not set in production
+	fetch('/config.json')
+		.then(r => r.json())
+		.then(config => {
+			const isTestMode = config.NODE_ENV === 'test';
+			if (!isTestMode && !config.CLEAR_DASHBOARD_CONFIRM_TOKEN) {
+				console.warn('[Security] CLEAR_DASHBOARD_CONFIRM_TOKEN not set — clear endpoints are unprotected');
+			}
+		})
+		.catch(() => {
+			// Ignore config fetch errors
+		});
 });
 
 async function clearTestData(): Promise<void> {
@@ -3475,22 +3535,70 @@ async function clearTestData(): Promise<void> {
 	}
 }
 
-async function clearScraperSource(source: 'linkedin' | 'google' | 'remoterocketship'): Promise<void> {
-	if (!confirm(`This will delete ALL ${source} scraper results. Are you sure?`)) return;
-
-	try {
-		const resp = await fetch('/api/scraper/clear-source', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ source }),
-		});
-		if (!resp.ok) throw new Error('Failed to clear scraper source');
-		showToast({ message: `${source} scraper results cleared`, type: 'success' });
-		// Reload the current source data
-		if (source === currentSource) {
-			loadDataAndRender(source);
-		}
-	} catch (err: unknown) {
-		showToast({ message: `Failed to clear scraper source: ${(err as Error).message}`, type: 'error' });
+function updateClearAllResultsButtonState(): void {
+	const btn = document.getElementById('clear-all-results') as HTMLButtonElement | null;
+	if (!btn) return;
+	const payload = payloadsBySource[currentSource];
+	const hasResults = !!payload && Array.isArray(payload.results) && payload.results.length > 0;
+	btn.disabled = !hasResults;
+	if (hasResults) {
+		btn.classList.remove('card-action-btn--disabled');
+	} else {
+		btn.classList.add('card-action-btn--disabled');
 	}
+}
+
+function clearCurrentScraperSource(): void {
+	clearScraperSource(currentSource);
+}
+
+function clearScraperSource(source: 'linkedin' | 'google' | 'remoterocketship'): void {
+	const sourceLabel = getSourceDisplayName(source);
+
+	showConfirmModal({
+		title: 'Remove Item',
+		message: `This will remove ALL ${sourceLabel} scraper results. Are you sure?`,
+		confirmText: 'Remove All',
+		cancelText: 'Cancel',
+		variant: 'danger',
+		onCancel: () => {
+			// no-op; user dismissed the confirmation
+		},
+		onConfirm: async () => {
+			try {
+				const resp = await fetch('/api/scraper/clear-source', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ source }),
+				});
+				if (!resp.ok) throw new Error('Failed to clear scraper source');
+
+				// Wipe browser caches so the cleared results cannot resurface from local storage.
+				const rawSession = sessionStorage.getItem('scraper-results');
+				if (rawSession) {
+					try {
+						const parsed = JSON.parse(rawSession) as ScraperRunPayload;
+						if (parsed.source === source) sessionStorage.removeItem('scraper-results');
+					} catch {
+						// Ignore malformed session cache
+					}
+				}
+				localStorage.removeItem(getScraperResultsStorageKey(source));
+				payloadsBySource[source] = null;
+				extractionStatus[source] = 'idle';
+
+				await refreshScrapingResultsButton();
+				showToast({ message: `${sourceLabel} scraper results cleared`, type: 'success' });
+
+				// Reload the current source data so the empty state renders immediately.
+				if (source === currentSource) {
+					loadDataAndRender(source);
+				} else {
+					renderScrapingResults();
+				}
+			} catch (err: unknown) {
+				showToast({ message: `Failed to clear scraper source: ${(err as Error).message}`, type: 'error' });
+			}
+		},
+	});
 }

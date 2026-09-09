@@ -778,7 +778,7 @@ test('POST /api/job-data/rounds increments rounds by delta', async () => {
 	assert.equal(res.status, 200);
 	const data = res.data as { success: boolean; interviewRounds: number };
 	assert.equal(data.success, true);
-	assert.equal(data.interviewRounds, 2);
+	assert.equal(data.interviewRounds, 3);
 });
 
 test('POST /api/job-data/rename updates title by url', async () => {

@@ -7,6 +7,9 @@ export class FindJobPage {
 	readonly toastContainer: Locator;
 	readonly sharedModal: Locator;
 	readonly resultsList: Locator;
+	readonly savedResultsList: Locator;
+	readonly savedTab: Locator;
+	readonly clearAllResultsBtn: Locator;
 	readonly noResults: Locator;
 	readonly pagination: Locator;
 	readonly metaTimestamp: Locator;
@@ -37,6 +40,9 @@ export class FindJobPage {
 		this.toastContainer = page.getByTestId('shared-toast-container');
 		this.sharedModal = page.getByTestId('shared-modal').first();
 		this.resultsList = page.getByTestId('results-list');
+		this.savedResultsList = page.getByTestId('saved-results-list');
+		this.savedTab = page.getByTestId('sidebar-tab-saved');
+		this.clearAllResultsBtn = page.getByTestId('clear-all-results');
 		this.noResults = page.getByTestId('no-results');
 		this.pagination = page.getByTestId('pagination');
 		this.metaTimestamp = page.getByTestId('meta-timestamp');
@@ -363,6 +369,14 @@ export class FindJobPage {
 		return this.getResultCard(cardIndex).locator(`.card-action-btn.${actionClass}`);
 	}
 
+	getSavedCard(cardIndex = 0): Locator {
+		return this.savedResultsList.locator('.result-card').nth(cardIndex);
+	}
+
+	getSavedCardAction(cardIndex: number, actionClass: string): Locator {
+		return this.getSavedCard(cardIndex).locator(`.card-action-btn.${actionClass}`);
+	}
+
 	getApplyLink(cardIndex = 0): Locator {
 		return this.getResultCard(cardIndex).locator('a.result-link-btn');
 	}
@@ -409,5 +423,59 @@ export class FindJobPage {
 			}
 			await route.continue();
 		});
+	}
+
+	async mockSavedJobs(jobs: Array<Record<string, unknown>> = []): Promise<void> {
+		await this.page.route('**/api/job-data/saved', async route => {
+			if (route.request().method() === 'POST') {
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({ success: true }),
+				});
+				return;
+			}
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify(jobs),
+			});
+		});
+	}
+
+	async seedSavedStorage(jobs: Array<Record<string, unknown>> = []): Promise<void> {
+		await this.page.evaluate(jobsData => {
+			const linkedinJobs = jobsData.filter(j => j.source === 'linkedin');
+			const googleJobs = jobsData.filter(j => j.source === 'google');
+			const rrJobs = jobsData.filter(j => j.source === 'remoterocketship');
+			if (linkedinJobs.length > 0) {
+				localStorage.setItem('jobData:savedJobs:linkedin', JSON.stringify(linkedinJobs));
+			}
+			if (googleJobs.length > 0) {
+				localStorage.setItem('jobData:savedJobs:google', JSON.stringify(googleJobs));
+			}
+			if (rrJobs.length > 0) {
+				localStorage.setItem('jobData:savedJobs:remoterocketship', JSON.stringify(rrJobs));
+			}
+		}, jobs);
+	}
+
+	getAllSavedCards(): Locator {
+		return this.savedResultsList.locator('.result-card');
+	}
+
+	async mockClearSourceApi(): Promise<void> {
+		await this.page.route('**/api/scraper/clear-source', async route => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ success: true }),
+			});
+		});
+	}
+
+	async gotoSaved(): Promise<void> {
+		await this.savedTab.click();
+		await this.page.locator('#tab-saved').waitFor({ state: 'visible' });
 	}
 }

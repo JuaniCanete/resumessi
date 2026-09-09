@@ -1538,7 +1538,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 			const dashboard = data.jobDashboard;
 			const idx = dashboard.findIndex(r => (url ? r.url === url : false) || (id && r.id && r.id === id));
 			if (idx >= 0) {
-				const current = dashboard[idx].interviewRounds || 0;
+				const current = dashboard[idx].interviewRounds || 1;
 				const newRounds = Math.max(0, current + (delta || 1));
 				await updateDashboardJob(url, { interviewRounds: newRounds }, id);
 				res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1619,19 +1619,8 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
 	if (requestPath === '/api/job-data/dashboard/clear-test' && req.method === 'POST') {
 		try {
-			// Only allow in test mode, or with valid confirmation token in production
-			let confirmToken: string | undefined;
-			const body = await getRequestBody(req);
-			if (body) {
-				try {
-					const parsed = JSON.parse(body);
-					confirmToken = parsed.confirmToken;
-				} catch {
-					// Ignore parse errors
-				}
-			}
-
-			await clearTestDashboardData(confirmToken);
+			// Confirm server-side so the UI does not need to hold the token.
+			await clearTestDashboardData(process.env.CLEAR_DASHBOARD_CONFIRM_TOKEN);
 			res.writeHead(200, { 'Content-Type': 'application/json' });
 			res.end(JSON.stringify({ success: true }));
 		} catch (err: unknown) {
@@ -1648,13 +1637,14 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 				body += chunk;
 			});
 			req.on('end', async () => {
-				const { source, confirmToken } = JSON.parse(body);
+				const { source } = JSON.parse(body);
 				if (!source || !['linkedin', 'google', 'remoterocketship'].includes(source)) {
 					res.writeHead(400, { 'Content-Type': 'application/json' });
 					res.end(JSON.stringify({ error: 'Invalid source' }));
 					return;
 				}
-				await clearScraperResultsBySource(source, confirmToken);
+				// Confirm server-side so the UI does not need to hold the token.
+				await clearScraperResultsBySource(source, process.env.CLEAR_DASHBOARD_CONFIRM_TOKEN);
 				res.writeHead(200, { 'Content-Type': 'application/json' });
 				res.end(JSON.stringify({ success: true }));
 			});

@@ -425,7 +425,7 @@
 
 			.result-source-badge {
 				display: inline-block;
-				padding: 2px 8px;
+				padding: 5px 8px;
 				border-radius: 4px;
 				font-size: 10px;
 				font-weight: 700;
@@ -807,6 +807,10 @@
 				cursor: pointer;
 				transition: background 0.2s;
 				white-space: nowrap;
+			}
+
+			#clear-all-results {
+				padding: 8px 12px;
 			}
 
 			.card-action-btn:hover {
@@ -1771,12 +1775,14 @@
 			/* Actions Dropdown (mirrored from main.html) */
 			.actions-btn-wrapper {
 				position: relative;
-				display: inline-block;
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
 				pointer-events: auto;
 			}
 
 			.actions-dropdown-trigger {
-				padding: 10px 14px;
+				padding: 8px 14px;
 				font-family: 'Comfortaa', sans-serif;
 				font-size: 12px;
 				font-weight: 500;
@@ -1892,11 +1898,16 @@
 						<span class="tab-icon">📄</span>
 						Resume view
 					</button>
-					<button class="sidebar-tab active" data-tab="scraping" onclick="switchTab('scraping')">
+					<button
+						class="sidebar-tab active"
+						data-tab="scraping"
+						data-testid="sidebar-tab-scraping"
+						onclick="switchTab('scraping')"
+					>
 						<span class="tab-icon">🔎</span>
 						Scraping Results
 					</button>
-					<button class="sidebar-tab" data-tab="saved" onclick="switchTab('saved')">
+					<button class="sidebar-tab" data-tab="saved" data-testid="sidebar-tab-saved" onclick="switchTab('saved')">
 						<span class="tab-icon">💾</span>
 						Saved Jobs
 					</button>
@@ -2005,6 +2016,15 @@
 										</button>
 									</div>
 								</div>
+								<button
+									class="card-action-btn remove"
+									id="clear-all-results"
+									data-testid="clear-all-results"
+									onclick="clearCurrentScraperSource()"
+									title="Delete all results for the selected source"
+								>
+									Remove all results
+								</button>
 							</div>
 						</div>
 						<div class="meta-row">
@@ -2072,7 +2092,7 @@
 							<div class="meta-item">Sources: <span id="saved-meta-sources">None</span></div>
 						</div>
 					</div>
-					<div id="saved-results-list" class="results-list"></div>
+					<div id="saved-results-list" data-testid="saved-results-list" class="results-list"></div>
 					<div id="saved-no-results" class="no-results" style="display: none">
 						<h3>No saved jobs yet</h3>
 						<p style="font-size: 13px; color: #64748b">Save jobs from Scraping Results to see them here.</p>

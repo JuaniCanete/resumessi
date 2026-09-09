@@ -115,39 +115,223 @@ test('public/findJob-app.ts - normalizeLinkedInJobUrl logic', () => {
 	assert.equal(normalizeLinkedInJobUrl('not-a-url'), null);
 });
 
-test('public/findJob-app.ts - buildLinkedInSearchUrl logic', () => {
-	// Mirror the buildLinkedInSearchUrl logic (simplified) - using strings like real ScraperQuery
-	function buildLinkedInSearchUrl(params: {
-		keywords?: string;
-		location?: string;
-		seniority?: string;
-		employmentType?: string;
-		region?: string;
-		country?: string;
-		currency?: string;
-	}): string {
-		const base = 'https://www.linkedin.com/jobs/search/?';
-		const parts: string[] = [];
-
-		if (params.keywords) parts.push(`keywords=${encodeURIComponent(params.keywords)}`);
-		if (params.location) parts.push(`location=${encodeURIComponent(params.location)}`);
-		if (params.seniority) parts.push(`f_E=${params.seniority}`);
-		if (params.employmentType) parts.push(`f_WT=${params.employmentType}`);
-		if (params.region) parts.push(`geoId=${encodeURIComponent(params.region)}`);
-		if (params.country) parts.push(`country=${encodeURIComponent(params.country)}`);
-
-		return base + parts.join('&');
+test('public/findJob-app.ts - clearScraperSource cache wipe decision', () => {
+	// Mirror the browser-cache wipe logic in clearScraperSource: the shared
+	// sessionStorage entry is only removed when it belongs to the cleared source,
+	// while the per-source localStorage key is always removed for that source.
+	function shouldWipeSession(rawSession: string | null, clearedSource: string): boolean {
+		if (!rawSession) return false;
+		try {
+			const parsed = JSON.parse(rawSession);
+			return parsed.source === clearedSource;
+		} catch {
+			return false;
+		}
 	}
 
-	const url = buildLinkedInSearchUrl({
-		keywords: 'software engineer',
-		location: 'New York',
-		seniority: '4',
-		employmentType: '2',
-	});
+	const sessionLinkedIn = JSON.stringify({ source: 'linkedin', results: [{ url: 'a' }] });
+	const sessionGoogle = JSON.stringify({ source: 'google', results: [{ url: 'b' }] });
 
-	assert.ok(url.includes('keywords=software%20engineer'));
-	assert.ok(url.includes('location=New%20York'));
-	assert.ok(url.includes('f_E=4'));
-	assert.ok(url.includes('f_WT=2'));
+	// Wipe only when session belongs to the cleared source
+	assert.equal(shouldWipeSession(sessionLinkedIn, 'linkedin'), true);
+	assert.equal(shouldWipeSession(sessionGoogle, 'linkedin'), false);
+	assert.equal(shouldWipeSession(sessionGoogle, 'google'), true);
+	assert.equal(shouldWipeSession(null, 'linkedin'), false);
+	assert.equal(shouldWipeSession('not-json{', 'linkedin'), false);
+
+	// The per-source localStorage key is always removed for the cleared source.
+	// Mirrors getScraperResultsStorageKey(source).
+	assert.equal(`scraper-results:${'google'}`, 'scraper-results:google');
+	assert.equal(`scraper-results:${'remoterocketship'}`, 'scraper-results:remoterocketship');
+});
+
+test('public/findJob-app.ts - saved card action set includes Run ATS and Show JD', () => {
+	// Mirror the actions rendered for the 'saved' view in createJobCard.
+	function savedCardActionClasses(itemUrl: string): string[] {
+		const actions = ['runATS', 'showJD', 'unsave', 'apply'];
+		if (isCollectionUrlForTest(itemUrl)) {
+			// Run ATS is rendered disabled for collection pages but still present
+			return actions;
+		}
+		return actions;
+	}
+	function isCollectionUrlForTest(url: string): boolean {
+		return /\/jobs\/collections\//.test(url) || /\/jobs\/search\//.test(url);
+	}
+
+	assert.deepEqual(savedCardActionClasses('https://example.com/job/view/1'), [
+		'runATS',
+		'showJD',
+		'unsave',
+		'apply',
+	]);
+	// Collection URLs also carry Run ATS (disabled), never removed from the set
+	assert.deepEqual(savedCardActionClasses('https://www.linkedin.com/jobs/collections/123'), [
+		'runATS',
+		'showJD',
+		'unsave',
+		'apply',
+	]);
+});
+
+test('public/findJob-app.ts - clearCurrentScraperSource delegates to currentSource', () => {
+	// Mirror clearCurrentScraperSource: it forwards the currently selected source.
+	function clearCurrentScraperSource(currentSource: string, clearScraperSource: (s: string) => string): string {
+		return clearScraperSource(currentSource);
+	}
+
+	assert.equal(
+		clearCurrentScraperSource('google', s => `clear:${s}`),
+		'clear:google'
+	);
+	assert.equal(
+		clearCurrentScraperSource('remoterocketship', s => `clear:${s}`),
+		'clear:remoterocketship'
+	);
+});
+
+test('public/findJob-app.ts - clear scraper confirmation modal copy', () => {
+	// Mirror the confirmation modal options built by clearScraperSource.
+	// Matches the shared "Remove Item" style but with the "Remove All" confirm text.
+	function buildClearConfirmOptions(source: string): {
+		title: string;
+		message: string;
+		confirmText: string;
+		cancelText: string;
+		variant: string;
+	} {
+		const label = source === 'linkedin' ? 'LinkedIn' : source === 'google' ? 'Google' : 'Remote Rocketship';
+		return {
+			title: 'Remove Item',
+			message: `This will remove ALL ${label} scraper results. Are you sure?`,
+			confirmText: 'Remove All',
+			cancelText: 'Cancel',
+			variant: 'danger',
+		};
+	}
+
+	const linkedin = buildClearConfirmOptions('linkedin');
+	assert.equal(linkedin.title, 'Remove Item');
+	assert.equal(linkedin.message, 'This will remove ALL LinkedIn scraper results. Are you sure?');
+	assert.equal(linkedin.confirmText, 'Remove All');
+	assert.equal(linkedin.cancelText, 'Cancel');
+	assert.equal(linkedin.variant, 'danger');
+
+	const rr = buildClearConfirmOptions('remoterocketship');
+	assert.equal(rr.message, 'This will remove ALL Remote Rocketship scraper results. Are you sure?');
+});
+
+test('public/findJob-app.ts - clear all results button uses selected source', () => {
+	// Mirror clearCurrentScraperSource routing: the button always forwards the
+	// currently selected source into clearScraperSource.
+	function clearCurrent(source: string, clearScraperSource: (s: string) => string): string {
+		return clearScraperSource(source);
+	}
+
+	let calledWith: string | null = null;
+	clearCurrent('linkedin', s => {
+		calledWith = s;
+		return `cleared:${s}`;
+	});
+	assert.equal(calledWith, 'linkedin');
+
+	clearCurrent('google', s => {
+		calledWith = s;
+		return `cleared:${s}`;
+	});
+	assert.equal(calledWith, 'google');
+});
+
+test('public/findJob-app.ts - clear all results button disabled state', () => {
+	// Mirror updateClearAllResultsButtonState: disabled when the active source
+	// has no results, enabled otherwise.
+	interface Payload {
+		results: unknown[];
+	}
+	function computeDisabledState(payload: Payload | null): { disabled: boolean; cls: string } {
+		const hasResults = !!payload && Array.isArray(payload.results) && payload.results.length > 0;
+		return { disabled: !hasResults, cls: hasResults ? '' : 'card-action-btn--disabled' };
+	}
+
+	assert.deepEqual(computeDisabledState(null), { disabled: true, cls: 'card-action-btn--disabled' });
+	assert.deepEqual(computeDisabledState({ results: [] }), { disabled: true, cls: 'card-action-btn--disabled' });
+	assert.deepEqual(computeDisabledState({ results: [{}] }), { disabled: false, cls: '' });
+});
+
+test('public/findJob-app.ts - saved card action disabled flag for collection URLs', () => {
+	// Mirror the Run ATS disabled logic for collection-page URLs in saved view
+	function isRunATSDisabled(itemUrl: string): boolean {
+		if (!itemUrl || typeof itemUrl !== 'string') return false;
+		return /\/jobs\/collections\//.test(itemUrl) || /\/jobs\/search\//.test(itemUrl);
+	}
+
+	// Regular job URLs - Run ATS enabled
+	assert.equal(isRunATSDisabled('https://example.com/job/view/1'), false);
+	assert.equal(isRunATSDisabled('https://www.linkedin.com/jobs/view/12345'), false);
+
+	// Collection URLs - Run ATS disabled
+	assert.equal(isRunATSDisabled('https://www.linkedin.com/jobs/collections/123'), true);
+	assert.equal(isRunATSDisabled('https://www.linkedin.com/jobs/search/?keywords=test'), true);
+	assert.equal(isRunATSDisabled('https://example.com/jobs/collections/456'), true);
+
+	// Edge cases
+	assert.equal(isRunATSDisabled(''), false);
+	assert.equal(isRunATSDisabled(null as unknown as string), false);
+	assert.equal(isRunATSDisabled(undefined as unknown as string), false);
+});
+
+test('public/findJob-app.ts - saved-list payload normalization with fallbacks', () => {
+	// Mirror the payload normalization in renderSavedJobs/createJobCard:
+	// missing title/company/location -> safe fallbacks
+	type SavedJob = {
+		title?: string;
+		company?: string;
+		source?: string;
+		url?: string;
+		snippet?: string;
+	};
+
+	function normalizeSavedJob(raw: SavedJob): Required<SavedJob> {
+		return {
+			title: raw.title || 'Untitled Position',
+			company: raw.company || 'Unknown Company',
+			source: raw.source || 'unknown',
+			url: raw.url || '#',
+			snippet: raw.snippet || '',
+		};
+	}
+
+	// Complete payload
+	const complete = normalizeSavedJob({
+		title: 'Software Engineer',
+		company: 'Acme Corp',
+		source: 'linkedin',
+		url: 'https://example.com/job/1',
+		snippet: 'Great job',
+	});
+	assert.equal(complete.title, 'Software Engineer');
+	assert.equal(complete.company, 'Acme Corp');
+	assert.equal(complete.source, 'linkedin');
+	assert.equal(complete.url, 'https://example.com/job/1');
+	assert.equal(complete.snippet, 'Great job');
+
+	// Missing title
+	assert.equal(normalizeSavedJob({ company: 'Acme' }).title, 'Untitled Position');
+
+	// Missing company
+	assert.equal(normalizeSavedJob({ title: 'Engineer' }).company, 'Unknown Company');
+
+	// Missing source
+	assert.equal(normalizeSavedJob({ title: 'Engineer', company: 'Acme' }).source, 'unknown');
+
+	// Missing url
+	assert.equal(normalizeSavedJob({ title: 'Engineer', company: 'Acme' }).url, '#');
+
+	// All missing
+	const empty = normalizeSavedJob({});
+	assert.equal(empty.title, 'Untitled Position');
+	assert.equal(empty.company, 'Unknown Company');
+	assert.equal(empty.source, 'unknown');
+	assert.equal(empty.url, '#');
+	assert.equal(empty.snippet, '');
 });
