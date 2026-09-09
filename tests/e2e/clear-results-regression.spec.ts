@@ -91,6 +91,11 @@ test.describe('Clear results regression - progress preserved', () => {
 		expect(body.source).toBe('linkedin');
 		cleared = true;
 
+		// Wait for the app to re-fetch results after clearing
+		await findJobPage.page.waitForResponse(
+			resp => resp.url().includes('/api/scraper/results?source=linkedin') && resp.status() === 200
+		);
+
 		await expect(findJobPage.noResults).toBeVisible();
 		await expect(findJobPage.resultsList).toBeEmpty();
 
