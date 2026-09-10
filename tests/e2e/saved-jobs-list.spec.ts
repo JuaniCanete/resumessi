@@ -68,7 +68,9 @@ test.describe('Saved Jobs list rendering', () => {
 		await expect(noResults).toBeVisible();
 	});
 
-	test('real persistence: state survives reload via localStorage (not re-mocked API)', async ({ findJobPage }) => {
+	test('real persistence: localStorage used when API fetch fails, but API response is authoritative when successful', async ({
+		findJobPage,
+	}) => {
 		const jobs = savedJobsPayload(2);
 
 		await findJobPage.seedSavedStorage(jobs);
@@ -94,6 +96,11 @@ test.describe('Saved Jobs list rendering', () => {
 			});
 		});
 
+		// First load: make /api/job-data/saved fail (no route or abort) -> fallback to localStorage
+		await findJobPage.page.route('**/api/job-data/saved', async route => {
+			await route.abort('failed');
+		});
+
 		await findJobPage.goto();
 		await findJobPage.gotoSaved();
 
@@ -102,11 +109,8 @@ test.describe('Saved Jobs list rendering', () => {
 		await expect(cards.nth(0)).toContainText('Saved Job 1');
 		await expect(cards.nth(1)).toContainText('Saved Job 2');
 
-		await findJobPage.page.unroute('**/api/job-data/saved');
-
-		let apiCalled = false;
+		// After reload: API returns empty array (successful response) -> should show empty (API authoritative)
 		await findJobPage.page.route('**/api/job-data/saved', async route => {
-			apiCalled = true;
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -115,7 +119,6 @@ test.describe('Saved Jobs list rendering', () => {
 		});
 
 		await findJobPage.page.reload({ waitUntil: 'domcontentloaded' });
-		// Wait for page to fully initialize - the trigger might be hidden initially
 		await findJobPage.page.waitForFunction(
 			() => {
 				const el = document.getElementById('findjob-actions-trigger');
@@ -128,10 +131,31 @@ test.describe('Saved Jobs list rendering', () => {
 		await findJobPage.gotoSaved();
 
 		cards = findJobPage.getAllSavedCards();
+		await expect(cards).toHaveCount(0);
+		const noResults = findJobPage.page.locator('#saved-no-results');
+		await expect(noResults).toBeVisible();
+
+		// Now test fallback when API fetch fails (network error)
+		await findJobPage.page.route('**/api/job-data/saved', async route => {
+			await route.abort('failed');
+		});
+
+		await findJobPage.page.reload({ waitUntil: 'domcontentloaded' });
+		await findJobPage.page.waitForFunction(
+			() => {
+				const el = document.getElementById('findjob-actions-trigger');
+				return (
+					el && window.getComputedStyle(el).display !== 'none' && window.getComputedStyle(el).visibility !== 'hidden'
+				);
+			},
+			{ timeout: 15000 }
+		);
+		await findJobPage.gotoSaved();
+
+		// Should fall back to localStorage when API fails
+		cards = findJobPage.getAllSavedCards();
 		await expect(cards).toHaveCount(2);
 		await expect(cards.nth(0)).toContainText('Saved Job 1');
 		await expect(cards.nth(1)).toContainText('Saved Job 2');
-		// API was hit but UI used localStorage fallback
-		expect(apiCalled).toBe(true);
 	});
 });
