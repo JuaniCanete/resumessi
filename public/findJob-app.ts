@@ -3527,18 +3527,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 });
 
-// Helper to get the clear confirmation token from config
-let clearConfirmToken: string | null = null;
-async function getClearConfirmToken(): Promise<string | null> {
-	if (clearConfirmToken !== null) return clearConfirmToken;
-	try {
-		const resp = await fetch('/config.json');
-		const config = await resp.json();
-		clearConfirmToken = config.CLEAR_DASHBOARD_CONFIRM_TOKEN || null;
-	} catch {
-		clearConfirmToken = null;
-	}
-	return clearConfirmToken;
+// Helper to get the clear confirmation token - prompts user instead of reading from config
+function getClearConfirmToken(): Promise<string | null> {
+	const token = prompt('Enter the CLEAR_DASHBOARD_CONFIRM_TOKEN to authorize this operation:');
+	return Promise.resolve(token && token.trim() ? token.trim() : null);
 }
 
 async function clearTestData(): Promise<void> {
@@ -3546,11 +3538,18 @@ async function clearTestData(): Promise<void> {
 
 	try {
 		const token = await getClearConfirmToken();
+		if (!token) {
+			showToast({ message: 'Clear operation cancelled — token required', type: 'warning' });
+			return;
+		}
 		const resp = await fetch('/api/job-data/dashboard/clear-test', {
 			method: 'POST',
-			headers: token ? { 'x-clear-confirm-token': token } : undefined,
+			headers: { 'x-clear-confirm-token': token },
 		});
-		if (!resp.ok) throw new Error('Failed to clear test data');
+		if (!resp.ok) {
+			const err = await resp.json();
+			throw new Error(err.error || 'Failed to clear test data');
+		}
 		showToast({ message: 'Test data cleared', type: 'success' });
 		renderDashboard();
 	} catch (err: unknown) {
@@ -3590,8 +3589,11 @@ function clearScraperSource(source: 'linkedin' | 'google' | 'remoterocketship'):
 		onConfirm: async () => {
 			try {
 				const token = await getClearConfirmToken();
-				const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-				if (token) headers['x-clear-confirm-token'] = token;
+				if (!token) {
+					showToast({ message: 'Clear operation cancelled — token required', type: 'warning' });
+					return;
+				}
+				const headers: Record<string, string> = { 'Content-Type': 'application/json', 'x-clear-confirm-token': token };
 				const resp = await fetch('/api/scraper/clear-source', {
 					method: 'POST',
 					headers,
