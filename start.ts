@@ -281,9 +281,9 @@ function parseEnvFile(): Record<string, string | undefined> {
  * Client-safe config — strips API keys before sending to the browser.
  * Used by the /config.json endpoint.
  */
-function getConfigFromEnv(): Record<string, string | string[] | Record<string, unknown> | null | undefined> {
+function getConfigFromEnv(): Record<string, string | string[] | Record<string, unknown> | null | undefined | boolean> {
 	const env = parseEnvFile();
-	const clientSafe: Record<string, string | string[] | Record<string, unknown> | null | undefined> = {};
+	const clientSafe: Record<string, string | string[] | Record<string, unknown> | null | undefined | boolean> = {};
 	for (const [key, value] of Object.entries(env)) {
 		// Exclude any key that contains 'KEY' or 'SECRET' (case-insensitive)
 		if (/KEY|SECRET/i.test(key)) continue;
@@ -297,6 +297,7 @@ function getConfigFromEnv(): Record<string, string | string[] | Record<string, u
 	clientSafe.primaryProvider = providerConfig.configured[0] || null;
 	clientSafe.NODE_ENV = process.env.NODE_ENV || 'production';
 	clientSafe.providersMetadata = getProvidersMetadata(env);
+	clientSafe.CLEAR_DASHBOARD_CONFIRM_TOKEN_SET = Boolean(process.env.CLEAR_DASHBOARD_CONFIRM_TOKEN);
 
 	return clientSafe;
 }
@@ -1538,7 +1539,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 			const dashboard = data.jobDashboard;
 			const idx = dashboard.findIndex(r => (url ? r.url === url : false) || (id && r.id && r.id === id));
 			if (idx >= 0) {
-				const current = dashboard[idx].interviewRounds || 1;
+				const current = dashboard[idx].interviewRounds ?? 1;
 				const newRounds = Math.max(0, current + (delta || 1));
 				await updateDashboardJob(url, { interviewRounds: newRounds }, id);
 				res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1619,8 +1620,15 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 
 	if (requestPath === '/api/job-data/dashboard/clear-test' && req.method === 'POST') {
 		try {
-			// Confirm server-side so the UI does not need to hold the token.
-			await clearTestDashboardData(process.env.CLEAR_DASHBOARD_CONFIRM_TOKEN);
+			// Require authorization from request header; fail closed if missing or invalid.
+			const expectedToken = process.env.CLEAR_DASHBOARD_CONFIRM_TOKEN;
+			const requestToken = req.headers['x-clear-confirm-token'] as string | undefined;
+			if (!expectedToken || !requestToken || requestToken !== expectedToken) {
+				res.writeHead(401, { 'Content-Type': 'application/json' });
+				res.end(JSON.stringify({ error: 'Unauthorized: missing or invalid clear confirmation token' }));
+				return;
+			}
+			await clearTestDashboardData(requestToken);
 			res.writeHead(200, { 'Content-Type': 'application/json' });
 			res.end(JSON.stringify({ success: true }));
 		} catch (err: unknown) {
@@ -1643,8 +1651,15 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 					res.end(JSON.stringify({ error: 'Invalid source' }));
 					return;
 				}
-				// Confirm server-side so the UI does not need to hold the token.
-				await clearScraperResultsBySource(source, process.env.CLEAR_DASHBOARD_CONFIRM_TOKEN);
+				// Require authorization from request header; fail closed if missing or invalid.
+				const expectedToken = process.env.CLEAR_DASHBOARD_CONFIRM_TOKEN;
+				const requestToken = req.headers['x-clear-confirm-token'] as string | undefined;
+				if (!expectedToken || !requestToken || requestToken !== expectedToken) {
+					res.writeHead(401, { 'Content-Type': 'application/json' });
+					res.end(JSON.stringify({ error: 'Unauthorized: missing or invalid clear confirmation token' }));
+					return;
+				}
+				await clearScraperResultsBySource(source, requestToken);
 				res.writeHead(200, { 'Content-Type': 'application/json' });
 				res.end(JSON.stringify({ success: true }));
 			});

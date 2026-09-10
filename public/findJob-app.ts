@@ -799,29 +799,34 @@ async function renderSavedJobs(): Promise<void> {
 	container.innerHTML = '';
 
 	let allSaved: ScraperResult[] = [];
+	let apiSucceeded = false;
 
 	try {
 		const resp = await fetch('/api/job-data/saved');
 		if (resp.ok) {
 			allSaved = (await resp.json()) as ScraperResult[];
+			apiSucceeded = true;
 		}
 	} catch (err: unknown) {
 		console.error('Failed to load saved jobs from API:', (err as Error).message);
 	}
 
-	// Fallback to localStorage if API returned empty or failed
-	if (allSaved.length === 0) {
+	// Fallback to localStorage only if API request failed (not when it returns empty array)
+	if (!apiSucceeded && allSaved.length === 0) {
 		// Note: Saved jobs use 'jobData:savedJobs:{source}' while scraper results use 'scraper-results:{source}'
 		// These are separate namespaces; clearScraperSource only wipes scraper-results, not savedJobs.
 		const linkedinKey = 'jobData:savedJobs:linkedin';
 		const googleKey = 'jobData:savedJobs:google';
+		const rrKey = 'jobData:savedJobs:remoterocketship';
 		try {
 			const linkedinRaw = localStorage.getItem(linkedinKey);
 			const googleRaw = localStorage.getItem(googleKey);
+			const rrRaw = localStorage.getItem(rrKey);
 			const linkedinJobs = linkedinRaw ? JSON.parse(linkedinRaw) : [];
 			const googleJobs = googleRaw ? JSON.parse(googleRaw) : [];
-			if (linkedinJobs.length > 0 || googleJobs.length > 0) {
-				allSaved = [...linkedinJobs, ...googleJobs] as ScraperResult[];
+			const rrJobs = rrRaw ? JSON.parse(rrRaw) : [];
+			if (linkedinJobs.length > 0 || googleJobs.length > 0 || rrJobs.length > 0) {
+				allSaved = [...linkedinJobs, ...googleJobs, ...rrJobs] as ScraperResult[];
 			}
 		} catch {
 			// Ignore localStorage parse errors
@@ -3513,7 +3518,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		.then(r => r.json())
 		.then(config => {
 			const isTestMode = config.NODE_ENV === 'test';
-			if (!isTestMode && !config.CLEAR_DASHBOARD_CONFIRM_TOKEN) {
+			if (!isTestMode && !config.CLEAR_DASHBOARD_CONFIRM_TOKEN_SET) {
 				console.warn('[Security] CLEAR_DASHBOARD_CONFIRM_TOKEN not set — clear endpoints are unprotected');
 			}
 		})
@@ -3522,11 +3527,29 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 });
 
+// Helper to get the clear confirmation token from config
+let clearConfirmToken: string | null = null;
+async function getClearConfirmToken(): Promise<string | null> {
+	if (clearConfirmToken !== null) return clearConfirmToken;
+	try {
+		const resp = await fetch('/config.json');
+		const config = await resp.json();
+		clearConfirmToken = config.CLEAR_DASHBOARD_CONFIRM_TOKEN || null;
+	} catch {
+		clearConfirmToken = null;
+	}
+	return clearConfirmToken;
+}
+
 async function clearTestData(): Promise<void> {
 	if (!confirm('This will delete ALL dashboard cards. Are you sure?')) return;
 
 	try {
-		const resp = await fetch('/api/job-data/dashboard/clear-test', { method: 'POST' });
+		const token = await getClearConfirmToken();
+		const resp = await fetch('/api/job-data/dashboard/clear-test', {
+			method: 'POST',
+			headers: token ? { 'x-clear-confirm-token': token } : undefined,
+		});
 		if (!resp.ok) throw new Error('Failed to clear test data');
 		showToast({ message: 'Test data cleared', type: 'success' });
 		renderDashboard();
@@ -3566,9 +3589,12 @@ function clearScraperSource(source: 'linkedin' | 'google' | 'remoterocketship'):
 		},
 		onConfirm: async () => {
 			try {
+				const token = await getClearConfirmToken();
+				const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+				if (token) headers['x-clear-confirm-token'] = token;
 				const resp = await fetch('/api/scraper/clear-source', {
 					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
+					headers,
 					body: JSON.stringify({ source }),
 				});
 				if (!resp.ok) throw new Error('Failed to clear scraper source');

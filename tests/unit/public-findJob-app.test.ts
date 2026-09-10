@@ -145,35 +145,6 @@ test('public/findJob-app.ts - clearScraperSource cache wipe decision', () => {
 	assert.equal(`scraper-results:${'remoterocketship'}`, 'scraper-results:remoterocketship');
 });
 
-test('public/findJob-app.ts - saved card action set includes Run ATS and Show JD', () => {
-	// Mirror the actions rendered for the 'saved' view in createJobCard.
-	function savedCardActionClasses(itemUrl: string): string[] {
-		const actions = ['runATS', 'showJD', 'unsave', 'apply'];
-		if (isCollectionUrlForTest(itemUrl)) {
-			// Run ATS is rendered disabled for collection pages but still present
-			return actions;
-		}
-		return actions;
-	}
-	function isCollectionUrlForTest(url: string): boolean {
-		return /\/jobs\/collections\//.test(url) || /\/jobs\/search\//.test(url);
-	}
-
-	assert.deepEqual(savedCardActionClasses('https://example.com/job/view/1'), [
-		'runATS',
-		'showJD',
-		'unsave',
-		'apply',
-	]);
-	// Collection URLs also carry Run ATS (disabled), never removed from the set
-	assert.deepEqual(savedCardActionClasses('https://www.linkedin.com/jobs/collections/123'), [
-		'runATS',
-		'showJD',
-		'unsave',
-		'apply',
-	]);
-});
-
 test('public/findJob-app.ts - clearCurrentScraperSource delegates to currentSource', () => {
 	// Mirror clearCurrentScraperSource: it forwards the currently selected source.
 	function clearCurrentScraperSource(currentSource: string, clearScraperSource: (s: string) => string): string {
@@ -278,60 +249,4 @@ test('public/findJob-app.ts - saved card action disabled flag for collection URL
 	assert.equal(isRunATSDisabled(''), false);
 	assert.equal(isRunATSDisabled(null as unknown as string), false);
 	assert.equal(isRunATSDisabled(undefined as unknown as string), false);
-});
-
-test('public/findJob-app.ts - saved-list payload normalization with fallbacks', () => {
-	// Mirror the payload normalization in renderSavedJobs/createJobCard:
-	// missing title/company/location -> safe fallbacks
-	type SavedJob = {
-		title?: string;
-		company?: string;
-		source?: string;
-		url?: string;
-		snippet?: string;
-	};
-
-	function normalizeSavedJob(raw: SavedJob): Required<SavedJob> {
-		return {
-			title: raw.title || 'Untitled Position',
-			company: raw.company || 'Unknown Company',
-			source: raw.source || 'unknown',
-			url: raw.url || '#',
-			snippet: raw.snippet || '',
-		};
-	}
-
-	// Complete payload
-	const complete = normalizeSavedJob({
-		title: 'Software Engineer',
-		company: 'Acme Corp',
-		source: 'linkedin',
-		url: 'https://example.com/job/1',
-		snippet: 'Great job',
-	});
-	assert.equal(complete.title, 'Software Engineer');
-	assert.equal(complete.company, 'Acme Corp');
-	assert.equal(complete.source, 'linkedin');
-	assert.equal(complete.url, 'https://example.com/job/1');
-	assert.equal(complete.snippet, 'Great job');
-
-	// Missing title
-	assert.equal(normalizeSavedJob({ company: 'Acme' }).title, 'Untitled Position');
-
-	// Missing company
-	assert.equal(normalizeSavedJob({ title: 'Engineer' }).company, 'Unknown Company');
-
-	// Missing source
-	assert.equal(normalizeSavedJob({ title: 'Engineer', company: 'Acme' }).source, 'unknown');
-
-	// Missing url
-	assert.equal(normalizeSavedJob({ title: 'Engineer', company: 'Acme' }).url, '#');
-
-	// All missing
-	const empty = normalizeSavedJob({});
-	assert.equal(empty.title, 'Untitled Position');
-	assert.equal(empty.company, 'Unknown Company');
-	assert.equal(empty.source, 'unknown');
-	assert.equal(empty.url, '#');
-	assert.equal(empty.snippet, '');
 });

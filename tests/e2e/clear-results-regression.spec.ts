@@ -65,6 +65,7 @@ test.describe('Clear results regression - progress preserved', () => {
 			req => req.url().includes('/api/scraper/clear-source') && req.method() === 'POST'
 		);
 		await findJobPage.page.route('**/api/scraper/clear-source', async route => {
+			cleared = true;
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -89,7 +90,6 @@ test.describe('Clear results regression - progress preserved', () => {
 		const req = await clearRequest;
 		const body = JSON.parse(req.postData() || '{}');
 		expect(body.source).toBe('linkedin');
-		cleared = true;
 
 		// Wait for the app to re-fetch results after clearing
 		await findJobPage.page.waitForResponse(
@@ -123,6 +123,7 @@ test.describe('Clear results regression - progress preserved', () => {
 			req => req.url().includes('/api/scraper/clear-source') && req.method() === 'POST'
 		);
 		await findJobPage.page.route('**/api/scraper/clear-source', async route => {
+			cleared = true;
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -141,7 +142,6 @@ test.describe('Clear results regression - progress preserved', () => {
 		const req = await clearRequest;
 		const body = JSON.parse(req.postData() || '{}');
 		expect(body.source).toBe('linkedin');
-		cleared = true;
 
 		await findJobPage.gotoSaved();
 
