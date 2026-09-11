@@ -21,7 +21,7 @@ This file defines how AI assistants collaborate within the **resumessi** project
 1. **ALWAYS adopt caveman conversation style, short sentences, straight to the point.**
 2. **`.env` is the source of truth** for runtime config (API key, model, colors). The server serves `/config.json` endpoint which reads `.env`.
 3. **Never hardcode personal data** into `main.html`. The resume content should be auto-generated from prompt data.
-4. **NEVER RUN `node setup.js` or `npm run setup`** — this overwrites `.env` and will cause API keys to be lost or reset. The setup script is for human users only. Use `tsx setup.ts` instead if needed.
+4. **NEVER RUN `node setup.js` or `npm run setup`** — this overwrites `.env` and will cause API keys to be lost or reset. The setup script is for human users only.
 5. **ALWAYS RESPECT INDENTATION STYLE AND FORMATTING** — maintain existing file formatting (tab size 4, match existing file indentation or spaces on txt files for example), prefer template literals over string concatenation, refrain from adding unnecessary comments.
 6. **The codebase is TypeScript.** Run `npm run typecheck` to check for type errors before committing.
 7. **Frontend TypeScript** (`public/app.ts`) is compiled via **esbuild** into `public/dist/app.js` during the build step (`npm run build`).
@@ -42,3 +42,18 @@ This file defines how AI assistants collaborate within the **resumessi** project
 **Important:**
 Code review is a skill located at `.claude/skills/code-review/SKILL.md`.
 Use the `skill` tool to load it: `skill("code-review")`.
+
+---
+
+## Code readiness
+
+**Important:**
+Project has `.husky` `pre-commit` and `pre-push`, both are running a lot of validation, so don't waste time and tokens running things fixing something, focus on what you need to fix, and then once it's focus attempt to commit and push, and that's the place where we get feedback on the status of the code.
+
+### Simulation scenario: **e2e test failure un CI within PR**
+
+1. Failure is triaged and reviewed
+2. Fix is proposed and applied
+3. Test is executed
+4. Stop. Don't continue wiht unit, eslint, typecheck, etc.
+5. Instead proceed with commit and push, and `.husky` will take care of the validations.
