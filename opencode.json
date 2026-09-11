@@ -7,10 +7,13 @@
 	"skills": {
 		"paths": [".claude/skills"]
 	},
+	"worktree": {
+		"directory": ".claude/worktrees"
+	},
 	"references": {
 		"docs": {
-			"path": "../docs",
-			"description": "Product behavior and documentation conventions"
+			"path": "../pending",
+			"description": "Product behavior and documentation conventions are pending"
 		}
 	},
 	"permission": {

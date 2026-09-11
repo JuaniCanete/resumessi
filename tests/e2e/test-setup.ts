@@ -2,6 +2,13 @@ import { test as playwrightTest, expect } from '@playwright/test';
 import { FindJobPage } from '../pages/FindJobPage';
 import { MainPage } from '../pages/MainPage';
 
+// Test mode flag for bypassing native dialogs in tests
+declare global {
+	interface Window {
+		__TEST_MODE__?: boolean;
+	}
+}
+
 // Small delay so UI loading states are visible before mocked responses resolve
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -173,6 +180,12 @@ const test = playwrightTest.extend<{ mainPage: MainPage; findJobPage: FindJobPag
 
 		await registerDefaultRoutes();
 
+		// Set test mode flag to bypass native dialogs in tests
+		await page.addInitScript(() => {
+			window.__TEST_MODE__ = true;
+			localStorage.setItem('__TEST_MODE__', 'true');
+		});
+
 		// Reset cached config after route registration
 		await page.evaluate(() => {
 			const w = window as unknown as Record<string, unknown>;
@@ -203,6 +216,12 @@ const test = playwrightTest.extend<{ mainPage: MainPage; findJobPage: FindJobPag
 	},
 
 	findJobPage: async ({ page }, use) => {
+		// Set test mode flag to bypass native dialogs in tests
+		await page.addInitScript(() => {
+			window.__TEST_MODE__ = true;
+			localStorage.setItem('__TEST_MODE__', 'true');
+		});
+
 		const findJobPage = new FindJobPage(page);
 		await findJobPage.goto();
 		await use(findJobPage);

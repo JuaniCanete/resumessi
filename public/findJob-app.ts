@@ -5,11 +5,19 @@ import {
 	confirmDelete,
 	confirmUnsave,
 	showConfirmModal,
+	showPromptModal,
 	showToast,
 	showApplyModal,
 	isCollectionUrl,
 	type ScraperResult,
 } from './utils';
+
+// Test mode flag for bypassing native dialogs in tests
+declare global {
+	interface Window {
+		__TEST_MODE__?: boolean;
+	}
+}
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -3527,34 +3535,56 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 });
 
-// Helper to get the clear confirmation token - prompts user instead of reading from config
+// Helper to get the clear confirmation token - prompts user via modal instead of native prompt
 function getClearConfirmToken(): Promise<string | null> {
-	const token = prompt('Enter the CLEAR_DASHBOARD_CONFIRM_TOKEN to authorize this operation:');
-	return Promise.resolve(token && token.trim() ? token.trim() : null);
+	// Test mode: auto-return token without showing modal
+	// Check both window flag (set via addInitScript) and localStorage (persists across reloads)
+	const w = window as Window & { __TEST_MODE__?: boolean };
+	const isTestMode =
+		typeof window !== 'undefined' && (w.__TEST_MODE__ === true || localStorage.getItem('__TEST_MODE__') === 'true');
+	if (isTestMode) {
+		return Promise.resolve('test-clear-confirm-token');
+	}
+	return new Promise<string | null>(resolve => {
+		showPromptModal({
+			title: 'Authorization Required',
+			message: 'Enter the CLEAR_DASHBOARD_CONFIRM_TOKEN to authorize this operation:',
+			placeholder: 'Paste token here...',
+			onConfirm: value => resolve(value.trim() || null),
+			onCancel: () => resolve(null),
+		});
+	});
 }
 
-async function clearTestData(): Promise<void> {
-	if (!confirm('This will delete ALL dashboard cards. Are you sure?')) return;
-
-	try {
-		const token = await getClearConfirmToken();
-		if (!token) {
-			showToast({ message: 'Clear operation cancelled — token required', type: 'warning' });
-			return;
-		}
-		const resp = await fetch('/api/job-data/dashboard/clear-test', {
-			method: 'POST',
-			headers: { 'x-clear-confirm-token': token },
-		});
-		if (!resp.ok) {
-			const err = await resp.json();
-			throw new Error(err.error || 'Failed to clear test data');
-		}
-		showToast({ message: 'Test data cleared', type: 'success' });
-		renderDashboard();
-	} catch (err: unknown) {
-		showToast({ message: `Failed to clear test data: ${(err as Error).message}`, type: 'error' });
-	}
+function clearTestData(): void {
+	showConfirmModal({
+		title: 'Delete All Dashboard Cards',
+		message: 'This will delete ALL dashboard cards. Are you sure?',
+		confirmText: 'Delete All',
+		cancelText: 'Cancel',
+		variant: 'danger',
+		onConfirm: async () => {
+			try {
+				const token = await getClearConfirmToken();
+				if (!token) {
+					showToast({ message: 'Clear operation cancelled — token required', type: 'warning' });
+					return;
+				}
+				const resp = await fetch('/api/job-data/dashboard/clear-test', {
+					method: 'POST',
+					headers: { 'x-clear-confirm-token': token },
+				});
+				if (!resp.ok) {
+					const err = await resp.json();
+					throw new Error(err.error || 'Failed to clear test data');
+				}
+				showToast({ message: 'Test data cleared', type: 'success' });
+				renderDashboard();
+			} catch (err: unknown) {
+				showToast({ message: `Failed to clear test data: ${(err as Error).message}`, type: 'error' });
+			}
+		},
+	});
 }
 
 function updateClearAllResultsButtonState(): void {
