@@ -497,3 +497,158 @@ export function showApplyModal(options: ApplyModalOptions): void {
 	container.style.display = 'flex';
 	setTimeout(() => input.focus(), 50);
 }
+
+export interface PromptModalOptions {
+	title: string;
+	message: string;
+	placeholder?: string;
+	defaultValue?: string;
+	onConfirm: (value: string) => void | Promise<void>;
+	onCancel?: () => void;
+}
+
+export function showPromptModal(options: PromptModalOptions): void {
+	const container = ensureModalContainer();
+	const { title, message, placeholder = '', defaultValue = '', onConfirm, onCancel } = options;
+
+	const modal = document.createElement('div');
+	modal.className = 'shared-modal';
+	modal.setAttribute('data-testid', 'shared-modal');
+	modal.style.cssText = `
+    background: var(--secondary, #0a0a0a);
+    padding: 28px;
+    border-radius: 14px;
+    max-width: 480px;
+    width: 92%;
+    max-height: 88vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+    position: relative;
+    border: 1px solid rgba(37, 99, 235, 0.5);
+    font-family: 'Comfortaa', sans-serif;
+    color: #fff;
+  `;
+
+	modal.innerHTML = `
+    <button class="modal-close" style="
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 28px;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      line-height: 1;
+      transition: background 0.2s;"
+	  onmouseenter="this.style.background='var(--accent, #2563eb)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">×</button>
+    <h2 style="color: #fff; margin-bottom: 8px; text-align: center; font-family: 'Comfortaa', sans-serif;">🔐 ${title}</h2>
+    <p style="color: rgba(255, 255, 255, 0.85); font-size: 14px; text-align: center; margin-bottom: 20px; line-height: 1.5;">${message}</p>
+    <input type="text" class="prompt-input" value="${defaultValue.replace(/"/g, '"')}" placeholder="${placeholder.replace(/"/g, '"')}" style="
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 7px;
+      color: #fff;
+      font-family: 'Comfortaa', sans-serif;
+      font-size: 13px;
+      outline: none;
+      margin-bottom: 18px;
+      box-sizing: border-box;
+    " />
+    <div style="display: flex; gap: 12px; justify-content: center;">
+      <button class="btn-cancel" style="
+        flex: 1;
+        padding: 11px 14px;
+        border: none;
+        border-radius: 7px;
+        font-weight: 700;
+        font-size: 13px;
+        font-family: 'Comfortaa', sans-serif;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      " onmouseenter="this.style.background='rgba(255,255,255,0.15)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'">Cancel</button>
+      <button class="btn-confirm" style="
+        flex: 1;
+        padding: 11px 14px;
+        border: none;
+        border-radius: 7px;
+        font-weight: 700;
+        font-size: 13px;
+        font-family: 'Comfortaa', sans-serif;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+        background: #2563eb;
+        color: #fff;
+      " onmouseenter="this.style.background='#1d4ed8'" onmouseleave="this.style.background='#2563eb'">Confirm</button>
+    </div>
+  `;
+
+	const closeBtn = modal.querySelector('.modal-close') as HTMLButtonElement;
+	const cancelBtn = modal.querySelector('.btn-cancel') as HTMLButtonElement;
+	const confirmBtn = modal.querySelector('.btn-confirm') as HTMLButtonElement;
+	const input = modal.querySelector('.prompt-input') as HTMLInputElement;
+
+	const close = () => {
+		document.removeEventListener('keydown', handleKeydown);
+		container.style.display = 'none';
+		modal.remove();
+	};
+
+	let isHandlingConfirm = false;
+
+	const handleConfirm = async () => {
+		if (isHandlingConfirm) return;
+		isHandlingConfirm = true;
+		const value = input.value.trim();
+		closeBtn.disabled = true;
+		cancelBtn.disabled = true;
+		confirmBtn.disabled = true;
+		confirmBtn.textContent = '...';
+		try {
+			await onConfirm(value);
+		} finally {
+			close();
+		}
+	};
+
+	const handleCancel = () => {
+		onCancel?.();
+		close();
+	};
+
+	closeBtn.addEventListener('click', handleCancel);
+	cancelBtn.addEventListener('click', handleCancel);
+	confirmBtn.addEventListener('click', handleConfirm);
+
+	input.addEventListener('keydown', (e: KeyboardEvent) => {
+		if (e.key === 'Enter') {
+			handleConfirm();
+		} else if (e.key === 'Escape') {
+			handleCancel();
+		}
+	});
+
+	const handleKeydown = (e: KeyboardEvent) => {
+		if (e.key === 'Escape') {
+			handleCancel();
+			document.removeEventListener('keydown', handleKeydown);
+		}
+	};
+	document.addEventListener('keydown', handleKeydown);
+
+	container.appendChild(modal);
+	container.style.display = 'flex';
+	setTimeout(() => input.focus(), 50);
+}

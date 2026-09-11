@@ -11,6 +11,13 @@ const MOCK_RESULT = {
 	postedDate: '2 days ago',
 };
 
+const MOCK_SAVED_JOB = {
+	...MOCK_RESULT,
+	savedAt: new Date().toISOString(),
+	applied: false,
+	saved: true,
+};
+
 test.describe('result-card action buttons', () => {
 	test('Run ATS opens the JD review modal with an editable, populated textarea', async ({ findJobPage }) => {
 		await findJobPage.mockResults(source, [MOCK_RESULT]);
@@ -84,6 +91,42 @@ test.describe('result-card action buttons', () => {
 		expect(body.source).toBe(source);
 
 		await findJobPage.waitForToast('Job saved successfully');
+	});
+
+	test('Save -> Saved tab integration: saved job renders in Saved tab after save', async ({ findJobPage }) => {
+		await findJobPage.mockResults(source, [MOCK_RESULT]);
+		await findJobPage.mockSavedJobs([MOCK_SAVED_JOB]);
+
+		const saveRequest = findJobPage.page.waitForRequest(
+			req => req.url().includes('/api/job-data/save') && req.method() === 'POST'
+		);
+		await findJobPage.page.route('**/api/job-data/save', async route => {
+			if (route.request().method() === 'POST') {
+				await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) });
+				return;
+			}
+			await route.continue();
+		});
+
+		await findJobPage.goto();
+		await findJobPage.page.waitForURL('**/findJob.html?source=linkedin*');
+
+		await findJobPage.getCardAction(0, 'save').click();
+
+		const req = await saveRequest;
+		const body = JSON.parse(req.postData() || '{}');
+		expect(body.item.url).toBe('https://example.com/job/result-card');
+		expect(body.source).toBe(source);
+
+		await findJobPage.waitForToast('Job saved successfully');
+
+		// Switch to Saved tab and verify the job appears
+		await findJobPage.gotoSaved();
+
+		const cards = findJobPage.getAllSavedCards();
+		await expect(cards).toHaveCount(1);
+		await expect(cards.first()).toContainText('LinkedIn Job Result');
+		await expect(cards.first()).toContainText('Example Corp');
 	});
 
 	test('Remove confirms then posts to /api/job-data/remove and drops the card', async ({ findJobPage }) => {

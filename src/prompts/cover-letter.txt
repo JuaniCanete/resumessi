@@ -43,9 +43,9 @@ OPTIONAL_SALUTATION: {include_salutation_signoff}
 # STRUCTURAL REQUIREMENTS
 - Write exactly {paragraph_count} paragraphs total.
 - Paragraphs 1 to {skills_paragraphs}: Your relevant experience, skills, and achievements from RESUME FACTS. Target ~{skills_words} words total across these paragraphs.
-  - Use focus area anchors that match RESUME FACTS (e.g., FA1-E1, FA2-E2) in these paragraphs as evidence.
+- Use focus area anchors that match RESUME FACTS (e.g., FA1-E1, FA2-E2) in these paragraphs as evidence.
 - Paragraphs {motivation_start} to {paragraph_count}: Why you want this role at this company. Connect specific JD requirements to your background. Target ~{motivation_words} words total.
-  - Use focus area anchors with NO_MATCH here to express interest in learning/growing.
+- Use focus area anchors with NO_MATCH here to express interest in learning/growing.
 - Paragraph {transition_paragraph} (last skills paragraph): Must end with a forward-looking sentence that bridges to motivation (e.g., "This background positions me to...", "I am ready to bring this experience to...").
 - STOP writing once you have completed exactly {paragraph_count} paragraphs. Do not continue.
 - You must conclude the letter completely within LIMIT_MAX ({max_words} words). As you approach LIMIT_MAX, start closing the loop — do not start new points.

@@ -34,13 +34,12 @@ tmp-*
 npm-debug.log*
 debugging/
 data/scraper-debug/
+*.heapsnapshot
 
 # AI agent personal configs
-AGENTS_LOCAL.md
+CLAUDE.local.md
 .agents/
 .cursor/
-.kilo/
-.roo/
 .github/copilot-instructions.md
 .cursorignore
 
