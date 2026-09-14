@@ -46,6 +46,7 @@ CLAUDE.local.md
 # AI artifacts
 code-review/
 plans/
+.playwright-mcp/
 
 # Build outputs (if any)
 dist/
