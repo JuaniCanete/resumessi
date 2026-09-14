@@ -22,6 +22,12 @@ export class MainPage {
 	readonly actionsTrigger: Locator;
 	readonly actionsDropdown: Locator;
 	readonly polishOverlay: Locator;
+	readonly diffOverlay: Locator;
+	readonly diffSections: Locator;
+	readonly diffCheckboxes: Locator;
+	readonly finishPolishButton: Locator;
+	readonly closeDiffButton: Locator;
+	readonly diffCounter: Locator;
 	readonly refreshMessage: Locator;
 	readonly photoUploadModal: Locator;
 	readonly photoInput: Locator;
@@ -65,6 +71,12 @@ export class MainPage {
 		this.actionsTrigger = page.getByTestId('actions-trigger');
 		this.actionsDropdown = page.getByTestId('actions-dropdown');
 		this.polishOverlay = page.getByTestId('polish-overlay');
+		this.diffOverlay = page.getByTestId('polish-diff-overlay');
+		this.diffSections = page.getByTestId('diff-section');
+		this.diffCheckboxes = page.getByTestId('diff-checkbox');
+		this.finishPolishButton = page.getByTestId('finish-polish-button');
+		this.closeDiffButton = page.getByTestId('close-diff-button');
+		this.diffCounter = page.getByTestId('diff-counter');
 		this.refreshMessage = page.getByTestId('refresh-message');
 		this.photoUploadModal = page.getByTestId('photo-upload-modal');
 		this.photoInput = page.getByTestId('photo-input');
