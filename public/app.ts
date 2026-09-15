@@ -6,6 +6,7 @@
 import { safeJsonParse } from '../src/providers';
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import { buildQueryUrl, resizeImage, showToast } from './utils';
+import { computeDiff, mergeDiff, type DiffSection } from './utils/polish-diff';
 
 // Declare global function for TypeScript benefit
 declare function closeJdEditModal(): void;
@@ -15,6 +16,10 @@ let scanController: AbortController | null = null;
 let cachedConfig: Record<string, unknown> | null = null;
 let generationController: AbortController | null = null;
 let polishController: AbortController | null = null;
+let polishOriginalData: Record<string, unknown> | null = null;
+let polishSections: DiffSection[] = [];
+let cachedPolishData: Record<string, unknown> | null = null;
+let cachedPolishOriginal: Record<string, unknown> | null = null;
 let currentDataSource: string = 'none';
 let currentResumeData: Record<string, unknown> | null = null;
 let currentPhotoDataURL: string | null = null;
@@ -746,6 +751,14 @@ async function polishResume(): Promise<void> {
 	const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
 	if (dropdownBtn.disabled) return;
 
+	// Check if we have a cached polish for the current resume
+	const currentResume = await loadCurrentResume();
+	if (cachedPolishData && cachedPolishOriginal && resumesEqual(currentResume, cachedPolishOriginal)) {
+		dropdownBtn.disabled = true;
+		showPolishChoiceModal(currentResume, cachedPolishData);
+		return;
+	}
+
 	dropdownBtn.disabled = true;
 	console.info('[polishResume] Setting overlay display to flex');
 	const overlay = document.getElementById('polish-overlay');
@@ -765,18 +778,11 @@ async function polishResume(): Promise<void> {
 
 		const resumeData = (await resp.json()) as Record<string, unknown>;
 
-		const resumeDataForPolish = JSON.parse(JSON.stringify(resumeData)) as Record<string, unknown>;
-		const origBasics = resumeData.basics as Record<string, unknown> | undefined;
-		const basics = resumeDataForPolish.basics as Record<string, unknown> | undefined;
-		if (origBasics && basics) {
-			// Preserve all original basics fields that shouldn't be changed by polish
-			const preservedFields = ['photo', 'linkedin', 'github', 'website', 'profiles'];
-			preservedFields.forEach(field => {
-				if (origBasics[field] !== undefined) {
-					basics[field] = origBasics[field];
-				}
-			});
-		}
+		// Send only summary and experience to reduce token usage
+		const dataToPolish = {
+			summary: resumeData.summary,
+			experience: resumeData.experience,
+		};
 
 		const selectedProvider = localStorage.getItem('selected-ai-provider') || null;
 
@@ -784,7 +790,7 @@ async function polishResume(): Promise<void> {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				resumeData: resumeDataForPolish,
+				resumeData: dataToPolish,
 				provider: selectedProvider,
 				scope: 'polish',
 			}),
@@ -796,36 +802,19 @@ async function polishResume(): Promise<void> {
 			throw new Error(errorData.error || 'Polish API failed');
 		}
 
-		const polishedData = (await polishResp.json()) as Record<string, unknown>;
+		const polishedSections = (await polishResp.json()) as Record<string, unknown>;
 
-		// Restore all preserved fields after polish
-		if (origBasics) {
-			const preservedFields = ['photo', 'linkedin', 'github', 'website', 'profiles'];
-			const pBasics = (polishedData.basics as Record<string, unknown> | null) || {};
-			let modified = false;
-			preservedFields.forEach(field => {
-				if (origBasics[field] !== undefined) {
-					pBasics[field] = origBasics[field];
-					modified = true;
-				}
-			});
-			if (modified) {
-				polishedData.basics = pBasics;
-			}
-		}
+		// Merge polished sections back into full resume data
+		const polishedData = { ...resumeData };
+		if (polishedSections.summary) polishedData.summary = polishedSections.summary;
+		if (polishedSections.experience) polishedData.experience = polishedSections.experience;
 
-		await fetch('/api/save-polished', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(polishedData),
-		});
+		// Cache the polished result
+		cachedPolishData = polishedData;
+		cachedPolishOriginal = resumeData;
 
-		showRefreshMessage();
 		document.getElementById('polish-overlay')!.style.display = 'none';
-		setTimeout(async () => {
-			await loadResumeData();
-			updatePolishButton();
-		}, 1000);
+		showDiffOverlay(resumeData, polishedData);
 	} catch (err: unknown) {
 		if ((err as Error).name === 'AbortError') {
 			console.warn('Polish cancelled by user.');
@@ -839,6 +828,170 @@ async function polishResume(): Promise<void> {
 	} finally {
 		polishController = null;
 	}
+}
+
+function updateDiffCounter(): void {
+	const counter = document.querySelector('[data-testid="diff-counter"]');
+	if (counter)
+		counter.textContent = `${polishSections.filter(section => section.accepted).length} of ${polishSections.length} changes accepted`;
+}
+
+function showDiffOverlay(original: Record<string, unknown>, polished: Record<string, unknown>): void {
+	polishSections = computeDiff(original, polished);
+	if (polishSections.length === 0) {
+		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
+		dropdownBtn.disabled = false;
+		showToast({ message: 'No changes detected', type: 'info' });
+		updatePolishButton();
+		return;
+	}
+	polishOriginalData = original;
+	const sectionsContainer = document.querySelector('[data-testid="diff-sections"]');
+	if (!sectionsContainer) return;
+	sectionsContainer.replaceChildren();
+	for (const section of polishSections) {
+		const article = document.createElement('article');
+		article.className = 'diff-section';
+		article.dataset.sectionId = section.id;
+		article.dataset.testid = 'diff-section';
+		const header = document.createElement('div');
+		header.className = 'diff-section-header';
+		const checkbox = document.createElement('input');
+		checkbox.type = 'checkbox';
+		checkbox.id = `diff-checkbox-${section.id}`;
+		checkbox.dataset.testid = 'diff-checkbox';
+		checkbox.dataset.sectionId = section.id;
+		const label = document.createElement('label');
+		label.htmlFor = checkbox.id;
+		label.textContent = section.label;
+		header.append(checkbox, label);
+		const columns = document.createElement('div');
+		columns.className = 'diff-columns';
+		const oldSide = document.createElement('div');
+		oldSide.className = 'diff-old';
+		const newSide = document.createElement('div');
+		newSide.className = 'diff-new';
+		const oldHeading = document.createElement('strong');
+		oldHeading.textContent = 'Current';
+		const newHeading = document.createElement('strong');
+		newHeading.textContent = 'Polished';
+		const oldText = document.createElement('pre');
+		oldText.textContent = section.oldDisplay;
+		const newText = document.createElement('pre');
+		newText.textContent = section.newDisplay;
+		oldSide.append(oldHeading, oldText);
+		newSide.append(newHeading, newText);
+		columns.append(oldSide, newSide);
+		article.append(header, columns);
+		checkbox.addEventListener('change', () => {
+			section.accepted = checkbox.checked;
+			oldSide.classList.toggle('diff-accepted', checkbox.checked);
+			newSide.classList.toggle('diff-rejected', !checkbox.checked);
+			updateDiffCounter();
+		});
+		newSide.classList.add('diff-rejected');
+		sectionsContainer.appendChild(article);
+	}
+	updateDiffCounter();
+	const overlay = document.getElementById('polish-diff-overlay');
+	if (overlay) overlay.style.display = 'flex';
+}
+
+async function finishPolish(): Promise<void> {
+	if (!polishOriginalData) return;
+	if (!polishSections.some(section => section.accepted)) {
+		closeDiffOverlay(false);
+		showToast({ message: 'No changes accepted', type: 'info' });
+		return;
+	}
+	try {
+		const response = await fetch('/api/save-polished', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(mergeDiff(polishOriginalData, polishSections)),
+		});
+		if (!response.ok) {
+			showToast({ message: 'Failed to save polished resume', type: 'error' });
+			return;
+		}
+	} catch (err: unknown) {
+		showToast({ message: `Failed to save polished resume: ${(err as Error).message}`, type: 'error' });
+		return;
+	}
+	// Clear cache when polish is successfully applied
+	cachedPolishData = null;
+	cachedPolishOriginal = null;
+	closeDiffOverlay(false);
+	showRefreshMessage();
+	setTimeout(async () => {
+		await loadResumeData();
+		updatePolishButton();
+	}, 1000);
+}
+
+function closeDiffOverlay(showMessage = true): void {
+	const overlay = document.getElementById('polish-diff-overlay');
+	if (overlay) overlay.style.display = 'none';
+	polishOriginalData = null;
+	polishSections = [];
+	const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
+	if (dropdownBtn) dropdownBtn.disabled = false;
+	updatePolishButton();
+	if (showMessage) showToast({ message: 'Polish changes discarded', type: 'info' });
+}
+
+// Helper functions for polish caching
+async function loadCurrentResume(): Promise<Record<string, unknown>> {
+	const resp = await fetch('/src/resume/output/resume-data.json');
+	if (!resp.ok) return {};
+	return (await resp.json()) as Record<string, unknown>;
+}
+
+function resumesEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+	const sortedStringify = (obj: Record<string, unknown>) => JSON.stringify(obj, Object.keys(obj).sort());
+	return sortedStringify(a) === sortedStringify(b);
+}
+
+function showPolishChoiceModal(original: Record<string, unknown>, polished: Record<string, unknown>): void {
+	const template = document.getElementById('polish-choice-modal-template') as HTMLTemplateElement;
+	if (!template) return;
+	const modal = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+	document.body.appendChild(modal);
+
+	const closeModal = () => {
+		modal.remove();
+		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
+		if (dropdownBtn) dropdownBtn.disabled = false;
+	};
+
+	modal.querySelector('#use-existing-polish')!.addEventListener('click', () => {
+		closeModal();
+		showDiffOverlay(original, polished);
+	});
+
+	modal.querySelector('#run-new-polish')!.addEventListener('click', () => {
+		closeModal();
+		// Clear cache and run new polish
+		cachedPolishData = null;
+		cachedPolishOriginal = null;
+		polishResume();
+	});
+
+	// Close on Escape
+	const handleEscape = (e: KeyboardEvent) => {
+		if (e.key === 'Escape') {
+			closeModal();
+			document.removeEventListener('keydown', handleEscape);
+		}
+	};
+	document.addEventListener('keydown', handleEscape);
+
+	// Close on backdrop click
+	modal.addEventListener('click', e => {
+		if (e.target === modal) {
+			closeModal();
+		}
+	});
 }
 
 function cancelPolish(): void {
@@ -858,10 +1011,14 @@ const win = window as Window &
 		polishResume: typeof polishResume;
 		cancelPolish: typeof cancelPolish;
 		rollbackPolish: typeof rollbackPolish;
+		finishPolish: typeof finishPolish;
+		closeDiffOverlay: typeof closeDiffOverlay;
 	};
 win.polishResume = polishResume;
 win.cancelPolish = cancelPolish;
 win.rollbackPolish = rollbackPolish;
+win.finishPolish = finishPolish;
+win.closeDiffOverlay = closeDiffOverlay;
 
 async function rollbackPolish(): Promise<void> {
 	try {
@@ -913,6 +1070,11 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 		const polishOverlay = document.getElementById('polish-overlay');
 		if (polishOverlay && polishOverlay.style.display === 'flex') {
 			cancelPolish();
+			return;
+		}
+		const diffOverlay = document.getElementById('polish-diff-overlay');
+		if (diffOverlay && diffOverlay.style.display === 'flex') {
+			closeDiffOverlay();
 			return;
 		}
 		const photoModal = document.getElementById('photo-upload-modal');

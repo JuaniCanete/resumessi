@@ -45,7 +45,7 @@ test.describe(() => {
 		expect.soft(photoSrc).toBe(uploaded);
 	});
 
-	test('polish resume flow — mocked response updates UI', async ({ mainPage }) => {
+	test('polish resume flow — review and accept selected changes', async ({ mainPage }) => {
 		// Complete resume data matching what renderResume expects
 		const completeResumeData = {
 			basics: {
@@ -64,6 +64,7 @@ test.describe(() => {
 			skills: { 'Core Skills': [{ name: 'JavaScript', expert: true }] },
 			certifications: [],
 			talks: [],
+			projects: [],
 		};
 
 		// Mock resume data endpoint so currentDataSource = 'generated' and polish button shows
@@ -80,14 +81,23 @@ test.describe(() => {
 			await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
 		});
 
-		// Mock the polish API endpoints
+		// Mock the polish API endpoints - API now only receives summary and experience
 		await mainPage.page.route('**/api/polish-resume', async route => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify({
-					...completeResumeData,
-					basics: { ...completeResumeData.basics, name: 'Test User (Polished)' },
+					summary: 'Polished summary with improved wording',
+					experience: [
+						{
+							title: 'Senior Software Engineer',
+							company: 'Tech Corp',
+							startDate: '2020-01',
+							endDate: '2023-12',
+							description: 'Led development of scalable web applications.',
+							highlights: ['Improved performance by 40%', 'Mentored 5 junior developers'],
+						},
+					],
 				}),
 			});
 		});
@@ -160,14 +170,28 @@ test.describe(() => {
 			}
 		});
 
-		// Wait for the refresh message to appear
-		await mainPage.refreshMessage.waitFor({ state: 'visible', timeout: 5000 });
+		await expect(mainPage.diffOverlay).toBeVisible({ timeout: 5000 });
+		await expect(mainPage.diffSections).toHaveCount(2);
+		await mainPage.diffCheckboxes.first().check();
+		await expect(mainPage.diffCounter).toContainText('1 of 2 changes accepted');
 
-		// Check refresh message (it's shown briefly, then hidden after 2s)
-		const refreshMsg = mainPage.refreshMessage;
-		const refreshText = (await refreshMsg.textContent()) ?? '';
-		expect(refreshText).toBeTruthy();
-		expect(refreshText.toLowerCase()).toContain('applying changes');
+		// Intercept save-polished to verify payload
+		let savePolishedPayload: unknown = null;
+		await mainPage.page.route('**/api/save-polished', async route => {
+			savePolishedPayload = await route.request().postDataJSON();
+			await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) });
+		});
+
+		await mainPage.finishPolishButton.click();
+		await expect(mainPage.refreshMessage).toBeVisible({ timeout: 5000 });
+
+		// Verify save-polished payload
+		expect(savePolishedPayload).toBeTruthy();
+		const payload = savePolishedPayload as Record<string, unknown>;
+		// First section (summary) was checked - should have polished value
+		expect(payload.summary).toBe('Polished summary with improved wording');
+		// Second section (experience) was unchecked - should retain original (empty array in test)
+		expect(payload.experience).toEqual([]);
 	});
 
 	test('ATS scan error handling — 500 from proxy shows error in UI', async ({ mainPage }) => {

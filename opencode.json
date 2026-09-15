@@ -4,6 +4,14 @@
 	"small_model": "zencode/nemotron-3.5-lightning",
 	"default_agent": "build",
 	"instructions": ["AGENTS.md", "CLAUDE.md"],
+	"mcp": {
+		"playwright": {
+			"type": "local",
+			"command": ["npx", "--yes", "@playwright/mcp@latest"],
+			"timeout": 60000,
+			"enabled": true
+		}
+	},
 	"skills": {
 		"paths": [".claude/skills"]
 	},
