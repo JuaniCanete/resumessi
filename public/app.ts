@@ -858,9 +858,11 @@ function showDiffOverlay(original: Record<string, unknown>, polished: Record<str
 		header.className = 'diff-section-header';
 		const checkbox = document.createElement('input');
 		checkbox.type = 'checkbox';
+		checkbox.id = `diff-checkbox-${section.id}`;
 		checkbox.dataset.testid = 'diff-checkbox';
 		checkbox.dataset.sectionId = section.id;
 		const label = document.createElement('label');
+		label.htmlFor = checkbox.id;
 		label.textContent = section.label;
 		header.append(checkbox, label);
 		const columns = document.createElement('div');

@@ -174,8 +174,24 @@ test.describe(() => {
 		await expect(mainPage.diffSections).toHaveCount(2);
 		await mainPage.diffCheckboxes.first().check();
 		await expect(mainPage.diffCounter).toContainText('1 of 2 changes accepted');
+
+		// Intercept save-polished to verify payload
+		let savePolishedPayload: unknown = null;
+		await mainPage.page.route('**/api/save-polished', async route => {
+			savePolishedPayload = await route.request().postDataJSON();
+			await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) });
+		});
+
 		await mainPage.finishPolishButton.click();
 		await expect(mainPage.refreshMessage).toBeVisible({ timeout: 5000 });
+
+		// Verify save-polished payload
+		expect(savePolishedPayload).toBeTruthy();
+		const payload = savePolishedPayload as Record<string, unknown>;
+		// First section (summary) was checked - should have polished value
+		expect(payload.summary).toBe('Polished summary with improved wording');
+		// Second section (experience) was unchecked - should retain original (empty array in test)
+		expect(payload.experience).toEqual([]);
 	});
 
 	test('ATS scan error handling — 500 from proxy shows error in UI', async ({ mainPage }) => {

@@ -193,26 +193,65 @@ export function computeDiff(original: Record<string, unknown>, polished: Record<
 
 export function mergeDiff(original: Record<string, unknown>, sections: DiffSection[]): Record<string, unknown> {
 	const result = JSON.parse(JSON.stringify(original)) as Record<string, unknown>;
+
+	// Group accepted sections by collection key
+	const byKey = new Map<string, DiffSection[]>();
 	for (const section of sections) {
 		if (!section.accepted) continue;
-		const [key, indexOrCategory] = section.path;
-		if (typeof indexOrCategory === 'string') {
-			const collection = isObject(result[key]) ? result[key] : {};
-			if (section.newRaw === null) delete collection[indexOrCategory];
-			else collection[indexOrCategory] = section.newRaw;
-			result[key] = collection;
-			continue;
-		}
-		if (typeof indexOrCategory === 'number') {
-			const collection = Array.isArray(result[key]) ? result[key] : [];
-			if (section.newRaw === null) collection.splice(indexOrCategory, 1);
-			else if (indexOrCategory < collection.length) collection[indexOrCategory] = section.newRaw;
-			else collection.push(section.newRaw);
-			result[key] = collection;
-			continue;
-		}
-		if (section.newRaw === null) delete result[key];
-		else result[key] = section.newRaw;
+		const key = section.path[0] as string;
+		if (!byKey.has(key)) byKey.set(key, []);
+		byKey.get(key)!.push(section);
 	}
+
+	for (const [key, keySections] of byKey) {
+		// Separate operations by path structure
+		const topLevelOps = keySections.filter(s => s.path.length === 1);
+		const stringOps = keySections.filter(s => s.path.length === 2 && typeof s.path[1] === 'string');
+		const arrayOps = keySections.filter(s => s.path.length === 2 && typeof s.path[1] === 'number');
+
+		// Handle top-level keys (summary, title, location, etc.)
+		for (const section of topLevelOps) {
+			if (section.newRaw === null) delete result[key];
+			else result[key] = section.newRaw;
+		}
+
+		// Handle string-keyed collections (skills, etc.)
+		for (const section of stringOps) {
+			const collection = isObject(result[key]) ? result[key] : {};
+			const path1 = section.path[1] as string;
+			if (section.newRaw === null) delete collection[path1];
+			else collection[path1] = section.newRaw;
+			result[key] = collection;
+		}
+
+		if (arrayOps.length === 0) continue;
+
+		const collection = Array.isArray(result[key]) ? result[key] : [];
+
+		// 1. Apply updates (newRaw !== null, index < current length) first
+		const updates = arrayOps.filter(s => s.newRaw !== null && (s.path[1] as number) < collection.length);
+		for (const section of updates) {
+			collection[section.path[1] as number] = section.newRaw;
+		}
+
+		// 2. Apply removals (newRaw === null) in descending index order
+		const removals = arrayOps
+			.filter(s => s.newRaw === null)
+			.sort((a, b) => (b.path[1] as number) - (a.path[1] as number));
+		for (const section of removals) {
+			collection.splice(section.path[1] as number, 1);
+		}
+
+		// 3. Apply additions (newRaw !== null, index >= current length) in ascending index order
+		const additions = arrayOps
+			.filter(s => s.newRaw !== null && (s.path[1] as number) >= collection.length)
+			.sort((a, b) => (a.path[1] as number) - (b.path[1] as number));
+		for (const section of additions) {
+			collection.push(section.newRaw);
+		}
+
+		result[key] = collection;
+	}
+
 	return result;
 }

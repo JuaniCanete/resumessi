@@ -35,3 +35,4 @@ Follow the **DASH** sequence to wrap up tasks efficiently without running redund
 - **Wait for the user's green light.** Do not invoke commit or push automatically.
 - Once approved, run the `commit` and `push` commands in separate turns to allow Husky hooks to validate sequentially. **Important! `--no-verify` flag is not allowed.**
 - **Failure handling:** If a hook fails, automatically fix the actionable items. You have a maximum of 2 retry turns to break circular failures before asking the user for help.
+- **After each fix:** Rerun affected tests, regenerate the change summary, and obtain explicit user approval before the next commit or push attempt.
