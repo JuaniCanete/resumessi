@@ -28,7 +28,7 @@ jobs:
         env:
           ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
         with:
-          model: zencode/nemotron-3-ultra-free
+          model: opencode/nemotron-3-ultra-free
           share: true
 
   opencode-review:
