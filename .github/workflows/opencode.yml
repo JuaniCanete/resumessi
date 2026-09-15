@@ -23,17 +23,13 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
-      - name: Run OpenCode (with retry)
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 15
-          max_attempts: 3
-          command: |
-            npx -y anomalyco/opencode/github@latest \
-              --model zencode/nemotron-3-ultra-free \
-              --share true
+      - name: Run OpenCode
+        uses: anomalyco/opencode/github@latest
         env:
           ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
+        with:
+          model: zencode/nemotron-3-ultra-free
+          share: true
 
   opencode-review:
     runs-on: ubuntu-latest
@@ -47,22 +43,19 @@ jobs:
         uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Run OpenCode Review (with retry)
-        uses: nick-fields/retry@v3
+      - name: Run OpenCode Review
+        uses: anomalyco/opencode/github@latest
+        env:
+          ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          timeout_minutes: 15
-          max_attempts: 3
-          command: |
-            npx -y anomalyco/opencode/github@latest \
-              --model zencode/nemotron-3-ultra-free \
-              --use_github_token true \
-              --prompt "Review this pull request:
+          model: zencode/nemotron-3-ultra-free
+          use_github_token: true
+          prompt: |
+            Review this pull request:
             - Check for code quality issues
             - Look for potential bugs
             - Suggest improvements
             - Verify TypeScript types are correct
             - Check for security issues
-            - Ensure tests are adequate"
-        env:
-          ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - Ensure tests are adequate
