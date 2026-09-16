@@ -1250,6 +1250,10 @@ function createBoardCard(job: ScraperResult, listId: DashboardListId): HTMLEleme
 			return;
 		}
 
+		document.querySelectorAll('.board-card-menu.show, .board-card-rounds-menu.show').forEach(menu => {
+			menu.classList.remove('show');
+		});
+
 		draggedCardUrl = job.url;
 		draggedCardId = job.id || null;
 		// Capture source column at drag start (before card might move during dragover)
