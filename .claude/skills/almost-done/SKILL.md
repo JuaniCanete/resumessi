@@ -72,7 +72,9 @@ If you just completed a task and:
 
 When all DASH steps pass and user approves the summary table:
 
-1. Run `git add -A && git commit -m "<message>"` (no `--no-verify`)
-2. Run `git push origin <branch>`
-3. If husky hooks fail → apply fix → rerun tests → regenerate summary → get approval → retry (max 2)
-4. Report PR URL or push status to user
+1. Stage only explicitly approved files: `git add -- <approved-paths>`
+2. Review the staged diff: `git diff --staged`
+3. Run `git commit -m "<message>"` (no `--no-verify`)
+4. Run `git push origin <branch>`
+5. If husky hooks fail → apply fix → rerun tests → regenerate summary → get approval → retry (max 2)
+6. Report PR URL or push status to user

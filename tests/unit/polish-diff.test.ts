@@ -305,3 +305,33 @@ test('formatSectionForDisplay - formats array of objects with name', () => {
 	const result = formatSectionForDisplay('skills', skills);
 	assert.equal(result, '  JS (expert)\n  TS');
 });
+
+test('formatSectionForDisplay - handles null value', () => {
+	assert.equal(formatSectionForDisplay('summary', null), '');
+});
+
+test('formatSectionForDisplay - handles undefined value', () => {
+	assert.equal(formatSectionForDisplay('summary', undefined), '');
+});
+
+test('formatSectionForDisplay - formats array of generic objects', () => {
+	const items = [{ foo: 'bar' }, { baz: 123 }];
+	const result = formatSectionForDisplay('custom', items);
+	assert.ok(result.includes('foo'));
+	assert.ok(result.includes('baz'));
+});
+
+test('formatSectionForDisplay - formats generic object (fallback JSON)', () => {
+	const obj = { customField: 'value', another: 42 };
+	const result = formatSectionForDisplay('unknown', obj);
+	assert.ok(result.includes('customField'));
+	assert.ok(result.includes('value'));
+});
+
+test('formatSectionForDisplay - formats number value', () => {
+	assert.equal(formatSectionForDisplay('count', 42), '42');
+});
+
+test('formatSectionForDisplay - formats boolean value', () => {
+	assert.equal(formatSectionForDisplay('flag', true), 'true');
+});
