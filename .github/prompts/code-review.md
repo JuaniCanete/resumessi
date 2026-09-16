@@ -34,8 +34,35 @@ AI_SLOOP_ARTIFACTS: Strip AI-generated comments, hallucinations, circular reason
 COVERAGE: Flag missing tests for NEW code; Ensure existing tests not broken
 THREATS_SECURITY: Scan for critical vulnerabilities; Flag outdated/insecure dependencies; Check OWASP Top 10
 STRUCTURE_MAINTAINABILITY: Evaluate readability, naming clarity; Remove unnecessary complexity, redundant comments; Identify deduplication opportunities
-OUTPUT_FORMAT: For each finding, provide: Severity (Critical, Warning, or Suggestion); Location (filename.ext, Line: X); Issue (Concrete failure mode); Fix (Drop-in code snippet or exact action)
-CONSTRAINTS: DO NOT run scripts, tests, or build commands; Only analyze static code; Review ONLY the listed files; DO NOT fix or modify any code - only report findings as review comments
+
+CONSTRAINTS:
+
+- DO NOT run scripts, tests, or build commands
+- Only analyze static code
+- Review ONLY the listed files: {files}
+- DO NOT fix or modify any code - only report findings as review comments
+- Skip issues already fixed in this PR (check if code matches the fix)
+
+OUTPUT REQUIREMENTS:
+
+1. **Verdict** (MUST be first line): One of:
+   - `VERDICT: Approved` — no issues or only suggestions
+   - `VERDICT: Approved with comments` — warnings but no critical issues
+   - `VERDICT: Needs changes` — one or more critical issues
+
+2. **Summary Stats** (second line):
+   `STATS: Critical: X | Warning: Y | Suggestion: Z | Fixed: W`
+
+3. **Findings** — Only report NEW issues not yet fixed in this PR.
+   For each finding, provide:
+   - **Severity:** Critical | Warning | Suggestion
+   - **Location:** `filename.ext`, Line: X
+   - **Issue:** Concrete failure mode
+   - **Fix:** Drop-in code snippet or exact action
+
+4. **Fixed Issues (Compact)** — If issues from prior reviews are now fixed, list briefly:
+   `FIXED: <count> issues resolved — <file1>, <file2>`
+
 FILES_TO_REVIEW: {files}
 
 {discussion_context}
