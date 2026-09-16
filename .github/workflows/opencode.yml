@@ -56,7 +56,7 @@ jobs:
           echo "$PROMPT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       - name: Run OpenCode Review
-        uses: anomalyco/opencode/github@latest
+        uses: anomalyco/opencode/github@v1.18.31
         env:
           ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
         with:
@@ -105,12 +105,12 @@ jobs:
           echo "$PROMPT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       - name: Run OpenCode Review (with retry)
-        uses: anomalyco/opencode/github@latest
+        uses: anomalyco/opencode/github@v1.18.31
         env:
           ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: opencode/nemotron-3-ultra-free
-          share: true
+          share: false
           use_github_token: true
           prompt: ${{ steps.prompt.outputs.prompt }}
