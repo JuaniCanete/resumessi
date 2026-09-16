@@ -46,6 +46,7 @@ If you just completed a task and:
 ### 2. [A]ffected Tests Only
 
 - Run **only tests related to changed files** (unit + e2e) for fast feedback on your changes.
+- Determine related unit tests with a name/path pattern, e.g. `npm run test:unit -- --grep polish-diff` or `npm run test:unit -- tests/unit/polish-diff.test.ts`.
 - Do not run the entire test suite — husky pre-push runs the full validation (`test:e2e`, `test:unit`, `lint`, `typecheck`, `build`).
 - If affected tests fail, fix and re-run. Do not proceed until they pass.
 

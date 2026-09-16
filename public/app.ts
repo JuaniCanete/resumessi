@@ -6,7 +6,7 @@
 import { safeJsonParse } from '../src/providers';
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import { buildQueryUrl, resizeImage, showToast } from './utils';
-import { computeDiff, mergeDiff, type DiffSection } from './utils/polish-diff';
+import { computeDiff, mergeDiff, stableStringify, type DiffSection } from './utils/polish-diff';
 
 // Declare global function for TypeScript benefit
 declare function closeJdEditModal(): void;
@@ -773,10 +773,8 @@ async function polishResume(): Promise<void> {
 	const signal = polishController.signal;
 
 	try {
-		const resp = await fetch('/src/resume/output/resume-data.json', { signal });
-		if (!resp.ok) throw new Error('No resume data to polish');
-
-		const resumeData = (await resp.json()) as Record<string, unknown>;
+		if (Object.keys(currentResume).length === 0) throw new Error('No resume data to polish');
+		const resumeData = currentResume;
 
 		// Send only summary and experience to reduce token usage
 		const dataToPolish = {
@@ -945,18 +943,6 @@ async function loadCurrentResume(): Promise<Record<string, unknown>> {
 	const resp = await fetch('/src/resume/output/resume-data.json');
 	if (!resp.ok) return {};
 	return (await resp.json()) as Record<string, unknown>;
-}
-
-function stableStringify(value: unknown): string {
-	if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-	if (value !== null && typeof value === 'object') {
-		const record = value as Record<string, unknown>;
-		return `{${Object.keys(record)
-			.sort()
-			.map(key => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
-			.join(',')}}`;
-	}
-	return JSON.stringify(value) ?? 'null';
 }
 
 function resumesEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
