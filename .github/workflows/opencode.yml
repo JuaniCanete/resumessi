@@ -105,16 +105,11 @@ jobs:
           echo "$PROMPT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       - name: Run OpenCode Review (with retry)
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 12
-          max_attempts: 3
-          retry_wait_seconds: 10
-          command: |
-            npx -y anomalyco/opencode/github@latest \
-              --model opencode/nemotron-3-ultra-free \
-              --use_github_token true \
-              --prompt "${{ steps.prompt.outputs.prompt }}"
+        uses: anomalyco/opencode/github@latest
         env:
           ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: opencode/nemotron-3-ultra-free
+          use_github_token: true
+          prompt: ${{ steps.prompt.outputs.prompt }}
