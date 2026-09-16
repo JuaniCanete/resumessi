@@ -53,15 +53,23 @@ OUTPUT REQUIREMENTS:
 2. **Summary Stats** (second line):
    `STATS: Critical: X | Warning: Y | Suggestion: Z | Fixed: W`
 
-3. **Findings** — Only report NEW issues not yet fixed in this PR.
+3. **Code Review Findings** — Only report NEW issues not yet fixed in this PR.
    For each finding, provide:
    - **Severity:** Critical | Warning | Suggestion
    - **Location:** `filename.ext`, Line: X
    - **Issue:** Concrete failure mode
    - **Fix:** Drop-in code snippet or exact action
+   - **Status:** `Already fixed ✓` if code matches the fix, else `Open`
 
 4. **Fixed Issues (Compact)** — If issues from prior reviews are now fixed, list briefly:
    `FIXED: <count> issues resolved — <file1>, <file2>`
+
+5. **Open Issues - Summary** (table):
+   | Severity   | Count | Files        |
+   | ---------- | ----- | ------------ |
+   | Critical   | X     | file1, file2 |
+   | Warning    | Y     | file3        |
+   | Suggestion | Z     | file4        |
 
 FILES_TO_REVIEW: {files}
 
