@@ -751,15 +751,15 @@ async function polishResume(): Promise<void> {
 	const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
 	if (dropdownBtn.disabled) return;
 
+	// Disable button immediately to prevent race condition on rapid clicks
+	dropdownBtn.disabled = true;
+
 	// Check if we have a cached polish for the current resume
 	const currentResume = await loadCurrentResume();
 	if (cachedPolishData && cachedPolishOriginal && resumesEqual(currentResume, cachedPolishOriginal)) {
-		dropdownBtn.disabled = true;
 		showPolishChoiceModal(currentResume, cachedPolishData);
 		return;
 	}
-
-	dropdownBtn.disabled = true;
 	console.info('[polishResume] Setting overlay display to flex');
 	const overlay = document.getElementById('polish-overlay');
 	if (overlay) {
@@ -947,20 +947,20 @@ async function loadCurrentResume(): Promise<Record<string, unknown>> {
 	return (await resp.json()) as Record<string, unknown>;
 }
 
-function deepSort(obj: unknown): unknown {
-	if (Array.isArray(obj)) return obj.map(deepSort);
-	if (obj && typeof obj === 'object') {
-		const sorted: Record<string, unknown> = {};
-		for (const key of Object.keys(obj).sort()) {
-			sorted[key] = deepSort((obj as Record<string, unknown>)[key]);
-		}
-		return sorted;
+function stableStringify(value: unknown): string {
+	if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+	if (value !== null && typeof value === 'object') {
+		const record = value as Record<string, unknown>;
+		return `{${Object.keys(record)
+			.sort()
+			.map(key => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+			.join(',')}}`;
 	}
-	return obj;
+	return JSON.stringify(value) ?? 'null';
 }
 
 function resumesEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
-	return JSON.stringify(deepSort(a)) === JSON.stringify(deepSort(b));
+	return stableStringify(a) === stableStringify(b);
 }
 
 function showPolishChoiceModal(original: Record<string, unknown>, polished: Record<string, unknown>): void {
