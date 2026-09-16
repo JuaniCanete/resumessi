@@ -39,7 +39,7 @@ function titleCase(value: string): string {
 function identityFor(collection: string, value: unknown, index: number): string {
 	if (!isObject(value)) return `index:${index}`;
 	const keys = collectionIdentityKeys[collection];
-if (!keys) {
+	if (!keys) {
 		console.warn(
 			`[polish-diff] Unknown collection "${collection}" - ` +
 				'falling back to index-based identity. ' +
