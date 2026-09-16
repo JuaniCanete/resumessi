@@ -33,20 +33,30 @@ jobs:
       - name: Get inline comment context
         id: comment
         if: contains(github.event.comment.body, '@opencode') && github.event_name == 'pull_request_review_comment'
+        env:
+          COMMENT_ID: ${{ github.event.comment.id }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_URL: ${{ github.event.comment.html_url }}
+          DIFF_HUNK: ${{ github.event.comment.diff_hunk }}
+          FILE_PATH: ${{ github.event.comment.path }}
+          LINE: ${{ github.event.comment.line }}
         run: |
-          echo "comment_id=${{ github.event.comment.id }}" >> $GITHUB_OUTPUT
-          echo "comment_body=${{ github.event.comment.body }}" >> $GITHUB_OUTPUT
-          echo "comment_html_url=${{ github.event.comment.html_url }}" >> $GITHUB_OUTPUT
-          echo "diff_hunk=${{ toJson(github.event.comment.diff_hunk) }}" >> $GITHUB_OUTPUT
-          echo "file_path=${{ github.event.comment.path }}" >> $GITHUB_OUTPUT
-          echo "line=${{ github.event.comment.line }}" >> $GITHUB_OUTPUT
+          echo "comment_id=$COMMENT_ID" >> $GITHUB_OUTPUT
+          echo "comment_body=$COMMENT_BODY" >> $GITHUB_OUTPUT
+          echo "comment_html_url=$COMMENT_URL" >> $GITHUB_OUTPUT
+          # Write diff_hunk to file to avoid shell interpolation issues
+          printf '%s' "$DIFF_HUNK" > /tmp/diff_hunk.txt
+          echo "diff_hunk_file=/tmp/diff_hunk.txt" >> $GITHUB_OUTPUT
+          echo "file_path=$FILE_PATH" >> $GITHUB_OUTPUT
+          echo "line=$LINE" >> $GITHUB_OUTPUT
       - name: Build review prompt
         id: prompt
         run: |
           PROMPT=$(cat .github/prompts/code-review.md)
           PROMPT="${PROMPT/\{files\}/${{ steps.changes.outputs.files }}}"
-          if [ -n "${{ steps.comment.outputs.diff_hunk }}" ]; then
-            DISCUSSION="DISCUSSION_CONTEXT: Comment #${{ steps.comment.outputs.comment_id }} at File: ${{ steps.comment.outputs.file_path }} Line: ${{ steps.comment.outputs.line }}\nDIFF_HUNK: ${{ steps.comment.outputs.diff_hunk }}\nUSER_SAID: ${{ steps.comment.outputs.comment_body }}"
+          if [ -n "${{ steps.comment.outputs.diff_hunk_file }}" ] && [ -f "${{ steps.comment.outputs.diff_hunk_file }}" ]; then
+            DIFF_HUNK=$(cat "${{ steps.comment.outputs.diff_hunk_file }}")
+            DISCUSSION="DISCUSSION_CONTEXT: Comment #${{ steps.comment.outputs.comment_id }} at File: ${{ steps.comment.outputs.file_path }} Line: ${{ steps.comment.outputs.line }}\nDIFF_HUNK: $DIFF_HUNK\nUSER_SAID: ${{ steps.comment.outputs.comment_body }}"
             PROMPT="${PROMPT/\{discussion_context\}/$DISCUSSION}"
           else
             PROMPT="${PROMPT/\{discussion_context\}/}"
