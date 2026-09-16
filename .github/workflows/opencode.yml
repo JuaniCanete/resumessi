@@ -1,0 +1,120 @@
+name: opencode
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+jobs:
+  opencode:
+    if: |
+      contains(github.event.comment.body, '/oc') ||
+      contains(github.event.comment.body, '/opencode') ||
+      contains(github.event.comment.body, '@opencode')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Get changed files
+        id: changes
+        run: |
+          git fetch origin main --depth=1
+          echo "files=$(git diff --name-only origin/main | tr '\n' ' ')" >> $GITHUB_OUTPUT
+      - name: Get inline comment context
+        id: comment
+        if: contains(github.event.comment.body, '@opencode') && github.event_name == 'pull_request_review_comment'
+        run: |
+          echo "comment_id=${{ github.event.comment.id }}" >> $GITHUB_OUTPUT
+          echo "comment_body=${{ github.event.comment.body }}" >> $GITHUB_OUTPUT
+          echo "comment_html_url=${{ github.event.comment.html_url }}" >> $GITHUB_OUTPUT
+          echo "diff_hunk=${{ toJson(github.event.comment.diff_hunk) }}" >> $GITHUB_OUTPUT
+          echo "file_path=${{ github.event.comment.path }}" >> $GITHUB_OUTPUT
+          echo "line=${{ github.event.comment.line }}" >> $GITHUB_OUTPUT
+      - name: Build review prompt
+        id: prompt
+        run: |
+          PROMPT=$(cat .github/prompts/code-review.md)
+          PROMPT="${PROMPT/\{files\}/${{ steps.changes.outputs.files }}}"
+          if [ -n "${{ steps.comment.outputs.diff_hunk }}" ]; then
+            DISCUSSION="DISCUSSION_CONTEXT: Comment #${{ steps.comment.outputs.comment_id }} at File: ${{ steps.comment.outputs.file_path }} Line: ${{ steps.comment.outputs.line }}\nDIFF_HUNK: ${{ steps.comment.outputs.diff_hunk }}\nUSER_SAID: ${{ steps.comment.outputs.comment_body }}"
+            PROMPT="${PROMPT/\{discussion_context\}/$DISCUSSION}"
+          else
+            PROMPT="${PROMPT/\{discussion_context\}/}"
+          fi
+          PROMPT="${PROMPT/\{review_instruction\}/}"
+          echo "prompt<<EOF" >> $GITHUB_OUTPUT
+          echo "$PROMPT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Run OpenCode Review
+        uses: anomalyco/opencode/github@latest
+        env:
+          ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
+        with:
+          model: opencode/nemotron-3-ultra-free
+          share: false
+          prompt: ${{ steps.prompt.outputs.prompt }}
+
+  opencode-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Get changed files
+        id: changes
+        run: |
+          git fetch origin main --depth=1
+          echo "files=$(git diff --name-only origin/main | tr '\n' ' ')" >> $GITHUB_OUTPUT
+      - name: Check for new/deleted files
+        id: diff_type
+        run: |
+          git fetch origin main --depth=1
+          NEW_DELETED=$(git diff --diff-filter=AD --name-only origin/main)
+          echo "has_new_deleted=$(test -n "$NEW_DELETED" && echo true || echo false)" >> $GITHUB_OUTPUT
+      - name: Build review prompt
+        id: prompt
+        run: |
+          PROMPT=$(cat .github/prompts/code-review.md)
+          PROMPT="${PROMPT/\{files\}/${{ steps.changes.outputs.files }}}"
+          PROMPT="${PROMPT/\{discussion_context\}/}"
+          if [ "${{ steps.diff_type.outputs.has_new_deleted }}" = "true" ]; then
+            INSTRUCTION="REVIEW_INSTRUCTION: Apply all 5 FACTS categories (FULL review)."
+          else
+            INSTRUCTION="REVIEW_INSTRUCTION: QUICK review - Focus on Threats + Structure + previously reported issues. Skip Functionality, AI Sloop, Coverage unless critical."
+          fi
+          PROMPT="${PROMPT/\{review_instruction\}/$INSTRUCTION}"
+          echo "prompt<<EOF" >> $GITHUB_OUTPUT
+          echo "$PROMPT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Run OpenCode Review (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 12
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: |
+            npx -y anomalyco/opencode/github@latest \
+              --model opencode/nemotron-3-ultra-free \
+              --use_github_token true \
+              --prompt "${{ steps.prompt.outputs.prompt }}"
+        env:
+          ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

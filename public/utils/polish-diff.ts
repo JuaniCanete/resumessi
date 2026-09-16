@@ -228,8 +228,8 @@ export function mergeDiff(original: Record<string, unknown>, sections: DiffSecti
 
 		const collection = Array.isArray(result[key]) ? result[key] : [];
 
-		// 1. Apply updates (newRaw !== null, index < current length) first
-		const updates = arrayOps.filter(s => s.newRaw !== null && (s.path[1] as number) < collection.length);
+		// 1. Apply updates (newRaw !== null && oldRaw !== null) first
+		const updates = arrayOps.filter(s => s.newRaw !== null && s.oldRaw !== null);
 		for (const section of updates) {
 			collection[section.path[1] as number] = section.newRaw;
 		}
@@ -242,12 +242,14 @@ export function mergeDiff(original: Record<string, unknown>, sections: DiffSecti
 			collection.splice(section.path[1] as number, 1);
 		}
 
-		// 3. Apply additions (newRaw !== null, index >= current length) in ascending index order
+		// 3. Apply additions (newRaw !== null && oldRaw === null) in ascending index order
 		const additions = arrayOps
-			.filter(s => s.newRaw !== null && (s.path[1] as number) >= collection.length)
+			.filter(s => s.newRaw !== null && s.oldRaw === null)
 			.sort((a, b) => (a.path[1] as number) - (b.path[1] as number));
 		for (const section of additions) {
-			collection.push(section.newRaw);
+			const index = section.path[1] as number;
+			if (index >= collection.length) collection.push(section.newRaw);
+			else collection.splice(index, 0, section.newRaw);
 		}
 
 		result[key] = collection;
