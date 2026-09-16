@@ -947,9 +947,20 @@ async function loadCurrentResume(): Promise<Record<string, unknown>> {
 	return (await resp.json()) as Record<string, unknown>;
 }
 
+function deepSort(obj: unknown): unknown {
+	if (Array.isArray(obj)) return obj.map(deepSort);
+	if (obj && typeof obj === 'object') {
+		const sorted: Record<string, unknown> = {};
+		for (const key of Object.keys(obj).sort()) {
+			sorted[key] = deepSort((obj as Record<string, unknown>)[key]);
+		}
+		return sorted;
+	}
+	return obj;
+}
+
 function resumesEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
-	const sortedStringify = (obj: Record<string, unknown>) => JSON.stringify(obj, Object.keys(obj).sort());
-	return sortedStringify(a) === sortedStringify(b);
+	return JSON.stringify(deepSort(a)) === JSON.stringify(deepSort(b));
 }
 
 function showPolishChoiceModal(original: Record<string, unknown>, polished: Record<string, unknown>): void {
@@ -959,6 +970,7 @@ function showPolishChoiceModal(original: Record<string, unknown>, polished: Reco
 	document.body.appendChild(modal);
 
 	const closeModal = () => {
+		document.removeEventListener('keydown', handleEscape);
 		modal.remove();
 		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
 		if (dropdownBtn) dropdownBtn.disabled = false;
@@ -979,10 +991,7 @@ function showPolishChoiceModal(original: Record<string, unknown>, polished: Reco
 
 	// Close on Escape
 	const handleEscape = (e: KeyboardEvent) => {
-		if (e.key === 'Escape') {
-			closeModal();
-			document.removeEventListener('keydown', handleEscape);
-		}
+		if (e.key === 'Escape') closeModal();
 	};
 	document.addEventListener('keydown', handleEscape);
 
