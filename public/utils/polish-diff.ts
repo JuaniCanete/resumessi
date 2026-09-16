@@ -39,7 +39,14 @@ function titleCase(value: string): string {
 function identityFor(collection: string, value: unknown, index: number): string {
 	if (!isObject(value)) return `index:${index}`;
 	const keys = collectionIdentityKeys[collection];
-	if (!keys) return `index:${index}`;
+if (!keys) {
+		console.warn(
+			`[polish-diff] Unknown collection "${collection}" - ` +
+				'falling back to index-based identity. ' +
+				'Add to collectionIdentityKeys for stable diffing.'
+		);
+		return `index:${index}`;
+	}
 	const identity = keys.map(key => String(value[key] ?? '').trim()).join('|');
 	return identity.replace(/\|+$/, '') || `index:${index}`;
 }

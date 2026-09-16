@@ -1,3 +1,31 @@
+# Code Review Prompt Template
+
+This template is used by the OpenCode GitHub Action to generate code reviews.
+Variables in `{braces}` are substituted at runtime by the workflow.
+
+## Template Variables
+
+- `{files}` - Space-separated list of changed file paths (from `git diff origin/main --name-only`).
+  Example: `".github/workflows/opencode.yml public/app.ts public/utils/polish-diff.ts"`
+
+- `{discussion_context}` - Optional context when triggered by `@opencode` inline comment.
+  Format when present:
+
+  ```
+  DISCUSSION_CONTEXT: Comment #<id> at File: <path> Line: <number>
+  DIFF_HUNK: <unified diff hunk>
+  USER_SAID: "<comment body>"
+  ```
+
+  Empty string when not an inline comment trigger.
+
+- `{review_instruction}` - Review mode instruction.
+  Either:
+  - `REVIEW_INSTRUCTION: Apply all 5 FACTS categories (FULL review).` (when new/deleted files detected)
+  - `REVIEW_INSTRUCTION: QUICK review - Focus on Threats + Structure + previously reported issues. Skip Functionality, AI Sloop, Coverage unless critical.` (when only modifications)
+
+---
+
 You are a senior code reviewer. Apply the FACTS framework.
 
 FACTS_FRAMEWORK
