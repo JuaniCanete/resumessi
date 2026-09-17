@@ -74,9 +74,10 @@ jobs:
               discussion = `DISCUSSION_CONTEXT: Comment #${process.env.COMMENT_ID} at File: ${process.env.FILE_PATH} Line: ${process.env.LINE}\nDIFF_HUNK: ${diffHunk}\nUSER_SAID: ${process.env.COMMENT_BODY}`;
             }
             
-            prompt = prompt.replace(/\{files\}/g, process.env.FILES || "");
-            prompt = prompt.replace(/\{discussion_context\}/g, discussion);
-            prompt = prompt.replace(/\{review_instruction\}/g, "");
+            const instruction = "REVIEW_INSTRUCTION: QUICK review - Focus on Threats + Structure + previously reported issues. Skip Functionality, AI Sloop, Coverage unless critical.";
+            prompt = prompt.replace(/\{files\}/g, () => process.env.FILES || "");
+            prompt = prompt.replace(/\{discussion_context\}/g, () => discussion);
+            prompt = prompt.replace(/\{review_instruction\}/g, () => instruction);
             
             fs.writeFileSync("/tmp/final_prompt.md", prompt);
           '
@@ -97,6 +98,57 @@ jobs:
           share: false
           use_github_token: true
           prompt: ${{ steps.prompt.outputs.prompt }}
+      - name: Reply in thread
+        if: github.event_name == 'pull_request_review_comment' && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRIGGER_COMMENT_ID: ${{ github.event.comment.id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          echo "Reply in thread for comment $TRIGGER_COMMENT_ID on PR $PR_NUMBER run $RUN_ID"
+          if [ -z "$TRIGGER_COMMENT_ID" ] || [ -z "$PR_NUMBER" ]; then
+            echo "Missing TRIGGER_COMMENT_ID or PR_NUMBER, skipping"
+            exit 0
+          fi
+          # Wait briefly for the main comment to appear (GH eventual consistency)
+          BODY=""
+          for i in 1 2 3 4 5 6; do
+            BODY=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r --arg run "$RUN_ID" '.[] | select(.user.login == "github-actions[bot]" and (.body | contains($run))) | .body' | head -n 1)
+            if [ -n "$BODY" ] && [ "$BODY" != "null" ]; then
+              echo "Found main comment on attempt $i"
+              break
+            fi
+            echo "Main comment not found yet, retry $i/6..."
+            sleep 4
+          done
+          if [ -z "$BODY" ] || [ "$BODY" = "null" ]; then
+            echo "No main comment found for run $RUN_ID, using fallback"
+            BODY="Review finished for comment #$TRIGGER_COMMENT_ID. See main conversation for VERDICT and details: https://github.com/$REPO/pull/$PR_NUMBER#issuecomment-$RUN_ID (run $RUN_ID)."
+          fi
+          printf '%s' "$BODY" > /tmp/reply_body.txt
+          echo "Reply body size: $(wc -c < /tmp/reply_body.txt) bytes"
+          # Build JSON payload safely via node to handle special chars
+          node -e '
+            const fs = require("fs");
+            const body = fs.readFileSync("/tmp/reply_body.txt", "utf8");
+            const payload = { body, in_reply_to: parseInt(process.env.TRIGGER_COMMENT_ID, 10) };
+            fs.writeFileSync("/tmp/payload.json", JSON.stringify(payload));
+          '
+          echo "Posting reply to PR $PR_NUMBER in_reply_to $TRIGGER_COMMENT_ID"
+          if gh api "repos/$REPO/pulls/$PR_NUMBER/comments" --method POST --input /tmp/payload.json --silent; then
+            echo "✓ Replied in thread via pulls/comments"
+          else
+            echo "⚠ Primary reply failed, trying alternative endpoint"
+            node -e '
+              const fs = require("fs");
+              const body = fs.readFileSync("/tmp/reply_body.txt", "utf8");
+              fs.writeFileSync("/tmp/payload2.json", JSON.stringify({ body }));
+            '
+            gh api "repos/$REPO/pulls/comments/$TRIGGER_COMMENT_ID/replies" --method POST --input /tmp/payload2.json --silent && echo "✓ Replied via replies endpoint" || echo "✗ Both reply attempts failed"
+          fi
 
   opencode-review:
     if: github.event_name == 'pull_request'
@@ -144,9 +196,9 @@ jobs:
               instruction = "REVIEW_INSTRUCTION: Apply all 5 FACTS categories (FULL review).";
             }
             
-            prompt = prompt.replace(/\{files\}/g, process.env.FILES || "");
-            prompt = prompt.replace(/\{discussion_context\}/g, "");
-            prompt = prompt.replace(/\{review_instruction\}/g, instruction);
+            prompt = prompt.replace(/\{files\}/g, () => process.env.FILES || "");
+            prompt = prompt.replace(/\{discussion_context\}/g, () => "");
+            prompt = prompt.replace(/\{review_instruction\}/g, () => instruction);
             
             fs.writeFileSync("/tmp/final_prompt_review.md", prompt);
           '
@@ -167,3 +219,94 @@ jobs:
           share: false
           use_github_token: true
           prompt: ${{ steps.prompt.outputs.prompt }}
+      - name: Create inline review comments
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          FILES: ${{ steps.changes.outputs.files }}
+        run: |
+          set -e
+          echo "Attempting to create inline review comments for PR $PR_NUMBER run $RUN_ID"
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR number, skipping inline creation"
+            exit 0
+          fi
+          # Fetch main comment body
+          BODY=""
+          for i in 1 2 3 4 5; do
+            BODY=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r --arg run "$RUN_ID" '.[] | select(.user.login == "github-actions[bot]" and (.body | contains($run))) | .body' | head -n 1)
+            if [ -n "$BODY" ] && [ "$BODY" != "null" ]; then
+              break
+            fi
+            echo "Main comment not found yet, retry $i/5..."
+            sleep 4
+          done
+          if [ -z "$BODY" ] || [ "$BODY" = "null" ]; then
+            echo "No main comment found, skipping inline creation"
+            exit 0
+          fi
+          printf '%s' "$BODY" > /tmp/main_body.txt
+          # Parse Open Issues details into review comments
+          node -e '
+            const fs = require("fs");
+            const body = fs.readFileSync("/tmp/main_body.txt", "utf8");
+            const files = (process.env.FILES || "").split(" ").filter(Boolean);
+            const fileMap = new Map();
+            for (const f of files) {
+              const short = f.split("/").pop();
+              if (!fileMap.has(short)) fileMap.set(short, f);
+              fileMap.set(f, f);
+            }
+            const comments = [];
+            const headerRegex = /###\s+`([^`]+)`\s*\(Line\s+(\d+).*?\)/g;
+            let match;
+            while ((match = headerRegex.exec(body)) !== null) {
+              const rawFile = match[1].trim();
+              const line = parseInt(match[2], 10);
+              const start = match.index;
+              const next = body.indexOf("### `", start + match[0].length);
+              const section = body.slice(start, next === -1 ? undefined : next);
+              const issueMatch = section.match(/-\s+\*\*Issue:\*\*\s*(.+?)(?=\n-|\n```|\n###|\n$)/s);
+              const fixMatch = section.match(/-\s+\*\*Fix:\*\*\s*([\s\S]*?)(?=\n###|\n```|$)/);
+              const issue = issueMatch ? issueMatch[1].trim() : "";
+              const fix = fixMatch ? fixMatch[1].trim().slice(0, 800) : "";
+              let path = fileMap.get(rawFile) || rawFile;
+              if (!files.includes(path)) {
+                const found = files.find(f => f.endsWith(rawFile));
+                if (found) path = found;
+              }
+              if (!path || !line) continue;
+              const commentBody = `**${rawFile}:${line}**\n\n**Issue:** ${issue}\n\n**Fix:** ${fix}\n\n*Run ${process.env.RUN_ID}*`;
+              comments.push({ path, line, body: commentBody.slice(0, 2000) });
+              if (comments.length >= 8) break;
+            }
+            console.log(`Parsed ${comments.length} inline comments`);
+            fs.writeFileSync("/tmp/inline_comments.json", JSON.stringify(comments, null, 2));
+            if (comments.length > 0) {
+              console.log(JSON.stringify(comments, null, 2));
+            }
+          '
+          COUNT=$(jq length /tmp/inline_comments.json 2>/dev/null || echo 0)
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No inline comments parsed, skipping review creation"
+            exit 0
+          fi
+          echo "Creating PR review with $COUNT inline comments"
+          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .head.sha)
+          echo "HEAD_SHA=$HEAD_SHA"
+          HEAD_SHA=$HEAD_SHA node -e '
+            const fs = require("fs");
+            const comments = JSON.parse(fs.readFileSync("/tmp/inline_comments.json", "utf8"));
+            const body = `Inline findings from run ${process.env.RUN_ID}. See main conversation for full VERDICT and stats.`;
+            const payload = { commit_id: process.env.HEAD_SHA, event: "COMMENT", body, comments };
+            fs.writeFileSync("/tmp/review_payload.json", JSON.stringify(payload));
+          '
+          if gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --method POST --input /tmp/review_payload.json --silent; then
+            echo "✓ Created inline review"
+          else
+            echo "⚠ Failed to create inline review (may require line in diff, check logs)"
+            cat /tmp/review_payload.json | head -n 100
+          fi
