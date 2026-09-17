@@ -125,8 +125,8 @@ jobs:
             sleep 4
           done
           if [ -z "$BODY" ] || [ "$BODY" = "null" ]; then
-            echo "No main comment found for run $RUN_ID, using fallback"
-            BODY="Review finished for comment #$TRIGGER_COMMENT_ID. See main conversation for VERDICT and details: https://github.com/$REPO/pull/$PR_NUMBER#issuecomment-$RUN_ID (run $RUN_ID)."
+            echo "No main comment found for run $RUN_ID, skipping thread reply to avoid log fallback (thread needs focused answer, not log)"
+            exit 0
           fi
           printf '%s' "$BODY" > /tmp/reply_body.txt
           echo "Reply body size: $(wc -c < /tmp/reply_body.txt) bytes"
