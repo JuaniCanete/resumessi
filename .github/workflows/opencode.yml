@@ -294,6 +294,44 @@ jobs:
             echo "No inline comments parsed, skipping review creation"
             exit 0
           fi
+          echo "Filtering $COUNT comments to diff hunks..."
+          git diff origin/main > /tmp/diff_full.txt || true
+          node -e '
+            const fs = require("fs");
+            const diff = fs.readFileSync("/tmp/diff_full.txt", "utf8");
+            const comments = JSON.parse(fs.readFileSync("/tmp/inline_comments.json", "utf8"));
+            const hunks = new Map();
+            let current = null;
+            for (const line of diff.split("\n")) {
+              if (line.startsWith("+++ b/")) {
+                current = line.slice(6);
+                if (!hunks.has(current)) hunks.set(current, []);
+              } else if (line.startsWith("@@ ") && current) {
+                const m = line.match(/\+(\d+)(?:,(\d+))?/);
+                if (m) {
+                  const s = parseInt(m[1], 10);
+                  const n = m[2] ? parseInt(m[2], 10) : 1;
+                  hunks.get(current).push([s, s + n]);
+                }
+              }
+            }
+            const filtered = comments.filter(c => {
+              const ranges = hunks.get(c.path);
+              if (!ranges || ranges.length === 0) return false;
+              return ranges.some(([a,b]) => c.line >= a && c.line < b);
+            });
+            console.log(`Filtered ${comments.length} -> ${filtered.length} in diff`);
+            if (filtered.length === 0 && comments.length > 0) {
+              console.log("Hunks sample:", JSON.stringify([...hunks.entries()].slice(0,3)).slice(0,800));
+              console.log("Comments:", JSON.stringify(comments,null,2).slice(0,1000));
+            }
+            fs.writeFileSync("/tmp/inline_comments.json", JSON.stringify(filtered, null, 2));
+          '
+          COUNT=$(jq length /tmp/inline_comments.json 2>/dev/null || echo 0)
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No inline comments in diff, skipping review creation"
+            exit 0
+          fi
           echo "Creating PR review with $COUNT inline comments"
           HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .head.sha)
           echo "HEAD_SHA=$HEAD_SHA"
@@ -304,9 +342,13 @@ jobs:
             const payload = { commit_id: process.env.HEAD_SHA, event: "COMMENT", body, comments };
             fs.writeFileSync("/tmp/review_payload.json", JSON.stringify(payload));
           '
-          if gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --method POST --input /tmp/review_payload.json --silent; then
+          echo "Payload preview:"
+          cat /tmp/review_payload.json | head -n 60
+          if gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --method POST --input /tmp/review_payload.json 2>&1 | tee /tmp/review_resp.txt; then
             echo "✓ Created inline review"
+            cat /tmp/review_resp.txt | head -n 20
           else
-            echo "⚠ Failed to create inline review (may require line in diff, check logs)"
+            echo "⚠ Failed to create inline review"
+            cat /tmp/review_resp.txt | head -n 80
             cat /tmp/review_payload.json | head -n 100
           fi
