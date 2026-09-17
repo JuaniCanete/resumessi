@@ -149,6 +149,23 @@ jobs:
             '
             gh api "repos/$REPO/pulls/comments/$TRIGGER_COMMENT_ID/replies" --method POST --input /tmp/payload2.json --silent && echo "✓ Replied via replies endpoint" || echo "✗ Both reply attempts failed"
           fi
+      - name: Cleanup general after thread reply
+        if: github.event_name == 'pull_request_review_comment' && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          echo "Cleaning up general comment for thread run $RUN_ID (thread-only)"
+          GENERAL_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r --arg run "$RUN_ID" 'first(.[] | select(.user.login == "github-actions[bot]" and (.body | contains($run))) | .id) // empty')
+          if [ -n "$GENERAL_ID" ] && [ "$GENERAL_ID" != "null" ]; then
+            echo "Deleting general $GENERAL_ID (thread reply already posted)"
+            gh api "repos/$REPO/issues/comments/$GENERAL_ID" --method DELETE 2>&1 | head -n 20 && echo "✓ Deleted general $GENERAL_ID" || echo "⚠ Failed to delete general $GENERAL_ID"
+          else
+            echo "No general found for $RUN_ID, nothing to delete"
+          fi
 
   opencode-review:
     if: github.event_name == 'pull_request'
@@ -356,3 +373,52 @@ jobs:
             cat /tmp/review_resp.txt | head -n 80
             cat /tmp/review_payload.json | head -n 100
           fi
+      - name: Upsert general comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          echo "Upsert general comment for run $RUN_ID (edit old, keep 1)"
+          # Find new general created by this run
+          NEW_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r --arg run "$RUN_ID" 'first(.[] | select(.user.login == "github-actions[bot]" and (.body | contains($run))) | .id) // empty')
+          if [ -z "$NEW_ID" ] || [ "$NEW_ID" = "null" ]; then
+            echo "No new general found for $RUN_ID"
+            exit 0
+          fi
+          echo "New general ID: $NEW_ID"
+          # Fetch its body
+          NEW_BODY=$(gh api "repos/$REPO/issues/comments/$NEW_ID" --jq .body)
+          printf '%s' "$NEW_BODY" > /tmp/new_body.txt
+          # Find oldest bot general with VERDICT (the one to keep, stable URL)
+          OLD_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r '[.[] | select(.user.login == "github-actions[bot]" and (.body | contains("VERDICT:")))] | sort_by(.created_at) | .[0].id // empty')
+          if [ -z "$OLD_ID" ] || [ "$OLD_ID" = "null" ] || [ "$OLD_ID" = "$NEW_ID" ]; then
+            echo "No older general to upsert, keeping $NEW_ID as is"
+            exit 0
+          fi
+          echo "Old general ID to update: $OLD_ID"
+          # Update old with new body via PATCH (keeps same URL, no new comment)
+          node -e '
+            const fs=require("fs");
+            const body=fs.readFileSync("/tmp/new_body.txt","utf8");
+            fs.writeFileSync("/tmp/upsert_payload.json", JSON.stringify({body}));
+          '
+          if gh api "repos/$REPO/issues/comments/$OLD_ID" --method PATCH --input /tmp/upsert_payload.json 2>&1 | head -n 20; then
+            echo "✓ Updated old general $OLD_ID"
+            # Delete the new duplicate (now old has its content)
+            gh api "repos/$REPO/issues/comments/$NEW_ID" --method DELETE 2>&1 | head -n 20 && echo "✓ Deleted duplicate new $NEW_ID" || echo "⚠ Failed to delete duplicate $NEW_ID"
+          else
+            echo "⚠ Failed to update old $OLD_ID, keeping new"
+          fi
+          # Prune any remaining old bot generals beyond the kept one (keep only OLD_ID)
+          echo "Pruning extra old generals..."
+          gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r --arg keep "$OLD_ID" '[.[] | select(.user.login == "github-actions[bot]" and (.body | contains("VERDICT:")) and (.id | tostring) != $keep) | .id] | .[]' | while read -r EXTRA; do
+            if [ -n "$EXTRA" ] && [ "$EXTRA" != "null" ]; then
+              echo "Deleting extra $EXTRA"
+              gh api "repos/$REPO/issues/comments/$EXTRA" --method DELETE 2>&1 | head -n 5 || true
+            fi
+          done
+          echo "Upsert done, kept $OLD_ID"
