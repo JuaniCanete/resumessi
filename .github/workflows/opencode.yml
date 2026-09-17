@@ -331,6 +331,25 @@ jobs:
             echo "No inline comments in diff, skipping review creation"
             exit 0
           fi
+          echo "Deduplicating against already reported inline..."
+          gh api "repos/$REPO/pulls/$PR_NUMBER/comments" --paginate > /tmp/existing_inline.json || true
+          node -e '
+            const fs=require("fs");
+            const existing=JSON.parse(fs.readFileSync("/tmp/existing_inline.json","utf8")).filter(c=>c.user.login=="github-actions[bot]");
+            const comments=JSON.parse(fs.readFileSync("/tmp/inline_comments.json","utf8"));
+            const seen=new Set(existing.map(c=>`${c.path}:${c.line}`));
+            const deduped=comments.filter(c=> !seen.has(`${c.path}:${c.line}`));
+            console.log(`Deduped ${comments.length} -> ${deduped.length} (skipped ${comments.length - deduped.length} already reported)`);
+            if (deduped.length===0 && comments.length>0) {
+              console.log("Existing at same lines:", [...seen].slice(0,5));
+            }
+            fs.writeFileSync("/tmp/inline_comments.json", JSON.stringify(deduped,null,2));
+          '
+          COUNT=$(jq length /tmp/inline_comments.json 2>/dev/null || echo 0)
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No new inline to post (already reported), skipping"
+            exit 0
+          fi
           echo "Creating PR review with $COUNT inline comments"
           HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .head.sha)
           COMMIT_MSG=$(git log -1 --pretty=%s $HEAD_SHA 2>/dev/null | head -c 80)
