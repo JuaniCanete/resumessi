@@ -279,7 +279,7 @@ jobs:
                 if (found) path = found;
               }
               if (!path || !line) continue;
-              const commentBody = `**${rawFile}:${line}**\n\n**Issue:** ${issue}\n\n**Fix:** ${fix}\n\n*Run ${process.env.RUN_ID}*`;
+              const commentBody = `**Issue:** ${issue}\n\n**Fix:** ${fix}`;
               comments.push({ path, line, body: commentBody.slice(0, 2000) });
               if (comments.length >= 8) break;
             }
@@ -334,11 +334,15 @@ jobs:
           fi
           echo "Creating PR review with $COUNT inline comments"
           HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .head.sha)
+          COMMIT_MSG=$(git log -1 --pretty=%s $HEAD_SHA 2>/dev/null | head -c 80)
           echo "HEAD_SHA=$HEAD_SHA"
-          HEAD_SHA=$HEAD_SHA node -e '
+          echo "COMMIT_MSG=$COMMIT_MSG"
+          HEAD_SHA=$HEAD_SHA COMMIT_MSG="$COMMIT_MSG" node -e '
             const fs = require("fs");
             const comments = JSON.parse(fs.readFileSync("/tmp/inline_comments.json", "utf8"));
-            const body = `Inline findings from run ${process.env.RUN_ID}. See main conversation for full VERDICT and stats.`;
+            const short = process.env.HEAD_SHA.slice(0,7);
+            const msg = process.env.COMMIT_MSG || "";
+            const body = `Inline findings from commit ${short} (${msg}). See main conversation for full VERDICT and stats.`;
             const payload = { commit_id: process.env.HEAD_SHA, event: "COMMENT", body, comments };
             fs.writeFileSync("/tmp/review_payload.json", JSON.stringify(payload));
           '
