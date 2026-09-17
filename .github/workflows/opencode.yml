@@ -410,9 +410,10 @@ jobs:
           echo "New general ID: $NEW_ID"
           NEW_BODY=$(gh api "repos/$REPO/issues/comments/$NEW_ID" --jq .body)
           printf '%s' "$NEW_BODY" > /tmp/new_body.txt
-          OLD_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r '[.[] | select(.user.login == "github-actions[bot]" and (.body | contains("VERDICT:")))] | sort_by(.created_at) | .[0].id // empty')
-          if [ -z "$OLD_ID" ] || [ "$OLD_ID" = "null" ] || [ "$OLD_ID" = "$NEW_ID" ]; then
-            echo "No older general to upsert, keeping $NEW_ID as is"
+          # Smart A: oldest *visible* (not minimized/hidden) VERDICT, if none visible keep NEW as new stable
+          OLD_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r --arg new "$NEW_ID" '[.[] | select(.user.login == "github-actions[bot]" and (.body | contains("VERDICT:")) and (.minimized == null) and (.id | tostring) != $new)] | sort_by(.created_at) | .[0].id // empty')
+          if [ -z "$OLD_ID" ] || [ "$OLD_ID" = "null" ]; then
+            echo "No visible older general to upsert, keeping $NEW_ID as is (will become new stable)"
             exit 0
           fi
           echo "Old general ID to update: $OLD_ID"
@@ -423,15 +424,8 @@ jobs:
           '
           if gh api "repos/$REPO/issues/comments/$OLD_ID" --method PATCH --input /tmp/upsert_payload.json 2>&1 | head -n 20; then
             echo "✓ Updated old general $OLD_ID"
-            gh api "repos/$REPO/issues/comments/$NEW_ID" --method DELETE 2>&1 | head -n 20 && echo "✓ Deleted duplicate new $NEW_ID" || echo "⚠ Failed to delete duplicate $NEW_ID"
+            gh api "repos/$REPO/issues/comments/$NEW_ID" --method DELETE 2>&1 | head -n 20 && echo "✓ Deleted duplicate new $NEW_ID (no new dupe, kept visible $OLD_ID)" || echo "⚠ Failed to delete duplicate $NEW_ID"
           else
             echo "⚠ Failed to update old $OLD_ID, keeping new"
           fi
-          echo "Pruning extra old generals..."
-          gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r --arg keep "$OLD_ID" '[.[] | select(.user.login == "github-actions[bot]" and (.body | contains("VERDICT:")) and (.id | tostring) != $keep) | .id] | .[]' | while read -r EXTRA; do
-            if [ -n "$EXTRA" ] && [ "$EXTRA" != "null" ]; then
-              echo "Deleting extra $EXTRA"
-              gh api "repos/$REPO/issues/comments/$EXTRA" --method DELETE 2>&1 | head -n 5 || true
-            fi
-          done
-          echo "Upsert done, kept $OLD_ID"
+          echo "Upsert done, kept $OLD_ID (existing dupes this PR left as is)"
