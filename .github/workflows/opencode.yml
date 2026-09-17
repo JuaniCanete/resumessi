@@ -10,8 +10,7 @@ jobs:
   opencode:
     if: |
       contains(github.event.comment.body, '/oc') ||
-      contains(github.event.comment.body, '/opencode') ||
-      contains(github.event.comment.body, '@opencode')
+      contains(github.event.comment.body, '/opencode')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -32,7 +31,7 @@ jobs:
           echo "files=$(git diff --name-only origin/main | grep -Ev 'package-lock\.json|\.db$|\.db-wal$|\.db-shm$|\.log$|^public/dist/' | tr '\n' ' ')" >> $GITHUB_OUTPUT
       - name: Get inline comment context
         id: comment
-        if: contains(github.event.comment.body, '@opencode') && github.event_name == 'pull_request_review_comment'
+        if: (contains(github.event.comment.body, '/oc') || contains(github.event.comment.body, '/opencode')) && github.event_name == 'pull_request_review_comment'
         env:
           COMMENT_ID: ${{ github.event.comment.id }}
           COMMENT_BODY: ${{ github.event.comment.body }}
@@ -51,20 +50,41 @@ jobs:
           echo "line=$LINE" >> $GITHUB_OUTPUT
       - name: Build review prompt
         id: prompt
+        env:
+          FILES: ${{ steps.changes.outputs.files }}
+          COMMENT_ID: ${{ steps.comment.outputs.comment_id }}
+          FILE_PATH: ${{ steps.comment.outputs.file_path }}
+          LINE: ${{ steps.comment.outputs.line }}
+          COMMENT_BODY: ${{ steps.comment.outputs.comment_body }}
+          DIFF_HUNK_FILE: ${{ steps.comment.outputs.diff_hunk_file }}
         run: |
-          PROMPT=$(cat .github/prompts/code-review.md)
-          PROMPT="${PROMPT/\{files\}/${{ steps.changes.outputs.files }}}"
-          if [ -n "${{ steps.comment.outputs.diff_hunk_file }}" ] && [ -f "${{ steps.comment.outputs.diff_hunk_file }}" ]; then
-            DIFF_HUNK=$(cat "${{ steps.comment.outputs.diff_hunk_file }}")
-            DISCUSSION="DISCUSSION_CONTEXT: Comment #${{ steps.comment.outputs.comment_id }} at File: ${{ steps.comment.outputs.file_path }} Line: ${{ steps.comment.outputs.line }}\nDIFF_HUNK: $DIFF_HUNK\nUSER_SAID: ${{ steps.comment.outputs.comment_body }}"
-            PROMPT="${PROMPT/\{discussion_context\}/$DISCUSSION}"
-          else
-            PROMPT="${PROMPT/\{discussion_context\}/}"
+          set -e
+          if [ ! -f .github/prompts/code-review.md ]; then
+            echo "Error: .github/prompts/code-review.md not found"
+            exit 1
           fi
-          PROMPT="${PROMPT/\{review_instruction\}/}"
-          echo "prompt<<EOF" >> $GITHUB_OUTPUT
-          echo "$PROMPT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+
+          node -e '
+            const fs = require("fs");
+            let prompt = fs.readFileSync(".github/prompts/code-review.md", "utf8");
+            let discussion = "";
+            
+            if (process.env.DIFF_HUNK_FILE && fs.existsSync(process.env.DIFF_HUNK_FILE)) {
+              const diffHunk = fs.readFileSync(process.env.DIFF_HUNK_FILE, "utf8");
+              discussion = `DISCUSSION_CONTEXT: Comment #${process.env.COMMENT_ID} at File: ${process.env.FILE_PATH} Line: ${process.env.LINE}\nDIFF_HUNK: ${diffHunk}\nUSER_SAID: ${process.env.COMMENT_BODY}`;
+            }
+            
+            prompt = prompt.replace(/\{files\}/g, process.env.FILES || "");
+            prompt = prompt.replace(/\{discussion_context\}/g, discussion);
+            prompt = prompt.replace(/\{review_instruction\}/g, "");
+            
+            fs.writeFileSync("final_prompt.md", prompt);
+          '
+
+          EOF_DELIM=$(openssl rand -hex 8)
+          echo "prompt<<$EOF_DELIM" >> $GITHUB_OUTPUT
+          cat final_prompt.md >> $GITHUB_OUTPUT
+          echo "$EOF_DELIM" >> $GITHUB_OUTPUT
       - name: Run OpenCode Review
         # Pin to reviewed commit for v1.18.31 (mutable tags are supply-chain risk)
         uses: anomalyco/opencode/github@014614d35b397775e5d397a490fc72368c894ec2
@@ -103,19 +123,36 @@ jobs:
           echo "has_new_deleted=$(test -n "$NEW_DELETED" && echo true || echo false)" >> $GITHUB_OUTPUT
       - name: Build review prompt
         id: prompt
+        env:
+          FILES: ${{ steps.changes.outputs.files }}
+          HAS_NEW_DELETED: ${{ steps.diff_type.outputs.has_new_deleted }}
         run: |
-          PROMPT=$(cat .github/prompts/code-review.md)
-          PROMPT="${PROMPT/\{files\}/${{ steps.changes.outputs.files }}}"
-          PROMPT="${PROMPT/\{discussion_context\}/}"
-          if [ "${{ steps.diff_type.outputs.has_new_deleted }}" = "true" ]; then
-            INSTRUCTION="REVIEW_INSTRUCTION: Apply all 5 FACTS categories (FULL review)."
-          else
-            INSTRUCTION="REVIEW_INSTRUCTION: QUICK review - Focus on Threats + Structure + previously reported issues. Skip Functionality, AI Sloop, Coverage unless critical."
+          set -e
+          if [ ! -f .github/prompts/code-review.md ]; then
+            echo "Error: .github/prompts/code-review.md not found"
+            exit 1
           fi
-          PROMPT="${PROMPT/\{review_instruction\}/$INSTRUCTION}"
-          echo "prompt<<EOF" >> $GITHUB_OUTPUT
-          echo "$PROMPT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+
+          node -e '
+            const fs = require("fs");
+            let prompt = fs.readFileSync(".github/prompts/code-review.md", "utf8");
+            
+            let instruction = "REVIEW_INSTRUCTION: QUICK review - Focus on Threats + Structure + previously reported issues. Skip Functionality, AI Sloop, Coverage unless critical.";
+            if (process.env.HAS_NEW_DELETED === "true") {
+              instruction = "REVIEW_INSTRUCTION: Apply all 5 FACTS categories (FULL review).";
+            }
+            
+            prompt = prompt.replace(/\{files\}/g, process.env.FILES || "");
+            prompt = prompt.replace(/\{discussion_context\}/g, "");
+            prompt = prompt.replace(/\{review_instruction\}/g, instruction);
+            
+            fs.writeFileSync("final_prompt_review.md", prompt);
+          '
+
+          EOF_DELIM=$(openssl rand -hex 8)
+          echo "prompt<<$EOF_DELIM" >> $GITHUB_OUTPUT
+          cat final_prompt_review.md >> $GITHUB_OUTPUT
+          echo "$EOF_DELIM" >> $GITHUB_OUTPUT
       - name: Run OpenCode Review (with retry)
         # Pin to reviewed commit for v1.18.31 (mutable tags are supply-chain risk)
         uses: anomalyco/opencode/github@014614d35b397775e5d397a490fc72368c894ec2

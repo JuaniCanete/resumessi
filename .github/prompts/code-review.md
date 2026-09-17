@@ -53,23 +53,28 @@ OUTPUT REQUIREMENTS:
 2. **Summary Stats** (second line):
    `STATS: Critical: X | Warning: Y | Suggestion: Z | Fixed: W`
 
-3. **Code Review Findings** — Only report NEW issues not yet fixed in this PR.
-   For each finding, provide:
-   - **Severity:** Critical | Warning | Suggestion
-   - **Location:** `filename.ext`, Line: X
-   - **Issue:** Concrete failure mode
-   - **Fix:** Drop-in code snippet or exact action
-   - **Status:** `Already fixed ✓` if code matches the fix, else `Open`
+3. **Open Issues - Summary** (table):
 
-4. **Fixed Issues (Compact)** — If issues from prior reviews are now fixed, list briefly:
-   `FIXED: <count> issues resolved — <file1>, <file2>`
-
-5. **Open Issues - Summary** (table):
    | Severity   | Count | Files        |
    | ---------- | ----- | ------------ |
    | Critical   | X     | file1, file2 |
    | Warning    | Y     | file3        |
    | Suggestion | Z     | file4        |
+
+4. **Open Issues - Details** — Only report NEW or UNRESOLVED issues in this PR.
+   Group findings logically by file. Structure each finding using a markdown header for clarity (e.g. `###`).
+   For each finding, provide:
+
+   ### `filename.ext` (Line X)
+   - **Severity:** Critical | Warning | Suggestion
+   - **Issue:** Concrete failure mode
+   - **Fix:** Drop-in code snippet or exact action
+
+5. **Solved Issues** — If issues from prior reviews are now fixed, list them very concisely without noise.
+   Do NOT output long paragraphs or bullet lists detailing every specific fix. Keep it clean and minimal.
+   Example:
+   - Resolved X issues in `file1.ts`
+   - Resolved Y issues in `file2.ts`
 
 FILES_TO_REVIEW: {files}
 
