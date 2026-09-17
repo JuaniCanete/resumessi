@@ -116,7 +116,7 @@ jobs:
           # Wait briefly for the main comment to appear (GH eventual consistency)
           BODY=""
           for i in 1 2 3 4 5 6; do
-            BODY=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r --arg run "$RUN_ID" '.[] | select(.user.login == "github-actions[bot]" and (.body | contains($run))) | .body' | head -n 1)
+            BODY=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r --arg run "$RUN_ID" 'first(.[] | select(.user.login == "github-actions[bot]" and (.body | contains($run))) | .body) // empty')
             if [ -n "$BODY" ] && [ "$BODY" != "null" ]; then
               echo "Found main comment on attempt $i"
               break
@@ -237,7 +237,7 @@ jobs:
           # Fetch main comment body
           BODY=""
           for i in 1 2 3 4 5; do
-            BODY=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r --arg run "$RUN_ID" '.[] | select(.user.login == "github-actions[bot]" and (.body | contains($run))) | .body' | head -n 1)
+            BODY=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null | jq -r --arg run "$RUN_ID" 'first(.[] | select(.user.login == "github-actions[bot]" and (.body | contains($run))) | .body) // empty')
             if [ -n "$BODY" ] && [ "$BODY" != "null" ]; then
               break
             fi
