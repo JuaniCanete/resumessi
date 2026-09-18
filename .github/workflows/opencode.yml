@@ -74,7 +74,7 @@ jobs:
               discussion = `DISCUSSION_CONTEXT: Comment #${process.env.COMMENT_ID} at File: ${process.env.FILE_PATH} Line: ${process.env.LINE}\nDIFF_HUNK: ${diffHunk}\nUSER_SAID: ${process.env.COMMENT_BODY}`;
             }
             
-            const instruction = "THREAD_INSTRUCTION: Answer the user's question in the thread concisely. Reference file, line and diff_hunk. Do not output VERDICT, STATS or full review table. Be focused, mention constraints if relevant.";
+            const instruction = "THREAD_INSTRUCTION: Answer the users question in the thread concisely. Reference file, line and diff_hunk. Do not output VERDICT, STATS or full review table. Be focused, mention constraints if relevant.";
             prompt = prompt.replace(/\{files\}/g, () => process.env.FILES || "");
             prompt = prompt.replace(/\{discussion_context\}/g, () => discussion);
             prompt = prompt.replace(/\{review_instruction\}/g, () => instruction);
