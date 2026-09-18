@@ -7,6 +7,7 @@
 		"node": ">=24.0.0"
 	},
 	"scripts": {
+		"prepare": "husky",
 		"setup": "tsx setup.ts",
 		"preflight": "tsx scripts/preflight.ts",
 		"prebuild": "npm run preflight -- --skip-evals",

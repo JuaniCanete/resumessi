@@ -28,8 +28,20 @@ function hasValue(object: Record<string, unknown>, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(object, key);
 }
 
+export function stableStringify(value: unknown): string {
+	if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+	if (value !== null && typeof value === 'object') {
+		const record = value as Record<string, unknown>;
+		return `{${Object.keys(record)
+			.sort()
+			.map(key => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+			.join(',')}}`;
+	}
+	return JSON.stringify(value) ?? 'null';
+}
+
 function sameValue(left: unknown, right: unknown): boolean {
-	return JSON.stringify(left) === JSON.stringify(right);
+	return stableStringify(left) === stableStringify(right);
 }
 
 function titleCase(value: string): string {
@@ -39,7 +51,14 @@ function titleCase(value: string): string {
 function identityFor(collection: string, value: unknown, index: number): string {
 	if (!isObject(value)) return `index:${index}`;
 	const keys = collectionIdentityKeys[collection];
-	if (!keys) return `index:${index}`;
+	if (!keys) {
+		console.warn(
+			`[polish-diff] Unknown collection "${collection}" - ` +
+				'falling back to index-based identity. ' +
+				'Add to collectionIdentityKeys for stable diffing.'
+		);
+		return `index:${index}`;
+	}
 	const identity = keys.map(key => String(value[key] ?? '').trim()).join('|');
 	return identity.replace(/\|+$/, '') || `index:${index}`;
 }
@@ -228,8 +247,8 @@ export function mergeDiff(original: Record<string, unknown>, sections: DiffSecti
 
 		const collection = Array.isArray(result[key]) ? result[key] : [];
 
-		// 1. Apply updates (newRaw !== null, index < current length) first
-		const updates = arrayOps.filter(s => s.newRaw !== null && (s.path[1] as number) < collection.length);
+		// 1. Apply updates (newRaw !== null && oldRaw !== null) first
+		const updates = arrayOps.filter(s => s.newRaw !== null && s.oldRaw !== null);
 		for (const section of updates) {
 			collection[section.path[1] as number] = section.newRaw;
 		}
@@ -242,12 +261,14 @@ export function mergeDiff(original: Record<string, unknown>, sections: DiffSecti
 			collection.splice(section.path[1] as number, 1);
 		}
 
-		// 3. Apply additions (newRaw !== null, index >= current length) in ascending index order
+		// 3. Apply additions (newRaw !== null && oldRaw === null) in ascending index order
 		const additions = arrayOps
-			.filter(s => s.newRaw !== null && (s.path[1] as number) >= collection.length)
+			.filter(s => s.newRaw !== null && s.oldRaw === null)
 			.sort((a, b) => (a.path[1] as number) - (b.path[1] as number));
 		for (const section of additions) {
-			collection.push(section.newRaw);
+			const index = section.path[1] as number;
+			if (index >= collection.length) collection.push(section.newRaw);
+			else collection.splice(index, 0, section.newRaw);
 		}
 
 		result[key] = collection;

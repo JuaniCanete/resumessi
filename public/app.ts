@@ -6,7 +6,7 @@
 import { safeJsonParse } from '../src/providers';
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import { buildQueryUrl, resizeImage, showToast } from './utils';
-import { computeDiff, mergeDiff, type DiffSection } from './utils/polish-diff';
+import { computeDiff, mergeDiff, stableStringify, type DiffSection } from './utils/polish-diff';
 
 // Declare global function for TypeScript benefit
 declare function closeJdEditModal(): void;
@@ -751,15 +751,15 @@ async function polishResume(): Promise<void> {
 	const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
 	if (dropdownBtn.disabled) return;
 
+	// Disable button immediately to prevent race condition on rapid clicks
+	dropdownBtn.disabled = true;
+
 	// Check if we have a cached polish for the current resume
 	const currentResume = await loadCurrentResume();
 	if (cachedPolishData && cachedPolishOriginal && resumesEqual(currentResume, cachedPolishOriginal)) {
-		dropdownBtn.disabled = true;
 		showPolishChoiceModal(currentResume, cachedPolishData);
 		return;
 	}
-
-	dropdownBtn.disabled = true;
 	console.info('[polishResume] Setting overlay display to flex');
 	const overlay = document.getElementById('polish-overlay');
 	if (overlay) {
@@ -773,10 +773,8 @@ async function polishResume(): Promise<void> {
 	const signal = polishController.signal;
 
 	try {
-		const resp = await fetch('/src/resume/output/resume-data.json', { signal });
-		if (!resp.ok) throw new Error('No resume data to polish');
-
-		const resumeData = (await resp.json()) as Record<string, unknown>;
+		if (Object.keys(currentResume).length === 0) throw new Error('No resume data to polish');
+		const resumeData = currentResume;
 
 		// Send only summary and experience to reduce token usage
 		const dataToPolish = {
@@ -948,8 +946,7 @@ async function loadCurrentResume(): Promise<Record<string, unknown>> {
 }
 
 function resumesEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
-	const sortedStringify = (obj: Record<string, unknown>) => JSON.stringify(obj, Object.keys(obj).sort());
-	return sortedStringify(a) === sortedStringify(b);
+	return stableStringify(a) === stableStringify(b);
 }
 
 function showPolishChoiceModal(original: Record<string, unknown>, polished: Record<string, unknown>): void {
@@ -959,6 +956,7 @@ function showPolishChoiceModal(original: Record<string, unknown>, polished: Reco
 	document.body.appendChild(modal);
 
 	const closeModal = () => {
+		document.removeEventListener('keydown', handleEscape);
 		modal.remove();
 		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
 		if (dropdownBtn) dropdownBtn.disabled = false;
@@ -979,10 +977,7 @@ function showPolishChoiceModal(original: Record<string, unknown>, polished: Reco
 
 	// Close on Escape
 	const handleEscape = (e: KeyboardEvent) => {
-		if (e.key === 'Escape') {
-			closeModal();
-			document.removeEventListener('keydown', handleEscape);
-		}
+		if (e.key === 'Escape') closeModal();
 	};
 	document.addEventListener('keydown', handleEscape);
 

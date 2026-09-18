@@ -2,7 +2,13 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { computeDiff, mergeDiff, formatSectionForDisplay, DiffSection } from '../../public/utils/polish-diff';
+import {
+	computeDiff,
+	mergeDiff,
+	formatSectionForDisplay,
+	stableStringify,
+	DiffSection,
+} from '../../public/utils/polish-diff';
 
 test('computeDiff - returns empty array for identical objects', () => {
 	const original = { summary: 'test', experience: [] };
@@ -304,4 +310,49 @@ test('formatSectionForDisplay - formats array of objects with name', () => {
 	const skills = [{ name: 'JS', expert: true }, { name: 'TS' }];
 	const result = formatSectionForDisplay('skills', skills);
 	assert.equal(result, '  JS (expert)\n  TS');
+});
+
+test('formatSectionForDisplay - handles null value', () => {
+	assert.equal(formatSectionForDisplay('summary', null), '');
+});
+
+test('formatSectionForDisplay - handles undefined value', () => {
+	assert.equal(formatSectionForDisplay('summary', undefined), '');
+});
+
+test('formatSectionForDisplay - formats array of generic objects', () => {
+	const items = [{ foo: 'bar' }, { baz: 123 }];
+	const result = formatSectionForDisplay('custom', items);
+	assert.ok(result.includes('foo'));
+	assert.ok(result.includes('baz'));
+});
+
+test('formatSectionForDisplay - formats generic object (fallback JSON)', () => {
+	const obj = { customField: 'value', another: 42 };
+	const result = formatSectionForDisplay('unknown', obj);
+	assert.ok(result.includes('customField'));
+	assert.ok(result.includes('value'));
+});
+
+test('formatSectionForDisplay - formats number value', () => {
+	assert.equal(formatSectionForDisplay('count', 42), '42');
+});
+
+test('formatSectionForDisplay - formats boolean value', () => {
+	assert.equal(formatSectionForDisplay('flag', true), 'true');
+});
+
+test('computeDiff - treats nested objects equal regardless of key insertion order', () => {
+	const original = {
+		experience: [{ title: 'Dev', company: 'A', bullets: ['shipped X'] }],
+	};
+	const polished = {
+		experience: [{ company: 'A', bullets: ['shipped X'], title: 'Dev' }],
+	};
+	assert.deepEqual(computeDiff(original, polished), []);
+});
+
+test('stableStringify - sorts object keys for stable comparison', () => {
+	assert.equal(stableStringify({ b: 1, a: 2 }), stableStringify({ a: 2, b: 1 }));
+	assert.notEqual(JSON.stringify({ b: 1, a: 2 }), JSON.stringify({ a: 2, b: 1 }));
 });
