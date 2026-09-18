@@ -939,8 +939,7 @@ function closeDiffOverlay(showMessage = true): void {
 	if (overlay) overlay.style.display = 'none';
 	polishOriginalData = null;
 	polishSections = [];
-	const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
-	if (dropdownBtn) dropdownBtn.disabled = false;
+	enablePolishDropdown();
 	updatePolishButton();
 	if (showMessage) showToast({ message: 'Polish changes discarded', type: 'info' });
 }
