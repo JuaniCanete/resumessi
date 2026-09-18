@@ -845,7 +845,11 @@ function showDiffOverlay(original: Record<string, unknown>, polished: Record<str
 	}
 	polishOriginalData = original;
 	const sectionsContainer = document.querySelector('[data-testid="diff-sections"]');
-	if (!sectionsContainer) return;
+	if (!sectionsContainer) {
+		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement | null;
+		if (dropdownBtn) dropdownBtn.disabled = false;
+		return;
+	}
 	sectionsContainer.replaceChildren();
 	for (const section of polishSections) {
 		const article = document.createElement('article');
@@ -951,7 +955,11 @@ function resumesEqual(a: Record<string, unknown>, b: Record<string, unknown>): b
 
 function showPolishChoiceModal(original: Record<string, unknown>, polished: Record<string, unknown>): void {
 	const template = document.getElementById('polish-choice-modal-template') as HTMLTemplateElement;
-	if (!template) return;
+	if (!template) {
+		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement | null;
+		if (dropdownBtn) dropdownBtn.disabled = false;
+		return;
+	}
 	const modal = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
 	document.body.appendChild(modal);
 
