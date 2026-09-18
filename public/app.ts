@@ -963,13 +963,6 @@ function showPolishChoiceModal(original: Record<string, unknown>, polished: Reco
 	const modal = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
 	document.body.appendChild(modal);
 
-	const closeModal = () => {
-		document.removeEventListener('keydown', handleEscape);
-		modal.remove();
-		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
-		if (dropdownBtn) dropdownBtn.disabled = false;
-	};
-
 	modal.querySelector('#use-existing-polish')!.addEventListener('click', () => {
 		closeModal();
 		showDiffOverlay(original, polished);
@@ -984,9 +977,15 @@ function showPolishChoiceModal(original: Record<string, unknown>, polished: Reco
 	});
 
 	// Close on Escape
-	const handleEscape = (e: KeyboardEvent) => {
+	function handleEscape(e: KeyboardEvent): void {
 		if (e.key === 'Escape') closeModal();
-	};
+	}
+	function closeModal(): void {
+		document.removeEventListener('keydown', handleEscape);
+		modal.remove();
+		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement | null;
+		if (dropdownBtn) dropdownBtn.disabled = false;
+	}
 	document.addEventListener('keydown', handleEscape);
 
 	// Close on backdrop click
