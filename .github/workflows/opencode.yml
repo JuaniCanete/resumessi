@@ -28,7 +28,12 @@ jobs:
         id: changes
         run: |
           git fetch origin main --depth=1
-          echo "files=$(git diff --name-only origin/main | grep -Ev 'package-lock\.json|\.db$|\.db-wal$|\.db-shm$|\.log$|^public/dist/' | tr '\n' ' ')" >> $GITHUB_OUTPUT
+          FDELIM=$(openssl rand -hex 8)
+          {
+            echo "files<<$FDELIM"
+            git diff --name-only origin/main | grep -Ev 'package-lock\.json|\.db$|\.db-wal$|\.db-shm$|\.log$|^public/dist/'
+            echo "$FDELIM"
+          } >> $GITHUB_OUTPUT
       - name: Get inline comment context
         id: comment
         if: (contains(github.event.comment.body, '/oc') || contains(github.event.comment.body, '/opencode')) && github.event_name == 'pull_request_review_comment'
@@ -185,7 +190,12 @@ jobs:
         id: changes
         run: |
           git fetch origin main --depth=1
-          echo "files=$(git diff --name-only origin/main | grep -Ev 'package-lock\.json|\.db$|\.db-wal$|\.db-shm$|\.log$|^public/dist/' | tr '\n' ' ')" >> $GITHUB_OUTPUT
+          FDELIM=$(openssl rand -hex 8)
+          {
+            echo "files<<$FDELIM"
+            git diff --name-only origin/main | grep -Ev 'package-lock\.json|\.db$|\.db-wal$|\.db-shm$|\.log$|^public/dist/'
+            echo "$FDELIM"
+          } >> $GITHUB_OUTPUT
       - name: Check for new/deleted files
         id: diff_type
         run: |
@@ -270,7 +280,7 @@ jobs:
           node -e '
             const fs = require("fs");
             const body = fs.readFileSync("/tmp/main_body.txt", "utf8");
-            const files = (process.env.FILES || "").split(" ").filter(Boolean);
+            const files = (process.env.FILES || "").split("\n").map((s) => s.trim()).filter(Boolean);
             const fileMap = new Map();
             for (const f of files) {
               const short = f.split("/").pop();
