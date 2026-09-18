@@ -834,11 +834,15 @@ function updateDiffCounter(): void {
 		counter.textContent = `${polishSections.filter(section => section.accepted).length} of ${polishSections.length} changes accepted`;
 }
 
+function enablePolishDropdown(): void {
+	const btn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement | null;
+	if (btn) btn.disabled = false;
+}
+
 function showDiffOverlay(original: Record<string, unknown>, polished: Record<string, unknown>): void {
 	polishSections = computeDiff(original, polished);
 	if (polishSections.length === 0) {
-		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
-		dropdownBtn.disabled = false;
+		enablePolishDropdown();
 		showToast({ message: 'No changes detected', type: 'info' });
 		updatePolishButton();
 		return;
@@ -846,8 +850,7 @@ function showDiffOverlay(original: Record<string, unknown>, polished: Record<str
 	polishOriginalData = original;
 	const sectionsContainer = document.querySelector('[data-testid="diff-sections"]');
 	if (!sectionsContainer) {
-		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement | null;
-		if (dropdownBtn) dropdownBtn.disabled = false;
+		enablePolishDropdown();
 		return;
 	}
 	sectionsContainer.replaceChildren();
@@ -956,8 +959,7 @@ function resumesEqual(a: Record<string, unknown>, b: Record<string, unknown>): b
 function showPolishChoiceModal(original: Record<string, unknown>, polished: Record<string, unknown>): void {
 	const template = document.getElementById('polish-choice-modal-template') as HTMLTemplateElement;
 	if (!template) {
-		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement | null;
-		if (dropdownBtn) dropdownBtn.disabled = false;
+		enablePolishDropdown();
 		return;
 	}
 	const modal = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
@@ -983,8 +985,7 @@ function showPolishChoiceModal(original: Record<string, unknown>, polished: Reco
 	function closeModal(): void {
 		document.removeEventListener('keydown', handleEscape);
 		modal.remove();
-		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement | null;
-		if (dropdownBtn) dropdownBtn.disabled = false;
+		enablePolishDropdown();
 	}
 	document.addEventListener('keydown', handleEscape);
 
