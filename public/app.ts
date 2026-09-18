@@ -834,18 +834,25 @@ function updateDiffCounter(): void {
 		counter.textContent = `${polishSections.filter(section => section.accepted).length} of ${polishSections.length} changes accepted`;
 }
 
+function enablePolishDropdown(): void {
+	const btn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement | null;
+	if (btn) btn.disabled = false;
+}
+
 function showDiffOverlay(original: Record<string, unknown>, polished: Record<string, unknown>): void {
 	polishSections = computeDiff(original, polished);
 	if (polishSections.length === 0) {
-		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
-		dropdownBtn.disabled = false;
+		enablePolishDropdown();
 		showToast({ message: 'No changes detected', type: 'info' });
 		updatePolishButton();
 		return;
 	}
 	polishOriginalData = original;
 	const sectionsContainer = document.querySelector('[data-testid="diff-sections"]');
-	if (!sectionsContainer) return;
+	if (!sectionsContainer) {
+		enablePolishDropdown();
+		return;
+	}
 	sectionsContainer.replaceChildren();
 	for (const section of polishSections) {
 		const article = document.createElement('article');
@@ -932,8 +939,7 @@ function closeDiffOverlay(showMessage = true): void {
 	if (overlay) overlay.style.display = 'none';
 	polishOriginalData = null;
 	polishSections = [];
-	const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
-	if (dropdownBtn) dropdownBtn.disabled = false;
+	enablePolishDropdown();
 	updatePolishButton();
 	if (showMessage) showToast({ message: 'Polish changes discarded', type: 'info' });
 }
@@ -951,16 +957,12 @@ function resumesEqual(a: Record<string, unknown>, b: Record<string, unknown>): b
 
 function showPolishChoiceModal(original: Record<string, unknown>, polished: Record<string, unknown>): void {
 	const template = document.getElementById('polish-choice-modal-template') as HTMLTemplateElement;
-	if (!template) return;
+	if (!template) {
+		enablePolishDropdown();
+		return;
+	}
 	const modal = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
 	document.body.appendChild(modal);
-
-	const closeModal = () => {
-		document.removeEventListener('keydown', handleEscape);
-		modal.remove();
-		const dropdownBtn = document.getElementById('btn-polish-dropdown') as HTMLButtonElement;
-		if (dropdownBtn) dropdownBtn.disabled = false;
-	};
 
 	modal.querySelector('#use-existing-polish')!.addEventListener('click', () => {
 		closeModal();
@@ -976,9 +978,14 @@ function showPolishChoiceModal(original: Record<string, unknown>, polished: Reco
 	});
 
 	// Close on Escape
-	const handleEscape = (e: KeyboardEvent) => {
+	function handleEscape(e: KeyboardEvent): void {
 		if (e.key === 'Escape') closeModal();
-	};
+	}
+	function closeModal(): void {
+		document.removeEventListener('keydown', handleEscape);
+		modal.remove();
+		enablePolishDropdown();
+	}
 	document.addEventListener('keydown', handleEscape);
 
 	// Close on backdrop click

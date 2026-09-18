@@ -21,7 +21,7 @@
 		"format": "prettier --check .",
 		"format:fix": "prettier --write .",
 		"html:validate": "html-validate public/**/*.html",
-		"css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html",
+		"css:validate": "stylelint \"public/**/*.html\" --custom-syntax postcss-html --cache --cache-location node_modules/.cache/stylelint",
 		"test:unit": "cross-env NODE_ENV=test VERBOSE_DEBUG=false SCRAPER_DEBUG=false tsx --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
 		"test:coverage": "cross-env NODE_ENV=test VERBOSE_DEBUG=false SCRAPER_DEBUG=false npx c8 --reporter=text --reporter=lcov --reporter=html tsx --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
 		"test:e2e": "playwright test --config=tests/playwright.config.ts",

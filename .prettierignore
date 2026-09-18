@@ -15,3 +15,4 @@ package-lock.json
 .fonts
 .env
 .env.example
+.superpowers/

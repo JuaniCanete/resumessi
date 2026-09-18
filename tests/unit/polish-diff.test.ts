@@ -32,7 +32,7 @@ test('computeDiff - detects basics title change', () => {
 	const polished = { basics: { name: 'John', title: 'Senior Dev' } };
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.equal(diff[0].id, 'basics.title');
+	assert.equal(diff[0].id, 'basics-title');
 	assert.equal(diff[0].label, 'Professional Title');
 });
 
@@ -90,7 +90,7 @@ test('computeDiff - detects experience array changes', () => {
 	};
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.ok(diff[0].id.includes('experience::'));
+	assert.ok(diff[0].id.startsWith('experience-'));
 	assert.ok(diff[0].label.includes('Lead at B'));
 });
 
@@ -109,8 +109,8 @@ test('computeDiff - detects education changes', () => {
 	const diff = computeDiff(original, polished);
 	// Identity uses institution|degree, so changing both creates new identity = 2 diffs (old removed, new added)
 	assert.equal(diff.length, 2);
-	assert.ok(diff[0].id.includes('education::'));
-	assert.ok(diff[1].id.includes('education::'));
+	assert.ok(diff[0].id.startsWith('education-'));
+	assert.ok(diff[1].id.startsWith('education-'));
 });
 
 test('computeDiff - detects skills category changes', () => {
@@ -118,7 +118,7 @@ test('computeDiff - detects skills category changes', () => {
 	const polished = { skills: { 'Core Skills': [{ name: 'JS' }, { name: 'TS' }] } };
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.equal(diff[0].id, 'skills::Core Skills');
+	assert.equal(diff[0].id, 'skills-Core-Skills');
 	assert.equal(diff[0].label, 'Skills: Core Skills');
 });
 
@@ -135,7 +135,7 @@ test('computeDiff - detects certifications changes', () => {
 	const polished = { certifications: [{ title: 'AWS' }, { title: 'GCP' }] };
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.ok(diff[0].id.includes('certifications::'));
+	assert.ok(diff[0].id.startsWith('certifications-'));
 });
 
 test('computeDiff - detects projects changes', () => {
@@ -143,7 +143,7 @@ test('computeDiff - detects projects changes', () => {
 	const polished = { projects: [{ name: 'Proj1' }, { name: 'Proj2' }] };
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.ok(diff[0].id.includes('projects::'));
+	assert.ok(diff[0].id.startsWith('projects-'));
 });
 
 test('computeDiff - detects talks changes', () => {
@@ -151,7 +151,7 @@ test('computeDiff - detects talks changes', () => {
 	const polished = { talks: [{ title: 'Talk1' }, { title: 'Talk2' }] };
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.ok(diff[0].id.includes('talks::'));
+	assert.ok(diff[0].id.startsWith('talks-'));
 });
 
 test('mergeDiff - merges accepted summary change', () => {
@@ -225,6 +225,32 @@ test('mergeDiff - merges experience array addition', () => {
 	const result = mergeDiff(original, sections) as { experience: Array<{ title: string }> };
 	assert.equal(result.experience.length, 2);
 	assert.equal(result.experience[1].title, 'Lead');
+});
+
+test('mergeDiff - inserts entry before existing entries via splice', () => {
+	const original = {
+		experience: [
+			{ title: 'A', company: 'X' },
+			{ title: 'B', company: 'Y' },
+		],
+	};
+	const sections: DiffSection[] = [
+		{
+			id: 'experience::C|Z',
+			label: 'C at Z',
+			path: ['experience', 0],
+			oldRaw: null,
+			newRaw: { title: 'C', company: 'Z' },
+			oldDisplay: '(New section)',
+			newDisplay: 'C at Z',
+			accepted: true,
+		},
+	];
+	const result = mergeDiff(original, sections) as { experience: Array<{ title: string }> };
+	assert.equal(result.experience.length, 3);
+	assert.equal(result.experience[0].title, 'C');
+	assert.equal(result.experience[1].title, 'A');
+	assert.equal(result.experience[2].title, 'B');
 });
 
 test('mergeDiff - removes experience array item when accepted with null newRaw', () => {
@@ -355,4 +381,23 @@ test('computeDiff - treats nested objects equal regardless of key insertion orde
 test('stableStringify - sorts object keys for stable comparison', () => {
 	assert.equal(stableStringify({ b: 1, a: 2 }), stableStringify({ a: 2, b: 1 }));
 	assert.notEqual(JSON.stringify({ b: 1, a: 2 }), JSON.stringify({ a: 2, b: 1 }));
+});
+
+test('computeDiff - keeps duplicate experience entries distinct', () => {
+	const original = {
+		experience: [
+			{ title: 'Dev', company: 'A' },
+			{ title: 'Dev', company: 'A' },
+		],
+	};
+	const polished = {
+		experience: [
+			{ title: 'Dev', company: 'A' },
+			{ title: 'Dev', company: 'A', description: 'new' },
+		],
+	};
+	const diff = computeDiff(original, polished);
+	assert.equal(diff.length, 1);
+	assert.ok(diff[0].id.startsWith('experience-'));
+	assert.ok(/-1$/.test(diff[0].id));
 });
