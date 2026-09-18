@@ -227,6 +227,32 @@ test('mergeDiff - merges experience array addition', () => {
 	assert.equal(result.experience[1].title, 'Lead');
 });
 
+test('mergeDiff - inserts entry before existing entries via splice', () => {
+	const original = {
+		experience: [
+			{ title: 'A', company: 'X' },
+			{ title: 'B', company: 'Y' },
+		],
+	};
+	const sections: DiffSection[] = [
+		{
+			id: 'experience::C|Z',
+			label: 'C at Z',
+			path: ['experience', 0],
+			oldRaw: null,
+			newRaw: { title: 'C', company: 'Z' },
+			oldDisplay: '(New section)',
+			newDisplay: 'C at Z',
+			accepted: true,
+		},
+	];
+	const result = mergeDiff(original, sections) as { experience: Array<{ title: string }> };
+	assert.equal(result.experience.length, 3);
+	assert.equal(result.experience[0].title, 'C');
+	assert.equal(result.experience[1].title, 'A');
+	assert.equal(result.experience[2].title, 'B');
+});
+
 test('mergeDiff - removes experience array item when accepted with null newRaw', () => {
 	const original = {
 		experience: [
