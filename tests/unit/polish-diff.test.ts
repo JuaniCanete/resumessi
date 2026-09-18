@@ -356,3 +356,21 @@ test('stableStringify - sorts object keys for stable comparison', () => {
 	assert.equal(stableStringify({ b: 1, a: 2 }), stableStringify({ a: 2, b: 1 }));
 	assert.notEqual(JSON.stringify({ b: 1, a: 2 }), JSON.stringify({ a: 2, b: 1 }));
 });
+
+test('computeDiff - keeps duplicate experience entries distinct', () => {
+	const original = {
+		experience: [
+			{ title: 'Dev', company: 'A' },
+			{ title: 'Dev', company: 'A' },
+		],
+	};
+	const polished = {
+		experience: [
+			{ title: 'Dev', company: 'A' },
+			{ title: 'Dev', company: 'A', description: 'new' },
+		],
+	};
+	const diff = computeDiff(original, polished);
+	assert.equal(diff.length, 1);
+	assert.ok(diff[0].id.includes('##1'));
+});

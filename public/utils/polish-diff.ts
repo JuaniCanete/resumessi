@@ -94,8 +94,20 @@ function addSection(
 function diffArray(sections: DiffSection[], key: string, oldValue: unknown[], newValue: unknown[]): void {
 	const oldByIdentity = new Map<string, { value: unknown; index: number }>();
 	const newByIdentity = new Map<string, { value: unknown; index: number }>();
-	oldValue.forEach((value, index) => oldByIdentity.set(identityFor(key, value, index), { value, index }));
-	newValue.forEach((value, index) => newByIdentity.set(identityFor(key, value, index), { value, index }));
+	const oldCounts = new Map<string, number>();
+	const newCounts = new Map<string, number>();
+	oldValue.forEach((value, index) => {
+		const base = identityFor(key, value, index);
+		const n = oldCounts.get(base) ?? 0;
+		oldCounts.set(base, n + 1);
+		oldByIdentity.set(`${base}##${n}`, { value, index });
+	});
+	newValue.forEach((value, index) => {
+		const base = identityFor(key, value, index);
+		const n = newCounts.get(base) ?? 0;
+		newCounts.set(base, n + 1);
+		newByIdentity.set(`${base}##${n}`, { value, index });
+	});
 
 	const identities = new Set([...oldByIdentity.keys(), ...newByIdentity.keys()]);
 	for (const identity of identities) {
