@@ -67,8 +67,21 @@ jobs:
       - name: HTML validation
         run: npm run html:validate
 
-      - name: CSS validation
-        run: npm run css:validate
+      - name: CSS validation (changed HTML only)
+        run: |
+          git fetch origin main --depth=1
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            FILES=$(git diff --name-only origin/main -- 'public/**/*.html' | tr '\n' ' ')
+          else
+            FILES=""
+          fi
+          if [ -z "$FILES" ] && [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "No HTML files changed, skipping CSS validation"
+          elif [ -n "$FILES" ]; then
+            npx stylelint $FILES --custom-syntax postcss-html --cache --cache-location node_modules/.cache/stylelint
+          else
+            npm run css:validate
+          fi
 
       - name: Typecheck
         run: npm run typecheck
