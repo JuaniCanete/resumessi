@@ -32,7 +32,7 @@ test('computeDiff - detects basics title change', () => {
 	const polished = { basics: { name: 'John', title: 'Senior Dev' } };
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.equal(diff[0].id, 'basics.title');
+	assert.equal(diff[0].id, 'basics-title');
 	assert.equal(diff[0].label, 'Professional Title');
 });
 
@@ -90,7 +90,7 @@ test('computeDiff - detects experience array changes', () => {
 	};
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.ok(diff[0].id.includes('experience::'));
+	assert.ok(diff[0].id.startsWith('experience-'));
 	assert.ok(diff[0].label.includes('Lead at B'));
 });
 
@@ -109,8 +109,8 @@ test('computeDiff - detects education changes', () => {
 	const diff = computeDiff(original, polished);
 	// Identity uses institution|degree, so changing both creates new identity = 2 diffs (old removed, new added)
 	assert.equal(diff.length, 2);
-	assert.ok(diff[0].id.includes('education::'));
-	assert.ok(diff[1].id.includes('education::'));
+	assert.ok(diff[0].id.startsWith('education-'));
+	assert.ok(diff[1].id.startsWith('education-'));
 });
 
 test('computeDiff - detects skills category changes', () => {
@@ -118,7 +118,7 @@ test('computeDiff - detects skills category changes', () => {
 	const polished = { skills: { 'Core Skills': [{ name: 'JS' }, { name: 'TS' }] } };
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.equal(diff[0].id, 'skills::Core Skills');
+	assert.equal(diff[0].id, 'skills-Core-Skills');
 	assert.equal(diff[0].label, 'Skills: Core Skills');
 });
 
@@ -135,7 +135,7 @@ test('computeDiff - detects certifications changes', () => {
 	const polished = { certifications: [{ title: 'AWS' }, { title: 'GCP' }] };
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.ok(diff[0].id.includes('certifications::'));
+	assert.ok(diff[0].id.startsWith('certifications-'));
 });
 
 test('computeDiff - detects projects changes', () => {
@@ -143,7 +143,7 @@ test('computeDiff - detects projects changes', () => {
 	const polished = { projects: [{ name: 'Proj1' }, { name: 'Proj2' }] };
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.ok(diff[0].id.includes('projects::'));
+	assert.ok(diff[0].id.startsWith('projects-'));
 });
 
 test('computeDiff - detects talks changes', () => {
@@ -151,7 +151,7 @@ test('computeDiff - detects talks changes', () => {
 	const polished = { talks: [{ title: 'Talk1' }, { title: 'Talk2' }] };
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.ok(diff[0].id.includes('talks::'));
+	assert.ok(diff[0].id.startsWith('talks-'));
 });
 
 test('mergeDiff - merges accepted summary change', () => {
@@ -398,5 +398,6 @@ test('computeDiff - keeps duplicate experience entries distinct', () => {
 	};
 	const diff = computeDiff(original, polished);
 	assert.equal(diff.length, 1);
-	assert.ok(diff[0].id.includes('##1'));
+	assert.ok(diff[0].id.startsWith('experience-'));
+	assert.ok(/-1$/.test(diff[0].id));
 });

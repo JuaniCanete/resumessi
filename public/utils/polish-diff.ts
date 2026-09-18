@@ -71,6 +71,10 @@ function entryLabel(collection: string, value: unknown, index: number, category?
 	return String(value.title || value.name || `${titleCase(collection)} ${index + 1}`);
 }
 
+function slugId(raw: string): string {
+	return raw.replace(/[^A-Za-z0-9-_]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
 function addSection(
 	sections: DiffSection[],
 	id: string,
@@ -80,7 +84,7 @@ function addSection(
 	newRaw: unknown
 ): void {
 	sections.push({
-		id,
+		id: slugId(id),
 		label,
 		path,
 		oldRaw,
