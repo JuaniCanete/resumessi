@@ -95,7 +95,7 @@ export function buildQueryUrl(source: 'linkedin' | 'google' | 'remoterocketship'
 // One Google search URL per role term, in CSV order. Used by the
 // "Try yourself" dropdown when the role input holds multiple terms.
 export function buildRoleTermUrls(query: ScraperQuery): { term: string; url: string }[] {
-	if (!query.role) return [];
+	if (!query?.role) return [];
 	return parseRoleTerms(query.role).map(term => ({ term, url: buildSingleRoleUrl(term, query) }));
 }
 

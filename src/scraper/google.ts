@@ -144,9 +144,19 @@ async function scrapeGoogleSingleQuery(
 	const results: ScraperResult[] = [];
 	const pageCount = Math.min(query.pageCount ?? 10, MAX_GOOGLE_PAGES);
 	const startPage = query.startPage ?? 1;
+	const safeQuery = [...searchQuery]
+		.filter(c => {
+			const code = c.codePointAt(0) ?? 32;
+			return code >= 32 && code !== 127 && !(code >= 128 && code <= 159);
+		})
+		.join('')
+		.substring(0, 2048);
+	if (safeQuery !== searchQuery) {
+		console.warn('[Google Scraper] Warning: search query sanitized (control chars stripped, capped at 2048).');
+	}
 	console.info(
 		`[Google Scraper] Scraping up to ${pageCount} page(s) starting from page ${startPage} ` +
-			`of SerpAPI for query: "${searchQuery}" (max ${maxItems} items)`
+			`of SerpAPI for query: "${safeQuery}" (max ${maxItems} items)`
 	);
 	for (let page = 0; page < pageCount; page++) {
 		if (results.length >= maxItems) {
@@ -155,7 +165,7 @@ async function scrapeGoogleSingleQuery(
 		const startParam = (startPage - 1 + page) * 10;
 		const apiUrl = new URL('https://serpapi.com/search.json?engine=google');
 		apiUrl.searchParams.set('api_key', apiKey);
-		apiUrl.searchParams.set('q', searchQuery);
+		apiUrl.searchParams.set('q', safeQuery);
 		apiUrl.searchParams.set('start', String(startParam));
 		apiUrl.searchParams.set('tbs', 'qdr:m');
 

@@ -355,3 +355,19 @@ test('scrapeGoogle with unparseable role returns empty array', async () => {
 	const results = await scrapeGoogle(query, serpEnv());
 	assert.equal(results.length, 0);
 });
+
+test('scrapeGoogle sanitizes overlong query before sending to SerpAPI', async () => {
+	const query: ScraperQuery = { source: 'google', role: 'SDET', pageCount: 1 };
+	let sentQ = '';
+	mock.method(global, 'fetch', (url: string | URL) => {
+		sentQ = new URL(String(url)).searchParams.get('q') || '';
+		return {
+			ok: true,
+			status: 200,
+			json: () => Promise.resolve({ organic_results: [] }),
+		} as Response;
+	});
+	(query as Record<string, unknown>).role = `SDET ${'x'.repeat(3000)}`;
+	await scrapeGoogle(query, serpEnv());
+	assert.ok(sentQ.length <= 2048);
+});
