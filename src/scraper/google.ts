@@ -1,5 +1,5 @@
-import { createScraperDebugSession } from '../utils/logger';
-import { buildScraperSearchUrl, DEFAULT_TARGET_DOMAINS } from './pagination';
+import { createScraperDebugSession, type ScraperDebugSession } from '../utils/logger';
+import { buildScraperSearchUrl, buildSingleRoleQuery, parseRoleTerms, DEFAULT_TARGET_DOMAINS } from './pagination';
 import type { ScraperQuery, ScraperResult } from './types';
 
 export { DEFAULT_TARGET_DOMAINS };
@@ -33,36 +33,125 @@ export async function scrapeGoogle(
 		return [];
 	}
 
-	// Build the search query string using the existing single source of truth URL builder
-	const googleSearchUrl = buildScraperSearchUrl('google', query);
-	let searchQuery: string;
-	try {
-		const parsedUrl = new URL(googleSearchUrl);
-		searchQuery = parsedUrl.searchParams.get('q') || '';
-	} catch (err: unknown) {
-		console.error('[Google Scraper] Failed to parse search query string:', (err as Error).message);
-		return [];
-	}
-
-	if (!searchQuery) {
-		console.warn('[Google Scraper] Warning: Empty search query compiled.');
-		return [];
-	}
+	const roleTerms =
+		query.roleTerms && query.roleTerms.length > 0 ? query.roleTerms : query.role ? parseRoleTerms(query.role) : [];
+	query.roleTerms = roleTerms;
+	const split = query.splitRoles !== false && roleTerms.length > 1;
 
 	const debugSession = createScraperDebugSession('google');
-	debugSession.log(`Starting scrape for query: "${searchQuery}"`);
+	const executedQueries: string[] = [];
+	const seenUrls = new Set<string>();
 
+	if (!split) {
+		// Legacy single-query path (splitRoles === false or at most one role term)
+		const googleSearchUrl = buildScraperSearchUrl('google', query);
+		let searchQuery: string;
+		try {
+			searchQuery = new URL(googleSearchUrl).searchParams.get('q') || '';
+		} catch (err: unknown) {
+			console.error('[Google Scraper] Failed to parse search query string:', (err as Error).message);
+			return [];
+		}
+		if (!searchQuery) {
+			console.warn('[Google Scraper] Warning: Empty search query compiled.');
+			return [];
+		}
+		executedQueries.push(searchQuery);
+		debugSession.log(`Starting scrape for query: "${searchQuery}"`);
+		const { results } = await scrapeGoogleSingleQuery(
+			searchQuery,
+			query,
+			apiKey,
+			debugSession,
+			'google',
+			MAX_TOTAL_ITEMS,
+			seenUrls,
+			roleTerms.length === 1 ? roleTerms[0] : undefined
+		);
+		query.executedQueries = executedQueries;
+		return results.slice(0, MAX_TOTAL_ITEMS);
+	}
+
+	// Split path: one sequential SerpAPI queue entry per role term, merged in CSV order.
+	debugSession.log(`Split scrape: ${roleTerms.length} role terms`);
+	const merged: ScraperResult[] = [];
+	for (let i = 0; i < roleTerms.length; i++) {
+		if (merged.length >= MAX_TOTAL_ITEMS) {
+			console.info(`[Google Scraper] Reached max items (${MAX_TOTAL_ITEMS}), stopping role queue`);
+			debugSession.log(`Reached max items (${MAX_TOTAL_ITEMS}), stopping role queue`);
+			break;
+		}
+		if (i > 0) {
+			console.info(`[Google Scraper] Waiting ${ROLE_TERM_DELAY_MS / 1000}s before next role term...`);
+			// Skipped in tests so the suite stays fast; production always waits.
+			if (process.env.NODE_ENV !== 'test') {
+				await new Promise(r => setTimeout(r, ROLE_TERM_DELAY_MS));
+			}
+		}
+		const term = roleTerms[i];
+		const searchQuery = buildSingleRoleQuery(term, query);
+		if (!searchQuery) {
+			console.warn(`[Google Scraper] Warning: Empty search query compiled for role term "${term}".`);
+			continue;
+		}
+		executedQueries.push(searchQuery);
+		console.info(`[Google Scraper] Scraping role term "${term}" (${i + 1}/${roleTerms.length})`);
+		debugSession.log(`Role term ${i + 1}/${roleTerms.length} "${term}": "${searchQuery}"`);
+		const { results, hitQuota } = await scrapeGoogleSingleQuery(
+			searchQuery,
+			query,
+			apiKey,
+			debugSession,
+			`google-${sanitizeTermForFilename(term)}`,
+			MAX_TOTAL_ITEMS - merged.length,
+			seenUrls,
+			term
+		);
+		merged.push(...results);
+		debugSession.log(`Role term "${term}": kept ${results.length} results`);
+		if (hitQuota) {
+			debugSession.log(`Role term "${term}" hit quota (429), continuing to next term`, 'WARN');
+		}
+	}
+	query.executedQueries = executedQueries;
+	console.info(`[Google Scraper] Split scrape done: ${merged.length} results from ${executedQueries.length} queries`);
+	return merged.slice(0, MAX_TOTAL_ITEMS);
+}
+
+const MAX_TOTAL_ITEMS = 50;
+const MAX_GOOGLE_PAGES = 10;
+const ROLE_TERM_DELAY_MS = 10000;
+
+function sanitizeTermForFilename(term: string): string {
+	return (
+		term
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '') || 'role'
+	);
+}
+
+async function scrapeGoogleSingleQuery(
+	searchQuery: string,
+	query: ScraperQuery,
+	apiKey: string,
+	debugSession: ScraperDebugSession,
+	artifactPrefix: string,
+	maxItems: number,
+	seenUrls: Set<string>,
+	roleTerm?: string
+): Promise<{ results: ScraperResult[]; hitQuota: boolean }> {
 	const results: ScraperResult[] = [];
-	const MAX_TOTAL_ITEMS = 50;
-	const MAX_GOOGLE_PAGES = 10;
 	const pageCount = Math.min(query.pageCount ?? 10, MAX_GOOGLE_PAGES);
 	const startPage = query.startPage ?? 1;
-	let totalItemsCollected = 0;
 	console.info(
 		`[Google Scraper] Scraping up to ${pageCount} page(s) starting from page ${startPage} ` +
-			`of SerpAPI for query: "${searchQuery}" (max ${MAX_TOTAL_ITEMS} items)`
+			`of SerpAPI for query: "${searchQuery}" (max ${maxItems} items)`
 	);
 	for (let page = 0; page < pageCount; page++) {
+		if (results.length >= maxItems) {
+			break;
+		}
 		const startParam = (startPage - 1 + page) * 10;
 		const apiUrl = new URL('https://serpapi.com/search.json?engine=google');
 		apiUrl.searchParams.set('api_key', apiKey);
@@ -75,7 +164,9 @@ export async function scrapeGoogle(
 			if (response.status === 429) {
 				console.error('[Google Scraper] SerpAPI quota exceeded (HTTP 429).');
 				debugSession.log('SerpAPI quota exceeded (HTTP 429).', 'ERROR');
-				return results; // Return whatever results we gathered so far
+				// Low 429 risk in practice (30+ calls/min observed fine); skip this term and continue.
+				// If 429s start appearing, implement retry-fallback with backoff here.
+				return { results, hitQuota: true };
 			}
 
 			if (!response.ok) {
@@ -91,7 +182,7 @@ export async function scrapeGoogle(
 			debugSession.log(`Page ${page + 1} (startParam ${startParam}): Received ${items.length} items`);
 
 			// Save SerpAPI response for debugging pagination behavior
-			debugSession.saveArtifact(`google-page-${startPage + page}.json`, JSON.stringify(data, null, 2));
+			debugSession.saveArtifact(`${artifactPrefix}-page-${startPage + page}.json`, JSON.stringify(data, null, 2));
 
 			// Only keep results whose hostname is one of the targeted ATS domains
 			// AND whose URL path looks like an actual job posting.
@@ -158,18 +249,23 @@ export async function scrapeGoogle(
 					}
 				}
 
+				const dedupeKey = url.trim().toLowerCase();
+				if (seenUrls.has(dedupeKey)) {
+					continue;
+				}
+				seenUrls.add(dedupeKey);
 				results.push({
 					title,
 					url,
 					snippet: snippet || title,
 					source: 'google',
 					site: bareHost,
+					...(roleTerm ? { roleTerm } : {}),
 				});
-				totalItemsCollected++;
 
 				// Stop if we've collected max items
-				if (totalItemsCollected >= MAX_TOTAL_ITEMS) {
-					console.info(`[Google Scraper] Reached max items (${MAX_TOTAL_ITEMS}), stopping pagination`);
+				if (results.length >= maxItems) {
+					console.info(`[Google Scraper] Reached max items (${maxItems}), stopping pagination`);
 					break;
 				}
 			}
@@ -182,11 +278,7 @@ export async function scrapeGoogle(
 			console.error('[Google Scraper] Network or parsing error:', (err as Error).message);
 			break;
 		}
-		// If we've collected max items, break outer loop too
-		if (totalItemsCollected >= MAX_TOTAL_ITEMS) {
-			break;
-		}
 	}
 
-	return results.slice(0, MAX_TOTAL_ITEMS);
+	return { results: results.slice(0, maxItems), hitQuota: false };
 }
