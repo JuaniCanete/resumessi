@@ -2,11 +2,11 @@
  * Shared utility functions for resumessi
  */
 
-import { buildScraperSearchUrl } from '../src/scraper/pagination';
+import { buildScraperSearchUrl, buildSingleRoleUrl, parseRoleTerms } from '../src/scraper/pagination';
 import { isCollectionUrl } from '../src/scraper/runtime-utils';
 import type { ScraperQuery } from '../src/scraper/types';
 
-export { isCollectionUrl };
+export { isCollectionUrl, buildSingleRoleUrl };
 
 export function escHtml(value: string | null | undefined): string {
 	if (!value) return '';
@@ -90,6 +90,13 @@ export function stripMarkdown(text: string): string {
 // Delegates to the shared builder in src/scraper/pagination.ts (single source of truth).
 export function buildQueryUrl(source: 'linkedin' | 'google' | 'remoterocketship', query: ScraperQuery): string {
 	return buildScraperSearchUrl(source, query);
+}
+
+// One Google search URL per role term, in CSV order. Used by the
+// "Try yourself" dropdown when the role input holds multiple terms.
+export function buildRoleTermUrls(query: ScraperQuery): { term: string; url: string }[] {
+	if (!query?.role) return [];
+	return parseRoleTerms(query.role).map(term => ({ term, url: buildSingleRoleUrl(term, query) }));
 }
 
 // Re-export shared modules

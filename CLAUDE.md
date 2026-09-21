@@ -56,3 +56,13 @@ Project has `.husky` `pre-commit` and `pre-push`, both are running a lot of vali
 3. Test is executed
 4. Stop. Don't continue wiht unit, eslint, typecheck, etc.
 5. Instead proceed with commit and push, and `.husky` will take care of the validations.
+
+---
+
+## Debbuging
+
+**Important:**
+Within `.env` you'll find `VERBOSE_DEBUG` and `SCRAPER_DEBUG`, if they are not present you can copy them from `.env.example`. Both values should be set on `true`. Any ongoing session should be restarted after adding these values. These files are .gitignored.
+
+**VERBOSE_DEBUG:** Write session CLI logs to debugging/logs/ and scraper artifacts to debugging/scraper/
+**SCRAPER_DEBUG:** Write debug HTML/JSON to debugging/scraper/<source>-<timestamp>/ (opt-in)

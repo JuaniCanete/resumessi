@@ -5,7 +5,7 @@
 
 import { safeJsonParse } from '../src/providers';
 import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
-import { buildQueryUrl, resizeImage, showToast } from './utils';
+import { buildQueryUrl, buildRoleTermUrls, resizeImage, showToast } from './utils';
 import { computeDiff, mergeDiff, stableStringify, type DiffSection } from './utils/polish-diff';
 
 // Declare global function for TypeScript benefit
@@ -28,6 +28,8 @@ let currentPDFFileName = '';
 let selectedProviderForModal: string | null = null;
 let scraperController: AbortController | null = null;
 let currentScraperPlatform: 'linkedin' | 'google' = 'linkedin';
+// Per-role-term Google URLs for the "Try yourself" dropdown (multi-role queries)
+let lastRoleTermUrls: { term: string; url: string }[] = [];
 let scraperResultsWindow: Window | null = null;
 
 // Public helper to reset config cache between test runs
@@ -1969,7 +1971,7 @@ function updateQueryPreview(): string {
 	}
 
 	// Delegate to the shared URL builder (single source of truth)
-	const generatedUrl = buildQueryUrl(currentScraperPlatform, {
+	const scraperQuery = {
 		source: currentScraperPlatform,
 		role,
 		seniority,
@@ -1981,11 +1983,24 @@ function updateQueryPreview(): string {
 		workType,
 		keywords,
 		customDomains,
-	});
+	};
+	const generatedUrl = buildQueryUrl(currentScraperPlatform, scraperQuery);
+
+	if (currentScraperPlatform === 'google') {
+		lastRoleTermUrls = buildRoleTermUrls(scraperQuery);
+	} else {
+		lastRoleTermUrls = [];
+	}
 
 	const previewElem = document.getElementById('query-url-preview');
 	if (previewElem) {
-		previewElem.textContent = decodeURIComponent(generatedUrl);
+		if (lastRoleTermUrls.length > 1) {
+			previewElem.textContent =
+				`${decodeURIComponent(lastRoleTermUrls[0].url)} ` +
+				`(+${lastRoleTermUrls.length - 1} more queries — use Try yourself dropdown)`;
+		} else {
+			previewElem.textContent = decodeURIComponent(generatedUrl);
+		}
 	}
 	return generatedUrl;
 }
@@ -2044,7 +2059,65 @@ function openQueryInBrowser(): void {
 	}
 
 	const url = updateQueryPreview();
+	if (currentScraperPlatform === 'google' && lastRoleTermUrls.length > 1) {
+		toggleRoleTermDropdown();
+		return;
+	}
 	window.open(url, '_blank');
+}
+
+function toggleRoleTermDropdown(): void {
+	const existing = document.getElementById('try-yourself-dropdown');
+	if (existing) {
+		existing.remove();
+		return;
+	}
+	const button = document.getElementById('btn-try-yourself');
+	if (!button || lastRoleTermUrls.length === 0) return;
+	const menu = document.createElement('div');
+	menu.id = 'try-yourself-dropdown';
+	const rect = button.getBoundingClientRect();
+	menu.style.position = 'fixed';
+	menu.style.left = `${rect.left}px`;
+	menu.style.top = `${rect.bottom + 6}px`;
+	menu.style.zIndex = '10000';
+	menu.style.background = 'rgb(20, 20, 25, 0.98)';
+	menu.style.border = '1px solid rgb(255, 255, 255, 0.2)';
+	menu.style.borderRadius = '7px';
+	menu.style.padding = '6px';
+	menu.style.minWidth = '180px';
+	for (let i = 0; i < lastRoleTermUrls.length; i++) {
+		const entry = lastRoleTermUrls[i];
+		const link = document.createElement('a');
+		link.href = entry.url;
+		link.target = '_blank';
+		link.rel = 'noopener noreferrer';
+		link.textContent = `CSV-item${i}`;
+		link.title = entry.term;
+		link.style.display = 'block';
+		link.style.padding = '7px 10px';
+		link.style.borderRadius = '5px';
+		link.style.color = '#a5f3fc';
+		link.style.fontFamily = 'monospace';
+		link.style.fontSize = '12px';
+		link.style.textDecoration = 'none';
+		menu.appendChild(link);
+	}
+	document.body.appendChild(menu);
+	const closeMenu = (e: MouseEvent | KeyboardEvent): void => {
+		if (e instanceof MouseEvent) {
+			if (menu.contains(e.target as Node)) return;
+		} else if (e.key !== 'Escape') {
+			return;
+		}
+		menu.remove();
+		document.removeEventListener('mousedown', closeMenu);
+		document.removeEventListener('keydown', closeMenu);
+	};
+	setTimeout(() => {
+		document.addEventListener('mousedown', closeMenu);
+		document.addEventListener('keydown', closeMenu);
+	}, 0);
 }
 
 async function startScraping(): Promise<void> {
