@@ -24,6 +24,7 @@ import {
 	normalizeLinkedInJobUrl,
 	LinkedInSessionExpiredError,
 } from './src/scraper/linkedin';
+import { parseRoleTerms } from './src/scraper/pagination';
 import { scrapeRemoteRocketship } from './src/scraper/remoterocketship';
 import { getRequestPath, isCollectionUrl } from './src/scraper/runtime-utils';
 import type { ScraperQuery, ScraperResult } from './src/scraper/types';
@@ -973,6 +974,9 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
 			if (query.source === 'linkedin') {
 				rawResults = await scrapeLinkedIn(query);
 			} else if (query.source === 'google') {
+				if (query.role) {
+					query.roleTerms = parseRoleTerms(query.role);
+				}
 				rawResults = await scrapeGoogle(query, env);
 			} else {
 				rawResults = await scrapeRemoteRocketship(query, env);

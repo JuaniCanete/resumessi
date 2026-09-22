@@ -15,6 +15,7 @@ import {
 	getPhotoPath,
 	stripMarkdown,
 	buildQueryUrl,
+	buildRoleTermUrls,
 } from '../../public/utils';
 
 test('escHtml - escapes < and > to numeric refs', () => {
@@ -239,4 +240,19 @@ test('buildQueryUrl - URL-encodes special characters', () => {
 test('buildQueryUrl - returns base URL when no query parts provided', () => {
 	const url = buildQueryUrl('linkedin', {});
 	assert.ok(url.startsWith('https://www.linkedin.com/jobs/search/?'));
+});
+
+test('buildRoleTermUrls - one URL per CSV role term in order', () => {
+	const entries = buildRoleTermUrls({ role: 'SDET, QA Automation', region: 'LATAM' });
+	assert.equal(entries.length, 2);
+	assert.equal(entries[0].term, 'SDET');
+	assert.equal(entries[1].term, 'QA Automation');
+	assert.ok(entries[0].url.startsWith('https://www.google.com/search?q='));
+	assert.ok(decodeURIComponent(entries[0].url).includes('(intitle:"SDET")'));
+	assert.ok(!decodeURIComponent(entries[0].url).includes('QA Automation'));
+});
+
+test('buildRoleTermUrls - single role returns one entry, empty role returns none', () => {
+	assert.equal(buildRoleTermUrls({ role: 'SDET' }).length, 1);
+	assert.equal(buildRoleTermUrls({}).length, 0);
 });

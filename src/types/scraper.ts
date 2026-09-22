@@ -30,6 +30,7 @@ export interface ScraperResult {
 	site?: string;
 	jobDescription?: string;
 	isCollectionUrl?: boolean;
+	roleTerm?: string; // transient: which role term produced this result (merge marker, not persisted)
 }
 
 export interface ScraperQuery {
@@ -46,6 +47,9 @@ export interface ScraperQuery {
 	startPage?: number; // first page to scrape (1-indexed, default 1)
 	datePosted?: string; // LinkedIn f_TP parameter mapping
 	workType?: string; // LinkedIn f_WT parameter mapping
+	splitRoles?: boolean; // Google: run one SerpAPI query per role term, merge results (default true)
+	roleTerms?: string[]; // Google: parsed role terms, populated before scrape when splitRoles is on
+	executedQueries?: string[]; // Google output: actual SerpAPI q strings sent, populated by scrapeGoogle
 }
 
 export interface ScraperRunMeta {
@@ -55,4 +59,5 @@ export interface ScraperRunMeta {
 	totalResults: number;
 	results: ScraperResult[];
 	summary?: string;
+	executedQueries?: string[]; // Google: actual SerpAPI q strings sent (one per role term when split)
 }

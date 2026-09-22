@@ -47,6 +47,43 @@ const GOOGLE_EMPLOYMENT_TYPE_MAP: Record<string, string[]> = {
 };
 
 /**
+ * Split a role input into individual terms.
+ * Accept CSV input: "QA Automation, SDET" → ["QA Automation", "SDET"].
+ * Also handles legacy OR syntax for backward compatibility.
+ */
+export function parseRoleTerms(role: string): string[] {
+	const trimmed = role.trim();
+	if (trimmed.includes(',')) {
+		return trimmed
+			.split(',')
+			.map(t => t.trim())
+			.filter(t => t.length > 0);
+	}
+	return trimmed
+		.replace(/[()]/g, '')
+		.split(/\s+OR\s+/i)
+		.map(t => t.trim())
+		.filter(t => t.length > 0);
+}
+
+/**
+ * Build the Google `q` string for exactly one role term.
+ * Reuses the single source of truth builder so single-role queries and
+ * split sub-queries always share the same shape.
+ */
+export function buildSingleRoleQuery(roleTerm: string, query: ScraperQuery): string {
+	const url = buildScraperSearchUrl('google', { ...query, role: roleTerm });
+	return new URL(url).searchParams.get('q') || '';
+}
+
+/**
+ * Full Google search URL for exactly one role term.
+ */
+export function buildSingleRoleUrl(roleTerm: string, query: ScraperQuery): string {
+	return `https://www.google.com/search?q=${encodeURIComponent(buildSingleRoleQuery(roleTerm, query))}`;
+}
+
+/**
  * Build a search URL for LinkedIn or Google from a scraper query.
  * Single source of truth for query composition (role, keywords,
  * employment type, country, region, currency, domain selection).
@@ -137,25 +174,15 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
 		return `https://www.remoterocketship.com/jobs/${rrEmp}/?${params.toString()}`;
 	}
 
+	const roleTerms: string[] = [];
 	if (query.role) {
-		const role = query.role.trim();
-		// Accept CSV input: "QA Automation, SDET" → ("QA Automation" OR "SDET")
-		// Also handles legacy OR syntax for backward compatibility
-		const terms = role.includes(',')
-			? role
-					.split(',')
-					.map(t => t.trim())
-					.filter(t => t.length > 0)
-			: role
-					.replace(/[()]/g, '')
-					.split(/\s+OR\s+/i)
-					.map(t => t.trim())
-					.filter(t => t.length > 0);
+		const terms = parseRoleTerms(query.role);
 		if (terms.length > 1) {
 			parts.push(`(${terms.map(t => `"${t}"`).join(' OR ')})`);
-		} else {
+		} else if (terms.length === 1) {
 			parts.push(`"${terms[0]}"`);
 		}
+		roleTerms.push(...terms);
 	}
 	if (query.keywords) {
 		const keywordTerms = query.keywords
@@ -184,10 +211,16 @@ export function buildScraperSearchUrl(source: 'linkedin' | 'google' | 'remoteroc
 	if (domains.length > 0) {
 		const siteQuery = domains.map(d => `site:${d.trim()}`).join(' OR ');
 		parts.push(`(${siteQuery})`);
-		parts.push('("careers" OR "jobs" OR "open positions" OR "hiring")');
+	}
+	// Role-mirrored intitle: precision signal independent of domain selection —
+	// deselecting all sites hides only the site: group, never this one.
+	if (roleTerms.length > 0) {
+		parts.push(`(${roleTerms.map(t => `intitle:"${t}"`).join(' OR ')})`);
 	}
 
-	// Combine country and region into a single quoted group, e.g. ("LATAM" OR "Argentina")
+	// Combine country and region into a single quoted group, e.g. ("LATAM" OR "Argentina").
+	// No work-type terms here on purpose: the user filters on-site vs remote
+	// while reviewing offers, not at retrieval time.
 	const locationParts: string[] = [];
 	if (query.region) locationParts.push(query.region);
 	if (query.country) locationParts.push(query.country);

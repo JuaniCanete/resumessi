@@ -2,6 +2,8 @@ import { getScraperResultsStorageKey } from '../src/scraper/runtime-utils';
 import {
 	stripMarkdown,
 	buildQueryUrl,
+	buildRoleTermUrls,
+	buildSingleRoleUrl,
 	confirmDelete,
 	confirmUnsave,
 	showConfirmModal,
@@ -90,6 +92,8 @@ let scraperController: AbortController | null = null;
 // JD Clean AI state
 let jdCleanController: AbortController | null = null;
 let currentScraperPlatform: 'linkedin' | 'google' | 'remoterocketship' = 'linkedin';
+// Per-role-term Google URLs for the "Try yourself" dropdown (multi-role queries)
+let lastRoleTermUrls: { term: string; url: string }[] = [];
 
 // Providers modal state
 let selectedProviderForModal: string | null = null;
@@ -562,11 +566,26 @@ function renderScrapingResults(): void {
 
 	const queryLinkWrapper = document.getElementById('query-link-wrapper');
 	const queryLink = document.getElementById('query-link') as HTMLAnchorElement;
-	if (queryLinkWrapper && queryLink && activePayload.query) {
-		const source = activePayload.source;
-		const url = buildQueryUrl(source, activePayload.query);
-		queryLink.href = url;
-		queryLinkWrapper.style.display = 'inline';
+	if (queryLinkWrapper && activePayload.query) {
+		const rawQuery = activePayload.query as Record<string, unknown>;
+		const terms = Array.isArray(rawQuery.roleTerms) ? (rawQuery.roleTerms as string[]) : [];
+		if (activePayload.source === 'google' && terms.length > 1) {
+			// Multi-role run: per-term links are rendered per page by
+			// updateRoleTermLinks so each link matches visible results.
+			queryLinkWrapper.style.display = 'inline';
+		} else {
+			let link = queryLink;
+			if (!link) {
+				queryLinkWrapper.innerHTML = '. <a id="query-link" href="#" target="_blank" rel="noopener noreferrer">Link</a>';
+				link = document.getElementById('query-link') as HTMLAnchorElement;
+			}
+			if (link) {
+				const source = activePayload.source;
+				const url = buildQueryUrl(source, activePayload.query);
+				link.href = url;
+				queryLinkWrapper.style.display = 'inline';
+			}
+		}
 	}
 
 	renderPage(currentPage);
@@ -793,6 +812,40 @@ function renderPage(page: number): void {
 
 	if (prevBtn) prevBtn.disabled = currentPage === 1;
 	if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+
+	updateRoleTermLinks(pageResults);
+}
+
+// Per-term provenance links for multi-role Google runs. Only terms with at
+// least one result on the current page keep their link; as soon as a term's
+// last result paginates out of view its link disappears.
+function updateRoleTermLinks(pageResults: ScraperResult[]): void {
+	const wrapper = document.getElementById('query-link-wrapper');
+	if (!wrapper) return;
+	const activePayload = payloadsBySource[currentSource];
+	const rawQuery = activePayload?.query as Record<string, unknown> | undefined;
+	const terms = rawQuery && Array.isArray(rawQuery.roleTerms) ? (rawQuery.roleTerms as string[]) : [];
+	const executed = rawQuery && Array.isArray(rawQuery.executedQueries) ? (rawQuery.executedQueries as string[]) : [];
+	if (!activePayload || activePayload.source !== 'google' || terms.length < 2) return;
+	const present = new Set(
+		pageResults.map(r => r.roleTerm).filter((t): t is string => typeof t === 'string' && t.length > 0)
+	);
+	wrapper.innerHTML = '';
+	let shown = 0;
+	for (let i = 0; i < terms.length; i++) {
+		if (!present.has(terms[i])) continue;
+		if (shown > 0) wrapper.appendChild(document.createTextNode(', '));
+		const a = document.createElement('a');
+		a.href = executed[i]
+			? `https://www.google.com/search?q=${encodeURIComponent(executed[i])}`
+			: buildSingleRoleUrl(terms[i], activePayload.query);
+		a.target = '_blank';
+		a.rel = 'noopener noreferrer';
+		a.textContent = terms[i];
+		wrapper.appendChild(a);
+		shown++;
+	}
+	wrapper.style.display = shown > 0 ? 'inline' : 'none';
 }
 
 // ─── Saved Jobs Tab ──────────────────────────────────────────────────────
@@ -2900,7 +2953,7 @@ function updateQueryPreview(): string {
 	}
 
 	// Delegate to the shared URL builder (single source of truth)
-	const generatedUrl = buildQueryUrl(currentScraperPlatform, {
+	const scraperQuery = {
 		source: currentScraperPlatform,
 		role,
 		seniority,
@@ -2912,11 +2965,24 @@ function updateQueryPreview(): string {
 		workType,
 		keywords,
 		customDomains,
-	});
+	};
+	const generatedUrl = buildQueryUrl(currentScraperPlatform, scraperQuery);
+
+	if (currentScraperPlatform === 'google') {
+		lastRoleTermUrls = buildRoleTermUrls(scraperQuery);
+	} else {
+		lastRoleTermUrls = [];
+	}
 
 	const previewElem = document.getElementById('query-url-preview');
 	if (previewElem) {
-		previewElem.textContent = decodeURIComponent(generatedUrl);
+		if (lastRoleTermUrls.length > 1) {
+			previewElem.textContent =
+				`${decodeURIComponent(lastRoleTermUrls[0].url)} ` +
+				`(+${lastRoleTermUrls.length - 1} more queries — use Try yourself dropdown)`;
+		} else {
+			previewElem.textContent = decodeURIComponent(generatedUrl);
+		}
 	}
 	return generatedUrl;
 }
@@ -2975,7 +3041,65 @@ function openQueryInBrowser(): void {
 	}
 
 	const url = updateQueryPreview();
+	if (currentScraperPlatform === 'google' && lastRoleTermUrls.length > 1) {
+		toggleRoleTermDropdown();
+		return;
+	}
 	window.open(url, '_blank');
+}
+
+function toggleRoleTermDropdown(): void {
+	const existing = document.getElementById('try-yourself-dropdown');
+	if (existing) {
+		existing.remove();
+		return;
+	}
+	const button = document.getElementById('btn-try-yourself');
+	if (!button || lastRoleTermUrls.length === 0) return;
+	const menu = document.createElement('div');
+	menu.id = 'try-yourself-dropdown';
+	const rect = button.getBoundingClientRect();
+	menu.style.position = 'fixed';
+	menu.style.left = `${rect.left}px`;
+	menu.style.top = `${rect.bottom + 6}px`;
+	menu.style.zIndex = '10000';
+	menu.style.background = 'rgb(20, 20, 25, 0.98)';
+	menu.style.border = '1px solid rgb(255, 255, 255, 0.2)';
+	menu.style.borderRadius = '7px';
+	menu.style.padding = '6px';
+	menu.style.minWidth = '180px';
+	for (let i = 0; i < lastRoleTermUrls.length; i++) {
+		const entry = lastRoleTermUrls[i];
+		const link = document.createElement('a');
+		link.href = entry.url;
+		link.target = '_blank';
+		link.rel = 'noopener noreferrer';
+		link.textContent = `CSV-item${i}`;
+		link.title = entry.term;
+		link.style.display = 'block';
+		link.style.padding = '7px 10px';
+		link.style.borderRadius = '5px';
+		link.style.color = '#a5f3fc';
+		link.style.fontFamily = 'monospace';
+		link.style.fontSize = '12px';
+		link.style.textDecoration = 'none';
+		menu.appendChild(link);
+	}
+	document.body.appendChild(menu);
+	const closeMenu = (e: MouseEvent | KeyboardEvent): void => {
+		if (e instanceof MouseEvent) {
+			if (menu.contains(e.target as Node)) return;
+		} else if (e.key !== 'Escape') {
+			return;
+		}
+		menu.remove();
+		document.removeEventListener('mousedown', closeMenu);
+		document.removeEventListener('keydown', closeMenu);
+	};
+	setTimeout(() => {
+		document.addEventListener('mousedown', closeMenu);
+		document.addEventListener('keydown', closeMenu);
+	}, 0);
 }
 
 async function startScraping(): Promise<void> {
