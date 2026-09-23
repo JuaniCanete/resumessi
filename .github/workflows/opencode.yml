@@ -120,16 +120,6 @@ jobs:
           share: false
           use_github_token: true
           prompt: ${{ steps.prompt.outputs.prompt }}
-      - name: Save thread state artifact
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4 (same pin as coverage upload)
-        with:
-          name: thread-state-${{ github.run_id }}
-          path: |
-            /tmp/reply_body.txt
-            /tmp/final_prompt.md
-          if-no-files-found: warn
-          retention-days: 7
       - name: Reply in thread
         if: github.event_name == 'pull_request_review_comment' && always()
         env:
@@ -181,6 +171,17 @@ jobs:
             '
             gh api "repos/$REPO/pulls/comments/$TRIGGER_COMMENT_ID/replies" --method POST --input /tmp/payload2.json --silent && echo "✓ Replied via replies endpoint" || echo "✗ Both reply attempts failed"
           fi
+      # Artifacts are manual-recovery + same-run /tmp reuse; cross-run restore via run-page download (no auto-download).
+      - name: Save thread state artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4 (same pin as coverage upload)
+        with:
+          name: thread-state-${{ github.run_id }}
+          path: |
+            /tmp/reply_body.txt
+            /tmp/final_prompt.md
+          if-no-files-found: warn
+          retention-days: 7
       - name: Cleanup general after thread reply
         if: github.event_name == 'pull_request_review_comment' && always()
         env:
@@ -446,12 +447,14 @@ jobs:
             cat /tmp/review_resp.txt | head -n 80
             cat /tmp/review_payload.json | head -n 100
           fi
+      # Artifacts are manual-recovery + same-run /tmp reuse; cross-run restore via run-page download (no auto-download).
       - name: Save review state artifact
         if: always()
         env:
           FILES: ${{ steps.changes.outputs.files }}
         run: |
           printf '%s' "$FILES" > /tmp/changed_files.txt || true
+      # Artifacts are manual-recovery + same-run /tmp reuse; cross-run restore via run-page download (no auto-download).
       - name: Upload review state artifact
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4 (same pin as coverage upload)
