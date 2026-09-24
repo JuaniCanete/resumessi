@@ -91,15 +91,32 @@ jobs:
           echo "prompt<<$EOF_DELIM" >> $GITHUB_OUTPUT
           cat /tmp/final_prompt.md >> $GITHUB_OUTPUT
           echo "$EOF_DELIM" >> $GITHUB_OUTPUT
-      - name: Run OpenCode Review
+      - name: Run OpenCode Thread Reply (principal)
+        id: thread_principal
         # Pin to reviewed commit for v1.18.31 (mutable tags are supply-chain risk)
         uses: anomalyco/opencode/github@014614d35b397775e5d397a490fc72368c894ec2
+        continue-on-error: true
         env:
           ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENCODE_PERMISSION: '{"*":"allow"}'
         with:
-          model: opencode/big-pickle
+          model: ${{ vars.OPENCODE_SMALL_PRINCIPAL || 'opencode/nemotron-3.5-lightning-free' }}
+          share: false
+          use_github_token: true
+          prompt: ${{ steps.prompt.outputs.prompt }}
+      - name: Run OpenCode Thread Reply (fallback)
+        id: thread_fallback
+        if: steps.thread_principal.outcome == 'failure'
+        # Same pin as principal; only the model input changes
+        uses: anomalyco/opencode/github@014614d35b397775e5d397a490fc72368c894ec2
+        env:
+          ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_PERMISSION: '{"*":"allow"}'
+          OPENCODE_MODEL_ATTEMPT: fallback
+        with:
+          model: ${{ vars.OPENCODE_SMALL_FALLBACK || 'opencode/big-pickle' }}
           share: false
           use_github_token: true
           prompt: ${{ steps.prompt.outputs.prompt }}
@@ -154,6 +171,17 @@ jobs:
             '
             gh api "repos/$REPO/pulls/comments/$TRIGGER_COMMENT_ID/replies" --method POST --input /tmp/payload2.json --silent && echo "✓ Replied via replies endpoint" || echo "✗ Both reply attempts failed"
           fi
+      # Artifacts are manual-recovery + same-run /tmp reuse; cross-run restore via run-page download (no auto-download).
+      - name: Save thread state artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4 (same pin as coverage upload)
+        with:
+          name: thread-state-${{ github.run_id }}
+          path: |
+            /tmp/reply_body.txt
+            /tmp/final_prompt.md
+          if-no-files-found: warn
+          retention-days: 7
       - name: Cleanup general after thread reply
         if: github.event_name == 'pull_request_review_comment' && always()
         env:
@@ -234,15 +262,32 @@ jobs:
           echo "prompt<<$EOF_DELIM" >> $GITHUB_OUTPUT
           cat /tmp/final_prompt_review.md >> $GITHUB_OUTPUT
           echo "$EOF_DELIM" >> $GITHUB_OUTPUT
-      - name: Run OpenCode Review (with retry)
+      - name: Run OpenCode Review (principal)
+        id: review_principal
         # Pin to reviewed commit for v1.18.31 (mutable tags are supply-chain risk)
         uses: anomalyco/opencode/github@014614d35b397775e5d397a490fc72368c894ec2
+        continue-on-error: true
         env:
           ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENCODE_PERMISSION: '{"*":"allow"}'
         with:
-          model: opencode/nemotron-3-ultra-free
+          model: ${{ vars.OPENCODE_MAJOR_PRINCIPAL || 'opencode/nemotron-3-ultra-free' }}
+          share: false
+          use_github_token: true
+          prompt: ${{ steps.prompt.outputs.prompt }}
+      - name: Run OpenCode Review (fallback)
+        id: review_fallback
+        if: steps.review_principal.outcome == 'failure'
+        # Same pin as principal; only the model input changes
+        uses: anomalyco/opencode/github@014614d35b397775e5d397a490fc72368c894ec2
+        env:
+          ZENCODE_API_KEY: ${{ secrets.ZENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_PERMISSION: '{"*":"allow"}'
+          OPENCODE_MODEL_ATTEMPT: fallback
+        with:
+          model: ${{ vars.OPENCODE_MAJOR_FALLBACK || 'opencode/muse-spark-1.3-contributor-free' }}
           share: false
           use_github_token: true
           prompt: ${{ steps.prompt.outputs.prompt }}
@@ -402,6 +447,26 @@ jobs:
             cat /tmp/review_resp.txt | head -n 80
             cat /tmp/review_payload.json | head -n 100
           fi
+      # Artifacts are manual-recovery + same-run /tmp reuse; cross-run restore via run-page download (no auto-download).
+      - name: Save review state artifact
+        if: always()
+        env:
+          FILES: ${{ steps.changes.outputs.files }}
+        run: |
+          printf '%s' "$FILES" > /tmp/changed_files.txt || true
+      # Artifacts are manual-recovery + same-run /tmp reuse; cross-run restore via run-page download (no auto-download).
+      - name: Upload review state artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4 (same pin as coverage upload)
+        with:
+          name: review-state-${{ github.run_id }}
+          path: |
+            /tmp/main_body.txt
+            /tmp/inline_comments.json
+            /tmp/final_prompt_review.md
+            /tmp/changed_files.txt
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upsert general comment
         if: always()
         env:
