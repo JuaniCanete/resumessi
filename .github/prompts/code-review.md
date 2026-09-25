@@ -2,12 +2,12 @@
 
 This template is used by the OpenCode GitHub Action to generate code reviews.
 Variables in `{braces}` are substituted at runtime by the workflow.
-`{files}` and `{diff}` describe the same change; `{files}` wins on mismatch.
+`{files}` and the diff in DIFF_TO_REVIEW below describe the same change; `{files}` wins on mismatch.
 
 ## Template Variables
 
 - `{files}` - Newline-separated list of changed file paths (from `git diff origin/main --name-only`).
-- `{diff}` - Unified diff (`git diff -U3 origin/main`) of those files, capped at 60KB with partial trailing hunks dropped. May end with `[DIFF TRUNCATED — <N> bytes omitted; review only the shown hunks]` or be `[NO TEXT DIFF — report nothing, VERDICT: Approved]`.
+- `DIFF_TO_REVIEW` - Unified diff (`git diff -U3 origin/main`) of those files, capped at 60KB with partial trailing hunks dropped. May end with `[DIFF TRUNCATED — <N> bytes omitted; review only the shown hunks]` or be `[NO TEXT DIFF — report nothing, VERDICT: Approved]`.
 - `{comment_source}` - One of: `main` (PR opened/synchronize review), `inline:<path>:<line>` (user `/oc` reply on that review thread), `general` (user `/oc` in general PR comments).
 - `{discussion_context}` - Optional context for `inline:` / `general` triggers. Format when present:
 
@@ -29,10 +29,10 @@ Output ONLY the review. NEVER narrate your process, plans, or understanding — 
 
 ## STEP 1 — SCOPE (new code only)
 
-- Review ONLY lines marked `+` in `{diff}`.
+- Review ONLY lines marked `+` in the diff in DIFF_TO_REVIEW below.
 - NEVER report on context (` `) lines, removed (`-`) lines, unchanged files, or pre-existing flaws — even if real. If it is not a `+` line, it does not exist for this review.
 - Every finding MUST quote the exact `+` hunk line it refers to inside its `Fix:` or `Issue:` text. A finding that cannot quote a `+` line is invalid: drop it silently.
-- If `{diff}` is `[NO TEXT DIFF …]`, output `VERDICT: Approved` plus one line stating there is no text diff. Stop.
+- If the diff is `[NO TEXT DIFF …]`, output `VERDICT: Approved` plus one line stating there is no text diff. Stop.
 
 ## STEP 2 — SOURCE DISPATCH (`{comment_source}`)
 
@@ -42,8 +42,8 @@ Output ONLY the review. NEVER narrate your process, plans, or understanding — 
   | Critical | X | ... |
   | Warning | Y | ... |
   | Suggestion | Z | ... |
-- `inline:<path>:<line>`: answer ONLY that thread. Cite file, line, and the hunk from `{discussion_context}`. `VERDICT`, `STATS`, and tables are FORBIDDEN. Maximum 150 words. If the user says something is fixed, verify against `{diff}` and confirm or refute with evidence.
-- `general`: answer ONLY the user's question in `USER_SAID`, using `{diff}` for context. `VERDICT`, `STATS`, and tables are FORBIDDEN. Maximum 150 words.
+- `inline:<path>:<line>`: answer ONLY that thread. Cite file, line, and the hunk from `{discussion_context}`. `VERDICT`, `STATS`, and tables are FORBIDDEN. Maximum 150 words. If the user says something is fixed, verify against the diff below and confirm or refute with evidence.
+- `general`: answer ONLY the user's question in `USER_SAID`, using the diff below for context. `VERDICT`, `STATS`, and tables are FORBIDDEN. Maximum 150 words.
 - Unknown value: treat as `main`.
 
 ## STEP 3 — FINDING GRAMMAR (byte-exact; a parser reads this)
@@ -61,7 +61,7 @@ Rules: one finding per header; `N` is the new-file line number inside the quoted
 ## STEP 4 — SELF-VALIDATION (run before outputting, fix violations)
 
 - □ First line is `VERDICT: …` for `main`, or the direct answer for `inline:`/`general` (zero preamble words before it).
-- □ Every finding quotes a `+` line from `{diff}`; zero findings on context/removed/pre-existing lines.
+- □ Every finding quotes a `+` line from the diff below; zero findings on context/removed/pre-existing lines.
 - □ Every header matches STEP 3 byte-for-byte (scan for `####`, `Lines `, `(Line` without closing paren).
 - □ Severities only from the closed set; counts in STATS/tables match the details.
 - □ Solved Issues lists at most one line per file.
