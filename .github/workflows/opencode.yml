@@ -59,20 +59,7 @@ jobs:
           set -e
           git fetch origin main --depth=1
           git diff -U3 origin/main -- . ":!package-lock.json" ":!*.db" ":!*.db-wal" ":!*.db-shm" ":!*.log" ":!public/dist/" > /tmp/diff_raw.txt || true
-          node -e '
-            const fs = require("fs");
-            const CAP = 60 * 1024;
-            let raw = fs.readFileSync("/tmp/diff_raw.txt", "utf8");
-            if (Buffer.byteLength(raw, "utf8") <= CAP) { fs.writeFileSync("/tmp/diff_capped.txt", raw); } else {
-            let cut = Buffer.from(raw, "utf8").slice(0, CAP).toString("utf8");
-            const lastHunk = cut.lastIndexOf("\ndiff --git ");
-            const lastHeader = cut.lastIndexOf("\n@@ ");
-            const boundary = Math.max(lastHunk, lastHeader);
-            cut = boundary > 0 ? cut.slice(0, boundary) : cut;
-            const omitted = Buffer.byteLength(raw, "utf8") - Buffer.byteLength(cut, "utf8");
-            fs.writeFileSync("/tmp/diff_capped.txt", cut + `\n[DIFF TRUNCATED — ${omitted} bytes omitted; review only the shown hunks]`);
-            }
-          '
+          node .github/scripts/cap-diff.js
           if [ ! -s /tmp/diff_capped.txt ]; then
             echo "[NO TEXT DIFF — report nothing, VERDICT: Approved]" > /tmp/diff_capped.txt
           fi
@@ -270,20 +257,7 @@ jobs:
           set -e
           git fetch origin main --depth=1
           git diff -U3 origin/main -- . ":!package-lock.json" ":!*.db" ":!*.db-wal" ":!*.db-shm" ":!*.log" ":!public/dist/" > /tmp/diff_raw.txt || true
-          node -e '
-            const fs = require("fs");
-            const CAP = 60 * 1024;
-            let raw = fs.readFileSync("/tmp/diff_raw.txt", "utf8");
-            if (Buffer.byteLength(raw, "utf8") <= CAP) { fs.writeFileSync("/tmp/diff_capped.txt", raw); } else {
-            let cut = Buffer.from(raw, "utf8").slice(0, CAP).toString("utf8");
-            const lastHunk = cut.lastIndexOf("\ndiff --git ");
-            const lastHeader = cut.lastIndexOf("\n@@ ");
-            const boundary = Math.max(lastHunk, lastHeader);
-            cut = boundary > 0 ? cut.slice(0, boundary) : cut;
-            const omitted = Buffer.byteLength(raw, "utf8") - Buffer.byteLength(cut, "utf8");
-            fs.writeFileSync("/tmp/diff_capped.txt", cut + `\n[DIFF TRUNCATED — ${omitted} bytes omitted; review only the shown hunks]`);
-            }
-          '
+          node .github/scripts/cap-diff.js
           if [ ! -s /tmp/diff_capped.txt ]; then
             echo "[NO TEXT DIFF — report nothing, VERDICT: Approved]" > /tmp/diff_capped.txt
           fi
