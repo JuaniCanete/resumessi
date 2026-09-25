@@ -53,6 +53,29 @@ jobs:
           echo "diff_hunk_file=/tmp/diff_hunk.txt" >> $GITHUB_OUTPUT
           echo "file_path=$FILE_PATH" >> $GITHUB_OUTPUT
           echo "line=$LINE" >> $GITHUB_OUTPUT
+      - name: Get diff for review
+        id: diff
+        run: |
+          set -e
+          git fetch origin main --depth=1
+          git diff -U3 origin/main > /tmp/diff_raw.txt || true
+          node -e '
+            const fs = require("fs");
+            const CAP = 60 * 1024;
+            let raw = fs.readFileSync("/tmp/diff_raw.txt", "utf8");
+            if (raw.length <= CAP) { fs.writeFileSync("/tmp/diff_capped.txt", raw); return; }
+            let cut = raw.slice(0, CAP);
+            const lastHunk = cut.lastIndexOf("\ndiff --git ");
+            const lastHeader = cut.lastIndexOf("\n@@ ");
+            const boundary = Math.max(lastHunk, lastHeader);
+            cut = boundary > 0 ? cut.slice(0, boundary) : cut;
+            const omitted = raw.length - cut.length;
+            fs.writeFileSync("/tmp/diff_capped.txt", cut + `\n[DIFF TRUNCATED — ${omitted} bytes omitted; review only the shown hunks]`);
+          '
+          if [ ! -s /tmp/diff_capped.txt ]; then
+            echo "[NO TEXT DIFF — report nothing, VERDICT: Approved]" > /tmp/diff_capped.txt
+          fi
+          echo "diff_size=$(wc -c < /tmp/diff_capped.txt) bytes"
       - name: Build review prompt
         id: prompt
         env:
@@ -62,6 +85,7 @@ jobs:
           LINE: ${{ steps.comment.outputs.line }}
           COMMENT_BODY: ${{ steps.comment.outputs.comment_body }}
           DIFF_HUNK_FILE: ${{ steps.comment.outputs.diff_hunk_file }}
+          DIFF_FILE: /tmp/diff_capped.txt
         run: |
           set -e
           if [ ! -f .github/prompts/code-review.md ]; then
@@ -80,7 +104,12 @@ jobs:
             }
             
             const instruction = "THREAD_INSTRUCTION: Answer the users question in the thread concisely. Reference file, line and diff_hunk. Do not output VERDICT, STATS or full review table. Be focused, mention constraints if relevant.";
+            const diffBody = fs.existsSync(process.env.DIFF_FILE) ? fs.readFileSync(process.env.DIFF_FILE, "utf8") : "[NO TEXT DIFF — report nothing, VERDICT: Approved]";
+            const hasLine = process.env.FILE_PATH && process.env.LINE;
+            const source = hasLine ? `inline:${process.env.FILE_PATH}:${process.env.LINE}` : `general`;
             prompt = prompt.replace(/\{files\}/g, () => process.env.FILES || "");
+            prompt = prompt.replace(/\{diff\}/g, () => diffBody);
+            prompt = prompt.replace(/\{comment_source\}/g, () => source);
             prompt = prompt.replace(/\{discussion_context\}/g, () => discussion);
             prompt = prompt.replace(/\{review_instruction\}/g, () => instruction);
             
@@ -230,11 +259,35 @@ jobs:
           git fetch origin main --depth=1
           NEW_DELETED=$(git diff --diff-filter=AD --name-only origin/main)
           echo "has_new_deleted=$(test -n "$NEW_DELETED" && echo true || echo false)" >> $GITHUB_OUTPUT
+      - name: Get diff for review
+        id: diff
+        run: |
+          set -e
+          git fetch origin main --depth=1
+          git diff -U3 origin/main > /tmp/diff_raw.txt || true
+          node -e '
+            const fs = require("fs");
+            const CAP = 60 * 1024;
+            let raw = fs.readFileSync("/tmp/diff_raw.txt", "utf8");
+            if (raw.length <= CAP) { fs.writeFileSync("/tmp/diff_capped.txt", raw); return; }
+            let cut = raw.slice(0, CAP);
+            const lastHunk = cut.lastIndexOf("\ndiff --git ");
+            const lastHeader = cut.lastIndexOf("\n@@ ");
+            const boundary = Math.max(lastHunk, lastHeader);
+            cut = boundary > 0 ? cut.slice(0, boundary) : cut;
+            const omitted = raw.length - cut.length;
+            fs.writeFileSync("/tmp/diff_capped.txt", cut + `\n[DIFF TRUNCATED — ${omitted} bytes omitted; review only the shown hunks]`);
+          '
+          if [ ! -s /tmp/diff_capped.txt ]; then
+            echo "[NO TEXT DIFF — report nothing, VERDICT: Approved]" > /tmp/diff_capped.txt
+          fi
+          echo "diff_size=$(wc -c < /tmp/diff_capped.txt) bytes"
       - name: Build review prompt
         id: prompt
         env:
           FILES: ${{ steps.changes.outputs.files }}
           HAS_NEW_DELETED: ${{ steps.diff_type.outputs.has_new_deleted }}
+          DIFF_FILE: /tmp/diff_capped.txt
         run: |
           set -e
           if [ ! -f .github/prompts/code-review.md ]; then
@@ -251,7 +304,10 @@ jobs:
               instruction = "REVIEW_INSTRUCTION: Apply all 5 FACTS categories (FULL review).";
             }
             
+            const diffBody = fs.existsSync(process.env.DIFF_FILE) ? fs.readFileSync(process.env.DIFF_FILE, "utf8") : "[NO TEXT DIFF — report nothing, VERDICT: Approved]";
             prompt = prompt.replace(/\{files\}/g, () => process.env.FILES || "");
+            prompt = prompt.replace(/\{diff\}/g, () => diffBody);
+            prompt = prompt.replace(/\{comment_source\}/g, () => "main");
             prompt = prompt.replace(/\{discussion_context\}/g, () => "");
             prompt = prompt.replace(/\{review_instruction\}/g, () => instruction);
             
