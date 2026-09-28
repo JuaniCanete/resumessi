@@ -44,3 +44,13 @@ test('cut never splits a multibyte sequence (no replacement char)', () => {
 	assert.ok(!output.includes('�'));
 	assert.ok(output.includes('[DIFF TRUNCATED'));
 });
+
+test('no hunk markers at all keeps the full hard cut (no off-by-one)', () => {
+	// Both lastIndexOf hit -1 here; the -1 must never reach slice.
+	const output = runCli('x'.repeat(70000));
+	assert.ok(output.includes('[DIFF TRUNCATED'));
+	assert.equal(
+		Buffer.byteLength(output, 'utf8'),
+		61440 + Buffer.byteLength('\n[DIFF TRUNCATED — 8560 bytes omitted; review only the shown hunks]', 'utf8')
+	);
+});
