@@ -22,11 +22,19 @@ test('small diff passes through byte-identical (multibyte intact)', () => {
 	assert.equal(runCli(input), input);
 });
 
-test('large diff truncates at a clean boundary with byte-exact omitted count', () => {
+test('giant single-line hunk keeps maximal content instead of dropping to header', () => {
 	const input = `diff --git a/big.ts b/big.ts\n@@ -1 +1 @@\n${'x'.repeat(70000)}\n`;
 	const output = runCli(input);
-	assert.ok(output.endsWith('[DIFF TRUNCATED — 70014 bytes omitted; review only the shown hunks]'));
-	assert.ok(Buffer.byteLength(output, 'utf8') < 70000);
+	assert.ok(output.endsWith('[DIFF TRUNCATED — 8602 bytes omitted; review only the shown hunks]'));
+	assert.ok(Buffer.byteLength(output, 'utf8') > 60000);
+});
+
+test('multi-file diff over cap cuts at the file boundary, first file intact', () => {
+	const first = 'diff --git a/a.ts b/a.ts\n@@ -1 +1 @@\n-old\n+new\n';
+	const input = `${first}diff --git a/b.ts b/b.ts\n@@ -1 +1 @@\n${'y'.repeat(70000)}\n`;
+	const output = runCli(input);
+	assert.ok(output.startsWith(first));
+	assert.ok(output.includes('[DIFF TRUNCATED'));
 });
 
 test('cut never splits a multibyte sequence (no replacement char)', () => {

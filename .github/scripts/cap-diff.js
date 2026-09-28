@@ -26,9 +26,13 @@ function capUtf8(str, cap) {
 
 function capDiff(raw, cap = CAP_DEFAULT) {
 	if (Buffer.byteLength(raw, 'utf8') <= cap) return { text: raw, truncated: false, omitted: 0 };
-	let cut = capUtf8(raw, cap);
-	const boundary = Math.max(cut.lastIndexOf('\ndiff --git '), cut.lastIndexOf('\n@@ '));
-	if (boundary > 0) cut = cut.slice(0, boundary);
+	const hard = capUtf8(raw, cap);
+	// Prefer a clean file/hunk boundary, but only when it preserves most of
+	// the budget: a boundary near the start (e.g. one giant single-line hunk)
+	// would discard nearly everything, so keep the char-safe hard cut instead.
+	// Shown line numbers stay valid either way; the suffix discloses the cut.
+	const boundary = Math.max(hard.lastIndexOf('\ndiff --git '), hard.lastIndexOf('\n@@ '));
+	const cut = boundary > cap / 2 ? hard.slice(0, boundary) : hard;
 	const omitted = Buffer.byteLength(raw, 'utf8') - Buffer.byteLength(cut, 'utf8');
 	return { text: cut + TRUNCATED_SUFFIX(omitted), truncated: true, omitted };
 }
