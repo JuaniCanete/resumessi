@@ -47,6 +47,7 @@ CLAUDE.local.md
 code-review/
 plans/
 .playwright-mcp/
+docs/superpowers/
 
 # Build outputs (if any)
 dist/
